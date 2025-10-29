@@ -18,6 +18,15 @@ import { toast } from "sonner";
 import { createMeetingClient } from "@/lib/meetings/client";
 import { FileUpload } from "@/components/ui/file-upload";
 import { uploadFile } from "@/lib/attachments/client";
+import { MentionInput } from "@/components/ui/mention-input";
+
+interface User {
+  id: string;
+  name: string;
+  email: string;
+  role?: string;
+  department?: string;
+}
 
 export function CallReportForm({
   writers,
@@ -50,12 +59,14 @@ export function CallReportForm({
     genre: "",
     theme: "",
     targetSlot: "",
-    attendees: "",
     location: "",
     notes: "",
     nextSteps: "",
     status: "draft"
   });
+
+  // Attendees state
+  const [selectedAttendees, setSelectedAttendees] = useState<User[]>([]);
 
   // File upload state
   const [filesToUpload, setFilesToUpload] = useState<File[]>([]);
@@ -129,11 +140,8 @@ export function CallReportForm({
       // Combine date and time
       const meetingDateTime = new Date(`${meetingDate}T${meetingTime}`);
 
-      // Parse additional attendees
-      const additionalAttendees = formData.attendees
-        .split(",")
-        .map(email => email.trim())
-        .filter(email => email.length > 0);
+      // Extract attendee emails from selected users
+      const attendeeEmails = selectedAttendees.map(user => user.email);
 
       // Create meeting/call report
       const result = await createMeetingClient({
@@ -153,7 +161,7 @@ export function CallReportForm({
         theme: formData.theme || undefined,
         slot: formData.targetSlot,
         meeting_date: meetingDateTime.toISOString(),
-        attendees: selectedWriter?.email ? [selectedWriter.email, ...additionalAttendees] : additionalAttendees,
+        attendees: selectedWriter?.email ? [selectedWriter.email, ...attendeeEmails] : attendeeEmails,
         location: formData.location,
         notes: formData.notes,
         next_steps: formData.nextSteps,
@@ -190,12 +198,12 @@ export function CallReportForm({
         genre: "",
         theme: "",
         targetSlot: "",
-        attendees: "",
         location: "",
         notes: "",
         nextSteps: "",
         status: "draft"
       });
+      setSelectedAttendees([]);
       setFilesToUpload([]);
     } catch (error: any) {
       console.error("Error logging call report:", error);
@@ -426,11 +434,11 @@ export function CallReportForm({
           <CardContent className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="attendees">Meeting Attendees</Label>
-              <Input
-                id="attendees"
-                placeholder="Additional emails, separated by commas"
-                value={formData.attendees}
-                onChange={handleInputChange}
+              <MentionInput
+                selectedUsers={selectedAttendees}
+                onUsersChange={setSelectedAttendees}
+                placeholder="Type @ to mention users..."
+                disabled={isLoading}
               />
             </div>
 
