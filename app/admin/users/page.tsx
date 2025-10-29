@@ -1,0 +1,403 @@
+"use client";
+
+import { useEffect, useState, useMemo, useCallback } from "react";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent } from "@/components/ui/card";
+import Link from "next/link";
+import { createClient } from "@/lib/supabase/client";
+import { EditUserDialog } from "@/components/admin/edit-user-dialog";
+import { ChangeRoleDialog } from "@/components/admin/change-role-dialog";
+import { DeleteUserDialog } from "@/components/admin/delete-user-dialog";
+import { ResponsiveTable } from "@/components/ui/responsive-table";
+import { Search, UserPlus, Loader2, User, Mail, Briefcase, Shield, Calendar } from "lucide-react";
+import { toast } from "sonner";
+import { logger } from "@/lib/logger";
+
+interface User {
+  id: string;
+  name: string;
+  email: string;
+  position: string | null;
+  role: string;
+  department: string | null;
+  status: string;
+  created_at: string;
+}
+
+export default function AdminUsersPage() {
+  const [users, setUsers] = useState<User[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState("");
+
+  // Dialog states
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [roleDialogOpen, setRoleDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+
+  const supabase = createClient();
+
+  const fetchUsers = useCallback(async () => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from("users")
+        .select("id, name, email, position, role, department, status, created_at")
+        .order("created_at", { ascending: false })
+        .limit(100);
+
+      if (error) {
+        toast.error("Failed to load users", {
+          description: error.message,
+        });
+        return;
+      }
+
+      setUsers(data || []);
+    } catch (error) {
+      logger.error("Error fetching users:", error);
+      toast.error("An error occurred while loading users");
+    } finally {
+      setLoading(false);
+    }
+  }, [supabase]);
+
+  useEffect(() => {
+    fetchUsers();
+  }, [fetchUsers]);
+
+  // Filter users based on search using useMemo (more efficient than useEffect + separate state)
+  const filteredUsers = useMemo(() => {
+    if (!searchTerm) return users;
+
+    const lowerSearch = searchTerm.toLowerCase();
+    return users.filter(
+      (user) =>
+        user.name.toLowerCase().includes(lowerSearch) ||
+        user.email.toLowerCase().includes(lowerSearch) ||
+        user.role?.toLowerCase().includes(lowerSearch)
+    );
+  }, [searchTerm, users]);
+
+  const handleToggleStatus = async (userId: string, currentStatus: string) => {
+    const newStatus = currentStatus === "active" ? "inactive" : "active";
+
+    try {
+      const response = await fetch(`/api/admin/users/${userId}/status`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ status: newStatus }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to update status");
+      }
+
+      toast.success("Status updated", {
+        description: `User is now ${newStatus}`,
+      });
+
+      fetchUsers();
+    } catch (error) {
+      toast.error("Failed to update status");
+    }
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    });
+  };
+
+  const getRoleBadgeColor = (role: string) => {
+    const colors: Record<string, string> = {
+      admin: "bg-red-100 text-red-800 border-red-300",
+      management: "bg-purple-100 text-purple-800 border-purple-300",
+      content_creator: "bg-blue-100 text-blue-800 border-blue-300",
+      evaluator: "bg-green-100 text-green-800 border-green-300",
+      legal: "bg-yellow-100 text-yellow-800 border-yellow-300",
+      finance: "bg-orange-100 text-orange-800 border-orange-300",
+    };
+    return colors[role] || "bg-gray-100 text-gray-800 border-gray-300";
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="mobile-container mobile-section">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 sm:mb-6 gap-3 sm:gap-0">
+        <div>
+          <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">User Management</h2>
+          <p className="text-muted-foreground mt-1 text-sm sm:text-base">
+            Manage user accounts and permissions
+          </p>
+        </div>
+        <Button asChild className="w-full sm:w-auto touch-target bg-[#10b981] hover:bg-[#059669]">
+          <Link href="/admin/users/new">
+            <UserPlus className="h-4 w-4 mr-2" />
+            Create User
+          </Link>
+        </Button>
+      </div>
+
+      {/* Search Bar */}
+      <div className="mb-4 sm:mb-6">
+        <div className="relative w-full sm:max-w-md">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search users..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-10 touch-target"
+          />
+        </div>
+        <p className="text-xs sm:text-sm text-muted-foreground mt-2">
+          Showing {filteredUsers.length} of {users.length} users
+        </p>
+      </div>
+
+      {/* Users Table */}
+      <div className="bg-white rounded-lg border shadow-sm overflow-hidden">
+        <ResponsiveTable
+          columns={[
+            { key: 'name', label: 'Name' },
+            { key: 'email', label: 'Email' },
+            { key: 'position', label: 'Position' },
+            { key: 'role', label: 'Role' },
+            { key: 'status', label: 'Status' },
+            { key: 'joined', label: 'Joined' },
+            { key: 'actions', label: 'Actions' },
+          ]}
+          data={filteredUsers}
+          renderRow={(user) => (
+            <>
+              <td className="px-6 py-4 whitespace-nowrap">
+                <div className="font-medium text-gray-900">{user.name}</div>
+              </td>
+              <td className="px-6 py-4 whitespace-nowrap">
+                <div className="text-sm text-gray-600">{user.email}</div>
+              </td>
+              <td className="px-6 py-4 whitespace-nowrap">
+                <div className="text-sm text-gray-600">
+                  {user.position || "-"}
+                </div>
+              </td>
+              <td className="px-6 py-4 whitespace-nowrap">
+                <Badge
+                  variant="outline"
+                  className={getRoleBadgeColor(user.role)}
+                >
+                  {user.role || "No Role"}
+                </Badge>
+              </td>
+              <td className="px-6 py-4 whitespace-nowrap">
+                <Badge
+                  variant={user.status === "active" ? "default" : "secondary"}
+                  className={
+                    user.status === "active"
+                      ? "bg-green-100 text-green-800 border-green-300"
+                      : "bg-gray-100 text-gray-800 border-gray-300"
+                  }
+                >
+                  {user.status}
+                </Badge>
+              </td>
+              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                {formatDate(user.created_at)}
+              </td>
+              <td className="px-6 py-4 whitespace-nowrap text-right space-x-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setSelectedUser(user);
+                    setRoleDialogOpen(true);
+                  }}
+                >
+                  Change Role
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setSelectedUser(user);
+                    setEditDialogOpen(true);
+                  }}
+                >
+                  Edit
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleToggleStatus(user.id, user.status)}
+                >
+                  {user.status === "active" ? "Deactivate" : "Activate"}
+                </Button>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={() => {
+                    setSelectedUser(user);
+                    setDeleteDialogOpen(true);
+                  }}
+                >
+                  Delete
+                </Button>
+              </td>
+            </>
+          )}
+          renderMobileCard={(user) => (
+            <Card className="hover:shadow-md transition-shadow">
+              <CardContent className="p-4">
+                {/* User Name and Status */}
+                <div className="flex justify-between items-start mb-3">
+                  <div className="flex items-center gap-2">
+                    <div className="bg-primary/10 p-2 rounded-full">
+                      <User className="h-4 w-4 text-primary" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-base">{user.name}</h3>
+                      <Badge
+                        variant={user.status === "active" ? "default" : "secondary"}
+                        className={`mt-1 text-xs ${
+                          user.status === "active"
+                            ? "bg-green-100 text-green-800 border-green-300"
+                            : "bg-gray-100 text-gray-800 border-gray-300"
+                        }`}
+                      >
+                        {user.status}
+                      </Badge>
+                    </div>
+                  </div>
+                </div>
+
+                {/* User Details */}
+                <div className="space-y-2 mb-4">
+                  <div className="flex items-center gap-2 text-sm">
+                    <Mail className="h-3.5 w-3.5 text-muted-foreground" />
+                    <span className="text-muted-foreground truncate">{user.email}</span>
+                  </div>
+                  {user.position && (
+                    <div className="flex items-center gap-2 text-sm">
+                      <Briefcase className="h-3.5 w-3.5 text-muted-foreground" />
+                      <span className="text-muted-foreground">{user.position}</span>
+                    </div>
+                  )}
+                  <div className="flex items-center gap-2 text-sm">
+                    <Shield className="h-3.5 w-3.5 text-muted-foreground" />
+                    <Badge
+                      variant="outline"
+                      className={`${getRoleBadgeColor(user.role)} text-xs`}
+                    >
+                      {user.role || "No Role"}
+                    </Badge>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm">
+                    <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
+                    <span className="text-muted-foreground text-xs">
+                      Joined {formatDate(user.created_at)}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="grid grid-cols-2 gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="touch-target"
+                    onClick={() => {
+                      setSelectedUser(user);
+                      setRoleDialogOpen(true);
+                    }}
+                  >
+                    Change Role
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="touch-target"
+                    onClick={() => {
+                      setSelectedUser(user);
+                      setEditDialogOpen(true);
+                    }}
+                  >
+                    Edit
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="touch-target"
+                    onClick={() => handleToggleStatus(user.id, user.status)}
+                  >
+                    {user.status === "active" ? "Deactivate" : "Activate"}
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    className="touch-target"
+                    onClick={() => {
+                      setSelectedUser(user);
+                      setDeleteDialogOpen(true);
+                    }}
+                  >
+                    Delete
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+          emptyMessage="No users found"
+        />
+      </div>
+
+      {/* Dialogs */}
+      {selectedUser && (
+        <>
+          <EditUserDialog
+            open={editDialogOpen}
+            onOpenChange={setEditDialogOpen}
+            userId={selectedUser.id}
+            currentData={{
+              name: selectedUser.name,
+              email: selectedUser.email,
+              position: selectedUser.position,
+            }}
+            onSuccess={fetchUsers}
+          />
+
+          <ChangeRoleDialog
+            open={roleDialogOpen}
+            onOpenChange={setRoleDialogOpen}
+            userId={selectedUser.id}
+            userName={selectedUser.name}
+            currentRole={selectedUser.role}
+            onSuccess={fetchUsers}
+          />
+
+          <DeleteUserDialog
+            open={deleteDialogOpen}
+            onOpenChange={setDeleteDialogOpen}
+            userId={selectedUser.id}
+            userName={selectedUser.name}
+            userEmail={selectedUser.email}
+            onSuccess={fetchUsers}
+          />
+        </>
+      )}
+    </div>
+  );
+}

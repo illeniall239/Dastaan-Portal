@@ -1,0 +1,294 @@
+import { createClient } from "@/lib/supabase/client";
+
+export interface Evaluation {
+  id: string;
+  form_id: string;
+  call_report_id: string;
+  evaluator_id: string;
+  target_writer?: string;
+  per_ep_price_range?: string;
+  genre?: string;
+  slot?: string;
+  big_idea?: string;
+  theme?: string;
+  premise_conflict_score: number;
+  storyline_plot_score: number;
+  episodic_progression_score: number;
+  characters_score: number;
+  // dialogues_score removed
+  overall_assessment_score?: number; // DEPRECATED: Use average_score instead
+  first_2_eps_required?: boolean;
+  average_score?: number;
+  comments?: string;
+  decision?: "approve" | "reject";
+  decision_notes?: string;
+  created_at: string;
+  submitted_at?: string;
+}
+
+export interface CreateEvaluationInput {
+  call_report_id: string;
+  evaluator_id: string;
+  target_writer?: string;
+  per_ep_price_range?: string;
+  genre?: string;
+  slot?: string;
+  big_idea?: string;
+  theme?: string;
+  premise_conflict_score: number;
+  storyline_plot_score: number;
+  episodic_progression_score: number;
+  characters_score: number;
+  // dialogues_score removed
+  overall_assessment_score?: number; // DEPRECATED: Not used anymore, average is auto-calculated
+  first_2_eps_required?: boolean;
+  comments?: string;
+  decision: "approve" | "reject";
+  decision_notes?: string;
+}
+
+export interface UpdateEvaluationInput {
+  id: string;
+  target_writer?: string | null;
+  per_ep_price_range?: string | null;
+  genre?: string | null;
+  slot?: string | null;
+  big_idea?: string | null;
+  theme?: string | null;
+  premise_conflict_score?: number;
+  storyline_plot_score?: number;
+  episodic_progression_score?: number;
+  characters_score?: number;
+  first_2_eps_required?: boolean | null;
+  comments?: string | null;
+  decision?: "approve" | "reject";
+  decision_notes?: string | null;
+}
+
+/**
+ * Create a new evaluation from client components
+ * This function should be called from client components
+ */
+export async function createEvaluationClient(evaluationData: CreateEvaluationInput) {
+  const supabase = createClient();
+
+  // Generate unique form_id in format EVAL-YYYY-NNNN
+  const now = new Date();
+  const year = now.getFullYear();
+  const randomNum = Math.floor(Math.random() * 10000)
+    .toString()
+    .padStart(4, "0");
+  const form_id = `EVAL-${year}-${randomNum}`;
+
+  const { data, error } = await supabase
+    .from("evaluator_forms")
+    .insert({
+      form_id,
+      call_report_id: evaluationData.call_report_id,
+      evaluator_id: evaluationData.evaluator_id,
+      target_writer: evaluationData.target_writer || null,
+      per_ep_price_range: evaluationData.per_ep_price_range || null,
+      genre: evaluationData.genre || null,
+      slot: evaluationData.slot || null,
+      big_idea: evaluationData.big_idea || null,
+      theme: evaluationData.theme || null,
+      premise_conflict_score: evaluationData.premise_conflict_score,
+      storyline_plot_score: evaluationData.storyline_plot_score,
+      episodic_progression_score: evaluationData.episodic_progression_score,
+      characters_score: evaluationData.characters_score,
+      // dialogues_score removed
+      // overall_assessment_score is deprecated and set to NULL by database trigger
+      overall_assessment_score: null,
+      comments: evaluationData.comments || null,
+      first_2_eps_required: evaluationData.first_2_eps_required || null,
+      decision: evaluationData.decision,
+      decision_notes: evaluationData.decision_notes || null,
+      submitted_at: new Date().toISOString(),
+    })
+    .select()
+    .single();
+
+  if (error) {
+    throw new Error(`Failed to create evaluation: ${error.message}`);
+  }
+
+  // Get the call report for notifications and audit log
+  let callReport: any = null;
+
+  // Create notifications for content department members
+  try {
+    // Get the call report to include project details in notification
+    const { data: callReportData } = await supabase
+      .from("call_reports")
+      .select("working_title, writer_name")
+      .eq("id", evaluationData.call_report_id)
+      .single();
+
+    callReport = callReportData;
+
+    // Get all content department users (they should be notified of evaluations)
+    const { data: contentUsers } = await supabase
+      .from("users")
+      .select("id")
+      .eq("role", "content_creator")
+      .eq("status", "active");
+
+    if (contentUsers && contentUsers.length > 0 && callReport) {
+      const notifications = contentUsers.map((user) => ({
+        user_id: user.id,
+        type: "success",
+        title: `New evaluation submitted: ${callReport.working_title}`,
+        message: `Evaluation completed with average score: ${data.average_score}/10`,
+        entity_type: "evaluation_submitted",
+        entity_id: data.id,
+        is_read: false,
+      }));
+
+      await supabase.from("notifications").insert(notifications);
+    }
+  } catch (notifError) {
+    console.error("Failed to create notifications:", notifError);
+    // Don't fail the evaluation creation if notification fails
+  }
+
+  // Create audit log entry
+  try {
+    const auditLog = {
+      entity_type: "evaluation",
+      entity_id: data.id,
+      action: "submitted_evaluation",
+      performed_by: evaluationData.evaluator_id,
+      timestamp: new Date().toISOString(),
+      details: {
+        project_title: callReport?.working_title || "",
+        average_score: data.average_score,
+        evaluator: callReport?.writer_name || ""
+      }
+    };
+
+    await supabase.from("audit_logs").insert(auditLog);
+  } catch (auditError) {
+    console.error("Failed to create audit log:", auditError);
+    // Don't fail the evaluation creation if audit logging fails
+  }
+
+  return data;
+}
+
+/**
+ * Update an existing evaluation from client components (owner only via RLS)
+ */
+export async function updateEvaluationClient(evaluationData: UpdateEvaluationInput) {
+  const supabase = createClient();
+
+  // Whitelist updatable fields
+  const {
+    id,
+    target_writer,
+    per_ep_price_range,
+    genre,
+    slot,
+    big_idea,
+    theme,
+    premise_conflict_score,
+    storyline_plot_score,
+    episodic_progression_score,
+    characters_score,
+    first_2_eps_required,
+    comments,
+  } = evaluationData;
+
+  const updatePayload: any = {
+    target_writer: target_writer ?? null,
+    per_ep_price_range: per_ep_price_range ?? null,
+    genre: genre ?? null,
+    slot: slot ?? null,
+    big_idea: big_idea ?? null,
+    theme: theme ?? null,
+    premise_conflict_score,
+    storyline_plot_score,
+    episodic_progression_score,
+    characters_score,
+    first_2_eps_required: first_2_eps_required ?? null,
+    comments: comments ?? null,
+    decision: evaluationData.decision,
+    decision_notes: evaluationData.decision_notes ?? null,
+    updated_at: new Date().toISOString(),
+  };
+
+  const { data, error } = await supabase
+    .from("evaluator_forms")
+    .update(updatePayload)
+    .eq("id", id)
+    .select()
+    .single();
+
+  if (error) {
+    throw new Error(`Failed to update evaluation: ${error.message}`);
+  }
+
+  return data;
+}
+
+/**
+ * Get all evaluations from client components
+ * This function should be called from client components
+ */
+export async function getEvaluationsClient() {
+  const supabase = createClient();
+
+  const { data, error } = await supabase
+    .from("evaluator_forms")
+    .select(`
+      *,
+      call_reports:call_report_id (
+        working_title,
+        writer_name,
+        call_report_id
+      ),
+      evaluators:evaluator_id (
+        name,
+        email
+      )
+    `)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    throw new Error(`Failed to fetch evaluations: ${error.message}`);
+  }
+
+  return data;
+}
+
+/**
+ * Get a single evaluation by ID from client components
+ */
+export async function getEvaluationByIdClient(id: string) {
+  const supabase = createClient();
+
+  const { data, error } = await supabase
+    .from("evaluator_forms")
+    .select(`
+      *,
+      call_reports:call_report_id (
+        working_title,
+        writer_name,
+        call_report_id,
+        logline,
+        usp,
+        category
+      ),
+      evaluators:evaluator_id (
+        name,
+        email
+      )
+    `)
+    .eq("id", id)
+    .single();
+
+  if (error) {
+    throw new Error(`Failed to fetch evaluation: ${error.message}`);
+  }
+
+  return data;
+}

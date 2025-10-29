@@ -1,0 +1,2985 @@
+Software Requirements Specification (SRS)
+Content Management System for Story Development &
+Production
+Version: 1.0
+Date: October 2025
+Prepared for: Large Media Organization
+Expected Users: 50-100
+Development Timeline: 15 Days
+TABLE OF CONTENTS
+1. Introduction
+2. Overall Description
+3. System Features & Functional Requirements
+4. Data Requirements
+5. User Interface Requirements
+6. Non-Functional Requirements
+7. External Interface Requirements
+8. Appendices
+1. INTRODUCTION
+1.1 Purpose
+This SRS document provides a complete description of all functions and specifications for the
+Content Management System (CMS) designed to manage the entire lifecycle of story/content
+development from initial idea submission through production and payment.
+1.2 Scope
+The system will manage:
+• Story idea submission and categorization
+• Multi-stage approval workflow
+• Meeting scheduling and call report generation
+• Evaluator scoring and decision tracking
+• Contract negotiation and legal vetting
+
+• Script production phases
+• Financial tracking and payment schedules
+• Comprehensive stakeholder dashboard with drill-down analytics
+1.3 Definitions & Acronyms
+• CMS: Content Management System
+• POC: Point of Contact
+• USP: Unique Selling Proposition
+• NIC: National Identity Card
+• NTN: National Tax Number
+• RLS: Row Level Security
+• CRUD: Create, Read, Update, Delete
+1.4 References
+• Workflow Diagram (attached)
+• 15-Day Development Timeline
+• User Roles Definition Document
+2. OVERALL DESCRIPTION
+2.1 Product Perspective
+This is a standalone web-based application that will:
+• Replace manual/email-based content approval processes
+• Provide real-time visibility into the content pipeline
+• Automate notifications and workflow routing
+• Maintain complete audit trail of all actions
+2.2 Product Functions
+High-level functions include:
+1. Story Idea Management
+2. Workflow Orchestration (8 stages)
+3. User & Role Management
+4. Document Management
+5. Notification System
+6. Reporting & Analytics
+7. Audit Trail & Logging
+
+2.3 User Classes & Characteristics
+User Role Responsibilities Technical Skill
+Content Creator Submit story ideas Low
+Content Manager Create call reports, schedule meetings Medium
+Evaluator Score and evaluate ideas Low-Medium
+Executive Approve one-liners Low
+Legal Team Review contracts, vet agreements Medium
+Finance Team Track payments, manage schedules Medium
+Writer Update script progress Low
+Stakeholder/Admin View all data, generate reports Medium-High
+2.4 Operating Environment
+• Platform: Web-based (accessible via modern browsers)
+• Devices: Desktop, Tablet, Mobile (responsive)
+• Browsers: Chrome 90+, Firefox 88+, Safari 14+, Edge 90+
+• Internet: Required for all operations
+2.5 Design & Implementation Constraints
+• Must be deployed within 15 days
+• Support 50-100 concurrent users initially
+• Must scale to 1,000+ users without architectural changes
+• Data must be stored securely with encryption
+• Must comply with data protection regulations
+3. SYSTEM FEATURES & FUNCTIONAL
+REQUIREMENTS
+3.1 STORY IDEA SUBMISSION
+3.1.1 Description
+Users can submit story ideas with complete metadata and categorization based on source.
+3.1.2 Functional Requirements
+FR-3.1.1: Story Idea Submission Form
+• Input Fields Required:
+
+o Title (text, max 200 characters, required)
+o Logged By (text, auto-populated from user profile, required)
+o Category/Source (dropdown, required):
+▪ External Producer
+▪ Writer Pitch
+▪ In-house Content
+o Writer/Originator Name (text, max 100 characters, required)
+o Suggested Writer (text, max 100 characters, optional)
+o Synopsis (rich text, max 2000 characters, required)
+o Genre (dropdown, required):
+▪ Drama
+▪ Comedy
+▪ Action
+▪ Thriller
+▪ Romance
+▪ Documentary
+▪ Reality
+▪ Other
+o Target Audience (text, max 500 characters, required)
+o Attachments (file upload, multiple files allowed):
+▪ Supported formats: PDF, DOC, DOCX, PPT, PPTX, JPG, PNG
+▪ Max file size: 25MB per file
+▪ Max total: 100MB per submission
+o Created Date/Time (auto-generated, timestamp)
+o Status (auto-set to "Draft", system-managed)
+FR-3.1.2: Story Idea Validation
+• System must validate all required fields before submission
+• System must validate file formats and sizes
+• System must scan uploaded files for viruses
+• System must display clear error messages for validation failures
+FR-3.1.3: Story Idea Storage
+• Each story must receive a unique ID (format: STR-YYYY-NNNN)
+• System must store submission timestamp
+• System must track submission user
+• System must create initial audit log entry
+FR-3.1.4: Post-Submission Actions
+• System must automatically send email notification to Content Manager(s)
+• System must display success message to user
+• System must redirect user to story detail page
+• System must show story in "My Submissions" list
+
+FR-3.1.5: Story Idea Listing
+• Users must be able to view list of all their submitted stories
+• List must show:
+o Story ID
+o Title
+o Category
+o Current Stage
+o Status
+o Submission Date
+o Last Updated
+• List must be sortable by any column
+• List must be filterable by:
+o Status
+o Category
+o Date range
+o Current stage
+• List must support search by title/ID
+FR-3.1.6: Story Idea Detail View
+• Must display all story information
+• Must show current workflow stage
+• Must show workflow history (timeline view)
+• Must show all attachments with download links
+• Must show all comments/notes from various stages
+• Must show who is currently assigned the task
+3.1.3 Success Criteria
+• User can submit story idea in < 5 minutes
+• File upload completes successfully 99% of the time
+• Validation errors are clear and actionable
+• Notifications sent within 1 minute of submission
+3.2 SCHEDULING & MEETING COORDINATION
+3.2.1 Description
+After story submission, Content Manager schedules a meeting with the relevant Point of Contact
+based on story category.
+3.2.2 Functional Requirements
+
+FR-3.2.1: Scheduling Interface
+• System must display story category prominently:
+o External Producer
+o Writer Pitch
+o In-house Content (Content Department)
+• Content Manager must select meeting participants:
+o Point of Contact (required)
+o Additional attendees (optional, multi-select)
+• Meeting details required:
+o Meeting Date & Time (datetime picker, required)
+o Meeting Location/Link (text, required)
+o Duration (dropdown: 30min, 1hr, 1.5hr, 2hr)
+o Meeting Agenda (text area, optional)
+FR-3.2.2: Calendar Integration (Optional for Phase 1)
+• System should integrate with Google Calendar/Outlook
+• System should check availability before scheduling
+• System should send calendar invites to participants
+FR-3.2.3: Meeting Notifications
+• System must send email to all participants:
+o Meeting invitation
+o Story details (title, synopsis, attachments)
+o Agenda
+o Join link (if virtual)
+• System must send reminder emails:
+o 24 hours before meeting
+o 1 hour before meeting
+FR-3.2.4: Meeting Status Tracking
+• System must track meeting status:
+o Scheduled
+o In Progress
+o Completed
+o Cancelled
+o Rescheduled
+• System must record:
+o Who scheduled the meeting
+o When it was scheduled
+o Any changes made (audit trail)
+3.2.3 Success Criteria
+
+• Meeting scheduled in < 2 minutes
+• All participants receive notifications
+• Calendar integration works seamlessly
+• Rescheduling is simple and tracked
+3.3 CALL REPORT GENERATION
+3.3.1 Description
+After the meeting is held, Content Manager creates a comprehensive Call Report documenting
+what transpired.
+3.3.2 Functional Requirements
+FR-3.3.1: Call Report Form
+• Input Fields Required:
+o Call Report ID (auto-generated: CR-YYYY-NNNN)
+o Story ID (auto-linked, read-only)
+o Logged By (auto-populated from story submission)
+o Story Idea Title (auto-populated, editable)
+o Meeting Date & Time (auto-populated from scheduling, editable)
+o Writer Name (text, required)
+o Writer/Originator Name (text, required)
+o Suggested Writer (text, optional)
+o Contact/Representation Options (dropdown):
+▪ Direct Writer Contact
+▪ Through Agent
+▪ Through Production Company
+▪ Other
+o Contact Info (text area):
+▪ Email (validated email format)
+▪ Phone (validated phone format)
+▪ Address (optional)
+o Working Title (text, max 200 characters, required)
+o Logline (text area, max 500 characters, required)
+o USP - Unique Selling Proposition (text area, max 1000 characters, required)
+o Target Audience (text area, max 500 characters, required)
+o Meeting Notes (rich text editor, max 5000 characters, required)
+o Meeting Attendees (auto-populated from scheduling, editable)
+o Attachments (file upload, same specs as story submission):
+▪ Meeting minutes
+▪ Additional documents
+▪ Research materials
+
+o Next Steps/Action Items (text area, optional)
+o Status (dropdown):
+▪ Draft
+▪ Ready for Evaluation
+▪ In Review
+FR-3.3.2: Call Report Validation
+• All required fields must be completed
+• Email format must be valid
+• Phone format must be valid
+• System must prevent duplicate Call Reports for same story
+FR-3.3.3: Call Report Storage
+• System must save draft versions automatically (every 2 minutes)
+• System must maintain version history
+• System must track who created/edited the report
+• System must timestamp all changes
+FR-3.3.4: Call Report Submission
+• When status set to "Ready for Evaluation":
+o System must validate all required fields
+o System must automatically start Evaluator Meeting workflow
+o System must notify all assigned Evaluators
+o System must update story status to "In Evaluation"
+o System must log workflow transition
+FR-3.3.5: Call Report Access
+• Content Managers can view/edit their own call reports
+• Evaluators can view call reports assigned to them (read-only)
+• Stakeholders can view all call reports
+• System must enforce permissions based on role
+FR-3.3.6: Call Report Export
+• System must allow export to PDF
+• PDF must include:
+o All field data
+o Attachments list with links
+o Generated timestamp
+o Generated by user name
+3.3.3 Success Criteria
+
+• Call Report can be created in < 10 minutes
+• Auto-save prevents data loss
+• All stakeholders can access relevant information
+• Export generates clean, professional PDF
+3.4 EVALUATOR MEETING & SCORING
+3.4.1 Description
+Multiple evaluators review the Call Report and score the idea based on predefined criteria.
+System aggregates scores and determines approval/rejection.
+3.4.2 Functional Requirements
+FR-3.4.1: Evaluator Assignment
+• System must support multiple evaluators per Call Report (minimum 1, maximum 10)
+• Evaluators can be:
+o Automatically assigned based on genre/category (future enhancement)
+o Manually assigned by Content Manager
+• System must track assignment:
+o Who assigned the evaluator
+o When they were assigned
+o Notification sent timestamp
+FR-3.4.2: Evaluator Dashboard
+• Each evaluator must have a "My Tasks" dashboard showing:
+o Pending evaluations (awaiting their input)
+o In-progress evaluations (saved but not submitted)
+o Completed evaluations
+• Each task must show:
+o Story title
+o Call Report ID
+o Writer name
+o Due date (if set)
+o Priority (if set)
+o Days pending
+FR-3.4.3: Individual Evaluator Form
+• Required Information:
+o Evaluator Form ID (auto-generated: EF-YYYY-NNNN)
+o Evaluator Name (auto-populated, read-only)
+
+o Call Report ID (auto-linked, read-only)
+o Meeting Time (datetime, required if meeting held)
+o Writer Name (auto-populated from Call Report, editable)
+• Criteria Scores (all required):
+o Each criterion scored on scale 1-10 (slider or number input)
+o Criteria to include:
+▪ Originality (1-10)
+▪ Market Potential (1-10)
+▪ Execution Feasibility (1-10)
+▪ Target Audience Appeal (1-10)
+▪ Budget Viability (1-10)
+▪ Cultural Relevance (1-10)
+▪ Competitive Advantage (1-10)
+▪ Production Complexity (1-10) - lower is better
+▪ [Additional criteria as defined by organization]
+• Additional Fields:
+o Total Score (auto-calculated, sum of all criteria)
+o Average Score (auto-calculated, average of all criteria)
+o Target Writer/Writer's Detail (text area, max 1000 characters)
+o Per Episode Price Range (Min-Max):
+▪ Minimum Price (number, currency)
+▪ Maximum Price (number, currency)
+o Notes/Comments (rich text, max 2000 characters, required)
+o Strengths (text area, max 1000 characters, optional)
+o Weaknesses (text area, max 1000 characters, optional)
+o Decision (radio button, required):
+▪ Approve - Recommend for One-Liner
+▪ Reject - Not Suitable
+▪ Need More Information - Request Additional Details
+FR-3.4.4: Evaluation Scoring Rules
+• All criteria must be scored before submission
+• System must validate scores are within 1-10 range
+• System must calculate totals automatically
+• System must prevent submission if required fields missing
+FR-3.4.5: Evaluation Log & Aggregation
+• System must create "Evaluation Log" showing:
+o All evaluator forms for this Call Report
+o Individual evaluator names
+o Individual scores per criterion
+o Individual total scores
+o Individual decisions
+o Individual comments
+
+• System must calculate aggregated metrics:
+o Average score across all evaluators
+o Median score
+o Approval rate (% who approved)
+o Rejection rate (% who rejected)
+o Need info rate (% who need more info)
+FR-3.4.6: Evaluation Decision Logic The system must determine overall decision based on:
+Primary Rule: Unanimous or Majority
+• If ALL evaluators approve → APPROVED → Move to One-Liner
+• If ALL evaluators reject → REJECTED → Move to Archive
+• If MAJORITY approve (>50%) → APPROVED → Move to One-Liner
+• If MAJORITY reject (>50%) → REJECTED → Move to Archive
+• If ANY evaluator selects "Need More Information" → PENDING → Request additional
+info from writer
+• If SPLIT decision (50-50) → PENDING → Escalate to Content Manager for tie-breaker
+Secondary Rule: Score Threshold
+• If average score >= 7.0 AND majority approve → APPROVED
+• If average score < 5.0 → REJECTED (regardless of votes)
+• If average score 5.0-6.9 → Use majority vote logic
+System Configuration:
+• Decision rules must be configurable by admin
+• Thresholds must be adjustable (7.0, 5.0, etc.)
+• Voting requirements must be configurable (unanimous vs majority)
+FR-3.4.7: Evaluation Routing Based on decision:
+• If APPROVED:
+o System updates workflow status to "One-Liner Approval"
+o System notifies Executives
+o System creates One-Liner task
+o System logs approval decision with all evaluator data
+• If REJECTED:
+o System updates workflow status to "Archived - Rejected at Evaluation"
+o System notifies Story Creator and Content Manager
+o System logs rejection with reasons from all evaluators
+o Story moves to Archive with full history
+• If PENDING:
+o System notifies Content Manager
+o Content Manager contacts writer for clarification
+
+o Process loops back to evaluators after info received
+FR-3.4.8: Evaluation Notifications
+• When evaluation completed:
+o Notify story creator of outcome
+o Notify content manager
+o If approved: notify executives
+o If rejected: provide summary of feedback
+• Include in notification:
+o Decision outcome
+o Aggregate score
+o Number of evaluators
+o Timeline to next stage
+FR-3.4.9: Evaluation History & Audit
+• System must record:
+o Each evaluator's submission timestamp
+o Time taken to evaluate
+o Any edits made to evaluation
+o Final decision and reasoning
+• All data must be visible in stakeholder dashboard
+3.4.3 Success Criteria
+• Evaluators can complete evaluation in < 15 minutes
+• Scoring is intuitive with clear criteria definitions
+• Decision logic is transparent and auditable
+• Aggregate data provides clear picture for stakeholders
+• No manual intervention needed for routing
+3.5 DETAILED ONE-LINER APPROVAL
+3.5.1 Description
+After evaluation approval, executives review a one-liner summary and decide whether to proceed
+to negotiation.
+3.5.2 Functional Requirements
+FR-3.5.1: One-Liner Document
+• System must auto-generate One-Liner document containing:
+
+o Story Title
+o One-Liner Summary (max 150 characters, distilled from logline)
+o Writer Name
+o Suggested Price Range (from evaluator forms)
+o Average Evaluation Score
+o Number of Evaluators Approved
+o Key Strengths (from evaluation feedback)
+o Estimated Budget (if available)
+o Target Delivery Timeline
+o Link to full Call Report
+o Link to evaluation details
+FR-3.5.2: One-Liner Approval Interface
+• Executives must see:
+o One-liner document (read-only)
+o Quick access to all supporting documents
+o Historical context (similar projects, if any)
+• Executives must make decision:
+o Approve - Proceed to Negotiation
+o Reject - Decline project
+o Request More Info - Send back for clarification
+• Additional fields:
+o Decision Notes (text area, required for Reject)
+o Budget Approval (checkbox, required for Approve)
+o Conditions/Caveats (text area, optional)
+o Priority Level (dropdown: High, Medium, Low)
+FR-3.5.3: One-Liner for Annexure
+• System must prepare document for contract annexure
+• One-liner linked to future contract
+• All approvals and changes tracked
+FR-3.5.4: One-Liner Decision Routing
+• If APPROVED:
+o System updates status to "Negotiation"
+o System notifies Content Manager to begin negotiations
+o System creates negotiation task
+o System logs approval with executive name and timestamp
+• If REJECTED:
+o System updates status to "Archived - Rejected at One-Liner"
+o System notifies all stakeholders
+o System logs rejection reason
+o Story archived with full history
+
+• If MORE INFO NEEDED:
+o System sends back to Content Manager
+o Content Manager can update Call Report or gather more data
+o Returns to executive for re-review
+FR-3.5.5: One-Liner Access Control
+• Only executives can approve/reject
+• All other roles can view (if in workflow)
+• Stakeholders can view all one-liners
+FR-3.5.6: One-Liner Notifications
+• Executive receives notification when one-liner ready
+• Reminder notifications if pending > 3 days
+• All stakeholders notified of decision
+3.5.3 Success Criteria
+• Executive can make decision in < 5 minutes
+• One-liner captures essence clearly
+• Decision routing is automatic
+• No information is lost in workflow
+3.6 NEGOTIATION
+3.6.1 Description
+After one-liner approval, Content Manager negotiates terms with writer/producer including price,
+timeline, and conditions.
+3.6.2 Functional Requirements
+FR-3.6.1: Negotiation Form
+• Required Information:
+o Negotiation ID (auto-generated: NEG-YYYY-NNNN)
+o Story ID (auto-linked)
+o Writer/Producer Name (auto-populated)
+o Negotiation Start Date (auto-generated timestamp)
+• Financial Terms:
+o Proposed Price (number, currency, required)
+▪ Per episode price, OR
+▪ Total project price, OR
+
+▪ Both (specify payment structure)
+o Payment Structure (dropdown):
+▪ Per Episode
+▪ Milestone-based
+▪ Upfront + Completion
+▪ Custom
+o Currency (dropdown: USD, EUR, PKR, etc.)
+o Price Justification (text area, max 500 characters)
+• Timeline:
+o Expected Start Date (date picker, required)
+o Expected Completion Date (date picker, required)
+o Script Delivery Milestones:
+▪ First Draft Deadline (date)
+▪ Revision Rounds (number, default: 2)
+▪ Final Script Deadline (date)
+• Terms & Conditions:
+o Scope of Work (text area, max 2000 characters, required):
+▪ Number of episodes
+▪ Episode duration
+▪ Deliverables format
+▪ Revisions included
+o Intellectual Property Rights (dropdown):
+▪ Full Transfer to Company
+▪ Shared Ownership
+▪ Writer Retains Rights with License
+▪ Other (specify)
+o Exclusivity Clause (yes/no)
+o Confidentiality Requirements (text area)
+o Additional Terms (text area, max 2000 characters)
+• Negotiation Notes:
+o Meeting Notes (rich text, unlimited)
+o Negotiation History (system-maintained log):
+▪ Date of each discussion
+▪ Topics discussed
+▪ Agreements reached
+▪ Outstanding issues
+o Attachments:
+▪ Negotiation emails
+▪ Draft agreements
+▪ Supporting documents
+FR-3.6.2: Negotiation Tracking
+• System must track negotiation status:
+o In Progress
+o Terms Agreed
+
+o Pending Final Approval
+o Failed/Abandoned
+• System must track:
+o Number of negotiation rounds
+o Duration of negotiation
+o Changes made to terms
+o Who made each change
+FR-3.6.3: Negotiation Completion
+• When terms agreed:
+o Content Manager marks negotiation as "Terms Agreed"
+o System requires confirmation:
+▪ All financial terms finalized
+▪ Timeline confirmed
+▪ Scope of work clear
+▪ Writer/Producer agreed (checkbox)
+o System generates negotiation summary document
+o System routes to Legal Review
+FR-3.6.4: Negotiation Decision Points
+• If TERMS AGREED:
+o System updates status to "Legal Review"
+o System notifies Legal Team
+o System creates legal review task
+o System attaches all negotiation documents
+• If NEGOTIATION FAILS:
+o Content Manager can mark as "Failed"
+o Reason required (text area)
+o System archives story with reason
+o All stakeholders notified
+FR-3.6.5: Negotiation Visibility
+• Content Manager owns negotiation
+• Finance team can view (for budgeting)
+• Executives can monitor progress
+• Legal team can view when approaching review stage
+• Stakeholders can see current status and terms
+FR-3.6.6: Negotiation Notifications
+• Legal team notified when ready for review
+• Finance team notified of agreed price
+• All stakeholders get summary when terms finalized
+
+3.6.3 Success Criteria
+• All terms captured in structured format
+• Negotiation history is complete and searchable
+• Smooth handoff to legal review
+• No information loss between stages
+3.7 LEGAL REVIEW & VETTING
+3.7.1 Description
+Legal team reviews the negotiated terms, vets the writer/producer, and ensures all compliance
+requirements are met before contract signing.
+3.7.2 Functional Requirements
+FR-3.7.1: Legal Review Form
+• Input Information:
+o Legal Review ID (auto-generated: LR-YYYY-NNNN)
+o Story ID (auto-linked)
+o Negotiation ID (auto-linked)
+o Assigned Legal Reviewer (dropdown, required)
+o Review Start Date (auto-generated)
+• Contract Checklist (NIC, NTN, etc.): System must provide checklist for Pakistani legal
+requirements: Individual Writer/Producer:
+o Valid National Identity Card (NIC/CNIC) - uploaded and verified
+o National Tax Number (NTN) - provided and verified with FBR
+o Bank Account Details - validated
+o Previous Work Portfolio - reviewed
+o Professional References - contacted (optional)
+Company/Production House:
+o Company Registration Certificate - uploaded
+o NTN (Company) - verified with FBR
+o Sales Tax Registration (if applicable)
+o Board Resolution for Contract Authority - uploaded
+o Authorized Signatory Details - verified
+
+o Company Bank Account Details
+o Financial Statements (Last 2 years) - reviewed
+Legal Documents:
+o Draft Contract Prepared
+o Intellectual Property Terms Clear
+o Payment Terms Legally Sound
+o Termination Clauses Included
+o Dispute Resolution Mechanism Defined
+o Confidentiality Agreement Signed
+o Non-Compete Clause (if applicable)
+Compliance:
+o Anti-Money Laundering (AML) Check Completed
+o Sanctions List Check (OFAC, UN, etc.)
+o Background Verification (if required)
+o Copyright Clearance (if adapted work)
+o Prior Claims Check (no existing disputes)
+FR-3.7.2: Document Upload & Verification
+• For each checklist item:
+o Legal team must be able to upload supporting document
+o Mark as Verified/Not Verified/Pending
+o Add notes/comments per item
+o Set priority (Critical, Important, Nice-to-have)
+• System must enforce:
+o All "Critical" items must be verified before approval
+o All documents stored securely
+o Access restricted to Legal and Finance teams
+FR-3.7.3: Legal Review Decision
+• Legal team makes one of following decisions: APPROVE:
+o All critical requirements met
+o All documents verified
+o Legal team comfortable proceeding
+
+o Fields required:
+▪ Final Legal Notes (text area)
+▪ Risk Assessment (dropdown: Low, Medium, High)
+▪ Special Conditions (text area, optional)
+▪ Approved By (auto-populated, legal team member)
+▪ Approval Date (auto-generated)
+REJECT:
+o Critical requirements not met
+o Legal concerns cannot be resolved
+o Fields required:
+▪ Rejection Reason (text area, required, min 100 characters)
+▪ Missing Requirements (checklist of what's missing)
+▪ Recommendations (text area)
+▪ Rejected By (auto-populated)
+▪ Rejection Date (auto-generated)
+REFUSE (CAN REFUSE IF REQUIREMENTS NOT MET):
+o Similar to reject but specifically for missing documents
+o Writer/Producer given deadline to provide missing items
+o Fields required:
+▪ List of Missing Items (auto-populated from checklist)
+▪ Deadline to Provide (date picker, required)
+▪ Instructions to Writer (text area)
+▪ Routing: Returns to Content Manager to collect items
+REQUEST MODIFICATIONS:
+o Terms need adjustment for legal compliance
+o Fields required:
+▪ Modifications Required (text area, detailed)
+▪ Legal Concerns (text area)
+▪ Suggested Changes (text area)
+▪ Routing: Returns to Negotiation stage
+FR-3.7.4: Legal Review Routing
+• If APPROVED:
+o System updates status to "Contract Signing"
+o System generates contract from template + negotiated terms
+o System notifies Finance team to prepare payment schedule
+o System notifies relevant parties for signing
+o System creates contract signing task
+• If REJECTED:
+
+o System updates status to "Archived - Legal Rejection"
+o System notifies all stakeholders with reason
+o Story archived with complete history
+• If REFUSED (Missing Docs):
+o System sends back to Content Manager
+o Email sent to writer with missing items list
+o System sets follow-up reminder for deadline
+o When docs received, returns to Legal Review
+• If MODIFICATIONS NEEDED:
+o System routes back to Negotiation stage
+o Content Manager re-negotiates specific terms
+o Once modified, returns to Legal Review
+FR-3.7.5: Legal Review Timeline Tracking
+• System must track:
+o Days in legal review
+o Average time per legal reviewer
+o Checklist completion percentage
+o Document upload dates
+o Follow-up actions taken
+• System must alert if:
+o Review pending > 7 days
+o Missing documents deadline passed
+o Critical compliance items not addressed
+FR-3.7.6: Legal Review Access & Notifications
+• Only Legal team can edit review form
+• Finance team can view (preparing for payments)
+• All stakeholders can view status and checklist progress
+• Notifications:
+o Legal team notified when review assigned
+o Reminders if pending > 5 days
+o Writer notified if documents missing
+o All parties notified of final decision
+FR-3.7.7: Legal Compliance Reporting
+• System must maintain compliance dashboard showing:
+o % of contracts with complete documentation
+o Common missing documents
+o Average legal review time
+o Rejection reasons (aggregated)
+o Risk assessment distribution
+
+3.7.3 Success Criteria
+• Legal review completed in < 5 business days
+• 100% of critical documents verified before approval
+• Clear audit trail for compliance purposes
+• Zero contracts signed without legal approval
+• Missing document follow-up automated
+3.8 CONTRACT SIGNED
+3.8.1 Description
+After legal approval, formal contract is prepared, signed by all parties, and stored securely in the
+system.
+3.8.2 Functional Requirements
+FR-3.8.1: Contract Generation
+• System must auto-generate contract using:
+o Organization's contract template
+o Negotiated terms (price, timeline, scope)
+o Legal requirements (clauses, conditions)
+o Writer/Producer details
+o One-liner (as annexure)
+• Contract format:
+o PDF format
+o Professional formatting
+o All necessary signatures fields
+o Date fields
+o Witness fields (if required)
+FR-3.8.2: Contract Information Form
+• Required Fields:
+o Contract ID (auto-generated: CNT-YYYY-NNNN)
+o Story ID (auto-linked)
+o Contract Type (dropdown):
+▪ Script Writing Agreement
+▪ Production Services Agreement
+▪ Content Licensing Agreement
+▪ Other
+o Parties:
+▪ Party A: Company Name (auto-populated)
+
+▪ Party A Representative (dropdown, authorized signatories)
+▪ Party B: Writer/Producer Name (auto-populated from negotiation)
+▪ Party B NIC/NTN (auto-populated from legal review)
+o Scope of Work:
+▪ Project Title (auto-populated)
+▪ Number of Episodes (number)
+▪ Episode Duration (text, e.g., "30 minutes")
+▪ Deliverables (text area, detailed list):
+▪ First draft
+▪ Second draft after feedback
+▪ Final script
+▪ Additional deliverables
+• Delivery Format (text, e.g., "PDF + Final Draft format")
+o Language (dropdown: English, Urdu, Other)
+• Financial Terms:
+o Total Contract Value (number, currency, required)
+o Currency (dropdown: PKR, USD, EUR)
+o Payment Structure (dropdown):
+▪ Milestone-based
+▪ Per Episode
+▪ Upfront + Completion
+▪ Custom Schedule
+o Payment Terms (text area, detailed breakdown)
+o Tax Treatment (dropdown):
+▪ Inclusive of Tax
+▪ Exclusive of Tax
+▪ Tax to be deducted at source
+o Withholding Tax % (number, if applicable)
+• Timeline:
+o Contract Start Date (date picker, required)
+o Contract End Date (date picker, required)
+o Key Milestones (repeatable fields):
+▪ Milestone Name
+▪ Delivery Date
+▪ Payment Amount
+▪ Payment Due Date
+• Intellectual Property:
+o IP Ownership (dropdown):
+▪ Full transfer to Company
+▪ Shared ownership (specify %)
+▪ Licensed to Company
+o Rights Included (checkboxes):
+▪ Broadcast Rights
+▪ Digital/Streaming Rights
+▪ International Distribution Rights
+
+▪ Merchandising Rights
+▪ Remake Rights
+▪ Adaptation Rights
+o Territory (text, e.g., "Worldwide" or specific regions)
+o Duration of Rights (text, e.g., "Perpetual" or "10 years")
+• Legal Clauses:
+o Confidentiality Clause (yes/no, required)
+o Non-Compete Period (number, months)
+o Termination Notice Period (number, days)
+o Force Majeure Included (yes/no)
+o Dispute Resolution (dropdown):
+▪ Arbitration
+▪ Court Litigation
+▪ Mediation
+o Governing Law (dropdown, e.g., "Laws of Pakistan")
+o Jurisdiction (text, e.g., "Courts of Karachi")
+• Additional Terms:
+o Credits (text, how writer will be credited)
+o Warranty & Indemnity (text area)
+o Insurance Requirements (text area, if any)
+o Special Conditions (text area)
+FR-3.8.3: Contract Document Management
+• System must support:
+o Upload final signed contract (PDF, required)
+o Version control:
+▪ Draft versions
+▪ Amendments
+▪ Final signed version
+o Each version must have:
+▪ Version number
+▪ Upload date
+▪ Uploaded by
+▪ Status (Draft/Final/Amended)
+o All versions retained for audit
+FR-3.8.4: Contract Signing Process
+• System must track signing status: Signing Parties:
+o Company Representative:
+▪ Name (auto-populated)
+▪ Designation
+▪ Signature Date (date picker)
+▪ Digital Signature (file upload, optional)
+▪ Status: Pending/Signed
+
+o Writer/Producer:
+▪ Name (auto-populated)
+▪ NIC/NTN (auto-populated)
+▪ Signature Date (date picker)
+▪ Digital Signature (file upload, optional)
+▪ Status: Pending/Signed
+o Witnesses (if required):
+▪ Witness 1: Name, NIC, Signature Date
+▪ Witness 2: Name, NIC, Signature Date
+FR-3.8.5: Contract Signing Workflow
+• System must support multiple signing methods: Physical Signing:
+o Contract printed and signed manually
+o Scanned copy uploaded to system
+o System validates all signatures present
+o Original stored per company policy
+Digital Signing (Future Enhancement):
+o Integration with e-signature platforms
+o Email sent to signatories
+o Track signature status
+o Store signed document automatically
+FR-3.8.6: Post-Signing Actions
+• When all parties signed:
+o System automatically updates status to "Contract Active"
+o System triggers Scripting Phase workflow
+o System notifies Finance Department to set up payment schedule
+o System sends confirmation emails to:
+▪ Writer/Producer (with signed contract copy)
+▪ Finance team
+▪ Legal team
+▪ Content Manager
+▪ All stakeholders
+o System creates calendar reminders for:
+▪ Milestone deadlines
+▪ Payment due dates
+▪ Contract renewal date (if applicable)
+FR-3.8.7: Contract Storage & Access
+• All contracts stored in secure document repository
+• Access control:
+
+o Legal team: Full access (view, edit, delete)
+o Finance team: View access
+o Content Manager: View access
+o Writer/Producer: View own contract only
+o Stakeholders: View all contracts
+• Contracts encrypted at rest
+• Audit log for all access (who viewed when)
+FR-3.8.8: Contract Search & Retrieval
+• Users must be able to search contracts by:
+o Contract ID
+o Writer/Producer name
+o Story title
+o Date range (signing date)
+o Contract value (min-max range)
+o Status (Active, Expired, Terminated)
+• Advanced filters:
+o By payment status
+o By delivery status
+o By milestone completion
+o By expiry date
+FR-3.8.9: Contract Amendments
+• System must support contract amendments:
+o Create amendment document
+o Link to original contract
+o Track changes made
+o Require re-signing
+o Maintain full audit trail
+o Amendments versioned (Amendment 1, 2, etc.)
+FR-3.8.10: Contract Expiry & Renewal
+• System must track contract dates:
+o Alert 90 days before expiry
+o Alert 30 days before expiry
+o Alert on expiry date
+• System must allow:
+o Renew contract (creates new contract with reference to old)
+o Extend contract (amendment to end date)
+o Terminate contract (requires reason and date)
+FR-3.8.11: Contract Notifications
+
+• Notifications sent for:
+o Contract ready for signing
+o Signature received from one party
+o All signatures completed
+o Contract activated
+o Milestone deadlines approaching
+o Payment due dates
+o Contract expiring soon
+o Contract amended
+3.8.3 Success Criteria
+• Contract generated in < 10 minutes
+• All contract data captured in structured format
+• Signing process completed in < 5 business days
+• 100% of contracts stored securely with audit trail
+• Zero contracts lost or misplaced
+• Stakeholders can find any contract in < 1 minute
+3.9 SCRIPTING PHASE
+3.9.1 Description
+After contract signing, writer begins script development through 6 defined steps. System tracks
+progress, feedback loops, and final approval.
+3.9.2 Functional Requirements
+FR-3.9.1: Scripting Phase Overview
+• System must manage 6 sequential steps:
+o Step 1: First Episode Draft
+o Step 2: Feedback via Scripting Template
+o Step 3: 2nd Draft (incorporating feedback)
+o Step 4: Next 4 Episodes Draft
+o Step 5: Feedback & Approval
+o Step 6: Final Script Approved
+FR-3.9.2: Step 1 - First Episode Draft
+• Form Fields:
+o Script Phase ID (auto-generated: SP-YYYY-NNNN-S1)
+o Contract ID (auto-linked)
+o Writer Name (auto-populated)
+
+o Episode Number (default: 1)
+o Draft Version (default: 1)
+o Submission Date (date picker, required)
+o Script Document (file upload, required):
+▪ Supported formats: PDF, DOCX, Final Draft (.fdx)
+▪ Max size: 50MB
+o Page Count (number, auto-extracted if possible)
+o Word Count (number, auto-extracted if possible)
+o Scene Count (number, optional)
+o Writer's Notes (text area, optional):
+▪ Any context for reviewers
+▪ Changes from outline
+▪ Creative choices made
+o Status (auto-set to "Submitted - Awaiting Feedback")
+• Submission Process:
+o Writer uploads first episode draft
+o System validates file format and size
+o System notifies Content Manager
+o System notifies assigned Creative Director/Reviewer
+o System timestamps submission
+o System checks if within deadline (from contract)
+o If late: System flags as "Delayed" and records delay days
+FR-3.9.3: Step 2 - Feedback via Scripting Template
+• Feedback Form (Scripting Template):
+o Feedback ID (auto-generated: FB-YYYY-NNNN)
+o Script Phase ID (auto-linked to Step 1)
+o Reviewer Name (auto-populated)
+o Review Date (auto-generated)
+o Structured Feedback Categories: Story/Plot (Score 1-10):
+▪ Plot coherence and flow
+▪ Story pacing
+▪ Conflict and resolution
+▪ Story originality
+▪ Comments (text area)
+Character Development (Score 1-10):
+▪ Character depth
+▪ Character arcs
+▪ Dialogue authenticity
+▪ Character motivations
+▪ Comments (text area)
+Structure (Score 1-10):
+
+▪ Act structure
+▪ Scene transitions
+▪ Opening hook
+▪ Climax effectiveness
+▪ Resolution satisfaction
+▪ Comments (text area)
+Dialogue (Score 1-10):
+▪ Natural flow
+▪ Character voice distinction
+▪ Subtext
+▪ Conflict in dialogue
+▪ Comments (text area)
+Technical/Format (Score 1-10):
+▪ Formatting correctness
+▪ Action line clarity
+▪ Scene headings
+▪ Page count appropriateness
+▪ Comments (text area)
+Production Feasibility (Score 1-10):
+▪ Budget consciousness
+▪ Location requirements
+▪ Cast requirements
+▪ Technical requirements
+▪ Comments (text area)
+o Overall Assessment:
+▪ Total Score (auto-calculated from categories)
+▪ Average Score (auto-calculated)
+▪ Overall Comments (text area, max 2000 characters, required)
+▪ Strengths (text area, required)
+▪ Weaknesses (text area, required)
+▪ Key Changes Required (text area, required):
+▪ List of specific changes needed
+▪ Priority (Critical, Important, Nice-to-have)
+o Decision:
+▪ Approve for Next Draft (proceed to Step 3)
+▪ Major Revisions Required (back to writer, same step)
+▪ Reject Episode (terminate this episode - rare)
+o Attachments:
+▪ Annotated script (PDF with comments)
+▪ Additional notes documents
+
+▪ Reference materials
+• Feedback Process:
+o Reviewer submits feedback via template
+o System sends feedback to writer
+o System creates task for writer to submit 2nd draft
+o System logs all feedback for stakeholder visibility
+o If "Major Revisions": System resets Step 1 with feedback attached
+FR-3.9.4: Step 3 - 2nd Draft (Post-Feedback)
+• Form Fields:
+o Script Phase ID (auto-generated: SP-YYYY-NNNN-S3)
+o Contract ID (auto-linked)
+o Writer Name (auto-populated)
+o Episode Number (1)
+o Draft Version (2)
+o Submission Date (date picker, required)
+o Script Document (file upload, required)
+o Changes Made (text area, required):
+▪ Writer lists changes addressing feedback
+▪ Reference to specific feedback points
+o Response to Feedback (text area, required):
+▪ How each critical point was addressed
+▪ Explanation if any feedback not incorporated
+o Unchanged Elements (text area, optional):
+▪ Any feedback deliberately not addressed
+▪ Creative justification
+o Writer's Notes (text area, optional)
+o Status (auto-set to "2nd Draft Submitted - Awaiting Approval")
+• Review Process:
+o Same reviewer reviews 2nd draft
+o Reviewer checks if feedback addressed
+o Decision:
+▪ Approve: Move to Step 4 (Next 4 Episodes)
+▪ Further Revisions: Back to writer (Step 3 repeats)
+▪ Reject: Escalate to management
+o System tracks number of revision rounds
+o System alerts if revisions exceed contract allowance
+FR-3.9.5: Step 4 - Next 4 Episodes Draft
+• Form Fields:
+o Script Phase ID (auto-generated: SP-YYYY-NNNN-S4)
+o Contract ID (auto-linked)
+o Writer Name (auto-populated)
+o Episode Numbers (2, 3, 4, 5)
+
+o Submission Date (date picker, required)
+o Script Documents (multiple file upload, required):
+▪ Episode 2 script
+▪ Episode 3 script
+▪ Episode 4 script
+▪ Episode 5 script
+▪ Each file separately uploaded or as ZIP
+o Series Bible/Guidelines (file upload, optional):
+▪ Character bios
+▪ Story arcs
+▪ Tone guidelines
+o Writer's Notes (text area):
+▪ Overall series arc explanation
+▪ Character development notes
+▪ Any concerns or questions
+o Status (auto-set to "Episodes 2-5 Submitted - Awaiting Review")
+• Batch Upload Process:
+o Writer uploads all 4 episodes
+o System validates each file
+o System creates separate entry for each episode
+o All linked to same contract and project
+o System notifies review team
+o System checks deadline compliance
+FR-3.9.6: Step 5 - Feedback & Approval (Episodes 2-5)
+• Feedback Process:
+o Reviewer reviews all 4 episodes
+o Can provide:
+▪ Individual episode feedback (using same template as Step 2)
+▪ Series-level feedback (overall arc, consistency)
+o Series-Level Feedback Form:
+▪ Series Coherence (Score 1-10)
+▪ Character Consistency (Score 1-10)
+▪ Story Arc Development (Score 1-10)
+▪ Tone Consistency (Score 1-10)
+▪ Pacing Across Episodes (Score 1-10)
+▪ Overall Comments (text area)
+▪ Episode-Specific Issues (text area, organized by episode)
+▪ Required Changes (text area, by episode or series-wide)
+o Decision Options:
+▪ Approve All Episodes: Move to Step 6 (Final Script)
+▪ Approve Some, Revise Others: Specify which episodes need work
+▪ Major Revisions Needed: All episodes back to writer
+▪ Approve Conditionally: Approve with minor changes list
+o Revision Tracking:
+
+▪ If revisions needed, system creates revision tasks per episode
+▪ Writer can submit revised episodes individually
+▪ System tracks which episodes approved, which pending
+▪ Cannot proceed to Step 6 until all episodes approved
+FR-3.9.7: Step 6 - Final Script Approved
+• Final Approval Form:
+o Final Approval ID (auto-generated: FA-YYYY-NNNN)
+o Contract ID (auto-linked)
+o All Episode Scripts (auto-linked)
+o Final Reviewer (dropdown: Creative Director, Executive Producer)
+o Review Date (auto-generated)
+o Final Checklist:
+▪ All episodes meet quality standards
+▪ All feedback incorporated
+▪ Formatting consistent across episodes
+▪ Character arcs coherent
+▪ Story arc complete
+▪ Production feasibility confirmed
+▪ Legal/compliance review (if needed)
+▪ All deliverables per contract received
+o Final Comments:
+▪ Overall Assessment (text area)
+▪ Commendations (text area, what went well)
+▪ Future Collaboration Notes (text area)
+o Decision:
+▪ Final Approval - Project Complete
+▪ Conditional Approval - Minor Polishing Required
+▪ Send Back - Critical Issues Found (rare at this stage)
+o Approval Actions:
+▪ Final approved by (name, designation)
+▪ Approval timestamp
+▪ Digital signature (optional)
+• Post-Approval Actions:
+o System updates contract status to "Delivered - Complete"
+o System notifies Finance to release final payment
+o System archives all scripts in production folder
+o System generates completion certificate
+o System sends confirmation to:
+▪ Writer (with certificate and final payment notification)
+▪ Finance team (trigger final payment)
+
+▪ Legal team (contract fulfilled)
+▪ Production team (scripts ready for production)
+▪ All stakeholders
+o System updates stakeholder dashboard:
+▪ Project marked as "Script Complete"
+▪ Ready for production phase
+FR-3.9.8: Scripting Phase Tracking
+• System must provide real-time tracking dashboard showing: Per Project:
+o Current step (1-6)
+o % completion (based on steps)
+o Days in current step
+o Total days in scripting phase
+o Days remaining (vs contract deadline)
+o Status indicator (On Time, At Risk, Delayed)
+Per Step:
+o Step name
+o Status (Not Started, In Progress, Completed)
+o Assigned to (writer, reviewer)
+o Submission date (if submitted)
+o Review date (if reviewed)
+o Days taken for this step
+o Number of revisions
+Quality Metrics:
+o Average scores across all episodes
+o Revision count per episode
+o Feedback response time (reviewer)
+o Resubmission time (writer)
+o Overall project quality rating
+FR-3.9.9: Scripting Phase Notifications
+• Writer Notifications:
+o Task assigned (new step ready)
+o Feedback received (with summary)
+o Approval received (step complete)
+o Deadline approaching (7 days, 3 days, 1 day)
+o Final approval (project complete)
+• Reviewer Notifications:
+o New draft submitted (awaiting review)
+o Revision submitted (awaiting re-review)
+
+o Review overdue (if pending > 5 days)
+• Stakeholder Notifications:
+o Each step completion
+o Any delays or issues
+o Final approval
+• Finance Notifications:
+o Milestone completed (if payment tied to it)
+o Final script approved (release final payment)
+FR-3.9.10: Scripting Phase Delays & Escalation
+• System must flag delays:
+o Writer late on submission
+o Reviewer late on feedback
+o Step taking longer than expected
+• Escalation rules:
+o If writer > 7 days late: Escalate to Content Manager
+o If reviewer > 5 days late: Escalate to Creative Director
+o If project > 30 days behind schedule: Escalate to Executive
+• System must send escalation emails automatically
+• System must log all escalations for review
+FR-3.9.11: Scripting Phase Document Management
+• All scripts stored in version-controlled repository:
+o Organized by project > episode > draft version
+o Naming convention: ProjectID_EpisodeNumber_DraftVersion_Date
+o Example: STR-2025-0123_EP01_D2_20251115.pdf
+• Access control:
+o Writer: Upload own scripts, view feedback
+o Reviewer: View all scripts, upload feedback
+o Content Manager: View all, no upload
+o Finance: View approved scripts only
+o Legal: View final approved scripts only
+o Stakeholders: View all approved scripts
+• Backup and archival:
+o Daily backups of all scripts
+o Final approved versions archived permanently
+o Draft versions retained for 2 years
+FR-3.9.12: Scripting Phase Analytics
+• System must provide analytics dashboard: Project-Level:
+o Total projects in scripting phase
+o Average time per step
+o Average total scripting time
+
+o On-time completion rate
+o Quality score distribution
+Writer-Level:
+o Average quality scores
+o Average revision count
+o On-time delivery rate
+o Projects completed
+Reviewer-Level:
+o Average feedback turnaround time
+o Number of reviews completed
+o Quality of feedback (writer satisfaction - optional)
+3.9.3 Success Criteria
+• Scripting phase completion trackable in real-time
+• Clear visibility into current step and status
+• Writer and reviewer always know what's expected
+• Feedback structured and actionable
+• Zero scripts lost or versioning confused
+• Stakeholders can see progress at a glance
+• Automated notifications reduce manual follow-ups by 80%
+3.10 FINANCE DEPARTMENT & PAYMENT TRACKING
+3.10.1 Description
+Finance team tracks all financial aspects from contract signing through final payment, including
+payment schedules, milestone-based releases, and payment status tracking.
+3.10.2 Functional Requirements
+FR-3.10.1: Finance Dashboard Access
+• Finance team must have dedicated dashboard showing:
+o All active contracts
+o Pending payments
+o Completed payments
+o Payment schedule calendar
+o Budget utilization
+o Overdue payments
+
+o Upcoming payment obligations
+FR-3.10.2: Payment Schedule Setup
+• Triggered by: Contract Signed event
+• Form Fields:
+o Payment Schedule ID (auto-generated: PS-YYYY-NNNN)
+o Contract ID (auto-linked)
+o Writer/Producer Name (auto-populated)
+o Total Contract Value (auto-populated from contract)
+o Currency (auto-populated from contract)
+o Payment Structure (auto-populated from contract)
+o Payment Milestones (Repeatable): Each milestone must have:
+▪ Milestone Number (1, 2, 3, etc.)
+▪ Milestone Name (text):
+▪ e.g., "Contract Signing"
+▪ "First Episode Draft Submission"
+▪ "Second Draft Approval"
+▪ "Episodes 2-5 Submission"
+▪ "Final Script Approval"
+▪ Milestone Type (dropdown):
+▪ Contract Signing
+▪ Script Submission
+▪ Script Approval
+▪ Completion
+▪ Custom
+▪ Linked To (dropdown):
+▪ Specific scripting phase step, OR
+▪ Date-based, OR
+▪ Manual trigger
+▪ Payment Amount (number, currency, required)
+▪ Payment Percentage (auto-calculated: amount/total × 100)
+▪ Due Date (date picker, OR auto-calculated from milestone)
+▪ Payment Terms (text, e.g., "Within 30 days of milestone")
+▪ Status (dropdown):
+▪ Pending Milestone
+▪ Milestone Achieved
+▪ Payment Pending
+▪ Payment Processing
+▪ Payment Completed
+▪ Payment Failed
+▪ Payment Overdue
+FR-3.10.3: Milestone Achievement Tracking
+• System must automatically detect milestone achievement:
+
+o When linked scripting step completed → Milestone Achieved
+o System sends notification to Finance team
+o System calculates payment due date
+o System creates payment task
+• Manual milestone achievement:
+o Finance team can manually mark milestone achieved
+o Requires reason/justification
+o Requires approval from manager
+FR-3.10.4: Payment Processing Form
+• When milestone achieved, Finance processes payment:
+o Payment Processing Form:
+▪ Payment ID (auto-generated: PAY-YYYY-NNNN)
+▪ Payment Schedule ID (auto-linked)
+▪ Milestone Name (auto-populated)
+▪ Payment Amount (auto-populated, editable if needed)
+▪ Beneficiary Details (auto-populated from contract):
+▪ Name
+▪ Bank Name
+▪ Account Number
+▪ IBAN (if international)
+▪ Branch Code
+▪ Swift Code (if international)
+▪ Payment Method (dropdown):
+▪ Bank Transfer
+▪ Check
+▪ Cash (for small amounts)
+▪ International Wire
+▪ Tax Deduction (if applicable):
+▪ Withholding Tax % (auto-populated from contract)
+▪ Tax Amount (auto-calculated)
+▪ Net Payment Amount (auto-calculated: amount - tax)
+▪ Payment Date (date picker, required)
+▪ Payment Reference Number (text, bank transaction ID)
+▪ Payment Proof (file upload):
+▪ Bank transfer receipt
+▪ Check copy
+▪ Transaction confirmation
+▪ Payment Notes (text area, internal notes)
+▪ Processed By (auto-populated, finance team member)
+▪ Approved By (dropdown, finance manager, required)
+▪ Status (auto-updated based on workflow)
+FR-3.10.5: Payment Approval Workflow
+
+• Two-level approval for payments: Level 1: Finance Team Member
+o Prepares payment details
+o Validates bank details
+o Calculates tax deductions
+o Submits for approval
+Level 2: Finance Manager
+o Reviews payment details
+o Verifies milestone achievement
+o Checks budget availability
+o Approves or rejects
+▪ If approved: Payment released
+▪ If rejected: Returns with reason
+• For payments above threshold (e.g., $10,000):
+o Requires additional approval from CFO/Executive
+o System enforces approval hierarchy
+FR-3.10.6: Payment Status Tracking
+• System tracks payment through lifecycle: Status Flow:
+1. Pending Milestone → Waiting for milestone achievement
+2. Milestone Achieved → Finance notified, payment preparation
+3. Payment Pending Approval → Awaiting manager approval
+4. Payment Approved → Ready to be released
+5. Payment Processing → Being processed by bank
+6. Payment Completed → Confirmed delivered to beneficiary
+7. Payment Failed → Issue occurred, needs resolution
+8. Payment Overdue → Due date passed without payment
+• For each status change:
+o Timestamp recorded
+o User who changed status recorded
+o Notification sent to relevant parties
+FR-3.10.7: Payment Tracking & Visibility
+• Finance Team View:
+o Full payment schedule
+o All payment details
+o Edit/update capabilities
+o Payment processing tools
+• Writer/Producer View:
+o Their payment schedule
+o Milestone status
+o Payment status
+o Expected payment dates
+
+o Received payments history
+o Can download payment receipts
+• Content Manager View:
+o Payment schedule for their projects
+o Milestone achievement status
+o Cannot edit payment details
+• Stakeholder View:
+o All contracts and payment schedules
+o Payment status summary
+o Budget utilization
+o Overdue payments
+o Drill-down to specific payments
+FR-3.10.8: Payment Notifications
+• To Writer/Producer:
+o Milestone achieved (payment being processed)
+o Payment approved (expected date)
+o Payment completed (with receipt)
+o Payment delayed (with reason and new expected date)
+• To Finance Team:
+o Milestone achieved (action required)
+o Payment overdue
+o Payment failed (action required)
+o Approval needed
+• To Stakeholders:
+o Weekly payment summary
+o Monthly financial report
+o Any payment issues or delays
+FR-3.10.9: Payment Delay & Issue Management
+• If payment delayed or issues occur: Payment Delay Log:
+o Delay ID (auto-generated)
+o Payment ID (linked)
+o Reason for Delay (dropdown):
+▪ Budget not available
+▪ Bank processing delay
+▪ Missing documentation
+▪ Approval pending
+▪ Technical issue
+▪ Other (specify)
+o Delay Description (text area, detailed)
+o Expected Resolution Date (date picker)
+o Actions Taken (text area)
+o Status (Investigating, In Progress, Resolved)
+
+o Resolved Date (date picker)
+o Resolution Notes (text area)
+• System must alert:
+o Finance manager if delay > 3 days
+o CFO if delay > 7 days
+o Writer/Producer with delay reason and expected date
+FR-3.10.10: Payment History & Audit
+• System must maintain complete payment audit trail:
+o All payment attempts
+o All status changes
+o All approvals/rejections
+o All edits made to payment details
+o Who made each change
+o When each change made
+o Reason for changes
+• Payment history must be:
+o Immutable (cannot be deleted)
+o Exportable (PDF, Excel)
+o Searchable
+o Filterable by date range, status, amount, writer
+FR-3.10.11: Financial Reporting
+• System must generate reports: Payment Summary Report:
+o Total contracts active
+o Total contract value
+o Total paid to date
+o Total pending payments
+o Total overdue payments
+o Grouped by month/quarter/year
+Writer Payment Report:
+o Per writer payment history
+o Total paid per writer
+o Average payment per project
+o Payment timeliness rate
+Budget Utilization Report:
+o Budget allocated
+o Budget spent
+o Budget committed (pending payments)
+o Budget available
+
+o Variance analysis
+Tax Report:
+o Total tax deducted
+o Tax by type (WHT, etc.)
+o Tax by quarter
+o Ready for tax filing
+o All reports must be:
+▪ Exportable (PDF, Excel, CSV)
+▪ Printable
+▪ Shareable via email
+▪ Customizable date ranges
+FR-3.10.12: Payment Receipt Generation
+• System must auto-generate payment receipts:
+o Company letterhead
+o Payment ID
+o Writer/Producer details
+o Contract reference
+o Milestone reference
+o Gross amount
+o Tax deduction
+o Net amount
+o Payment method
+o Payment date
+o Transaction reference
+o Authorized signatures
+• Receipt available to:
+o Writer/Producer (download anytime)
+o Finance team
+o Legal team (for records)
+FR-3.10.13: Integration with Accounting Systems (Optional Phase 2)
+• System should support export to accounting software:
+o QuickBooks
+o SAP
+o Oracle Financials
+o Xero
+o Custom ERP
+• Export format:
+o CSV with mapping
+o API integration (if available)
+o Scheduled exports (daily/weekly)
+
+3.10.3 Success Criteria
+• 100% of payments tracked in system
+• Zero missed payment milestones
+• Payment status visible to all relevant parties
+• Average payment processing time < 7 days
+• Payment delays logged and resolved
+• Complete audit trail for compliance
+• Writer/producers always know payment status
+• Finance team can process payments efficiently
+• Stakeholders can monitor budget utilization in real-time
+3.11 ARCHIVE / REJECTED ITEMS
+3.11.1 Description
+Stories rejected at any stage are moved to Archive with complete history. System maintains full
+audit trail and allows retrieval for analysis.
+3.11.2 Functional Requirements
+FR-3.11.1: Rejection Triggers
+• Story can be rejected at any stage:
+o After Evaluator Meeting (evaluators reject)
+o After One-Liner (executive rejects)
+o After Legal Review (legal issues)
+o After Negotiation Failed
+o Manual rejection by authorized user
+• Each rejection must capture:
+o Rejection Stage (which stage rejected at)
+o Rejection Date (timestamp)
+o Rejected By (user name and role)
+o Rejection Reason (text area, required, min 100 characters)
+o Rejection Category (dropdown):
+▪ Quality Issues
+▪ Budget Constraints
+▪ Market Fit
+▪ Legal/Compliance Issues
+▪ Writer/Producer Issues
+▪ Strategic Decision
+▪ Other (specify)
+o Can Resubmit (yes/no)
+o Resubmission Conditions (text area, if resubmit allowed)
+
+FR-3.11.2: Archive Storage
+• Rejected stories moved to "Archive" section
+• All data retained:
+o Original story submission
+o Call Report (if created)
+o Evaluator forms (if completed)
+o All attachments
+o All comments/notes
+o Complete workflow history
+o All audit logs
+• Archived stories marked with:
+o Archive ID (auto-generated: ARC-YYYY-NNNN)
+o Archive Date (timestamp)
+o Reason for Archive
+o Archived By (user)
+FR-3.11.3: Archive Access & Permissions
+• Who can access Archive:
+o Stakeholders: Full access (view all)
+o Content Managers: View all
+o Executives: View all
+o Story Creator: View only their rejected stories
+o Evaluators: View stories they evaluated
+• What they can do:
+o View
+Retry
+H
+Continue
+• View archived story details
+• View rejection reasons
+• View complete history
+• Search archived stories
+• Export archived data
+• Add notes to archived story (for future reference)
+• Restore story (if authorized)
+FR-3.11.4: Archive Listing & Search
+• Archive must have dedicated section showing: List View:
+o Story ID
+o Title
+
+o Submitted By
+o Submission Date
+o Rejected At Stage
+o Rejection Date
+o Rejection Reason (summary)
+o Rejected By
+o Can Resubmit (Yes/No flag)
+Search Functionality:
+o Search by:
+▪ Story title
+▪ Writer name
+▪ Story ID
+▪ Keywords in rejection reason
+Filter Options:
+o By rejection stage (Evaluation, One-Liner, Legal, etc.)
+o By rejection date (date range)
+o By rejection category
+o By rejected by (user)
+o By can resubmit (Yes/No)
+o By genre
+o By original submission date
+Sort Options:
+o Newest to oldest rejection
+o Oldest to newest
+o By title (A-Z)
+o By rejection stage
+FR-3.11.5: Archive Detail View
+• Clicking archived story shows: Summary Section:
+o Story details (all original fields)
+o Journey timeline (visual showing path taken)
+o Time in system (total days)
+o Final stage reached
+o Rejection information (reason, date, who)
+Complete History Tab:
+o Chronological list of all actions:
+▪ Submission
+
+▪ Call Report creation
+▪ Each evaluation
+▪ Each decision point
+▪ Final rejection
+o Each entry shows:
+▪ Date/time
+▪ Action taken
+▪ By whom
+▪ Details/notes
+Documents Tab:
+o All uploaded files
+o All generated documents
+o All feedback documents
+o Download capability
+Feedback Tab:
+o All evaluator feedback
+o All reviewer comments
+o All notes from any stage
+o Organized by stage
+Rejection Details Tab:
+o Full rejection reason
+o Rejection category
+o Can resubmit conditions
+o Any additional context
+FR-3.11.6: Archive Analytics
+• System must provide analytics on rejections: Rejection Statistics:
+o Total rejected stories
+o Rejection rate by stage:
+▪ % rejected at Evaluation
+▪ % rejected at One-Liner
+▪ % rejected at Legal Review
+▪ % rejected at Negotiation
+o Average time to rejection
+o Rejection by category (pie chart)
+Stage Analysis:
+o Which stage has highest rejection rate
+
+o Average scores at rejection (if from Evaluation)
+o Common rejection reasons (word cloud or frequency)
+Writer/Genre Analysis:
+o Rejection rate by genre
+o Rejection rate by submission category (External/Writer/In-house)
+o Writers with multiple rejections
+Time Analysis:
+o Rejection trends over time (monthly/quarterly)
+o Average days in system before rejection
+o Bottleneck identification
+FR-3.11.7: Archive Notes & Learning
+• Authorized users can add retrospective notes: Archive Note:
+o Note ID (auto-generated)
+o Story ID (linked)
+o Note Type (dropdown):
+▪ Lessons Learned
+▪ Why Rejected
+▪ Future Consideration
+▪ Pattern Identified
+▪ Other
+o Note (text area, max 2000 characters)
+o Added By (auto-populated)
+o Date Added (timestamp)
+o Visibility (dropdown):
+▪ Internal Only
+▪ Share with Story Creator
+• Notes help organization learn from rejections
+• Can be referenced when similar stories submitted
+FR-3.11.8: Story Resubmission
+• If story marked "Can Resubmit": Resubmission Process:
+o Story Creator receives notification with:
+▪ Rejection reason
+▪ What needs to change
+▪ Conditions for resubmission
+o Creator can resubmit by:
+▪ Creating new story submission
+▪ System prompts: "Previous submission found. Is this a resubmission?"
+▪ If yes, system links to archived story
+
+▪ System shows previous rejection reason
+▪ Creator must explain what changed/improved
+o New submission goes through normal workflow
+o System maintains link to previous submission
+o Evaluators can see previous attempt and feedback
+FR-3.11.9: Archive Restoration
+• In rare cases, archived story can be restored: Restoration Requirements:
+o Only by Admin or Executive
+o Requires reason for restoration
+o Options:
+▪ Restore to last active stage
+▪ Restart from beginning
+▪ Restore to specific stage
+Restoration Process:
+o Select archived story
+o Click "Restore" button
+o Provide restoration reason
+o Select restoration stage
+o Confirm restoration
+o System moves story back to active workflows
+o System notifies relevant users
+o System logs restoration in audit trail
+FR-3.11.10: Archive Retention Policy
+• System must enforce retention policy: Retention Rules:
+o All archived stories retained for minimum 3 years
+o After 3 years, stories can be:
+▪ Permanently retained (default)
+▪ Soft deleted (hidden but recoverable)
+▪ Hard deleted (if organization policy allows)
+Data Deletion Process (if applicable):
+o Only Admin can initiate
+o Requires explicit confirmation
+o Exports data before deletion
+o Maintains audit record of deletion
+o Cannot delete if any legal/financial obligations pending
+FR-3.11.11: Archive Export
+
+• Users can export archive data: Export Options:
+o Export single story (all details, PDF)
+o Export filtered list (Excel/CSV)
+o Export analytics report (PDF)
+o Export all archives (Excel/CSV, for backup)
+Export Contains:
+o All story metadata
+o Rejection details
+o History timeline
+o Links to documents (or embedded documents)
+o Generated on date
+o Generated by user
+FR-3.11.12: Archive Notifications
+• System sends notifications: To Story Creator:
+o Story archived/rejected
+o Rejection reason
+o Can resubmit conditions (if applicable)
+o How to resubmit (link/instructions)
+To Stakeholders:
+o Weekly/Monthly rejection summary
+o Trends and patterns
+o Actionable insights
+3.11.3 Success Criteria
+• 100% of rejected stories captured with complete history
+• No data loss when archiving
+• Rejection reasons clear and actionable
+• Archive searchable and analyzable
+• Organization learns from rejections
+• Resubmission process clear and tracked
+• Complete audit trail maintained
+• Stakeholders can derive insights from rejection patterns
+3.12 STAKEHOLDER DASHBOARD
+3.12.1 Description
+
+Comprehensive dashboard providing complete visibility into all aspects of the content pipeline.
+Stakeholders can see everything from idea submission to final payment with drill-down
+capability to understand why, when, who for every action.
+3.12.2 Functional Requirements
+FR-3.12.1: Dashboard Overview Page
+• High-Level Metrics (Top of Page): Idea Pipeline Summary:
+o Total Active Stories (number, clickable)
+o Total Submissions This Month (number, trend arrow)
+o Total Approved This Month (number, trend arrow)
+o Total Rejected This Month (number, trend arrow)
+o Approval Rate % (calculated, color-coded)
+Current Stage Distribution (Visual):
+o Pie chart or bar chart showing:
+▪ Stories in Call Report: X
+▪ Stories in Evaluation: X
+▪ Stories in One-Liner: X
+▪ Stories in Negotiation: X
+▪ Stories in Legal Review: X
+▪ Stories in Contract Signing: X
+▪ Stories in Scripting: X
+▪ Stories in Finance: X
+o Each segment clickable → drills down to list
+Financial Summary:
+o Total Active Contracts: X
+o Total Contract Value: $XXX,XXX
+o Total Paid to Date: $XXX,XXX
+o Total Pending Payments: $XXX,XXX
+o Budget Utilization: XX%
+Time Metrics:
+o Average Time to Approval: X days
+o Average Time in Evaluation: X days
+o Average Scripting Duration: X days
+o Longest Pending Story: X days (with link)
+FR-3.12.2: Idea Pipeline Section
+• Pipeline Visualization:
+
+o Funnel chart showing flow:
+Story Ideas Submitted: 100
+↓
+Call Reports Created: 85
+↓
+Evaluations Completed: 75
+↓
+One-Liners Approved: 45
+↓
+Contracts Signed: 30
+↓
+Scripts Completed: 15
+• Each stage shows:
+o Count
+o % conversion from previous stage
+o Click to see list of stories at that stage
+• Conversion Rates:
+o Submission → Evaluation: XX%
+o Evaluation → One-Liner: XX%
+o One-Liner → Contract: XX%
+o Contract → Completion: XX%
+FR-3.12.3: Call Ruling Section
+• Call Report Metrics:
+o Total Call Reports Created: X
+o Average Time to Create: X days
+o Pending Call Reports: X (with list)
+o Completed Call Reports This Month: X
+o Table View:
+Call Report ID Story Title Created By Created Date Status Days Pending
+CR-2025-0001 Story A John Doe 2025-10-15 Pending 5
+o Filters:
+▪ By status (Draft, Pending Evaluation, Completed)
+▪ By date range
+▪ By creator
+o Drill-Down:
+▪ Click any call report → Full details
+▪ See all fields
+
+▪ See linked story
+▪ See next steps
+FR-3.12.4: Evaluation Scores Section
+• Evaluation Metrics:
+o Total Evaluations Completed: X
+o Average Evaluation Score: X.X / 10
+o Approval Rate: XX%
+o Rejection Rate: XX%
+o Score Distribution Chart:
+▪ Histogram showing:
+▪ X stories scored 1-3 (Poor)
+▪ X stories scored 4-6 (Average)
+▪ X stories scored 7-8 (Good)
+▪ X stories scored 9-10 (Excellent)
+o Evaluator Performance:
+Evaluator Name Evaluations Done Avg Score Given Avg Time to Review
+Jane Smith 25 7.2 3 days
+o Detailed Evaluation List:
+Story Title Evaluator(s) Score Decision Date View Details
+Story A 3 evaluators 8.1 Approved Date [Link]
+o Drill-Down:
+▪ Click any evaluation → See full form
+▪ See individual evaluator scores
+▪ See all comments
+▪ See criteria breakdown
+▪ See aggregation logic used
+▪ See decision timeline
+FR-3.12.5: One-Liners Section
+• One-Liner Metrics:
+o Pending One-Liner Approvals: X
+o Approved One-Liners This Month: X
+o Rejected One-Liners This Month: X
+o Average Time to Decision: X days
+o One-Liner List:
+Story Title Submitted to Executive Executive Decision Date Notes
+Story A 2025-10-20 CEO Name Approved Date [View]
+
+o Executive Performance:
+Executive Name Decisions Made Approval Rate Avg Time to Decide
+CEO Name 15 80% 2 days
+o Drill-Down:
+▪ Click any one-liner → See document
+▪ See executive notes
+▪ See budget approval status
+▪ See conditions/caveats
+▪ See full decision timeline
+FR-3.12.6: Contracts Section
+• Contract Metrics:
+o Active Contracts: X
+o Total Contract Value: $XXX,XXX
+o Contracts Signed This Month: X
+o Average Contract Value: $XX,XXX
+o Contracts Pending Signing: X
+o Contract List:
+Contract ID Story Title Writer Value Status Signed Date Expiry Date
+CNT-2025-01 Story A Writer $50K Active 2025-10-15 2026-10-15
+o Contract Status Breakdown:
+▪ Draft: X contracts
+▪ Pending Legal Review: X contracts
+▪ Pending Signatures: X contracts
+▪ Active: X contracts
+▪ Completed: X contracts
+▪ Expired: X contracts
+o Drill-Down:
+▪ Click any contract → Full details
+▪ See all terms
+▪ See payment schedule
+▪ See signing status
+▪ See linked scripts
+▪ Download contract PDF
+FR-3.12.7: Legal Status Section
+• Legal Review Metrics:
+o Pending Legal Reviews: X
+o Average Legal Review Time: X days
+
+o Legal Approvals This Month: X
+o Legal Rejections This Month: X
+o Compliance Status:
+▪ Contracts with Complete Documentation: XX%
+▪ Contracts Missing Documents: X (with list)
+▪ Compliance Issues Identified: X
+o Legal Review List:
+Story Title Assigned To Review Started Days Pending Checklist % Status
+Story A Legal-1 2025-10-20 3 80% Review
+o Document Compliance:
+▪ NIC/NTN Verification: XX% complete
+▪ Bank Details Verified: XX% complete
+▪ Tax Documents Received: XX% complete
+o Drill-Down:
+▪ Click any legal review → Full checklist
+▪ See which documents uploaded
+▪ See which documents missing
+▪ See legal notes/concerns
+▪ See risk assessment
+▪ See decision and reasoning
+FR-3.12.8: Contracts & Payments Section
+• Payment Overview:
+o Total Payments Due This Month: $XXX,XXX
+o Payments Made This Month: $XXX,XXX
+o Pending Payments: X (count and $)
+o Overdue Payments: X (count and $) - RED FLAG
+o Payment Success Rate: XX%
+o Payment Status Breakdown:
+Contract Writer Milestone Amount Due Due Date Status Days Overdue
+CNT-01 Writer Draft 1 $10,000 Oct 25 Paid -
+CNT-02 Writer Draft 2 $15,000 Oct 28 Pending -
+CNT-03 Writer Final $20,000 Oct 20 Overdue 8
+o Payment Timeline (Gantt-style):
+▪ Visual timeline showing all upcoming payments
+▪ Color-coded by status
+▪ Hoverable for details
+o Drill-Down - Payment Stuck:
+▪ Click overdue payment → See full details
+▪ Why is payment stuck?
+
+▪ Reason: "Awaiting approval from Finance Manager"
+▪ Who: "John Doe - Finance Manager"
+▪ Since When: "October 22, 2025"
+▪ Actions Taken: "Reminder sent on Oct 24"
+▪ Next Action: "Escalate to CFO if not approved by Oct 29"
+▪ Contact: [Email] [Phone]
+▪ Full audit trail showing:
+▪ Milestone achieved: Oct 20
+▪ Payment request created: Oct 21
+▪ Pending approval since: Oct 22
+▪ Reminder #1 sent: Oct 24
+▪ Reminder #2 sent: Oct 27
+▪ Current status: Overdue by 8 days
+FR-3.12.9: Script Progress Section
+• Scripting Metrics:
+o Projects in Scripting: X
+o Scripts in Step 1 (First Draft): X
+o Scripts in Step 2 (Feedback): X
+o Scripts in Step 3 (2nd Draft): X
+o Scripts in Step 4 (Episodes 2-5): X
+o Scripts in Step 5 (Final Feedback): X
+o Scripts in Step 6 (Final Approval): X
+o Completed Scripts This Month: X
+o Script Progress Table:
+Project Writer 
+Current
+Step 
+Status 
+%
+Complete
+Days in
+Phase
+Due
+Date
+On
+Track
+STR-
+01 
+Writer Step 3 Active 50% 15 days Nov 30 
+✓ Yes
+STR-
+02 
+Writer Step 5 Delayed 83% 45 days Oct 25 
+✗ No
+o Quality Metrics:
+▪ Average Script Score: X.X / 10
+▪ Average Revision Count: X.X per episode
+▪ Scripts Approved First Time: XX%
+o Drill-Down:
+▪ Click any project → Full scripting details
+▪ See all 6 steps with dates
+▪ See submission dates
+▪ See review dates
+▪ See scores
+▪ See feedback
+▪ See revisions
+
+▪ See delays and reasons
+▪ Download scripts (if authorized)
+FR-3.12.10: Detailed Drill-Down: "Why Was It Disapproved?"
+• For any rejected/disapproved item, system must show: Example: Story Rejected at
+Evaluation
+o Click story → Rejection Details page shows: Who Disapproved:
+▪ Evaluator Name: Jane Smith
+▪ Role: Senior Evaluator
+▪ Date: October 25, 2025, 3:45 PM
+Decision:
+▪ Decision: Rejected
+▪ Overall Score: 4.2 / 10 (Below threshold of 7.0)
+Individual Scores:
+▪ Originality: 6/10
+▪ Market Potential: 3/10 ← LOW
+▪ Execution Feasibility: 5/10
+▪ Budget Viability: 2/10 ← LOW
+▪ Cultural Relevance: 7/10
+▪ Average: 4.6/10
+Why Disapproved (Evaluator Comments):
+▪ "Market potential is very limited. Similar concepts already saturated in
+market."
+▪ "Budget requirements exceed what can be justified for expected returns."
+▪ "While creatively interesting, commercial viability is questionable."
+Weakness Points:
+▪ "Target audience too niche"
+▪ "Cost per episode estimated at $80K, market supports max $40K"
+▪ "Competition from 3 existing similar shows"
+Other Evaluators:
+▪ Evaluator 2: Also Rejected (Score: 4.8/10)
+▪ Evaluator 3: Also Rejected (Score: 5.1/10)
+▪ Consensus: All 3 rejected → System auto-rejected
+Full Timeline:
+
+▪ Submitted: Oct 15, 2025, 10:00 AM
+▪ Call Report Created: Oct 16, 2025, 2:30 PM
+▪ Sent to Evaluators: Oct 17, 2025, 9:00 AM
+▪ Evaluator 1 Reviewed: Oct 22, 2025, 4:15 PM (Rejected)
+▪ Evaluator 2 Reviewed: Oct 24, 2025, 11:30 AM (Rejected)
+▪ Evaluator 3 Reviewed: Oct 25, 2025, 3:45 PM (Rejected)
+▪ System Auto-Rejected: Oct 25, 2025, 3:46 PM
+▪ Creator Notified: Oct 25, 2025, 3:47 PM
+▪ Archived: Oct 25, 2025, 3:47 PM
+FR-3.12.11: Detailed Drill-Down: "Why Is Payment Stuck?"
+• Example: Payment overdue by 8 days
+o Click payment → Payment Details shows: Payment Information:
+▪ Payment ID: PAY-2025-0042
+▪ Contract: CNT-2025-0015
+▪ Writer: Ahmed Khan
+▪ Amount: $15,000
+▪ Due Date: October 20, 2025
+▪ Current Date: October 28, 2025
+▪ Days Overdue: 8 days ← RED FLAG
+Why Stuck:
+▪ Current Status: "Pending Approval - Level 2"
+▪ Stuck At: Finance Manager Approval
+▪ Stuck Since: October 22, 2025 (6 days ago)
+Approval Chain:
+▪ ✓ Level 1: Prepared by Sara Ahmed (Finance Team) - Oct 21, 2:00 PM
+▪ Level 2: Pending approval by John Doe (Finance Manager) - Sent Oct
+22, 9:00 AM
+▪ Level 3: Awaiting Level 2 (CFO approval required after)
+Actions Taken:
+▪ Reminder #1 sent to John Doe: Oct 24, 9:00 AM
+▪ Reminder #2 sent to John Doe: Oct 27, 9:00 AM
+▪ Escalation email sent to CFO: Oct 28, 10:00 AM (Today)
+Next Steps:
+▪ Auto-escalation rule: If not approved by Oct 29, escalate to CEO
+▪ Contact Info: John Doe - john.doe@company.com - Ext 1234
+
+Why This Payment Needs Approval:
+▪ Amount exceeds $10,000 (requires manager approval)
+▪ Milestone: "Second Draft Approved" - Achieved Oct 20
+▪ Payment calculation verified: $15,000 - $1,500 WHT = $13,500 net
+▪ Bank details verified: ✓
+▪ Budget available: ✓
+Complete Timeline:
+▪ Milestone Achieved: Oct 20, 11:30 AM (Script approved)
+▪ Payment Request Auto-Created: Oct 20, 11:31 AM
+▪ Assigned to Sara (Finance): Oct 20, 11:31 AM
+▪ Sara Prepared Payment: Oct 21, 2:00 PM
+▪ Sent to John (Manager) for Approval: Oct 22, 9:00 AM
+▪ STUCK HERE for 6 days
+▪ Reminder 1: Oct 24
+▪ Reminder 2: Oct 27
+▪ Escalated: Oct 28
+FR-3.12.12: Activity Feed
+• Real-time activity feed showing recent actions: Activity Stream:
+o "John Doe approved One-Liner for Story A" - 5 minutes ago
+o "Jane Smith completed evaluation for Story B (Score: 8.2)" - 1 hour ago
+o "Payment of $10,000 processed to Writer XYZ" - 2 hours ago
+o "New story submitted: Story C by Ahmed Khan" - 3 hours ago
+o "Contract CNT-2025-0050 signed" - 5 hours ago
+o Filterable by:
+▪ Activity type (Submission, Approval, Payment, etc.)
+▪ User
+▪ Date range
+o Click any activity → Go to details
+FR-3.12.13: Alerts & Notifications Panel
+• Dashboard shows critical alerts: Alerts (Red):
+o 3 Payments Overdue (click to see list)
+o 2 Legal Reviews Pending > 10 days
+o 1 Script Deadline Missed
+Warnings (Yellow):
+o 5 Evaluations Pending > 5 days
+o 2 Contracts Expiring in 30 days
+o 1 Budget 90% Utilized
+
+Info (Blue):
+o 10 New Submissions This Week
+o 3 Scripts Completed
+o 5 Payments Due This Week
+FR-3.12.14: Custom Dashboard Views
+• Users can customize their dashboard:
+o Pin favorite metrics
+o Rearrange sections (drag & drop)
+o Hide/show sections
+o Save custom views
+o Share views with team
+o Reset to default
+FR-3.12.15: Dashboard Export & Reporting
+• Export dashboard data:
+o Export as PDF (snapshot)
+o Export as Excel (raw data)
+o Export specific sections
+o Schedule automated reports:
+▪ Daily summary email
+▪ Weekly executive report
+▪ Monthly board report
+o Report templates:
+▪ Executive Summary (1-page)
+▪ Detailed Analysis (multi-page)
+▪ Financial Report
+▪ Operational Report
+FR-3.12.16: Dashboard Performance
+• Dashboard must:
+o Load in < 3 seconds
+o Auto-refresh every 5 minutes (configurable)
+o Show live data (not cached > 5 mins)
+o Handle 50+ concurrent users
+o Work on mobile (responsive)
+3.12.3 Success Criteria
+• Stakeholders can see entire pipeline at a glance
+• Any metric clickable for drill-down
+• Full transparency into "why, when, who" for every action
+
+• Issues (delays, stuck payments) immediately visible with reasons
+• No need to ask "what's the status?" - dashboard answers everything
+• Drill-down provides complete context in < 3 clicks
+• Reports generated automatically
+• Real-time visibility (< 5 min latency)
+• Mobile accessible for executives on-the-go
+4. DATA REQUIREMENTS
+4.1 Data Entities
+4.1.1 Core Entities
+Users
+• User ID (UUID, PK)
+• Email (unique)
+• Full Name
+• Role (FK to Roles)
+• Phone
+• Department
+• Avatar URL
+• Status (Active/Inactive)
+• Created At
+• Last Login
+Roles
+• Role ID (UUID, PK)
+• Role Name (Content Creator, Content Manager, Evaluator, Executive, Legal, Finance,
+Writer, Stakeholder)
+• Permissions (JSON)
+• Description
+Stories
+• Story ID (UUID, PK)
+• Title
+• Logged By
+• Category (External Producer, Writer Pitch, In-house Content)
+• Writer/Originator Name
+• Suggested Writer
+• Synopsis
+• Genre
+
+• Target Audience
+• Status
+• Current Stage
+• Created By (FK to Users)
+• Created At
+• Updated At
+Attachments
+• Attachment ID (UUID, PK)
+• Entity Type (Story, Call Report, Contract, etc.)
+• Entity ID (FK)
+• File Name
+• File Path (S3)
+• File Size
+• File Type
+• Uploaded By (FK to Users)
+• Uploaded At
+Call Reports
+• Call Report ID (UUID, PK)
+• Story ID (FK to Stories)
+• Meeting Date/Time
+• Writer Name
+• Contact Info
+• Working Title
+• Logline
+• USP
+• Target Audience
+• Meeting Notes
+• Status
+• Created By (FK to Users)
+• Created At
+Evaluator Forms
+• Form ID (UUID, PK)
+• Call Report ID (FK to Call Reports)
+• Evaluator ID (FK to Users)
+• Criteria Scores (JSON)
+• Total Score
+• Decision (Approve/Reject/Need Info)
+• Notes
+• Created At
+
+Workflows
+• Workflow ID (UUID, PK)
+• Story ID (FK to Stories)
+• Workflow Name
+• Current Stage
+• Status
+• Metadata (JSON)
+• Created At
+• Updated At
+Workflow Stages
+• Stage ID (UUID, PK)
+• Workflow ID (FK to Workflows)
+• Stage Name
+• Assigned To (FK to Users)
+• Status
+• Completed At
+• Data (JSON)
+• Created At
+Contracts
+• Contract ID (UUID, PK)
+• Story ID (FK to Stories)
+• Contract Type
+• Parties (JSON)
+• Scope of Work (JSON)
+• Financial Terms (JSON)
+• Timeline (JSON)
+• IP Terms (JSON)
+• Status
+• Signed Date
+• Created At
+Payment Schedules
+• Schedule ID (UUID, PK)
+• Contract ID (FK to Contracts)
+• Milestones (JSON array)
+• Created At
+Payments
+• Payment ID (UUID, PK)
+
+• Schedule ID (FK to Payment Schedules)
+• Milestone Name
+• Amount
+• Tax Deduction
+• Net Amount
+• Status
+• Payment Date
+• Payment Reference
+• Created At
+Script Phases
+• Phase ID (UUID, PK)
+• Contract ID (FK to Contracts)
+• Step Number (1-6)
+• Episode Number
+• Draft Version
+• Script File (FK to Attachments)
+• Status
+• Submitted At
+• Reviewed At
+Archive
+• Archive ID (UUID, PK)
+• Story ID (FK to Stories)
+• Rejection Stage
+• Rejection Reason
+• Rejection Category
+• Rejected By (FK to Users)
+• Can Resubmit
+• Archived At
+Audit Logs
+• Log ID (UUID, PK)
+• Entity Type
+• Entity ID
+• Action
+• Performed By (FK to Users)
+• Timestamp
+• Details (JSON)
+4.2 Data Relationships
+Users ←→ Stories (1:many)
+
+Users ←→ Evaluator Forms (1:many)
+Users ←→ Contracts (1:many)
+Stories ←→ Call Reports (1:1)
+Stories ←→ Workflows (1:1)
+Stories ←→ Contracts (1:1)
+Call Reports ←→ Evaluator Forms (1:many)
+Contracts ←→ Payment Schedules (1:1)
+Contracts ←→ Script Phases (1:many)
+Payment Schedules ←→ Payments (1:many)
+Workflows ←→ Workflow Stages (1:many)
+Stories ←→ Archive (1:1)
+All Entities ← Attachments (many:1)
+All Entities ← Audit Logs (many:1)
+4.3 Data Validation Rules
+• All required fields must be enforced at database level
+• Email format validation
+• Phone format validation
+• File size limits enforced
+• Enum fields must match predefined values
+• Foreign key integrity enforced
+• Timestamps auto-generated
+• Soft deletes (records marked deleted, not removed)
+4.4 Data Security
+• All sensitive fields encrypted at rest
+• Personal data (NIC, NTN, bank details) encrypted
+• Access controlled by Row Level Security (RLS)
+• Audit logs immutable
+• Automatic backups every 24 hours
+• Point-in-time recovery capability
+• Data retention policy enforced
+5. USER INTERFACE REQUIREMENTS
+5.1 General UI/UX Principles
+
+• Responsive Design: Must work on desktop (1920x1080), tablet (1024x768), mobile
+(375x667)
+• Accessibility: WCAG 2.1 Level AA compliance
+• Loading States: Show spinners/skeletons for all async operations
+• Error Handling: User-friendly error messages, never show technical errors
+• Consistency: Same UI patterns throughout (buttons, forms, tables)
+• Performance: Page loads < 2 seconds, interactions < 200ms response
+5.2 Layout Structure
+Main Layout:
+┌─────────────────
+Retry
+H
+Continue
+─────────────────────────────────┐ │ Header (Logo, User Menu,
+Notifications) │
+├──────────┬───────────────────────────────────────────
+─┤ │ │ │ │ Sidebar │ Main Content Area │ │ │ │ │ - Home │
+┌──────────────────────────────────────┐ │ │ - Stories│ │ │ │ │ -
+Tasks │ │ Page Content │ │ │ - Reports│ │ │ │ │ - Archive│ │ │ │ │ - Admin │
+└──────────────────────────────────────┘ │ │ │ │
+└──────────┴───────────────────────────────────────────
+─┘
+**Mobile Layout:**
+┌────────────────────┐ │ Header + Menu Icon │
+├────────────────────┤ │ │ │ Main Content │ │ (Full Width) │ │ │ │ │
+└────────────────────┘ │ Bottom Navigation │
+└────────────────────┘
+### **5.3 Navigation Structure**
+**Primary Navigation (Sidebar):**
+- **Dashboard** (Stakeholder dashboard)
+- **My Work**
+- My Submissions (if Content Creator)
+- My Tasks (if Evaluator, Executive, Legal, Finance)
+
+- My Approvals (if Executive)
+- **Stories**
+- All Stories
+- Submit New Story
+- My Stories
+- **Workflows**
+- Active Workflows
+- Pending Actions
+- **Contracts**
+- All Contracts
+- My Contracts
+- Expiring Soon
+- **Finance**
+- Payment Schedule
+- Pending Payments
+- Payment History
+- **Reports**
+- Pipeline Report
+- Financial Report
+- Performance Report
+- Custom Reports
+- **Archive**
+- Rejected Stories
+- Completed Projects
+- **Admin** (if Admin role)
+- User Management
+- Role Management
+- System Settings
+**Top Navigation (Header):**
+- Search bar (global search)
+- Notifications bell (unread count badge)
+- User menu (Profile, Settings, Logout)
+### **5.4 Key UI Components**
+
+#### **5.4.1 Forms**
+**Standard Form Layout:**
+- Labels above inputs
+- Required fields marked with red asterisk (*)
+- Inline validation (real-time)
+- Clear error messages below invalid fields
+- Help text/tooltips for complex fields
+- Save Draft button (auto-saves every 2 minutes)
+- Submit button (primary action, disabled until valid)
+- Cancel button (secondary action)
+**Form Validation:**
+- Required field: "This field is required"
+- Invalid email: "Please enter a valid email address"
+- Invalid phone: "Please enter a valid phone number"
+- File too large: "File exceeds maximum size of 25MB"
+- Invalid format: "Please upload PDF, DOC, or DOCX file"
+**Multi-step Forms:**
+- Progress indicator showing steps
+- Previous/Next navigation
+- Can save and continue later
+- Review step before final submission
+#### **5.4.2 Tables/Lists**
+**Standard Table Features:**
+- Sortable columns (click header to sort)
+- Filterable (dropdown filters above table)
+- Searchable (search box above table)
+- Pagination (show 25/50/100 per page)
+- Row actions (View, Edit, Delete icons)
+- Bulk actions (checkboxes for multi-select)
+- Export button (Excel/CSV)
+- Column visibility toggle
+
+**Table Example:**
+┌──────────────────────────────────────────────────────
+───┐ │ [Search: ________] [Filter: Status ▼] [Export ↓] │
+├────┬──────────┬────────────┬──────────┬────────┬─────
+───┤ │ □ │ Story ID │ Title │ Status │ Stage │ Actions│
+├────┼──────────┼────────────┼──────────┼────────┼─────
+───┤ │ □ │ STR-001 │ Story A │ Active │ Legal │ ✏ │ │ □ │ STR-002 │ Story B
+│ Active │ Script │ ✏ │
+└────┴──────────┴────────────┴──────────┴────────┴─────
+───┘ │ Showing 1-25 of 150 [< Previous] [1][2][3]...[Next >]│
+└──────────────────────────────────────────────────────
+───┘
+**Card View (Alternative for Mobile):**
+- Stacked cards instead of table
+- Key info visible
+- Tap to expand for details
+- Swipe actions (swipe left to delete, etc.)
+#### **5.4.3 Detail Pages**
+**Standard Detail Layout:**
+┌─────────────────────────────────────────────┐ │ [← Back]
+Story Title [Actions ▼] │
+├─────────────────────────────────────────────┤ │
+┌─────────────────────────────────────────┐ │ │ │ Summary
+Panel │ │ │ │ - Key metrics │ │ │ │ - Status badge │ │ │ │ - Quick actions │ │ │
+└─────────────────────────────────────────┘ │ │ │ │ [Details
+Tab] [History Tab] [Documents Tab] │ │
+┌─────────────────────────────────────────┐ │ │ │ │ │ │ │ Tab
+Content │ │ │ │ │ │ │
+└─────────────────────────────────────────┘ │
+└─────────────────────────────────────────────┘
+**Status Badges:**
+- Green: Active, Approved, Completed, Paid
+- Yellow: Pending, In Progress, Under Review
+- Red: Rejected, Overdue, Failed, Blocked
+
+- Gray: Draft, Inactive, Archived
+**Timeline View (for History):**
+● Story Submitted - Oct 15, 10:00 AM by John Doe │ ● Call Report Created - Oct 16, 2:30 PM
+by Jane Smith │ "Meeting scheduled with writer" │ ● Evaluation Completed - Oct 22, 4:15 PM
+by Evaluator 1 │ Score: 8.2/10 - Approved │ ● One-Liner Approved - Oct 23, 11:00 AM by
+CEO │ "Proceed to negotiation" │ ▼ Currently in Legal Review - Since Oct 25
+#### **5.4.4 Dashboard Widgets**
+**Metric Cards:**
+┌───────────────────────┐ │ Active Stories │ │ │ │ 125 │ │ ↑ +15 this week
+│ └───────────────────────┘
+**Charts:**
+- Line charts (trends over time)
+- Bar charts (comparisons)
+- Pie charts (distributions)
+- Funnel charts (conversion rates)
+- All charts interactive (hover for details, click to drill-down)
+**Data Tables:**
+- Compact view (top 5-10 items)
+- "View All" link to full page
+#### **5.4.5 Modals/Dialogs**
+**Confirmation Dialog:**
+┌────────────────────────────────┐ │ Confirm Action [✕] │
+├────────────────────────────────┤ │ │ │ Are you sure you want to │
+│ reject this story? │ │ │ │ This action cannot be undone. │ │ │ │ [Cancel] [Confirm] │
+└────────────────────────────────┘
+**Form Modal (for quick actions):**
+- Same validation as regular forms
+
+- Focus trap (tab stays within modal)
+- ESC key to close
+- Click outside to close (with unsaved changes warning)
+#### **5.4.6 Notifications
+**In-App Notifications:**
+- Dropdown from bell icon in header
+- Shows last 10 notifications
+- Unread count badge
+- Mark as read/unread
+- Click to go to related item
+- Types:
+- Info (blue): "New story submitted"
+- Success (green): "Payment completed"
+- Warning (yellow): "Evaluation overdue"
+- Error (red): "Payment failed"
+**Email Notifications:**
+- Professional template with company branding
+- Clear subject line
+- Summary of action
+- Call-to-action button (takes to relevant page)
+- Footer with company info and unsubscribe link
+**Push Notifications (Future):**
+- Browser push for critical alerts
+- Mobile app push
+#### **5.4.7 File Upload**
+**Drag & Drop Area:**
+┌────────────────────────────────────┐ │ Drag & drop files here
+│ │ or click to browse │ │ │ │ Accepted: PDF, DOC, DOCX │ │ Max size: 25MB │
+└────────────────────────────────────┘
+
+**Upload Progress:**
+Uploading: pitch-deck.pdf [████████████████░░░░] 78% Cancel
+**Uploaded Files:**
+✓ pitch-deck.pdf (2.3 MB) [Download] [Delete] ✓ research.docx (450 KB) [Download] [Delete]
+#### **5.4.8 Search**
+**Global Search:**
+- Search box in header
+- Autocomplete suggestions
+- Search across:
+- Stories (by title, ID, writer)
+- Contracts (by ID, writer)
+- Users (by name, email)
+- Documents (by filename)
+- Results grouped by type
+- Quick preview on hover
+- Click to open detail page
+**Advanced Search (on listing pages):**
+- Multiple filter criteria
+- Date range pickers
+- Multi-select dropdowns
+- Numeric range sliders
+- Save search queries
+- Export search results
+#### **5.4.9 Empty States**
+**No Data Available:**
+┌────────────────────────────────┐ │ │ │ No stories found │ │ │
+│ [+ Submit New Story] │ └────────────────────────────────┘
+
+**No Search Results:**
+┌────────────────────────────────┐ │ │ │ No results found for
+"xyz" │ │ │ │ Try different keywords │ │ [Clear Search] │
+└────────────────────────────────┘
+#### **5.4.10 Loading States**
+**Skeleton Screens:**
+- Show placeholder content while loading
+- Animated shimmer effect
+- Maintain layout (no content jump)
+**Spinners:**
+- Small spinner for buttons ("Processing...")
+- Large spinner for page loads
+- With message ("Loading stories...")
+**Progress Indicators:**
+- For multi-step processes
+- Show current step and % complete
+### **5.5 Color Scheme**
+**Primary Colors:**
+- Primary: #1976D2 (Blue) - main actions, links
+- Secondary: #424242 (Dark Gray) - text, headers
+- Success: #4CAF50 (Green) - approvals, success messages
+- Warning: #FF9800 (Orange) - warnings, pending states
+- Error: #F44336 (Red) - errors, rejections, overdue
+- Info: #2196F3 (Light Blue) - information, tooltips
+**Background:**
+- White: #FFFFFF
+- Light Gray: #F5F5F5 (page background)
+- Borders: #E0E0E0
+
+**Text:**
+- Primary Text: #212121
+- Secondary Text: #757575
+- Disabled Text: #BDBDBD
+### **5.6 Typography**
+**Font Family:**
+- Primary: Inter, Roboto, or system fonts
+- Monospace: Courier for IDs/codes
+**Font Sizes:**
+- H1 (Page Title): 32px, Bold
+- H2 (Section Title): 24px, Semi-Bold
+- H3 (Sub-section): 20px, Semi-Bold
+- Body: 16px, Regular
+- Small: 14px, Regular
+- Tiny: 12px, Regular
+**Font Weights:**
+- Regular: 400
+- Medium: 500
+- Semi-Bold: 600
+- Bold: 700
+### **5.7 Spacing**
+**Consistent Spacing Scale:**
+- 4px (xs)
+- 8px (sm)
+- 16px (md)
+- 24px (lg)
+- 32px (xl)
+- 48px (xxl)
+
+**Application:**
+- Padding inside cards: 16px
+- Margin between sections: 24px
+- Gap between form fields: 16px
+- Gap between buttons: 8px
+### **5.8 Responsive Breakpoints**
+- Mobile: < 640px
+- Tablet: 640px - 1024px
+- Desktop: > 1024px
+- Large Desktop: > 1440px
+**Responsive Behavior:**
+- Sidebar collapses to hamburger menu on mobile
+- Tables convert to cards on mobile
+- Multi-column layouts stack on mobile
+- Touch-friendly targets on mobile (min 44x44px)
+### **5.9 Accessibility Requirements**
+- **Keyboard Navigation:** All interactive elements accessible via keyboard
+- **Focus Indicators:** Clear focus outline on all focusable elements
+- **Screen Reader:** Proper ARIA labels and semantic HTML
+- **Color Contrast:** Minimum 4.5:1 for text, 3:1 for UI components
+- **Alt Text:** All images have descriptive alt text
+- **Form Labels:** All inputs have associated labels
+- **Error Identification:** Errors clearly identified and associated with inputs
+### **5.10 UI Component Library**
+Use existing UI framework for faster development:
+- **Recommended:** shadcn/ui (React), Material-UI, or Ant Design
+- **Benefits:**
+- Pre-built components
+- Accessibility built-in
+
+- Consistent design
+- Well-documented
+- Customizable
+---
+## **6. NON-FUNCTIONAL REQUIREMENTS**
+### **6.1 Performance Requirements**
+**Response Times:**
+- Page load: < 2 seconds (first load)
+- Page load: < 1 second (subsequent loads, cached)
+- Form submission: < 1 second
+- Search results: < 500ms
+- Dashboard refresh: < 2 seconds
+- File upload: Progress visible within 200ms
+- File download: Starts within 500ms
+**Throughput:**
+- Support 100 concurrent users
+- Handle 1,000 API requests/minute
+- Process 50 file uploads simultaneously
+**Database:**
+- Query response: < 200ms (95th percentile)
+- Support 100,000 records in main tables
+- Support 1,000,000 records in audit logs
+### **6.2 Scalability Requirements**
+**Vertical Scaling:**
+- System must scale from 50 to 500 users without code changes
+- Database must scale from 10GB to 500GB
+**Horizontal Scaling:**
+
+- Stateless application (can add more servers)
+- Database read replicas for reporting
+- File storage scales automatically (S3/Supabase)
+**Future Growth:**
+- Architecture supports microservices migration if needed
+- API-first design allows multiple frontends
+### **6.3 Reliability & Availability**
+**Uptime:**
+- Target: 99.5% uptime (3.6 hours downtime/month acceptable)
+- Scheduled maintenance: Weekends only, announced 48 hours in advance
+**Data Integrity:**
+- Zero data loss tolerance for submitted stories, contracts, payments
+- Automatic backups every 24 hours
+- Point-in-time recovery within 7 days
+- Database transactions ensure ACID properties
+**Error Handling:**
+- Graceful degradation (if one service fails, others continue)
+- User-friendly error messages (never show stack traces)
+- Automatic retry for transient errors
+- Error logging for debugging
+### **6.4 Security Requirements**
+**Authentication:**
+- Secure login (hashed passwords, bcrypt or better)
+- Session timeout after 30 minutes inactivity
+- Maximum 5 failed login attempts, then temporary lockout
+- Password requirements:
+- Minimum 8 characters
+- At least 1 uppercase, 1 lowercase, 1 number, 1 special character
+- Optional: Multi-factor authentication (MFA)
+
+- Optional: Single Sign-On (SSO) integration
+**Authorization:**
+- Role-based access control (RBAC)
+- Row-level security (users see only their data)
+- Action-level permissions (who can approve, reject, etc.)
+- Audit trail of all permission changes
+**Data Protection:**
+- HTTPS only (TLS 1.2+)
+- Sensitive data encrypted at rest (NIC, NTN, bank details)
+- Passwords never stored in plain text
+- API keys/secrets stored securely (environment variables, not code)
+- Regular security updates
+**File Security:**
+- Virus scanning on upload
+- File type validation
+- File size limits enforced
+- Access control (presigned URLs for downloads)
+- No direct file system access
+**API Security:**
+- API authentication (JWT tokens)
+- Rate limiting (prevent abuse)
+- Input validation (prevent SQL injection, XSS)
+- CORS configured correctly
+- No sensitive data in URLs or logs
+### **6.5 Compliance Requirements**
+**Data Privacy:**
+- GDPR compliance (if handling EU data)
+- Pakistani data protection laws
+- User consent for data processing
+- Right to data deletion (if required by law)
+
+- Privacy policy and terms of service
+**Financial Compliance:**
+- Withholding tax calculations accurate
+- Tax records maintained for 7 years
+- Payment records auditable
+- Anti-money laundering (AML) checks for high-value contracts
+**Audit Trail:**
+- All actions logged (who, what, when)
+- Logs immutable (cannot be edited or deleted)
+- Logs retained for 5 years
+- Logs exportable for audits
+### **6.6 Usability Requirements**
+**Ease of Use:**
+- New users can submit story in < 10 minutes (no training)
+- Evaluators can complete evaluation in < 15 minutes
+- Interface intuitive (95% task completion without help)
+- Help documentation available for all features
+**User Training:**
+- User guide (PDF) provided
+- Video tutorials for key workflows (5-10 minutes each)
+- In-app tooltips for complex features
+- FAQ section
+**Error Recovery:**
+- Auto-save drafts every 2 minutes
+- Undo functionality where applicable
+- Clear error messages with suggested actions
+- Support contact clearly visible
+### **6.7 Maintainability Requirements**
+
+**Code Quality:**
+- Code commented and documented
+- Consistent coding standards
+- Modular architecture (easy to update one part)
+- Automated tests (unit, integration)
+- Code review process
+**Deployment:**
+- CI/CD pipeline for automated deployment
+- Zero-downtime deployments
+- Easy rollback if issues occur
+- Staging environment for testing
+**Monitoring:**
+- Error tracking (Sentry or similar)
+- Performance monitoring (response times, errors)
+- Usage analytics (page views, active users)
+- Alerting for critical issues
+**Documentation:**
+- System architecture documented
+- API documentation (if exposing APIs)
+- Database schema documented
+- Deployment process documented
+- Runbook for common issues
+### **6.8 Compatibility Requirements**
+**Browsers:**
+- Chrome 90+ (primary)
+- Firefox 88+
+- Safari 14+
+- Edge 90+
+- No Internet Explorer support
+**Devices:**
+
+- Desktop (Windows, Mac, Linux)
+- Tablet (iPad, Android tablets)
+- Mobile (iOS 13+, Android 8+)
+**Screen Sizes:**
+- Minimum: 375px width (iPhone SE)
+- Maximum: 4K displays (3840px width)
+**Internet Connection:**
+- Works on slow connections (3G minimum)
+- Offline mode not required (always-online app)
+### **6.9 Backup & Recovery Requirements**
+**Backup Schedule:**
+- Database: Daily full backup at 2 AM
+- Files: Continuous backup (S3 versioning)
+- Backup retention: 30 days
+**Recovery Objectives:**
+- Recovery Time Objective (RTO): 4 hours
+- Recovery Point Objective (RPO): 24 hours
+- Tested quarterly (restore from backup to staging)
+**Disaster Recovery:**
+- Database in different availability zone
+- File storage replicated across regions
+- Documented recovery procedures
+- Emergency contacts list
+---
+## **7. EXTERNAL INTERFACE REQUIREMENTS**
+### **7.1 User Interfaces**
+
+Covered in Section 5 (User Interface Requirements)
+### **7.2 Hardware Interfaces**
+**Not Applicable** - Web-based application, no special hardware required
+### **7.3 Software Interfaces**
+**Database:**
+- PostgreSQL 14+
+- Access via connection pool
+- SSL/TLS connections
+**File Storage:**
+- Supabase Storage or AWS S3
+- API-based access
+- Presigned URLs for uploads/downloads
+**Email Service:**
+- SMTP server or email API (Resend, SendGrid)
+- Templates stored in application
+- Delivery status tracking
+**Authentication:**
+- Supabase Auth
+- OAuth providers (optional: Google, Microsoft)
+- SAML for SSO (optional)
+**Calendar (Optional):**
+- Google Calendar API
+- Microsoft Graph API (Outlook)
+**Accounting System (Optional - Phase 2):**
+- Export to CSV for import
+- API integration if available
+
+### **7.4 Communication Interfaces**
+**HTTP/HTTPS:**
+- RESTful API
+- JSON format for data exchange
+- HTTPS only (port 443)
+**WebSockets (for real-time):**
+- Supabase Realtime
+- Push notifications to browser
+- Dashboard auto-refresh
+**Email:**
+- SMTP or API
+- HTML email templates
+- Attachments supported
+---
+## **8. APPENDICES**
+### **8.1 Assumptions**
+1. Users have modern web browsers and stable internet
+2. Organization has email server or can use third-party service
+3. Content creators are familiar with basic form filling
+4. File uploads are primarily PDFs and Office documents
+5. Organization has budget for cloud hosting
+6. 50-100 users initially, may grow to 500+ in 2 years
+7. System will be primarily used during business hours (9 AM - 6 PM)
+8. Users are proficient in English (primary language)
+9. Organization has IT support for user issues
+10. Payment processing happens outside this system (system tracks, doesn't process payments)
+### **8.2 Dependencies**
+
+1. Hosting platform (Vercel, Railway, or similar)
+2. Database service (Supabase or self-hosted PostgreSQL)
+3. File storage (Supabase Storage, S3, or Cloudflare R2)
+4. Email service (SMTP, Resend, or SendGrid)
+5. Domain name and SSL certificate
+6. Third-party UI library (shadcn/ui, Material-UI, or Ant Design)
+7. Modern development tools (Node.js, TypeScript, etc.)
+### **8.3 Constraints**
+**Time:**
+- Must be delivered in 15 days (working prototype)
+- Limited time for extensive testing
+- Features prioritized by criticality
+**Budget:**
+- Infrastructure cost must stay < $100/month initially
+- Open-source solutions preferred
+- Minimal third-party paid services
+**Technical:**
+- Must use technologies team is familiar with
+- No steep learning curve
+- Proven, stable technologies only
+**Team:**
+- 3-4 developers available
+- No dedicated UI/UX designer (use templates)
+- No dedicated QA (developers test)
+**Regulatory:**
+- Must comply with Pakistani laws
+- Data stored in Pakistan or compliant region
+- Tax calculations must be accurate
+### **8.4 Glossary**
+
+- **Story Idea:** Initial concept submitted for development
+- **Call Report:** Document created after meeting with writer/producer
+- **Evaluator:** Person who reviews and scores story ideas
+- **One-Liner:** One-sentence summary of story for executive approval
+- **Milestone:** Deliverable in contract (e.g., first draft, final script)
+- **Scripting Phase:** 6-step process for script development
+- **Workflow:** Automated sequence of steps from submission to completion
+- **Archive:** Repository of rejected or completed stories
+- **Stakeholder:** Person with visibility into all projects (executive, admin)
+- **RLS:** Row Level Security - database-level access control
+- **Drill-down:** Clicking to see more detailed information
+- **Audit Trail:** Complete history of all actions taken
+### **8.5 Revision History**
+| Version | Date | Author | Changes |
+|---------|------|--------|---------|
+| 1.0 | Oct 28, 2025 | [Your Name] | Initial SRS document |
+---
+## **9. SIGN-OFF**
+This SRS document requires approval from:
+**Stakeholders:**
+- [ ] Executive Sponsor: _________________ Date: _______
+- [ ] Content Manager: _________________ Date: _______
+- [ ] Finance Head: _________________ Date: _______
+- [ ] Legal Head: _________________ Date: _______
+**Development Team:**
+- [ ] Technical Lead: _________________ Date: _______
+- [ ] Project Manager: _________________ Date: _______
+
+**Once signed, this SRS becomes the official requirements document for development.**
+---
+## **END OF SRS DOCUMENT**
+▪

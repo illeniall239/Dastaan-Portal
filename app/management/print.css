@@ -1,0 +1,287 @@
+/* Print Styles for Management Dashboard */
+@media print {
+  /* Reset and base styles */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    color-adjust: exact !important;
+  }
+
+  body {
+    margin: 0;
+    padding: 0;
+    background: white !important;
+  }
+
+  /* Hide interactive and navigation elements */
+  button,
+  .no-print,
+  [data-no-print="true"],
+  header nav,
+  aside,
+  .sidebar,
+  .header,
+  input[type="text"],
+  input[type="search"],
+  input[type="date"],
+  select,
+  textarea,
+  .export-button,
+  .print-button,
+  [class*="dropdown"],
+  [class*="tooltip"] {
+    display: none !important;
+  }
+
+  /* Show only dashboard content */
+  main,
+  .dashboard-content {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* Page layout */
+  .p-6 {
+    padding: 0.5rem !important;
+  }
+
+  .space-y-6 > * + * {
+    margin-top: 1rem !important;
+  }
+
+  /* Section spacing */
+  .mb-8 {
+    margin-bottom: 1.5rem !important;
+  }
+
+  /* Cards and containers */
+  .border,
+  .border-2,
+  [class*="border-"] {
+    border: 1px solid #e5e7eb !important;
+  }
+
+  /* Remove background gradients for print */
+  [class*="bg-gradient"],
+  [class*="from-"],
+  [class*="to-"] {
+    background: white !important;
+    border: 1px solid #d1d5db !important;
+  }
+
+  /* Stat cards - ensure visibility */
+  .grid {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  /* Text colors - make readable */
+  .text-muted-foreground,
+  [class*="text-gray"],
+  [class*="text-slate"] {
+    color: #374151 !important;
+  }
+
+  /* Bold text */
+  .font-bold,
+  .font-semibold {
+    font-weight: 700 !important;
+    color: #111827 !important;
+  }
+
+  /* Icons - ensure visibility */
+  svg {
+    opacity: 0.6;
+  }
+
+  /* Headings */
+  h1,
+  h2,
+  h3,
+  h4 {
+    color: #111827 !important;
+    break-after: avoid;
+    page-break-after: avoid;
+  }
+
+  /* Badges */
+  .badge,
+  [class*="Badge"] {
+    border: 1px solid #9ca3af !important;
+    padding: 2px 6px !important;
+    font-size: 10px !important;
+  }
+
+  /* Section page breaks */
+  #executive-summary,
+  #critical-alerts-section,
+  #scripting-episode-section,
+  #pipeline-section,
+  #evaluator-performance,
+  #financial-overview,
+  #performance-metrics,
+  #department-workload {
+    page-break-before: auto;
+    page-break-after: auto;
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  /* Force page break before major sections */
+  #scripting-episode-section,
+  #pipeline-section,
+  #evaluator-performance {
+    page-break-before: always;
+  }
+
+  /* Grid layouts */
+  .grid {
+    display: grid !important;
+    gap: 0.5rem !important;
+  }
+
+  .md\:grid-cols-2 {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+
+  .lg\:grid-cols-3 {
+    grid-template-columns: repeat(3, 1fr) !important;
+  }
+
+  /* Progress bars */
+  .w-full {
+    width: 100% !important;
+  }
+
+  [class*="rounded-full"] {
+    background-color: #e5e7eb !important;
+  }
+
+  /* Charts and visualizations */
+  canvas,
+  svg {
+    max-width: 100% !important;
+    height: auto !important;
+  }
+
+  /* Tables */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    page-break-inside: avoid;
+  }
+
+  th,
+  td {
+    border: 1px solid #d1d5db;
+    padding: 8px;
+    text-align: left;
+  }
+
+  /* Links - show URL */
+  a[href]:after {
+    content: " (" attr(href) ")";
+    font-size: 90%;
+    color: #6b7280;
+  }
+
+  /* Header for print */
+  @page {
+    margin: 1.5cm;
+    size: A4;
+  }
+
+  /* Print header */
+  .print-header {
+    display: block !important;
+    text-align: center;
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid #224794;
+  }
+
+  .print-header h1 {
+    font-size: 24px;
+    margin: 0;
+    color: #224794 !important;
+  }
+
+  .print-header .timestamp {
+    font-size: 12px;
+    color: #6b7280;
+    margin-top: 0.25rem;
+  }
+
+  /* Remove rounded corners for print */
+  * {
+    border-radius: 0 !important;
+  }
+
+  /* Optimize spacing */
+  .p-6,
+  .p-4,
+  .p-3 {
+    padding: 0.5rem !important;
+  }
+
+  .px-6,
+  .py-6 {
+    padding-left: 0.5rem !important;
+    padding-right: 0.5rem !important;
+  }
+
+  /* Compact font sizes */
+  .text-3xl {
+    font-size: 1.5rem !important;
+  }
+
+  .text-2xl {
+    font-size: 1.25rem !important;
+  }
+
+  .text-xl {
+    font-size: 1.125rem !important;
+  }
+
+  .text-lg {
+    font-size: 1rem !important;
+  }
+
+  /* Activity feed */
+  .space-y-3 > * + * {
+    margin-top: 0.5rem !important;
+  }
+
+  /* Alert styling */
+  [class*="bg-red-"],
+  [class*="bg-yellow-"],
+  [class*="bg-blue-"] {
+    background: white !important;
+    border-left: 4px solid #dc2626 !important;
+  }
+
+  /* Evaluation progress */
+  .evaluation-progress {
+    break-inside: avoid;
+  }
+
+  /* Ensure all text is black on white */
+  * {
+    color: #000 !important;
+    background: transparent !important;
+  }
+
+  /* Restore important backgrounds */
+  .card,
+  [class*="Card"] {
+    background: white !important;
+    border: 1px solid #d1d5db !important;
+  }
+
+  /* Header backgrounds for sections */
+  [class*="CardHeader"] {
+    border-bottom: 1px solid #e5e7eb !important;
+  }
+}
