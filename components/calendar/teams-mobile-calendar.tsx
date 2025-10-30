@@ -1,9 +1,7 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { format, parseISO, startOfDay, isSameDay, addDays, getHours } from 'date-fns';
-import { Plus } from 'lucide-react';
 import { HorizontalDaySelector } from './horizontal-day-selector';
 import { TimeSlot } from './time-slot';
-import { FloatingActionButton } from '@/components/ui/floating-action-button';
 import { cn } from '@/lib/utils';
 
 interface Meeting {
@@ -20,7 +18,6 @@ interface TeamsMobileCalendarProps {
   currentDate: Date;
   onMeetingClick: (meeting: Meeting) => void;
   onTimeSlotClick: (dateTime: Date) => void;
-  onFabClick: () => void;
   className?: string;
 }
 
@@ -31,14 +28,13 @@ interface TeamsMobileCalendarProps {
  * - Vertical scrollable date list with time slots
  * - Core hours (9 AM - 5 PM) always shown
  * - Extended hours shown if meetings exist outside core hours
- * - Floating action button for quick meeting creation
+ * - Tap on any time slot to schedule a meeting
  */
 export function TeamsMobileCalendar({
   meetings,
   currentDate,
   onMeetingClick,
   onTimeSlotClick,
-  onFabClick,
   className
 }: TeamsMobileCalendarProps) {
   const [selectedDate, setSelectedDate] = useState(currentDate);
@@ -116,6 +112,12 @@ export function TeamsMobileCalendar({
       }, 1000);
     }
   };
+
+  // Scroll to current date on mount
+  useEffect(() => {
+    scrollToDate(currentDate);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Only run once on mount
 
   // Update selected date based on visible date (IntersectionObserver)
   useEffect(() => {
@@ -231,14 +233,6 @@ export function TeamsMobileCalendar({
           );
         })}
       </div>
-
-      {/* Floating Action Button */}
-      <FloatingActionButton
-        onClick={onFabClick}
-        icon={<Plus className="h-6 w-6" />}
-        label="Schedule meeting"
-        position="bottom-right"
-      />
     </div>
   );
 }

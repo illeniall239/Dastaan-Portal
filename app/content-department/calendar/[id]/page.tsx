@@ -239,16 +239,18 @@ export default async function MeetingDetailPage({ params }: { params: Promise<{ 
             </Card>
           )}
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Status</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800 capitalize">
-                {meeting.status || "scheduled"}
-              </div>
-            </CardContent>
-          </Card>
+          {meeting.status && meeting.status !== 'draft' && meeting.status !== 'scheduled' && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Status</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800 capitalize">
+                  {meeting.status}
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </div>
       </div>
     </div>

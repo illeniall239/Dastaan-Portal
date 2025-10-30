@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import Link from "next/link";
+import { useEffect } from "react";
 
 interface Meeting {
   id: string;
@@ -28,29 +29,53 @@ interface MeetingPeekPanelProps {
 }
 
 const statusColors = {
-  scheduled: "bg-purple-100 text-purple-800",
+  scheduled: "bg-blue-100 text-blue-800",
   confirmed: "bg-blue-100 text-blue-800",
   completed: "bg-green-100 text-green-800",
   cancelled: "bg-gray-100 text-gray-800",
+  draft: "bg-blue-100 text-blue-800",
 };
 
 export function MeetingPeekPanel({ meeting, onClose }: MeetingPeekPanelProps) {
+  // Lock body scroll when panel is open on mobile
+  useEffect(() => {
+    // Only apply on mobile (check if viewport is less than md breakpoint)
+    const isMobile = window.innerWidth < 768;
+    
+    if (meeting && isMobile) {
+      // Save original overflow style
+      const originalOverflow = document.body.style.overflow;
+      
+      // Lock scroll
+      document.body.style.overflow = 'hidden';
+      
+      // Restore on cleanup
+      return () => {
+        document.body.style.overflow = originalOverflow;
+      };
+    }
+  }, [meeting]);
+
   if (!meeting) return null;
 
   const meetingDate = parseISO(meeting.meeting_date);
   const status = meeting.status || "scheduled";
+  // Hide status badge for draft and scheduled (they're the same)
+  const showStatusBadge = status !== "draft" && status !== "scheduled";
 
   return (
-    <div className="w-full md:w-96 md:border-l bg-white h-full md:h-full overflow-y-auto flex flex-col fixed bottom-0 left-0 right-0 md:static rounded-t-2xl md:rounded-none shadow-[0_-8px_24px_rgba(0,0,0,0.08)] md:shadow-none max-h-[85vh] md:max-h-full">
+    <div className="w-full md:w-96 md:border-l bg-white h-full md:h-full overflow-y-auto flex flex-col fixed bottom-0 left-0 right-0 md:static rounded-t-2xl md:rounded-none shadow-[0_-8px_24px_rgba(0,0,0,0.08)] md:shadow-none max-h-[85vh] md:max-h-full z-50">
       {/* Header */}
       <div className="p-3 sm:p-4 border-b bg-muted/10 flex items-start justify-between sticky top-0 z-10 bg-white rounded-t-2xl md:rounded-none">
         <div className="flex-1">
           <h2 className="text-lg font-semibold line-clamp-2">
             {meeting.working_title}
           </h2>
-          <Badge className={statusColors[status as keyof typeof statusColors] || statusColors.scheduled}>
-            {status}
-          </Badge>
+          {showStatusBadge && (
+            <Badge className={statusColors[status as keyof typeof statusColors] || statusColors.scheduled}>
+              {status}
+            </Badge>
+          )}
         </div>
         <Button variant="ghost" size="icon" onClick={onClose} className="touch-target">
           <X className="h-5 w-5" />

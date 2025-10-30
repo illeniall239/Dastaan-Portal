@@ -7,7 +7,9 @@ import { Button } from "@/components/ui/button";
 import { ViewSwitcher } from "@/components/calendar/view-switcher";
 import { CalendarGrid } from "@/components/calendar/calendar-grid";
 import { MonthView } from "@/components/calendar/month-view";
+import { TeamsMobileCalendar } from "@/components/calendar/teams-mobile-calendar";
 import { MeetingPeekPanel } from "@/components/calendar/meeting-peek-panel";
+import { QuickMeetingDialog } from "@/components/calendar/quick-meeting-dialog";
 import { CalendarSkeleton } from "@/components/skeletons/calendar-skeleton";
 import { createClient } from "@/lib/supabase/client";
 
@@ -16,6 +18,7 @@ interface Meeting {
   writer_name: string;
   organizer_name?: string;
   meeting_date: string;
+  duration_minutes?: number;
   meeting_attendees?: string[];
   status?: string;
   working_title: string;
@@ -54,6 +57,7 @@ export default function ManagementCalendar() {
           id,
           writer_name,
           meeting_date,
+          duration_minutes,
           meeting_attendees,
           status,
           working_title,
@@ -143,37 +147,40 @@ export default function ManagementCalendar() {
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Top Navigation Bar */}
-        <div className="bg-white border-b p-4 flex items-center justify-between">
-          <div className="flex items-center gap-4">
+        <div className="bg-white border-b p-3 sm:p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
+          <div className="flex items-center gap-2 sm:gap-4 w-full sm:w-auto">
             {/* Navigation Controls */}
             <div className="flex items-center gap-2">
-              <Button variant="outline" size="icon" onClick={handlePrevious} disabled={loading}>
+              <Button variant="outline" size="icon" onClick={handlePrevious} disabled={loading} className="touch-target">
                 <ChevronLeft className="h-4 w-4" />
               </Button>
-              <Button variant="outline" size="icon" onClick={handleNext} disabled={loading}>
+              <Button variant="outline" size="icon" onClick={handleNext} disabled={loading} className="touch-target">
                 <ChevronRight className="h-4 w-4" />
               </Button>
-              <Button variant="outline" size="sm" onClick={handleToday} disabled={loading}>
+              <Button variant="outline" size="sm" onClick={handleToday} disabled={loading} className="touch-target">
                 Today
               </Button>
             </div>
 
             {/* Date Range Display */}
-            <h1 className="text-xl font-semibold">{getDateRangeText()}</h1>
+            <h1 className="text-base sm:text-xl font-semibold truncate">{getDateRangeText()}</h1>
           </div>
 
           {/* Refresh button and View Switcher */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-end">
             <Button
               size="sm"
               variant="default"
               onClick={fetchMeetings}
               title="Refresh meetings"
               disabled={loading}
+              className="touch-target"
             >
               <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
             </Button>
-            <ViewSwitcher currentView={currentView} onViewChange={setCurrentView} />
+            <div className="hidden md:block">
+              <ViewSwitcher currentView={currentView} onViewChange={setCurrentView} />
+            </div>
           </div>
         </div>
 
@@ -193,7 +200,18 @@ export default function ManagementCalendar() {
             </div>
           ) : (
             <>
-              <div className="flex-1 p-4 overflow-auto">
+              {/* Mobile: Teams-Style Calendar */}
+              <div className="md:hidden flex-1 overflow-hidden">
+                <TeamsMobileCalendar
+                  meetings={meetings}
+                  currentDate={currentDate}
+                  onMeetingClick={handleMeetingClick}
+                  onTimeSlotClick={() => {}}
+                />
+              </div>
+
+              {/* Desktop: Calendar Grid/Month View */}
+              <div className="hidden md:block flex-1 p-4 overflow-auto">
                 <div
                   key={`${currentDate ? format(currentDate, 'yyyy-MM-dd') : 'unknown'}-${currentView}`}
                   className={`transition-all duration-200 ease-in-out ${

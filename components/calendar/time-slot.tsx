@@ -9,6 +9,7 @@ interface Meeting {
   writer_name: string;
   working_title: string;
   meeting_date: string;
+  duration_minutes?: number;
   status?: string;
   logline?: string;
 }
@@ -41,17 +42,22 @@ export function TimeSlot({
         onClick={() => onSlotClick(date, hour)}
         className={cn(
           'min-h-[60px] p-3 rounded-lg cursor-pointer',
-          'bg-muted/20 hover:bg-muted/40',
+          'bg-muted/20 hover:bg-muted/40 active:bg-muted/50',
           'border border-transparent hover:border-muted',
           'transition-all duration-200',
-          'touch-target'
+          'touch-target',
+          'group'
         )}
       >
-        <div className="flex items-center gap-2">
-          <Clock className="h-3.5 w-3.5 text-muted-foreground" />
-          <span className="text-xs font-medium text-muted-foreground">{timeLabel}</span>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Clock className="h-3.5 w-3.5 text-muted-foreground" />
+            <span className="text-xs font-medium text-muted-foreground">{timeLabel}</span>
+          </div>
+          <span className="text-muted-foreground/20 group-hover:text-muted-foreground/40 text-xl transition-colors">
+            +
+          </span>
         </div>
-        <p className="text-xs text-muted-foreground mt-1 ml-5">No meetings</p>
       </div>
     );
   }
@@ -84,6 +90,12 @@ function MeetingSlot({
 }) {
   const meetingTime = parseISO(meeting.meeting_date);
 
+  // Format duration for display
+  const durationMinutes = meeting.duration_minutes || 60;
+  const durationDisplay = durationMinutes >= 60
+    ? `${durationMinutes / 60}h`
+    : `${durationMinutes}m`;
+
   return (
     <div
       onClick={onClick}
@@ -101,10 +113,10 @@ function MeetingSlot({
         <div className="flex items-center gap-2">
           <Clock className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
           <span className="text-xs font-semibold text-foreground">
-            {format(meetingTime, 'h:mm a')}
+            {format(meetingTime, 'h:mm a')} ({durationDisplay})
           </span>
         </div>
-        {meeting.status && (
+        {meeting.status && meeting.status !== 'draft' && meeting.status !== 'scheduled' && (
           <Badge
             variant="outline"
             className={cn(

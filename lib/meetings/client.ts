@@ -5,6 +5,8 @@ export interface Meeting {
   title: string;
   writer_name: string;
   meeting_date: string;
+  duration_minutes?: number;
+  end_time?: string;
   attendees: string[];
   location: string;
   notes: string;
@@ -32,6 +34,7 @@ export interface CreateMeetingInput {
   theme?: string;
   slot?: string;
   meeting_date: string;
+  duration_minutes?: number; // Meeting duration in minutes (default: 60)
   attendees: string[];
   location?: string;
   notes: string;
@@ -77,6 +80,7 @@ export async function createMeetingClient(meetingData: CreateMeetingInput) {
     // Map UI-provided slot to DB column target_slot
     target_slot: meetingData.slot || null,
     meeting_date: meetingData.meeting_date,
+    duration_minutes: meetingData.duration_minutes || 60, // Default to 60 minutes if not specified
     meeting_attendees: meetingData.attendees,
     meeting_notes: meetingData.notes,
     next_steps: meetingData.next_steps || null,

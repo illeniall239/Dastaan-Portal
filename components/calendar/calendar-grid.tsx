@@ -9,6 +9,7 @@ interface Meeting {
   writer_name: string;
   organizer_name?: string;
   meeting_date: string;
+  duration_minutes?: number;
   meeting_attendees?: string[];
   status?: string;
   working_title: string;
@@ -54,7 +55,7 @@ export function CalendarGrid({
   const hours = Array.from({ length: endHour - startHour + 1 }, (_, i) => startHour + i);
 
   // Calculate meeting position and height
-  const getMeetingStyle = (meetingDate: Date) => {
+  const getMeetingStyle = (meetingDate: Date, durationMinutes: number = 60) => {
     const meetingHour = meetingDate.getHours();
     const meetingMinute = meetingDate.getMinutes();
 
@@ -62,8 +63,9 @@ export function CalendarGrid({
     const minutesFromStart = (meetingHour - startHour) * 60 + meetingMinute;
     const top = (minutesFromStart / 60) * 80; // 80px per hour
 
-    // Default 1 hour meeting
-    const height = 80; // 1 hour = 80px
+    // Calculate height based on duration (with 20px minimum for visibility)
+    const calculatedHeight = (durationMinutes / 60) * 80; // 80px per hour
+    const height = Math.max(20, calculatedHeight);
 
     return {
       top: `${top}px`,
@@ -145,7 +147,7 @@ export function CalendarGrid({
                 {/* Meeting blocks */}
                 {dayMeetings.map((meeting) => {
                   const meetingDate = parseISO(meeting.meeting_date);
-                  const style = getMeetingStyle(meetingDate);
+                  const style = getMeetingStyle(meetingDate, meeting.duration_minutes || 60);
 
                   return (
                     <MeetingBlock

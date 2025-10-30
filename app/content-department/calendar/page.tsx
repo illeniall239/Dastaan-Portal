@@ -20,12 +20,13 @@ interface Meeting {
   writer_name: string;
   organizer_name?: string;
   meeting_date: string;
+  duration_minutes?: number;
   meeting_attendees?: string[];
   status?: string;
   working_title: string;
   logline?: string;
   usp?: string;
-  
+
   meeting_notes?: string;
   contact_email?: string;
   contact_phone?: string;
@@ -254,10 +255,6 @@ export default function ContentDepartmentCalendar() {
                   currentDate={currentDate}
                   onMeetingClick={handleMeetingClick}
                   onTimeSlotClick={handleTimeSlotClick}
-                  onFabClick={() => {
-                    setSelectedDateTime(new Date());
-                    setQuickMeetingDialogOpen(true);
-                  }}
                 />
               </div>
 

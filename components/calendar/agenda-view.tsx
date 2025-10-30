@@ -181,7 +181,7 @@ function MeetingCard({
               {format(meetingTime, 'h:mm a')}
             </span>
           </div>
-          {meeting.status && (
+          {meeting.status && meeting.status !== 'draft' && meeting.status !== 'scheduled' && (
             <Badge
               variant="outline"
               className={cn('text-xs px-2 py-0', getStatusColor(meeting.status))}

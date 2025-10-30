@@ -82,6 +82,8 @@ export interface CallReport {
   call_report_id: string; // CR-YYYY-NNNN
   story_id: string;
   meeting_date: string;
+  duration_minutes?: number; // Meeting duration in minutes (default: 60)
+  end_time?: string; // Computed end time (meeting_date + duration)
   writer_name: string;
   contact_type: "Direct" | "Agent" | "Production Company" | "Other";
   contact_email: string;

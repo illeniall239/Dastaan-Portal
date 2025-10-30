@@ -58,6 +58,7 @@ export function QuickMeetingDialog({
 }: QuickMeetingDialogProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [selectedAttendees, setSelectedAttendees] = useState<User[]>([]);
+  const [selectedTime, setSelectedTime] = useState<string>("09:00");
   const [formData, setFormData] = useState({
     sourceOfIdea: "",
     writerId: "",
@@ -65,11 +66,17 @@ export function QuickMeetingDialog({
     title: "",
     notes: "",
     location: "",
+    duration: "60", // Duration in minutes
   });
 
   // Reset form when dialog opens with new date
   useEffect(() => {
     if (open && selectedDateTime) {
+      // Initialize time from selectedDateTime
+      const hours = String(selectedDateTime.getHours()).padStart(2, '0');
+      const minutes = String(selectedDateTime.getMinutes()).padStart(2, '0');
+      setSelectedTime(`${hours}:${minutes}`);
+
       setFormData({
         sourceOfIdea: "",
         writerId: "",
@@ -77,6 +84,7 @@ export function QuickMeetingDialog({
         title: "",
         notes: "",
         location: "",
+        duration: "60",
       });
       setSelectedAttendees([]);
     }
@@ -95,6 +103,10 @@ export function QuickMeetingDialog({
 
   const handleWriterChange = (value: string) => {
     setFormData((prev) => ({ ...prev, writerId: value }));
+  };
+
+  const handleDurationChange = (value: string) => {
+    setFormData((prev) => ({ ...prev, duration: value }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -152,11 +164,14 @@ export function QuickMeetingDialog({
       }
 
       // Format datetime as local time string (no timezone conversion)
+      // Parse the selected time
+      const [hours, minutes] = selectedTime.split(":").map(Number);
+
       const year = selectedDateTime.getFullYear();
       const month = String(selectedDateTime.getMonth() + 1).padStart(2, "0");
       const day = String(selectedDateTime.getDate()).padStart(2, "0");
-      const hour = String(selectedDateTime.getHours()).padStart(2, "0");
-      const minute = String(selectedDateTime.getMinutes()).padStart(2, "0");
+      const hour = String(hours).padStart(2, "0");
+      const minute = String(minutes).padStart(2, "0");
       const localDateTimeString = `${year}-${month}-${day}T${hour}:${minute}:00`;
 
       // Map selected attendees to email array
@@ -175,6 +190,7 @@ export function QuickMeetingDialog({
         // keep deprecated fields empty to satisfy legacy not-null until migration
         // target_audience removed
         meeting_date: localDateTimeString,
+        duration_minutes: parseInt(formData.duration), // Teams-style duration support
         attendees: contactEmail ? [contactEmail, ...attendeeEmails] : attendeeEmails,
         location: formData.location,
         notes: formData.notes,
@@ -205,11 +221,64 @@ export function QuickMeetingDialog({
         <DialogHeader>
           <DialogTitle className="text-lg sm:text-xl">Schedule Meeting</DialogTitle>
           <DialogDescription className="text-sm">
-            {format(selectedDateTime, "EEEE, MMMM d, yyyy 'at' h:mm a")}
+            {format(selectedDateTime, "EEEE, MMMM d, yyyy")} at {selectedTime}
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4 py-3 sm:py-4">
+          {/* Time Picker */}
+          <div className="space-y-2">
+            <Label htmlFor="time">
+              Meeting Time <span className="text-red-500">*</span>
+            </Label>
+            <Input
+              id="time"
+              type="time"
+              value={selectedTime}
+              onChange={(e) => setSelectedTime(e.target.value)}
+              required
+              className="text-sm"
+            />
+            {/* Quick time selection buttons */}
+            <div className="flex gap-1.5 flex-wrap">
+              {["09:00", "09:30", "10:00", "10:30", "11:00", "11:30", "12:00", "12:30", "13:00", "13:30", "14:00", "14:30", "15:00", "15:30", "16:00", "16:30", "17:00"].map((time) => (
+                <Button
+                  key={time}
+                  type="button"
+                  variant={selectedTime === time ? "default" : "outline"}
+                  size="sm"
+                  className="text-xs h-7 px-2"
+                  onClick={() => setSelectedTime(time)}
+                >
+                  {time}
+                </Button>
+              ))}
+            </div>
+          </div>
+
+          {/* Duration Picker */}
+          <div className="space-y-2">
+            <Label htmlFor="duration">
+              Meeting Duration <span className="text-red-500">*</span>
+            </Label>
+            <Select
+              onValueChange={handleDurationChange}
+              value={formData.duration}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select duration" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="30">30 minutes</SelectItem>
+                <SelectItem value="45">45 minutes</SelectItem>
+                <SelectItem value="60">1 hour</SelectItem>
+                <SelectItem value="90">1.5 hours</SelectItem>
+                <SelectItem value="120">2 hours</SelectItem>
+                <SelectItem value="180">3 hours</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
           {/* Source of Idea Dropdown */}
           <div className="space-y-2">
             <Label htmlFor="sourceOfIdea">
