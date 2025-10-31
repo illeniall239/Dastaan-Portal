@@ -15,16 +15,6 @@ const managementNavItems = [
     href: "/management/calendar",
     icon: "calendar",
   },
-  {
-    title: "Settings",
-    href: "/settings",
-    icon: "settings",
-  },
-  {
-    title: "Help",
-    href: "/help",
-    icon: "helpCircle",
-  },
 ];
 
 export default async function ManagementLayout({

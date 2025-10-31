@@ -45,11 +45,6 @@ const evaluatorNavItems = [
     href: "/evaluator/negotiations",
     icon: "handshake",
   },
-  {
-    title: "Settings",
-    href: "/settings",
-    icon: "settings",
-  },
 ];
 
 export default async function EvaluatorLayout({
