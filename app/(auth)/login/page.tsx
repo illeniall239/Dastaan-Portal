@@ -110,8 +110,8 @@ export default function LoginPage() {
 
       {/* Dastaan text at top right - Mobile only */}
       <div className="md:hidden absolute top-4 sm:top-8 right-4 sm:right-8 z-10 animate-scale-in">
-        <div className="flex flex-col items-end leading-none gap-1">
-          <span className="text-xl sm:text-2xl font-bold text-gray-800" style={{ fontFamily: 'Noto Nastaliq Urdu, serif' }}>داستان</span>
+        <div className="flex flex-col items-end gap-0.5">
+          <span dir="rtl" lang="ur" className="text-xl sm:text-2xl font-bold text-gray-800 leading-tight font-urdu">داستان</span>
           <span className="text-sm sm:text-base font-bold text-gray-700">Dastaan</span>
         </div>
       </div>
@@ -121,12 +121,12 @@ export default function LoginPage() {
         {/* Left side - Welcome message - Hidden on mobile below sm */}
         <div className="hidden md:flex md:w-1/2 items-center justify-center bg-gradient-to-br from-blue-50 to-orange-50 p-6 md:p-12">
           <div className="max-w-lg text-center">
-            <h1 className="text-3xl lg:text-5xl font-bold text-gray-800 mb-4 inline-block animate-typing" style={{ animationDelay: '500ms', animationDuration: '1.5s' }}>
+            <h1 className="text-3xl lg:text-5xl font-bold text-gray-800 mb-1 inline-block">
               Welcome to
             </h1>
-            <div className="flex flex-col items-center leading-none gap-3 lg:gap-4">
-              <span className="text-4xl lg:text-6xl font-bold text-gray-800 inline-block animate-typing-no-cursor" style={{ fontFamily: 'Noto Nastaliq Urdu, serif', animationDelay: '2300ms', animationDuration: '1.2s' }}>داستان</span>
-              <span className="text-2xl lg:text-4xl font-bold text-gray-700 inline-block animate-typing-no-cursor" style={{ animationDelay: '3700ms', animationDuration: '1s' }}>Dastaan</span>
+            <div className="flex flex-col items-center gap-0.5 lg:gap-1">
+              <span dir="rtl" lang="ur" className="text-4xl lg:text-6xl font-bold text-gray-800 inline-block leading-relaxed py-2 lg:py-3 font-urdu">داستان</span>
+              <span className="text-2xl lg:text-4xl font-bold text-gray-700 inline-block">Dastaan</span>
             </div>
           </div>
         </div>

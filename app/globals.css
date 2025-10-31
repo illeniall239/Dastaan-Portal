@@ -2,6 +2,25 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Self-hosted Noto Nastaliq Urdu font for consistent Urdu rendering */
+@font-face {
+  font-family: 'Noto Nastaliq Urdu';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('https://fonts.gstatic.com/s/notonastaliqurdu/v20/LhWNMxvf7DPXkNaLR5HzBZzJsNo-DvLkXPDEbO43dzXk.woff2') format('woff2');
+  unicode-range: U+0600-06FF, U+200C-200E, U+2010-2011, U+204F, U+2E41, U+FB50-FDFF, U+FE80-FEFC;
+}
+
+@font-face {
+  font-family: 'Noto Nastaliq Urdu';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('https://fonts.gstatic.com/s/notonastaliqurdu/v20/LhWNMxvf7DPXkNaLR5HzBZzJsNo-DvLkXPDEbO43dzXk.woff2') format('woff2');
+  unicode-range: U+0600-06FF, U+200C-200E, U+2010-2011, U+204F, U+2E41, U+FB50-FDFF, U+FE80-FEFC;
+}
+
 @layer base {
   :root {
     --background: 0 0% 100%;
@@ -67,6 +86,11 @@
   }
   body {
     @apply bg-background text-foreground;
+  }
+  .font-urdu {
+    font-family: 'Noto Nastaliq Urdu', Georgia, "Times New Roman", serif;
+    line-height: 1.6;
+    font-display: swap;
   }
 }
 
