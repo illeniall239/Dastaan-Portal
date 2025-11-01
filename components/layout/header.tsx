@@ -144,7 +144,7 @@ export const Header = memo(function Header({ userName, userEmail, userPosition, 
                 className="object-contain"
               />
               <div className="flex flex-col leading-none">
-                <span className="text-lg font-bold text-slate-900" style={{ fontFamily: 'Noto Nastaliq Urdu, serif' }}>داستان</span>
+                <span dir="rtl" lang="ur" className="text-lg font-bold text-slate-900 font-urdu">داستان</span>
                 <span className="text-sm font-semibold text-slate-700 -mt-1">Dastaan</span>
               </div>
             </Link>

@@ -112,7 +112,7 @@ export default function LoginPage() {
       <div className="md:hidden absolute top-4 sm:top-8 right-4 sm:right-8 z-10 animate-scale-in">
         <div className="flex flex-col items-end gap-0.5">
           <span dir="rtl" lang="ur" className="text-xl sm:text-2xl font-bold text-gray-800 leading-tight font-urdu">داستان</span>
-          <span className="text-sm sm:text-base font-bold text-gray-700">Dastaan</span>
+          <span className="text-sm sm:text-base font-bold text-gray-800">Dastaan</span>
         </div>
       </div>
 
@@ -126,7 +126,7 @@ export default function LoginPage() {
             </h1>
             <div className="flex flex-col items-center gap-0.5 lg:gap-1">
               <span dir="rtl" lang="ur" className="text-4xl lg:text-6xl font-bold text-gray-800 inline-block leading-relaxed py-2 lg:py-3 font-urdu">داستان</span>
-              <span className="text-2xl lg:text-4xl font-bold text-gray-700 inline-block">Dastaan</span>
+              <span className="text-2xl lg:text-4xl font-bold text-gray-800 inline-block">Dastaan</span>
             </div>
           </div>
         </div>

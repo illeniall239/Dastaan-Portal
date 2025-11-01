@@ -4,7 +4,12 @@
       "Bash(cat:*)",
       "mcp__ide__getDiagnostics",
       "Bash(npm run build:*)",
-      "Bash(where:*)"
+      "Bash(where:*)",
+      "Bash(git log:*)",
+      "WebFetch(domain:fonts.googleapis.com)",
+      "Bash(curl:*)",
+      "WebSearch",
+      "WebFetch(domain:gwfh.mranftl.com)"
     ],
     "deny": [],
     "ask": []

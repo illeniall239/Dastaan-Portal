@@ -26,6 +26,9 @@ export default function RootLayout({
         {/* Preconnect to Supabase project for faster TTFB */}
         <link rel="preconnect" href="https://dbqf.supabase.co" crossOrigin="anonymous" />
         <link rel="dns-prefetch" href="https://dbqf.supabase.co" />
+        {/* Preconnect to Google Fonts for faster font loading */}
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
       </head>
       <body className={inter.className}>
         <Suspense fallback={null}>
