@@ -92,7 +92,7 @@ export default function LoginPage() {
   };
 
   return (
-    <main className="flex min-h-screen flex-col">
+    <main className="flex min-h-screen flex-col animate-fade-in">
       {/* Logo at top left */}
       <div className="absolute top-4 sm:top-8 left-4 sm:left-8 z-10 animate-scale-in">
         <Image

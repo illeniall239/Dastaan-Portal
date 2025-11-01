@@ -8,7 +8,10 @@ import RouteProgress from "@/components/ui/route-progress";
 import LayoutClient from "./layout-client";
 import { Suspense } from "react";
 
-const inter = Inter({ subsets: ["latin"] });
+const inter = Inter({ 
+  subsets: ["latin"],
+  variable: '--font-inter',
+});
 
 export const metadata: Metadata = {
   title: "Dastaan Portal - Story Development System",
@@ -21,16 +24,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" className={inter.variable}>
       <head>
         {/* Preconnect to Supabase project for faster TTFB */}
         <link rel="preconnect" href="https://dbqf.supabase.co" crossOrigin="anonymous" />
         <link rel="dns-prefetch" href="https://dbqf.supabase.co" />
-        {/* Preconnect to Google Fonts for faster font loading */}
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
       </head>
-      <body className={inter.className}>
+      <body>
         <Suspense fallback={null}>
           <RouteProgress />
         </Suspense>
