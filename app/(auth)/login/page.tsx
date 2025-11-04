@@ -14,7 +14,6 @@ import { PasswordInput } from "@/components/auth/password-input";
 import { loginSchema, type LoginFormData } from "@/lib/validations/auth";
 import { toast } from "sonner";
 import { Mail } from "lucide-react";
-import { logger } from "@/lib/logger";
 
 export default function LoginPage() {
   const [loading, setLoading] = useState(false);
@@ -35,19 +34,15 @@ export default function LoginPage() {
   });
 
   const onSubmit = async (data: LoginFormData) => {
-    logger.time("🔐 Total Login Time");
     setLoading(true);
 
     try {
-      logger.time("  ⏱️ Supabase Auth");
       const { data: authData, error } = await supabase.auth.signInWithPassword({
         email: data.email,
         password: data.password,
       });
-      logger.timeEnd("  ⏱️ Supabase Auth");
 
       if (error) {
-        logger.timeEnd("🔐 Total Login Time");
         toast.error("Login failed", {
           description: error.message,
         });
@@ -58,22 +53,17 @@ export default function LoginPage() {
       if (authData.user) {
         // Set session cookie for fast navigation
         try {
-          logger.time("  ⏱️ Set Session Cookie");
           await fetch("/api/auth/session", {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
             },
           });
-          logger.timeEnd("  ⏱️ Set Session Cookie");
-          logger.dev("✅ Session cookie set successfully");
         } catch (error) {
-          logger.error("❌ Failed to set session cookie:", error);
           // Continue anyway - middleware will fallback to DB query
+          console.error("Failed to set session cookie:", error);
         }
 
-        logger.dev("🔄 Redirecting to dashboard...");
-        logger.timeEnd("🔐 Total Login Time");
         toast.success("Welcome back!", {
           description: "You have successfully logged in.",
         });
@@ -83,7 +73,6 @@ export default function LoginPage() {
         return;
       }
     } catch (error) {
-      logger.timeEnd("🔐 Total Login Time");
       toast.error("An error occurred", {
         description: "Please try again later.",
       });

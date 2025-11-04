@@ -10,7 +10,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import Link from "next/link";
-import { PlusIcon, FileTextIcon, TrendingUp, TrendingDown, Minus } from "lucide-react";
+import { PlusIcon, FileTextIcon, TrendingUp, TrendingDown, Minus, EyeIcon } from "lucide-react";
 import { getAllCallReports } from "@/lib/meetings/server";
 import { EvaluationProgressBar } from "@/components/evaluations/evaluation-progress-bar";
 import { Suspense } from "react";
@@ -199,10 +199,10 @@ async function CallReportsList() {
                     )}
 
                     <div className="space-y-2">
-                      {report.notes && (
+                      {report.logline && (
                         <div>
-                          <p className="text-sm font-medium text-muted-foreground">Notes:</p>
-                          <p className="text-sm line-clamp-2">{report.notes}</p>
+                          <p className="text-sm font-medium text-muted-foreground">Logline:</p>
+                          <p className="text-sm line-clamp-2">{report.logline}</p>
                         </div>
                       )}
                       {report.attendees && report.attendees.length > 0 && (
@@ -216,6 +216,7 @@ async function CallReportsList() {
                   <div className="mt-4 pt-4 border-t flex justify-end">
                     <Button variant="outline" size="sm" asChild>
                       <Link href={`/content-department/call-reports/${report.id}`}>
+                        <EyeIcon className="h-4 w-4 mr-2" />
                         View Details
                       </Link>
                     </Button>

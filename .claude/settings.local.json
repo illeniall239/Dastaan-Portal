@@ -9,7 +9,15 @@
       "WebFetch(domain:fonts.googleapis.com)",
       "Bash(curl:*)",
       "WebSearch",
-      "WebFetch(domain:gwfh.mranftl.com)"
+      "WebFetch(domain:gwfh.mranftl.com)",
+      "WebFetch(domain:medium.com)",
+      "WebFetch(domain:supabase.com)",
+      "WebFetch(domain:vercel.com)",
+      "Bash(npm install:*)",
+      "Bash(npx shadcn@latest add:*)",
+      "WebFetch(domain:developers.cloudflare.com)",
+      "WebFetch(domain:www.cloudflare.com)",
+      "Bash(npm uninstall:*)"
     ],
     "deny": [],
     "ask": []

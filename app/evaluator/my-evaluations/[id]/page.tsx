@@ -214,7 +214,7 @@ export default async function EvaluatorEvaluationDetailPage({ params }: { params
                     </div>
                   )}
                 </div>
-                {currentAverage !== null && currentAverage !== undefined ? (
+                {currentAverage !== null && currentAverage !== undefined && (
                   <div className={`flex flex-col items-center gap-1 px-4 py-2 rounded-lg border-2 ${getProgressScoreColor(currentAverage)}`}>
                     {getScoreIcon(currentAverage)}
                     <div className="text-center">
@@ -222,14 +222,6 @@ export default async function EvaluatorEvaluationDetailPage({ params }: { params
                         {currentAverage.toFixed(1)}
                       </div>
                       <div className="text-xs font-medium">Current Avg</div>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="flex flex-col items-center gap-1 px-4 py-2 rounded-lg border-2 bg-gray-50 border-gray-200">
-                    <Clock className="h-5 w-5 text-gray-500" />
-                    <div className="text-center">
-                      <div className="text-2xl font-bold text-gray-500">--</div>
-                      <div className="text-xs font-medium text-gray-500">No Data</div>
                     </div>
                   </div>
                 )}

@@ -45,7 +45,7 @@ const WRITERS = [
 ];
 
 // Helper to get random item
-const getRandom = <T,>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
+const getRandom = <T,>(arr: readonly T[]): T => arr[Math.floor(Math.random() * arr.length)];
 
 // Helper to get random number in range
 const randomInt = (min: number, max: number) => Math.floor(Math.random() * (max - min + 1)) + min;
@@ -817,6 +817,255 @@ export function getSampleIdeasByGenre() {
     { genre: 'Horror', count: 4 },
     { genre: 'Other', count: 3 },
   ];
+}
+
+/**
+ * Generate sample active projects
+ */
+export function getSampleActiveProjects() {
+  const statuses = ['submitted', 'in_evaluation', 'approved', 'in_negotiation', 'contracted', 'in_payment'];
+  const genres = ['Drama', 'Romance', 'Comedy', 'Action', 'Thriller', 'Fantasy', 'Documentary'];
+
+  return Array.from({ length: 24 }, (_, i) => {
+    const createdDays = randomInt(5, 180);
+    return {
+      id: `proj-${i + 1}`,
+      story_id: `ST-2025-${String(i + 1).padStart(4, '0')}`,
+      title: getRandom(DRAMA_NAMES),
+      status: getRandom(statuses),
+      genre: getRandom(genres),
+      creator_name: getRandom(WRITERS),
+      creator_id: `user-${randomInt(1, 10)}`,
+      days_active: createdDays,
+      last_update: daysAgo(randomInt(1, 30)),
+      created_at: daysAgo(createdDays),
+    };
+  });
+}
+
+/**
+ * Generate sample pending approvals
+ */
+export function getSamplePendingApprovals() {
+  const recommendations = ['strong_yes', 'yes', 'maybe', 'no'];
+  const genres = ['Drama', 'Romance', 'Comedy', 'Action', 'Thriller'];
+
+  return Array.from({ length: 12 }, (_, i) => {
+    const daysPending = randomInt(1, 45);
+    return {
+      id: `approval-${i + 1}`,
+      story_id: `ST-2025-${String(randomInt(1, 100)).padStart(4, '0')}`,
+      title: getRandom(DRAMA_NAMES),
+      genre: getRandom(genres),
+      creator_name: getRandom(WRITERS),
+      creator_id: `user-${randomInt(1, 10)}`,
+      submitted_date: daysAgo(daysPending),
+      days_pending: daysPending,
+      evaluation_score: parseFloat((randomInt(60, 95) / 10).toFixed(1)),
+      evaluation_count: randomInt(3, 8),
+      recommendation: getRandom(recommendations),
+    };
+  });
+}
+
+/**
+ * Generate sample active contracts
+ */
+export function getSampleActiveContracts() {
+  const contractStatuses = ['active', 'pending_signatures'];
+
+  return Array.from({ length: 8 }, (_, i) => {
+    const totalMilestones = randomInt(4, 8);
+    const completedMilestones = randomInt(0, totalMilestones);
+    const totalAmount = randomInt(2000000, 8000000);
+    const paidAmount = Math.floor(totalAmount * (completedMilestones / totalMilestones));
+
+    return {
+      id: `contract-${i + 1}`,
+      contract_id: `CON-2025-${String(i + 1).padStart(4, '0')}`,
+      story_title: getRandom(DRAMA_NAMES),
+      story_id: `ST-2025-${String(randomInt(1, 100)).padStart(4, '0')}`,
+      total_amount: totalAmount,
+      signed_date: daysAgo(randomInt(30, 180)),
+      status: getRandom(contractStatuses),
+      milestones_completed: completedMilestones,
+      milestones_total: totalMilestones,
+      milestone_progress: Math.round((completedMilestones / totalMilestones) * 100),
+      paid_amount: paidAmount,
+      remaining_amount: totalAmount - paidAmount,
+    };
+  });
+}
+
+/**
+ * Generate sample overdue payments
+ */
+export function getSampleOverduePayments() {
+  const milestones = ['Episode Delivery', 'Script Approval', 'Final Delivery', 'Post-Production'];
+
+  return Array.from({ length: 5 }, (_, i) => {
+    const daysOverdue = randomInt(5, 45);
+    return {
+      id: `payment-${i + 1}`,
+      payment_id: `PAY-2025-${String(i + 1).padStart(4, '0')}`,
+      story_title: getRandom(DRAMA_NAMES),
+      story_id: `ST-2025-${String(randomInt(1, 100)).padStart(4, '0')}`,
+      amount: randomInt(500000, 2000000),
+      due_date: daysAgo(daysOverdue),
+      days_overdue: daysOverdue,
+      milestone: getRandom(milestones),
+      status: 'overdue',
+      contract_id: `CON-2025-${String(randomInt(1, 20)).padStart(4, '0')}`,
+    };
+  });
+}
+
+/**
+ * Generate sample pipeline value items
+ */
+export function getSamplePipelineValue() {
+  const types = ['contract', 'negotiation'] as const;
+  const stages = ['negotiation', 'legal_review', 'contracted', 'in_payment'];
+  const statuses = ['active', 'in_progress', 'pending'];
+
+  return Array.from({ length: 18 }, (_, i) => ({
+    id: `pipeline-${i + 1}`,
+    type: getRandom(types),
+    story_id: `ST-2025-${String(randomInt(1, 100)).padStart(4, '0')}`,
+    story_title: getRandom(DRAMA_NAMES),
+    value: randomInt(1500000, 7000000),
+    status: getRandom(statuses),
+    stage: getRandom(stages),
+    last_update: daysAgo(randomInt(1, 30)),
+    created_at: daysAgo(randomInt(10, 120)),
+  }));
+}
+
+/**
+ * Generate sample weekly activities
+ */
+export function getSampleWeeklyActivities() {
+  const activityTypes = ['story', 'evaluation', 'approval', 'contract', 'payment', 'negotiation'] as const;
+  const actions = ['created', 'updated', 'submitted', 'approved', 'signed', 'paid'];
+  const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+  const now = new Date();
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const yesterdayStart = new Date(todayStart.getTime() - 24 * 60 * 60 * 1000);
+
+  return Array.from({ length: 47 }, (_, i) => {
+    const daysBack = randomInt(0, 6);
+    const timestamp = daysAgo(daysBack);
+    const timestampDate = new Date(timestamp);
+
+    let dateGroup: 'Today' | 'Yesterday' | 'Earlier This Week' = 'Earlier This Week';
+    if (timestampDate >= todayStart) {
+      dateGroup = 'Today';
+    } else if (timestampDate >= yesterdayStart) {
+      dateGroup = 'Yesterday';
+    }
+
+    const hoursAgo = Math.floor((now.getTime() - timestampDate.getTime()) / (1000 * 60 * 60));
+    const timeAgo = hoursAgo < 1 ? 'Just now' : hoursAgo < 24 ? `${hoursAgo}h ago` : `${daysBack}d ago`;
+
+    return {
+      id: `activity-${i + 1}`,
+      action: getRandom(actions),
+      entityType: getRandom(activityTypes),
+      entityName: getRandom(DRAMA_NAMES),
+      entityId: `entity-${randomInt(1, 100)}`,
+      performedBy: getRandom(WRITERS),
+      performedById: `user-${randomInt(1, 10)}`,
+      timestamp,
+      details: {},
+      dayOfWeek: getRandom(daysOfWeek),
+      dateGroup,
+      timeAgo,
+    };
+  });
+}
+
+/**
+ * Generate sample active ideas details
+ */
+export function getSampleActiveIdeasDetails(genre?: string) {
+  const allGenres = ['Drama', 'Soap', 'Comedy', 'Action', 'Thriller', 'Romance', 'Fantasy', 'Documentary', 'Horror', 'Sci-Fi', 'Other'];
+  const categories = ['serial', 'telefilm', 'film'];
+  const statuses = ['draft', 'ready_for_evaluation', 'in_review'];
+  const loglines = [
+    'A heartwarming story of love and sacrifice',
+    'An intense thriller about family secrets',
+    'A romantic journey through time',
+    'A dramatic tale of ambition and betrayal',
+    'A comedy about modern relationships',
+  ];
+
+  let ideas = Array.from({ length: 35 }, (_, i) => {
+    const daysActive = randomInt(5, 60);
+    return {
+      id: `idea-${i + 1}`,
+      call_report_id: `CR-2025-${String(i + 1).padStart(4, '0')}`,
+      working_title: getRandom(DRAMA_NAMES),
+      writer_name: getRandom(WRITERS),
+      genre: getRandom(allGenres),
+      category: getRandom(categories),
+      status: getRandom(statuses),
+      meeting_date: daysAgo(randomInt(5, 45)),
+      days_active: daysActive,
+      logline: getRandom(loglines),
+      created_at: daysAgo(daysActive),
+    };
+  });
+
+  // Filter by genre if provided
+  if (genre && genre !== 'all') {
+    ideas = ideas.filter(idea => idea.genre === genre);
+  }
+
+  return ideas;
+}
+
+/**
+ * Generate sample archive details
+ */
+export function getSampleArchiveDetails(genre?: string) {
+  const allGenres = ['Drama', 'Soap', 'Comedy', 'Action', 'Thriller', 'Romance', 'Fantasy', 'Documentary'];
+  const types = ['story_archive', 'call_report_rejection'] as const;
+  const categories = ['serial', 'telefilm', 'film'];
+  const rejectionStages = ['evaluation', 'approval', 'negotiation', 'legal_review'];
+  const rejectionReasons = [
+    'Low evaluation score - not meeting quality standards',
+    'Budget constraints',
+    'Market saturation in this genre',
+    'Creative differences',
+    'Timeline conflicts',
+    'Failed to meet production requirements',
+  ];
+
+  let archives = Array.from({ length: 25 }, (_, i) => {
+    const type = getRandom(types);
+    const daysInSystem = randomInt(10, 120);
+
+    return {
+      id: `archive-${i + 1}`,
+      type,
+      title: getRandom(DRAMA_NAMES),
+      writer_name: getRandom(WRITERS),
+      genre: getRandom(allGenres),
+      rejection_reason: getRandom(rejectionReasons),
+      rejection_date: daysAgo(randomInt(5, 90)),
+      days_in_system: daysInSystem,
+      average_score: type === 'call_report_rejection' ? parseFloat((randomInt(20, 49) / 10).toFixed(2)) : undefined,
+      rejection_stage: type === 'story_archive' ? getRandom(rejectionStages) : undefined,
+      category: getRandom(categories),
+    };
+  });
+
+  // Filter by genre if provided
+  if (genre && genre !== 'all') {
+    archives = archives.filter(archive => archive.genre === genre);
+  }
+
+  return archives;
 }
 
 /**

@@ -99,24 +99,57 @@ export async function getCriticalAlerts(): Promise<CriticalAlert[]> {
       }
     });
 
-    // Check for bottleneck stages
-    const statusCounts: Record<string, number> = {};
+    // Check for bottleneck stages (proper logic: detect stagnation)
+    // Define stage-specific thresholds for "stagnant" stories
+    const stagnationThresholds: Record<string, number> = {
+      'in_evaluation': 10,      // 10 days without update = stagnant
+      'in_negotiation': 21,     // 21 days without update = stagnant
+      'approved': 14,           // 14 days without update = stagnant
+      'contracted': 30,         // 30 days without update = stagnant
+      'in_payment': 45,         // 45 days without update = stagnant
+      'default': 14             // Default for other stages
+    };
+
+    // Group stories by status and identify stagnant ones
+    const stagnantByStage: Record<string, { stagnant: any[], total: number }> = {};
+
     stories.forEach(story => {
-      statusCounts[story.status] = (statusCounts[story.status] || 0) + 1;
+      if (!stagnantByStage[story.status]) {
+        stagnantByStage[story.status] = { stagnant: [], total: 0 };
+      }
+      stagnantByStage[story.status].total++;
+
+      const lastUpdate = new Date(story.updated_at);
+      const daysSinceUpdate = Math.floor((now.getTime() - lastUpdate.getTime()) / (1000 * 60 * 60 * 24));
+      const threshold = stagnationThresholds[story.status] || stagnationThresholds.default;
+
+      if (daysSinceUpdate > threshold) {
+        stagnantByStage[story.status].stagnant.push(story);
+      }
     });
 
-    const totalActive = stories.length;
-    Object.entries(statusCounts).forEach(([status, count]) => {
-      // If more than 30% of active stories are in one stage, it's a bottleneck
-      if (count > totalActive * 0.3) {
+    // Create bottleneck alerts for stages with significant stagnation
+    Object.entries(stagnantByStage).forEach(([status, data]) => {
+      const stagnantCount = data.stagnant.length;
+      const totalInStage = data.total;
+      const stagnantPercent = (stagnantCount / totalInStage) * 100;
+
+      // Bottleneck criteria: ≥5 stagnant stories OR ≥30% of stories in that stage are stagnant
+      if (stagnantCount >= 5 || stagnantPercent >= 30) {
+        const threshold = stagnationThresholds[status] || stagnationThresholds.default;
+
         alerts.push({
           id: `bottleneck-${status}`,
           type: 'bottleneck',
-          severity: 'warning',
-          title: `Bottleneck detected: ${status}`,
-          description: `${count} stories (${((count/totalActive)*100).toFixed(0)}%) are stuck in ${status} stage`,
+          severity: stagnantCount >= 10 ? 'critical' : 'warning',
+          title: `Pipeline bottleneck: ${status}`,
+          description: `${stagnantCount} of ${totalInStage} stories in ${status} are stagnant (>${threshold} days without update)`,
           affectedEntity: status,
           entityId: status,
+          daysDelayed: Math.max(...data.stagnant.map(s => {
+            const lastUpdate = new Date(s.updated_at);
+            return Math.floor((now.getTime() - lastUpdate.getTime()) / (1000 * 60 * 60 * 24));
+          })),
           createdAt: now.toISOString(),
         });
       }

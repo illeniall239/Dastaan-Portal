@@ -37,7 +37,7 @@ export function EvaluationProgressBar({
         />
         {/* Progress text overlay */}
         <div className="absolute inset-0 flex items-center justify-center">
-          <span className="text-xs font-bold text-white mix-blend-difference">
+          <span className="text-xs font-bold text-white">
             {internalCompleted}/{internalRequired}
           </span>
         </div>

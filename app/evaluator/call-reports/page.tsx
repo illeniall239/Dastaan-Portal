@@ -204,12 +204,6 @@ async function CallReportsList() {
                           <p className="text-sm line-clamp-2">{report.logline}</p>
                         </div>
                       )}
-                      {report.usp && (
-                        <div>
-                          <p className="text-sm font-medium text-muted-foreground">USP:</p>
-                          <p className="text-sm">{report.usp}</p>
-                        </div>
-                      )}
                       {report.attendees && report.attendees.length > 0 && (
                         <div>
                           <p className="text-sm font-medium text-muted-foreground">Attendees:</p>

@@ -1,8 +1,11 @@
 "use client";
 
+import { useState } from "react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Lightbulb } from "lucide-react";
+import { DrillDownModal, DrillDownData } from "@/components/management/drill-down-modal";
+import type { ActiveIdeaDetail } from "@/lib/management/active-ideas-details";
 
 interface IdeasByGenreChartProps {
   data: {
@@ -27,9 +30,74 @@ const GENRE_COLORS: Record<string, string> = {
 
 export function IdeasByGenreChart({ data }: IdeasByGenreChartProps) {
   const totalIdeas = data.reduce((sum, item) => sum + item.count, 0);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [modalData, setModalData] = useState<DrillDownData | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  const handleBarClick = async (barData: any) => {
+    const genre = barData.genre;
+    setLoading(true);
+
+    try {
+      // Check if we should use sample data from URL params
+      const searchParams = new URLSearchParams(window.location.search);
+      const useSampleData = searchParams.get('sample') === 'true';
+      const url = `/api/management/active-ideas-details?genre=${encodeURIComponent(genre)}${useSampleData ? '&sample=true' : ''}`;
+
+      const response = await fetch(url);
+      const result = await response.json();
+
+      const details: ActiveIdeaDetail[] = result.details || [];
+
+      // Transform data for modal
+      setModalData({
+        title: `${genre} - Active Story Ideas`,
+        subtitle: `${details.length} active call reports awaiting evaluation`,
+        type: "table",
+        data: details,
+        columns: [
+          { key: "call_report_id", label: "Call Report ID" },
+          { key: "working_title", label: "Working Title" },
+          { key: "writer_name", label: "Writer Name" },
+          { key: "genre", label: "Genre" },
+          {
+            key: "category",
+            label: "Category",
+            format: (value: string) => value?.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) || 'N/A'
+          },
+          {
+            key: "status",
+            label: "Status",
+            format: (value: string) => value?.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
+          },
+          {
+            key: "meeting_date",
+            label: "Meeting Date",
+            format: (value: string) => new Date(value).toLocaleDateString()
+          },
+          {
+            key: "days_active",
+            label: "Days Active",
+            format: (value: number) => `${value} days`
+          },
+          {
+            key: "logline",
+            label: "Logline",
+            format: (value: string | null) => value ? (value.length > 50 ? value.substring(0, 50) + '...' : value) : 'N/A'
+          },
+        ]
+      });
+      setModalOpen(true);
+    } catch (error) {
+      console.error('Error fetching active ideas details:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
-    <Card>
+    <>
+      <Card>
       <CardHeader>
         <div className="flex items-center justify-between">
           <div>
@@ -78,6 +146,8 @@ export function IdeasByGenreChart({ data }: IdeasByGenreChartProps) {
                   dataKey="count"
                   radius={[8, 8, 0, 0]}
                   maxBarSize={60}
+                  onClick={handleBarClick}
+                  cursor="pointer"
                 >
                   {data.map((entry, index) => (
                     <Cell
@@ -105,9 +175,21 @@ export function IdeasByGenreChart({ data }: IdeasByGenreChartProps) {
                 </div>
               ))}
             </div>
+            {loading && (
+              <div className="mt-4 text-center text-sm text-muted-foreground">
+                Loading active ideas details...
+              </div>
+            )}
           </>
         )}
       </CardContent>
     </Card>
+
+    <DrillDownModal
+      isOpen={modalOpen}
+      onClose={() => setModalOpen(false)}
+      data={modalData}
+    />
+    </>
   );
 }

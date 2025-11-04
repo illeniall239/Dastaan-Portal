@@ -1,8 +1,11 @@
 "use client";
 
+import { useState } from "react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Archive } from "lucide-react";
+import { DrillDownModal, DrillDownData } from "@/components/management/drill-down-modal";
+import type { ArchiveDetail } from "@/lib/management/archive-details";
 
 interface ArchiveGenreChartProps {
   data: {
@@ -27,9 +30,71 @@ const GENRE_COLORS: Record<string, string> = {
 
 export function ArchiveGenreChart({ data }: ArchiveGenreChartProps) {
   const totalArchived = data.reduce((sum, item) => sum + item.count, 0);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [modalData, setModalData] = useState<DrillDownData | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  const handleBarClick = async (barData: any) => {
+    const genre = barData.genre;
+    setLoading(true);
+
+    try {
+      // Check if we should use sample data from URL params
+      const searchParams = new URLSearchParams(window.location.search);
+      const useSampleData = searchParams.get('sample') === 'true';
+      const url = `/api/management/archive-details?genre=${encodeURIComponent(genre)}${useSampleData ? '&sample=true' : ''}`;
+
+      const response = await fetch(url);
+      const result = await response.json();
+
+      const details: ArchiveDetail[] = result.details || [];
+
+      // Transform data for modal
+      setModalData({
+        title: `${genre} - Archived/Rejected Stories`,
+        subtitle: `${details.length} total (${details.filter(d => d.type === 'story_archive').length} story archives, ${details.filter(d => d.type === 'call_report_rejection').length} call report rejections)`,
+        type: "table",
+        data: details,
+        columns: [
+          {
+            key: "type",
+            label: "Type",
+            format: (value: string) => value === 'story_archive' ? 'Story Archive' : 'Call Report Rejection'
+          },
+          { key: "title", label: "Title" },
+          { key: "writer_name", label: "Writer" },
+          { key: "genre", label: "Genre" },
+          { key: "category", label: "Category", format: (value: string) => value?.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) || 'N/A' },
+          {
+            key: "rejection_date",
+            label: "Rejection Date",
+            format: (value: string) => new Date(value).toLocaleDateString()
+          },
+          {
+            key: "days_in_system",
+            label: "Days in System",
+            format: (value: number | null) => value !== null ? `${value} days` : 'N/A'
+          },
+          {
+            key: "average_score",
+            label: "Score",
+            format: (value: number | undefined) => value !== undefined ? value.toFixed(2) : 'N/A'
+          },
+          { key: "rejection_stage", label: "Stage", format: (value: string) => value || 'N/A' },
+          { key: "rejection_reason", label: "Reason" },
+        ]
+      });
+      setModalOpen(true);
+    } catch (error) {
+      console.error('Error fetching archive details:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
-    <Card>
+    <>
+      <Card>
       <CardHeader>
         <div className="flex items-center justify-between">
           <div>
@@ -71,6 +136,8 @@ export function ArchiveGenreChart({ data }: ArchiveGenreChartProps) {
               dataKey="count"
               radius={[8, 8, 0, 0]}
               maxBarSize={60}
+              onClick={handleBarClick}
+              cursor="pointer"
             >
               {data.map((entry, index) => (
                 <Cell
@@ -98,7 +165,19 @@ export function ArchiveGenreChart({ data }: ArchiveGenreChartProps) {
             </div>
           ))}
         </div>
+        {loading && (
+          <div className="mt-4 text-center text-sm text-muted-foreground">
+            Loading archive details...
+          </div>
+        )}
       </CardContent>
     </Card>
+
+    <DrillDownModal
+      isOpen={modalOpen}
+      onClose={() => setModalOpen(false)}
+      data={modalData}
+    />
+    </>
   );
 }

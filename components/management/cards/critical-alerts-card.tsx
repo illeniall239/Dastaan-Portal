@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { AlertTriangle, AlertCircle, Info, CheckCircle2, ChevronRight } from "lucide-react";
@@ -142,7 +143,9 @@ export function CriticalAlertsCard({ alerts }: CriticalAlertsCardProps) {
         {alerts.length > 10 && (
           <p className="text-center text-sm text-muted-foreground mt-4">
             Showing 10 of {alerts.length} alerts.{' '}
-            <span className="text-blue-600 hover:underline cursor-pointer">View all →</span>
+            <Link href="/management/alerts" className="text-blue-600 hover:underline cursor-pointer">
+              View all →
+            </Link>
           </p>
         )}
       </CardContent>

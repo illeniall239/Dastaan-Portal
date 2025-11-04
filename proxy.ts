@@ -51,7 +51,7 @@ export async function proxy(request: NextRequest) {
     "script-src 'self' 'unsafe-inline' 'unsafe-eval' *.supabase.co",
     "style-src 'self' 'unsafe-inline' fonts.googleapis.com",
     "img-src 'self' data: blob: *.supabase.co",
-    "font-src 'self' fonts.gstatic.com",
+    "font-src 'self' fonts.googleapis.com fonts.gstatic.com",
     "connect-src 'self' *.supabase.co",
     "frame-ancestors 'none'",
   ].join('; ');

@@ -97,12 +97,18 @@ export async function getExecutiveSummary(): Promise<ExecutiveSummary> {
       activeContractsRes,
       auditRes
     ] = await Promise.all([
-      // Total active projects (not archived/rejected)
+      // Total active projects (not archived/rejected, only call reports not scheduled meetings)
       supabase
         .from("stories")
-        .select("*", { count: "exact", head: true })
+        .select(`
+          *,
+          call_reports!inner (
+            meeting_type
+          )
+        `, { count: "exact", head: true })
         .neq("status", "archived")
-        .neq("status", "rejected"),
+        .neq("status", "rejected")
+        .eq("call_reports.meeting_type", "call_report"),
 
       // Pending negotiations
       supabase

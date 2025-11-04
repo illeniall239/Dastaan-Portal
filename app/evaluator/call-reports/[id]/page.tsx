@@ -164,12 +164,40 @@ export default async function CallReportDetailPage({ params }: { params: Promise
               <p className="text-sm text-slate-900 leading-relaxed">{report.logline}</p>
             </div>
 
-            <div className="pt-3 border-t border-slate-100">
-              <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">USP (Unique Selling Point)</h3>
-              <p className="text-sm text-slate-900 leading-relaxed">{report.usp}</p>
-            </div>
+            {report.short_synopsis && (
+              <div className="pt-3 border-t border-slate-100">
+                <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Short Synopsis</h3>
+                <p className="text-sm text-slate-900 leading-relaxed whitespace-pre-wrap">{report.short_synopsis}</p>
+              </div>
+            )}
 
-            
+            {report.episodic_synopsis && (
+              <div className="pt-3 border-t border-slate-100">
+                <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Episodic Synopsis</h3>
+                <p className="text-sm text-slate-900 leading-relaxed whitespace-pre-wrap">{report.episodic_synopsis}</p>
+              </div>
+            )}
+
+            <div className="pt-3 border-t border-slate-100 grid grid-cols-2 gap-x-8 gap-y-3 text-sm">
+              {report.genre && (
+                <div>
+                  <p className="text-slate-500 font-medium">Genre</p>
+                  <p className="text-slate-900 mt-0.5">{report.genre}</p>
+                </div>
+              )}
+              {report.theme && (
+                <div>
+                  <p className="text-slate-500 font-medium">Theme</p>
+                  <p className="text-slate-900 mt-0.5">{report.theme}</p>
+                </div>
+              )}
+              {report.slot && (
+                <div>
+                  <p className="text-slate-500 font-medium">Target Slot</p>
+                  <p className="text-slate-900 mt-0.5">{report.slot}</p>
+                </div>
+              )}
+            </div>
           </CardContent>
         </Card>
 
@@ -200,18 +228,6 @@ export default async function CallReportDetailPage({ params }: { params: Promise
             </CardContent>
           </Card>
         )}
-
-        {/* Status */}
-        <Card className="border border-slate-200">
-          <CardHeader className="pb-3 border-b border-slate-100">
-            <CardTitle className="text-base font-semibold text-slate-900">Status</CardTitle>
-          </CardHeader>
-          <CardContent className="pt-4">
-            <span className="inline-flex items-center px-3 py-1.5 rounded-md text-xs font-medium bg-slate-100 text-slate-700 border border-slate-200 capitalize">
-              {report.status}
-            </span>
-          </CardContent>
-        </Card>
 
         {/* Attachments */}
         {attachments.length > 0 && (
