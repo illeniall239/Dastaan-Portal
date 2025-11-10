@@ -96,7 +96,7 @@ export default function PipelineValuePage() {
       type: "select",
       options: [
         { label: "Contracts", value: "contract" },
-        { label: "Negotiations", value: "negotiation" },
+        { label: "Contract Terms", value: "negotiation" },
       ],
     },
     {
@@ -186,7 +186,7 @@ export default function PipelineValuePage() {
     if (row.type === 'contract') {
       router.push(`/management/contracts/${row.id}`);
     } else {
-      router.push(`/management/negotiations/${row.id}`);
+      router.push(`/management/contract-terms/${row.id}`);
     }
   };
 

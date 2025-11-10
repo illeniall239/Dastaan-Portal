@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
+import { logger } from "@/lib/logger";
 import { createClient } from "@/lib/supabase/server";
 import { z } from "zod";
 import { applyRateLimit, addRateLimitHeaders, withCors } from "@/lib/api-middleware";
-import { RateLimitPresets } from "@/lib/rate-limit";
+import { RateLimitPresets } from "@/lib/rate-limit-redis";
 
 const statusUpdateSchema = z.object({
   status: z.enum(["active", "inactive"]),

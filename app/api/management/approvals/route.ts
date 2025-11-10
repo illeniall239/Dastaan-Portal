@@ -1,11 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getPendingApprovals, getPendingApprovalsStats } from '@/lib/management/pending-approvals';
+import { logger } from "@/lib/logger";
+import { ApprovalAnalyticsService } from '@/lib/services/analytics';
 import { getSamplePendingApprovals } from '@/lib/management/sample-data';
+import { approvalsQuerySchema } from '@/lib/validations/management-filters';
 
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
-    const useSampleData = searchParams.get('sample') === 'true';
+    const rawQuery = {
+      sample: searchParams.get('sample') || undefined,
+    };
+
+    // Validate query parameters
+    const validation = approvalsQuerySchema.safeParse(rawQuery);
+    if (!validation.success) {
+      return NextResponse.json(
+        { error: "Invalid query parameters", details: validation.error.format() },
+        { status: 400 }
+      );
+    }
+
+    const useSampleData = validation.data.sample === true;
 
     if (useSampleData) {
       const sampleApprovals = getSamplePendingApprovals();
@@ -34,9 +49,10 @@ export async function GET(request: NextRequest) {
       });
     }
 
+    const service = new ApprovalAnalyticsService('server');
     const [approvals, stats] = await Promise.all([
-      getPendingApprovals(),
-      getPendingApprovalsStats(),
+      service.getPendingApprovals(),
+      service.getPendingApprovalsStats(),
     ]);
 
     return NextResponse.json({
@@ -44,7 +60,7 @@ export async function GET(request: NextRequest) {
       stats,
     });
   } catch (error) {
-    console.error('Error in approvals API:', error);
+    logger.error(`Error in approvals API: ${error instanceof Error ? error.message : String(error)}`);
     return NextResponse.json(
       { error: 'Failed to fetch pending approvals' },
       { status: 500 }

@@ -17,7 +17,17 @@
       "Bash(npx shadcn@latest add:*)",
       "WebFetch(domain:developers.cloudflare.com)",
       "WebFetch(domain:www.cloudflare.com)",
-      "Bash(npm uninstall:*)"
+      "Bash(npm uninstall:*)",
+      "Bash(test:*)",
+      "Bash(find:*)",
+      "Bash(move \"app\\evaluator\\term-sheet\" \"app\\evaluator\\content-delivery\")",
+      "Bash(move \"app\\content-department\\term-sheet\" \"app\\content-department\\content-delivery\")",
+      "Bash(move \"components\\term-sheet\" \"components\\content-delivery\")",
+      "Bash(move \"lib\\term-sheet\" \"lib\\content-delivery\")",
+      "Bash(move \"app\\api\\term-sheet\" \"app\\api\\content-delivery\")",
+      "Bash(npx tsc:*)",
+      "Bash(npm run test:*)",
+      "Bash(npm run test:coverage:*)"
     ],
     "deny": [],
     "ask": []

@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { setUserSession } from "@/lib/session";
 import { logger } from "@/lib/logger";
 import { applyRateLimit, addRateLimitHeaders, withCors } from "@/lib/api-middleware";
-import { RateLimitPresets } from "@/lib/rate-limit";
+import { RateLimitPresets } from "@/lib/rate-limit-redis";
 
 /**
  * POST /api/auth/session

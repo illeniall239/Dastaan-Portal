@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAllEvaluatorStats } from "@/lib/management/evaluator-performance";
 import { applyRateLimit } from "@/lib/api-middleware";
-import { RateLimitPresets } from "@/lib/rate-limit";
+import { RateLimitPresets } from "@/lib/rate-limit-redis";
+import { evaluatorStatsDateSchema } from "@/lib/validations/date-filters";
+import { logger } from "@/lib/logger";
 
 export async function GET(request: NextRequest) {
   // Apply rate limiting
@@ -12,34 +14,22 @@ export async function GET(request: NextRequest) {
 
   try {
     const searchParams = request.nextUrl.searchParams;
-    const fromParam = searchParams.get("from");
-    const toParam = searchParams.get("to");
+    const rawQuery = {
+      from: searchParams.get("from") || undefined,
+      to: searchParams.get("to") || undefined,
+    };
 
-    // Parse dates if provided
-    let fromDate: Date | undefined;
-    let toDate: Date | undefined;
-
-    if (fromParam) {
-      fromDate = new Date(fromParam);
-      // Validate date
-      if (isNaN(fromDate.getTime())) {
-        return NextResponse.json(
-          { error: "Invalid 'from' date format" },
-          { status: 400 }
-        );
-      }
+    // Validate query parameters
+    const validation = evaluatorStatsDateSchema.safeParse(rawQuery);
+    if (!validation.success) {
+      return NextResponse.json(
+        { error: "Invalid query parameters", details: validation.error.format() },
+        { status: 400 }
+      );
     }
 
-    if (toParam) {
-      toDate = new Date(toParam);
-      // Validate date
-      if (isNaN(toDate.getTime())) {
-        return NextResponse.json(
-          { error: "Invalid 'to' date format" },
-          { status: 400 }
-        );
-      }
-    }
+    const fromDate = validation.data.from;
+    const toDate = validation.data.to;
 
     // Fetch evaluator stats with optional date filtering
     const stats = await getAllEvaluatorStats(fromDate, toDate);
@@ -48,12 +38,12 @@ export async function GET(request: NextRequest) {
       success: true,
       stats,
       filter: {
-        from: fromParam || null,
-        to: toParam || null,
+        from: fromDate ? fromDate.toISOString().split('T')[0] : null,
+        to: toDate ? toDate.toISOString().split('T')[0] : null,
       },
     });
   } catch (error) {
-    console.error("Error fetching evaluator stats:", error);
+    logger.error(`Error fetching evaluator stats: ${error instanceof Error ? error.message : String(error)}`);
     return NextResponse.json(
       { error: "Failed to fetch evaluator stats" },
       { status: 500 }

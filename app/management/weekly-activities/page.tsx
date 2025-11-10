@@ -28,7 +28,7 @@ const activityIcons: Record<ActivityType, React.ElementType> = {
   approval: CheckCircle,
   contract: FileSignature,
   payment: DollarSign,
-  negotiation: Handshake,
+  contractTerm: Handshake,
 };
 
 // Color mapping for activity type badges
@@ -38,7 +38,7 @@ const activityColors: Record<ActivityType, string> = {
   approval: "bg-green-100 text-green-700 border-green-300",
   contract: "bg-indigo-100 text-indigo-700 border-indigo-300",
   payment: "bg-emerald-100 text-emerald-700 border-emerald-300",
-  negotiation: "bg-yellow-100 text-yellow-700 border-yellow-300",
+  contractTerm: "bg-yellow-100 text-yellow-700 border-yellow-300",
 };
 
 export default function WeeklyActivitiesPage() {
@@ -48,7 +48,7 @@ export default function WeeklyActivitiesPage() {
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState<ActivityStats>({
     total: 0,
-    byType: { story: 0, evaluation: 0, approval: 0, contract: 0, payment: 0, negotiation: 0 },
+    byType: { story: 0, evaluation: 0, approval: 0, contract: 0, payment: 0, contractTerm: 0 },
     byDay: {},
     topPerformers: [],
     mostActiveDay: 'N/A',
@@ -76,7 +76,7 @@ export default function WeeklyActivitiesPage() {
         setActivities(data.activities || []);
         setStats(data.stats || {
           total: 0,
-          byType: { story: 0, evaluation: 0, approval: 0, contract: 0, payment: 0, negotiation: 0 },
+          byType: { story: 0, evaluation: 0, approval: 0, contract: 0, payment: 0, contractTerm: 0 },
           byDay: {},
           topPerformers: [],
           mostActiveDay: 'N/A',
@@ -128,7 +128,7 @@ export default function WeeklyActivitiesPage() {
   }, [filters, activities]);
 
   // Get unique values for filter dropdowns
-  const uniqueActivityTypes: ActivityType[] = ['story', 'evaluation', 'approval', 'contract', 'payment', 'negotiation'];
+  const uniqueActivityTypes: ActivityType[] = ['story', 'evaluation', 'approval', 'contract', 'payment', 'contractTerm'];
   const uniquePerformers = Array.from(new Set(activities.map(a => a.performedBy))).filter(p => p !== 'System');
   const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 

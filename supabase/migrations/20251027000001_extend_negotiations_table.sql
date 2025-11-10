@@ -1,5 +1,5 @@
 -- =====================================================
--- Extend Negotiations Table for Term Sheet Feature
+-- Extend Negotiations Table for Content Delivery Feature
 -- =====================================================
 -- Adds fields for: genre, episodes, time slot, rate ranges,
 -- delivery schedule, and project start date

@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server';
 
-export type ActivityType = 'story' | 'evaluation' | 'approval' | 'contract' | 'payment' | 'negotiation';
+export type ActivityType = 'story' | 'evaluation' | 'approval' | 'contract' | 'payment' | 'contractTerm';
 
 export interface WeeklyActivity {
   id: string;
@@ -197,25 +197,25 @@ export async function getWeeklyActivities(): Promise<WeeklyActivity[]> {
         });
       });
 
-      // Fetch recent negotiations
-      const { data: negotiations } = await supabase
+      // Fetch recent contract terms
+      const { data: contractTerms } = await supabase
         .from('negotiations')
         .select('id, negotiation_id, status, created_at, agreed_price, created_by:users!negotiations_created_by_fkey(id, name)')
         .gte('created_at', sevenDaysAgo.toISOString())
         .order('created_at', { ascending: false });
 
-      (negotiations || []).forEach(negotiation => {
-        const timestamp = new Date(negotiation.created_at);
+      (contractTerms || []).forEach(contractTerm => {
+        const timestamp = new Date(contractTerm.created_at);
         activities.push({
-          id: `negotiation-${negotiation.id}`,
+          id: `contractTerm-${contractTerm.id}`,
           action: 'created',
-          entityType: 'negotiation',
-          entityName: negotiation.negotiation_id || 'Negotiation',
-          entityId: negotiation.id,
-          performedBy: (negotiation.created_by as any)?.name || 'Unknown',
-          performedById: (negotiation.created_by as any)?.id || '',
-          timestamp: negotiation.created_at,
-          details: { status: negotiation.status, agreed_price: negotiation.agreed_price },
+          entityType: 'contractTerm',
+          entityName: contractTerm.negotiation_id || 'Contract Term',
+          entityId: contractTerm.id,
+          performedBy: (contractTerm.created_by as any)?.name || 'Unknown',
+          performedById: (contractTerm.created_by as any)?.id || '',
+          timestamp: contractTerm.created_at,
+          details: { status: contractTerm.status, agreed_price: contractTerm.agreed_price },
           dayOfWeek: timestamp.toLocaleDateString('en-US', { weekday: 'long' }),
           dateGroup: getDateGroup(timestamp, todayStart, yesterdayStart),
           timeAgo: formatTimeAgo(timestamp),
@@ -284,7 +284,7 @@ export async function getWeeklyActivityStats(): Promise<ActivityStats> {
       approval: 0,
       contract: 0,
       payment: 0,
-      negotiation: 0,
+      contractTerm: 0,
     };
 
     activities.forEach(activity => {
@@ -342,7 +342,7 @@ export async function getWeeklyActivityStats(): Promise<ActivityStats> {
     console.error('Error calculating activity stats:', error);
     return {
       total: 0,
-      byType: { story: 0, evaluation: 0, approval: 0, contract: 0, payment: 0, negotiation: 0 },
+      byType: { story: 0, evaluation: 0, approval: 0, contract: 0, payment: 0, contractTerm: 0 },
       byDay: {},
       topPerformers: [],
       mostActiveDay: 'N/A',
@@ -372,7 +372,7 @@ function normalizeEntityType(entityType: string): ActivityType {
   if (normalized.includes('approval') || normalized.includes('one_liner')) return 'approval';
   if (normalized.includes('contract')) return 'contract';
   if (normalized.includes('payment')) return 'payment';
-  if (normalized.includes('negotiat')) return 'negotiation';
+  if (normalized.includes('negotiat')) return 'contractTerm';
 
   // Default to story if unknown
   return 'story';

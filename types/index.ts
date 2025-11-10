@@ -98,6 +98,7 @@ export interface CallReport {
   next_steps?: string;
   status: "draft" | "ready_for_evaluation" | "in_review";
   evaluation_status?: EvaluationStatus;
+  overall_rating?: number; // Initial assessment score (1-10) from content manager
   average_score?: number;
   current_average_score?: number;
   required_evaluators?: number; // Default: 20
@@ -251,6 +252,8 @@ export interface EpisodicEvaluation {
   pages_score: number; // +5 or -5
   scenes_score: number; // +5 or -5
   events: (string | EventItem)[]; // Array of event descriptions or objects with title, description, and impact
+  // Summary and Analysis
+  summary_analysis?: string; // Free-form text field for evaluator's summary and analysis
   // Evaluation Scores (1-10)
   conflict_of_content_score: number;
   characterization_score: number;
@@ -274,6 +277,7 @@ export interface EpisodicEvaluationDraft {
     noOfPages: number;
     noOfScenes: number;
     events: any[];
+    summaryAnalysis?: string;
     conflictScore: number;
     characterizationScore: number;
     progressionScore: number;
@@ -290,4 +294,161 @@ export interface EpisodicEvaluationWithDetails extends EpisodicEvaluation {
     email: string;
   };
   episode?: EpisodeWithDetails;
+}
+
+// Detailed One-Liner types
+export interface DetailedOneLiner {
+  id: string;
+  call_report_id: string;
+  preamble: string;
+  plot: string;
+  emotional_arena: string;
+  creed_conflict: string;
+  new_element: string;
+  emotional_core_resolution: string;
+  production_optimization_notes?: string;
+  net_outcome?: string;
+  conclusion_recommendation?: string;
+  created_by: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface NarrativeBreakdownItem {
+  id: string;
+  detailed_one_liner_id: string;
+  story_stream: string;
+  percentage: number;
+  narrative_purpose: string;
+  sort_order: number;
+  created_at: string;
+}
+
+export interface EventPlanningItem {
+  id: string;
+  detailed_one_liner_id: string;
+  episode_range: string;
+  event_scale: string;
+  on_screen_activity: string;
+  approx_frequency: string;
+  budget_category: 'High' | 'Medium' | 'Low';
+  sort_order: number;
+  created_at: string;
+}
+
+export interface PotentialWeaknessRiskItem {
+  id: string;
+  detailed_one_liner_id: string;
+  issue: string;
+  explanation_risk_detail: string;
+  impact: string;
+  sort_order: number;
+  created_at: string;
+}
+
+export interface DetailedOneLinerWithDetails extends DetailedOneLiner {
+  call_report?: {
+    call_report_id: string;
+    working_title: string;
+    writer_name: string;
+  };
+  narrative_breakdown_items?: NarrativeBreakdownItem[];
+  event_planning_items?: EventPlanningItem[];
+  potential_weaknesses_risks_items?: PotentialWeaknessRiskItem[];
+  created_by_user?: {
+    name: string;
+    email: string;
+  };
+}
+
+// Content Delivery types
+export interface ContentDeliveryItem {
+  id: string;
+  negotiation_id: string;
+  story_id: string;
+  project_name: string;
+  writer_name: string;
+  genre: string;
+  contract_type: string;
+  time_slot: string | null;
+  total_episodes: number;
+  episodes_received: number;
+  episodes_due: number;
+  completion_percentage: number;
+  project_start_date: string | null;
+  expected_completion_date: string | null;
+  status: string;
+  days_active: number;
+  agreed_price: number | null;
+  currency: string | null;
+  created_at: string;
+}
+
+export interface ContentDeliveryStats {
+  total_projects: number;
+  total_episodes_expected: number;
+  total_episodes_received: number;
+  average_completion: number;
+  total_agreed_value: number;
+  average_agreed_price: number;
+}
+
+// Pipeline Stage types
+export type StageStatus = 'completed' | 'in_progress' | 'pending';
+
+export interface PipelineDocument {
+  type: 'contract' | 'report' | 'script' | 'other';
+  name: string;
+  url: string;
+  uploaded_date: string;
+}
+
+export interface PipelineNote {
+  date: string;
+  author: string;
+  text: string;
+}
+
+export interface PipelineStory {
+  id: string;
+  story_id: string;
+  title: string;
+  writer_name: string;
+  genre: string;
+  current_stage: 1 | 2 | 3;
+  days_in_current_stage: number;
+
+  // Status & Dates for Stage 1: Idea Approved
+  stage1_status: StageStatus;
+  stage1_start_date: string | null;
+  stage1_completion_date: string | null;
+
+  // Status & Dates for Stage 2: Writer's Engagement
+  stage2_status: StageStatus;
+  stage2_start_date: string | null;
+  stage2_completion_date: string | null;
+
+  // Status & Dates for Stage 3: Delivery Plan & Contract
+  stage3_status: StageStatus;
+  stage3_start_date: string | null;
+  stage3_completion_date: string | null;
+
+  // Assigned People
+  stage1_assigned: string | null;
+  stage1_assigned_email: string | null;
+  stage1_assigned_department: string | null;
+
+  stage2_assigned: string | null;
+  stage2_assigned_email: string | null;
+  stage2_assigned_department: string | null;
+
+  stage3_assigned: string | null;
+  stage3_assigned_email: string | null;
+  stage3_assigned_department: string | null;
+
+  // Documents & Attachments
+  documents: PipelineDocument[];
+
+  // Progress Notes
+  notes: PipelineNote[];
 }

@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
+import { logger } from "@/lib/logger";
 import { createClient } from "@/lib/supabase/server";
 import { applyRateLimit, addRateLimitHeaders, withCors } from "@/lib/api-middleware";
-import { RateLimitPresets } from "@/lib/rate-limit";
+import { RateLimitPresets } from "@/lib/rate-limit-redis";
 
 export async function GET(
   request: Request,

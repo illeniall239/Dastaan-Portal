@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
+import { logger } from "@/lib/logger";
 import { createClient } from "@/lib/supabase/server";
 import { updateEpisodeSchema } from "@/lib/validations/episodes";
+import { idParamSchema } from "@/lib/validations/uuid-params";
 import { applyRateLimit, addRateLimitHeaders, withCors } from "@/lib/api-middleware";
-import { RateLimitPresets } from "@/lib/rate-limit";
+import { RateLimitPresets } from "@/lib/rate-limit-redis";
 
 /**
  * GET /api/episodes/[id]
@@ -15,6 +17,16 @@ export async function GET(
   const rate = await applyRateLimit(request, RateLimitPresets.relaxed);
   if (!rate.success) return rate.response!;
   const { id } = await params;
+
+  // Validate UUID format
+  const paramValidation = idParamSchema.safeParse({ id });
+  if (!paramValidation.success) {
+    return NextResponse.json(
+      { error: "Invalid ID format", details: paramValidation.error.format() },
+      { status: 400 }
+    );
+  }
+
   const supabase = await createClient();
 
   // Check authentication
@@ -42,7 +54,7 @@ export async function GET(
           { status: 404 }
         );
       }
-      console.error("Error fetching episode:", error);
+      logger.error(`Error fetching episode: ${error instanceof Error ? error.message : String(error)}`);
       return NextResponse.json(
         { error: "Failed to fetch episode", details: error.message },
         { status: 500 }
@@ -52,7 +64,7 @@ export async function GET(
     return addRateLimitHeaders(withCors(request, NextResponse.json({ episode })), rate.result);
 
   } catch (error) {
-    console.error("Unexpected error:", error);
+    logger.error(`Unexpected error: ${error instanceof Error ? error.message : String(error)}`);
     return withCors(request, NextResponse.json(
       { error: "An unexpected error occurred" },
       { status: 500 }
@@ -71,6 +83,16 @@ export async function PATCH(
   const rate = await applyRateLimit(request, RateLimitPresets.strict);
   if (!rate.success) return rate.response!;
   const { id } = await params;
+
+  // Validate UUID format
+  const paramValidation = idParamSchema.safeParse({ id });
+  if (!paramValidation.success) {
+    return NextResponse.json(
+      { error: "Invalid ID format", details: paramValidation.error.format() },
+      { status: 400 }
+    );
+  }
+
   const supabase = await createClient();
 
   // Check authentication
@@ -105,7 +127,7 @@ export async function PATCH(
           { status: 404 }
         );
       }
-      console.error("Error fetching episode:", fetchError);
+      logger.error(`Error fetching episode:: ${fetchError instanceof Error ? fetchError.message : String(fetchError)}`);
       return NextResponse.json(
         { error: "Failed to fetch episode", details: fetchError.message },
         { status: 500 }
@@ -151,7 +173,7 @@ export async function PATCH(
       .single();
 
     if (updateError) {
-      console.error("Error updating episode:", updateError);
+      logger.error(`Error updating episode:: ${updateError instanceof Error ? updateError.message : String(updateError)}`);
       return NextResponse.json(
         { error: "Failed to update episode", details: updateError.message },
         { status: 500 }
@@ -164,7 +186,7 @@ export async function PATCH(
     })), rate.result);
 
   } catch (error) {
-    console.error("Unexpected error:", error);
+    logger.error(`Unexpected error: ${error instanceof Error ? error.message : String(error)}`);
     return withCors(request, NextResponse.json(
       { error: "An unexpected error occurred" },
       { status: 500 }
@@ -183,6 +205,16 @@ export async function DELETE(
   const rate = await applyRateLimit(request, RateLimitPresets.strict);
   if (!rate.success) return rate.response!;
   const { id } = await params;
+
+  // Validate UUID format
+  const paramValidation = idParamSchema.safeParse({ id });
+  if (!paramValidation.success) {
+    return NextResponse.json(
+      { error: "Invalid ID format", details: paramValidation.error.format() },
+      { status: 400 }
+    );
+  }
+
   const supabase = await createClient();
 
   // Check authentication
@@ -217,7 +249,7 @@ export async function DELETE(
           { status: 404 }
         );
       }
-      console.error("Error fetching episode:", fetchError);
+      logger.error(`Error fetching episode:: ${fetchError instanceof Error ? fetchError.message : String(fetchError)}`);
       return NextResponse.json(
         { error: "Failed to fetch episode", details: fetchError.message },
         { status: 500 }
@@ -243,7 +275,7 @@ export async function DELETE(
       .eq("id", id);
 
     if (deleteError) {
-      console.error("Error deleting episode:", deleteError);
+      logger.error(`Error deleting episode:: ${deleteError instanceof Error ? deleteError.message : String(deleteError)}`);
       return NextResponse.json(
         { error: "Failed to delete episode", details: deleteError.message },
         { status: 500 }
@@ -262,7 +294,7 @@ export async function DELETE(
           .from("episodes")
           .remove([filePath]);
       } catch (storageError) {
-        console.error("Error deleting attachment from storage:", storageError);
+        logger.error(`Error deleting attachment from storage:: ${storageError instanceof Error ? storageError.message : String(storageError)}`);
         // Continue anyway - episode is deleted from database
       }
     }
@@ -272,7 +304,7 @@ export async function DELETE(
     })), rate.result);
 
   } catch (error) {
-    console.error("Unexpected error:", error);
+    logger.error(`Unexpected error: ${error instanceof Error ? error.message : String(error)}`);
     return withCors(request, NextResponse.json(
       { error: "An unexpected error occurred" },
       { status: 500 }

@@ -19,8 +19,9 @@ import { RecentActivityCard } from "@/components/management/cards/recent-activit
 import { ManagementHeader } from "@/components/management/management-header";
 import { ScriptingPhase } from "@/components/management/scripting-phase";
 import { EvaluatorPipelineEpisodes } from "@/components/management/evaluator-pipeline-episodes";
-import { NegotiationsOverview } from "@/components/management/negotiations-overview";
-import { getAllSampleData } from "@/lib/management/sample-data";
+import { ContractTermsOverview } from "@/components/management/contract-terms-overview";
+import { StageWisePipeline } from "@/components/management/stage-wise-pipeline";
+import { getAllSampleData, getSamplePipelineStories } from "@/lib/management/sample-data";
 import { ExportButton } from "@/components/management/export-button";
 import { getExecutiveSummary, getDepartmentWorkload } from "@/lib/management/server";
 import { getCriticalAlerts } from "@/lib/management/critical-alerts";
@@ -46,8 +47,8 @@ export default async function ManagementDashboard({
     redirect("/login");
   }
 
-  // Redirect if not management or admin
-  if (user.role !== "management" && user.role !== "admin") {
+  // Redirect if not management, executive, or admin
+  if (!["admin", "management", "executive"].includes(user.role)) {
     redirect("/dashboard");
   }
 
@@ -207,6 +208,19 @@ export default async function ManagementDashboard({
           <RecentActivityCard activities={sampleData.recentActivity} />
         </div>
 
+        {/* Stage-Wise Pipeline View */}
+        <div id="stage-pipeline-section" className="mb-8">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h2 className="text-2xl font-bold text-gray-900">Stage-Wise Pipeline View</h2>
+              <p className="text-muted-foreground mt-1">
+                Track story progression across development stages
+              </p>
+            </div>
+          </div>
+          <StageWisePipeline stories={getSamplePipelineStories()} />
+        </div>
+
         {/* Evaluator Activity */}
         <div id="evaluator-performance" className="mb-8">
           <div className="flex items-center justify-between mb-6">
@@ -237,7 +251,7 @@ export default async function ManagementDashboard({
   const supabase = await createClient();
 
   // Fetch negotiations
-  const { data: negotiations } = await supabase
+  const { data: contractTerms } = await supabase
     .from("negotiations")
     .select(`
       *,
@@ -522,9 +536,9 @@ export default async function ManagementDashboard({
         </div>
       </div>
 
-      {/* Negotiations Overview Section */}
-      <div id="negotiations-section" className="mb-8">
-        <NegotiationsOverview negotiations={negotiations || []} />
+      {/* Contract Terms Overview Section */}
+      <div id="contract-terms-section" className="mb-8">
+        <ContractTermsOverview contractTerms={contractTerms || []} />
       </div>
     </div>
   );

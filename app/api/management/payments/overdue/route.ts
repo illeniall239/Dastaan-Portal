@@ -1,11 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getOverduePayments, getOverduePaymentsStats } from '@/lib/management/overdue-payments';
+import { logger } from "@/lib/logger";
+import { PaymentAnalyticsService } from '@/lib/services/analytics';
 import { getSampleOverduePayments } from '@/lib/management/sample-data';
+import { overduePaymentsQuerySchema } from '@/lib/validations/management-filters';
 
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
-    const useSampleData = searchParams.get('sample') === 'true';
+    const rawQuery = {
+      sample: searchParams.get('sample') || undefined,
+    };
+
+    // Validate query parameters
+    const validation = overduePaymentsQuerySchema.safeParse(rawQuery);
+    if (!validation.success) {
+      return NextResponse.json(
+        { error: "Invalid query parameters", details: validation.error.format() },
+        { status: 400 }
+      );
+    }
+
+    const useSampleData = validation.data.sample === true;
 
     if (useSampleData) {
       const samplePayments = getSampleOverduePayments();
@@ -38,9 +53,10 @@ export async function GET(request: NextRequest) {
       });
     }
 
+    const service = new PaymentAnalyticsService('server');
     const [payments, stats] = await Promise.all([
-      getOverduePayments(),
-      getOverduePaymentsStats(),
+      service.getOverduePayments(),
+      service.getOverduePaymentsStats(),
     ]);
 
     return NextResponse.json({
@@ -48,7 +64,7 @@ export async function GET(request: NextRequest) {
       stats,
     });
   } catch (error) {
-    console.error('Error in overdue payments API:', error);
+    logger.error(`Error in overdue payments API: ${error instanceof Error ? error.message : String(error)}`);
     return NextResponse.json(
       { error: 'Failed to fetch overdue payments' },
       { status: 500 }

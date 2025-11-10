@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
+import { logger } from "@/lib/logger";
 import { createClient } from "@/lib/supabase/server";
 import { z } from "zod";
 import { applyRateLimit, addRateLimitHeaders, withCors } from "@/lib/api-middleware";
-import { RateLimitPresets } from "@/lib/rate-limit";
+import { RateLimitPresets } from "@/lib/rate-limit-redis";
 
 // Schema for validating draft data
 const draftDataSchema = z.object({
@@ -45,7 +46,7 @@ export async function GET(
       .single();
 
     if (error && error.code !== 'PGRST116') { // PGRST116 means no rows found
-      console.error("Error fetching draft evaluation:", error);
+      logger.error(`Error fetching draft evaluation: ${error instanceof Error ? error.message : String(error)}`);
       return NextResponse.json(
         { error: "Failed to fetch draft evaluation", details: error.message },
         { status: 500 }
@@ -59,7 +60,7 @@ export async function GET(
 
     return addRateLimitHeaders(withCors(request, NextResponse.json({ draft: data })), rate.result);
   } catch (error) {
-    console.error("Unexpected error:", error);
+    logger.error(`Unexpected error: ${error instanceof Error ? error.message : String(error)}`);
     return withCors(request, NextResponse.json(
       { error: "An unexpected error occurred" },
       { status: 500 }
@@ -140,7 +141,7 @@ export async function POST(
       .single();
 
     if (insertError) {
-      console.error("Error saving draft evaluation:", insertError);
+      logger.error(`Error saving draft evaluation:: ${insertError instanceof Error ? insertError.message : String(insertError)}`);
       return NextResponse.json(
         { error: "Failed to save draft evaluation", details: insertError.message },
         { status: 500 }
@@ -155,7 +156,7 @@ export async function POST(
       { status: 200 }
     )), rate.result);
   } catch (error) {
-    console.error("Unexpected error:", error);
+    logger.error(`Unexpected error: ${error instanceof Error ? error.message : String(error)}`);
     return withCors(request, NextResponse.json(
       { error: "An unexpected error occurred" },
       { status: 500 }
@@ -194,7 +195,7 @@ export async function DELETE(
           { status: 200 }
         );
       }
-      console.error("Error fetching draft evaluation:", fetchError);
+      logger.error(`Error fetching draft evaluation:: ${fetchError instanceof Error ? fetchError.message : String(fetchError)}`);
       return NextResponse.json(
         { error: "Failed to fetch draft evaluation", details: fetchError.message },
         { status: 500 }
@@ -209,7 +210,7 @@ export async function DELETE(
       .eq("evaluator_id", user.id);
 
     if (deleteError) {
-      console.error("Error deleting draft evaluation:", deleteError);
+      logger.error(`Error deleting draft evaluation:: ${deleteError instanceof Error ? deleteError.message : String(deleteError)}`);
       return NextResponse.json(
         { error: "Failed to delete draft evaluation", details: deleteError.message },
         { status: 500 }
@@ -220,7 +221,7 @@ export async function DELETE(
       message: "Draft evaluation deleted successfully",
     })), rate.result);
   } catch (error) {
-    console.error("Unexpected error:", error);
+    logger.error(`Unexpected error: ${error instanceof Error ? error.message : String(error)}`);
     return withCors(request, NextResponse.json(
       { error: "An unexpected error occurred" },
       { status: 500 }

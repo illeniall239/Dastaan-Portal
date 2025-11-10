@@ -34,6 +34,9 @@ export const episodicEvaluationSchema = z.object({
     .min(1, "At least one event is required")
     .max(20, "Cannot add more than 20 events"),
 
+  // Summary and Analysis (optional free-form text)
+  summary_analysis: z.string().optional(),
+
   // Evaluation Scores (1-10 scale)
   conflict_of_content_score: z
     .number()
@@ -67,6 +70,93 @@ export const episodicEvaluationSchema = z.object({
 });
 
 export type EpisodicEvaluationFormData = z.infer<typeof episodicEvaluationSchema>;
+
+/**
+ * Validation schema for updating episodic evaluation
+ * All fields are optional to support partial updates
+ * Replaces the manual whitelist in app/api/episodic-evaluations/[id]/route.ts
+ */
+export const updateEpisodicEvaluationSchema = z.object({
+  // Episode Details (optional for updates)
+  no_of_pages: z
+    .number()
+    .int("Number of pages must be an integer")
+    .positive("Number of pages must be positive")
+    .min(1, "At least 1 page is required")
+    .optional(),
+
+  no_of_scenes: z
+    .number()
+    .int("Number of scenes must be an integer")
+    .positive("Number of scenes must be positive")
+    .min(1, "At least 1 scene is required")
+    .optional(),
+
+  // Events (optional for updates)
+  events: z
+    .array(
+      z.union([
+        z.string(), // Support old string format for backward compatibility
+        z.object({
+          title: z.string().min(1, "Event title is required").max(100, "Event title must not exceed 100 characters"),
+          description: z.string().max(500, "Event description must not exceed 500 characters").default(''),
+          impact: z.enum(["High Impact", "Medium Impact", "Low Impact"]).optional()
+        })
+      ])
+    )
+    .min(1, "At least one event is required")
+    .max(20, "Cannot add more than 20 events")
+    .optional(),
+
+  // Summary and Analysis (optional free-form text)
+  summary_analysis: z.string().optional(),
+
+  // Evaluation Scores (1-10 scale, all optional for updates)
+  conflict_of_content_score: z
+    .number()
+    .int("Score must be an integer")
+    .min(1, "Score must be at least 1")
+    .max(10, "Score must be at most 10")
+    .optional(),
+
+  characterization_score: z
+    .number()
+    .int("Score must be an integer")
+    .min(1, "Score must be at least 1")
+    .max(10, "Score must be at most 10")
+    .optional(),
+
+  story_progression_score: z
+    .number()
+    .int("Score must be an integer")
+    .min(1, "Score must be at least 1")
+    .max(10, "Score must be at most 10")
+    .optional(),
+
+  freezes_score: z
+    .number()
+    .int("Score must be an integer")
+    .min(1, "Score must be at least 1")
+    .max(10, "Score must be at most 10")
+    .optional(),
+
+  whats_next_element_score: z
+    .number()
+    .int("Score must be an integer")
+    .min(1, "Score must be at least 1")
+    .max(10, "Score must be at most 10")
+    .optional(),
+
+  // Rating description (computed field, can be updated manually)
+  rating_description: z.string().max(200).optional(),
+}).refine(
+  (data) => Object.keys(data).length > 0,
+  {
+    message: "At least one field must be provided for update",
+  }
+);
+
+export type UpdateEpisodicEvaluationData = z.infer<typeof updateEpisodicEvaluationSchema>;
 
 /**
  * Calculate pages score relative to standard

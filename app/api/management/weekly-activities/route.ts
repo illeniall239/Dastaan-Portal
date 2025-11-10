@@ -1,11 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { logger } from "@/lib/logger";
 import { getWeeklyActivities, getWeeklyActivityStats } from '@/lib/management/weekly-activities';
 import { getSampleWeeklyActivities } from '@/lib/management/sample-data';
+import { weeklyActivitiesQuerySchema } from '@/lib/validations/management-filters';
 
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
-    const useSampleData = searchParams.get('sample') === 'true';
+    const rawQuery = {
+      sample: searchParams.get('sample') || undefined,
+    };
+
+    // Validate query parameters
+    const validation = weeklyActivitiesQuerySchema.safeParse(rawQuery);
+    if (!validation.success) {
+      return NextResponse.json(
+        { error: "Invalid query parameters", details: validation.error.format() },
+        { status: 400 }
+      );
+    }
+
+    const useSampleData = validation.data.sample === true;
 
     if (useSampleData) {
       const sampleActivities = getSampleWeeklyActivities();
@@ -63,7 +78,7 @@ export async function GET(request: NextRequest) {
       stats,
     });
   } catch (error) {
-    console.error('Error in weekly-activities API:', error);
+    logger.error(`Error in weekly-activities API: ${error instanceof Error ? error.message : String(error)}`);
     return NextResponse.json(
       { error: 'Failed to fetch weekly activities' },
       { status: 500 }

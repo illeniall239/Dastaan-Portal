@@ -41,8 +41,13 @@ const evaluatorNavItems = [
     icon: "film",
   },
   {
-    title: "Negotiations",
-    href: "/evaluator/negotiations",
+    title: "Content Delivery",
+    href: "/evaluator/content-delivery",
+    icon: "fileSpreadsheet",
+  },
+  {
+    title: "Contract Terms",
+    href: "/evaluator/contract-terms",
     icon: "handshake",
   },
 ];

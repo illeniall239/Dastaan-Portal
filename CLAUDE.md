@@ -40,7 +40,7 @@ The system models a linear workflow with automated routing:
 2. **Writer Engagement Report** → Content managers create meeting reports
 3. **Evaluation** → Multiple evaluators score stories (8 criteria, 1-10 scale)
 4. **Approval** → Executives approve/reject via one-liners
-5. **Negotiation** → Price and terms negotiation tracking
+5. **Contract Terms** → Price and terms contract tracking
 6. **Legal Review** → Legal compliance and contract review
 7. **Contract** → Signed agreements with payment milestones
 8. **Payment** → Milestone-based payment tracking
@@ -74,7 +74,7 @@ Each stage has specific database tables, API routes, and UI pages. Status change
 
 **Business Logic:**
 - `one_liners` - Executive approval summaries
-- `negotiations` - Price negotiation tracking
+- `negotiations` (table) - Contract terms tracking
 - `legal_reviews` - Legal compliance checks
 - `contracts` - Signed agreements
 - `payment_schedules` - Payment milestone plans

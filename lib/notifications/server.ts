@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 export interface Notification {
   id: string;
@@ -24,9 +25,15 @@ export interface CreateNotificationInput {
 /**
  * Create a new notification for a user
  * This function should be called from server components
+ *
+ * NOTE: Uses admin client to bypass RLS. This is secure because:
+ * - Only server-side code can call this function
+ * - RLS policy blocks authenticated users from creating notifications
+ * - Forces all notification creation through validated server-side code paths
  */
 export async function createNotification(input: CreateNotificationInput) {
-  const supabase = await createClient();
+  // Use admin client to bypass RLS (RLS policy blocks authenticated user inserts)
+  const supabase = createAdminClient();
 
   const notificationData = {
     user_id: input.userId,
@@ -38,7 +45,7 @@ export async function createNotification(input: CreateNotificationInput) {
     is_read: false,
   };
 
-  const { data, error } = await supabase
+  const { data, error} = await supabase
     .from("notifications")
     .insert(notificationData)
     .select()
@@ -55,6 +62,11 @@ export async function createNotification(input: CreateNotificationInput) {
 /**
  * Create notifications for multiple users
  * Useful for notifying multiple people about the same event
+ *
+ * NOTE: Uses admin client to bypass RLS. This is secure because:
+ * - Only server-side code can call this function
+ * - RLS policy blocks authenticated users from creating notifications
+ * - Forces all notification creation through validated server-side code paths
  */
 export async function createNotifications(
   userIds: string[],
@@ -64,7 +76,8 @@ export async function createNotifications(
   entityType?: string,
   entityId?: string
 ) {
-  const supabase = await createClient();
+  // Use admin client to bypass RLS (RLS policy blocks authenticated user inserts)
+  const supabase = createAdminClient();
 
   const notifications = userIds.map((userId) => ({
     user_id: userId,

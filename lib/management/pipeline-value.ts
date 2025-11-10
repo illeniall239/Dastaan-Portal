@@ -2,7 +2,7 @@ import { createClient } from '@/lib/supabase/server';
 
 export interface PipelineItem {
   id: string;
-  type: 'contract' | 'negotiation';
+  type: 'contract' | 'contractTerm';
   story_id: string;
   story_title: string;
   value: number;
@@ -33,7 +33,7 @@ export async function getPipelineValue() {
     .in('status', ['active', 'pending', 'in_progress']);
 
   // Get negotiations
-  const { data: negotiations } = await supabase
+  const { data: contractTerms } = await supabase
     .from('negotiations')
     .select(`
       id,
@@ -67,19 +67,19 @@ export async function getPipelineValue() {
     });
   });
 
-  // Process negotiations
-  (negotiations || []).forEach(negotiation => {
-    const story = negotiation.story as any;
+  // Process contract terms
+  (contractTerms || []).forEach(contractTerm => {
+    const story = contractTerm.story as any;
     items.push({
-      id: negotiation.id,
-      type: 'negotiation',
+      id: contractTerm.id,
+      type: 'contractTerm',
       story_id: story?.story_id || 'N/A',
       story_title: story?.title || 'Unknown',
-      value: negotiation.proposed_price,
-      status: negotiation.status,
-      stage: 'In Negotiation',
-      last_update: negotiation.last_updated || negotiation.created_at,
-      created_at: negotiation.created_at,
+      value: contractTerm.proposed_price,
+      status: contractTerm.status,
+      stage: 'Contract Terms',
+      last_update: contractTerm.last_updated || contractTerm.created_at,
+      created_at: contractTerm.created_at,
     });
   });
 
@@ -92,10 +92,10 @@ export async function getPipelineValueStats() {
   const stats = {
     totalValue: items.reduce((sum, item) => sum + item.value, 0),
     contractValue: items.filter(i => i.type === 'contract').reduce((sum, i) => sum + i.value, 0),
-    negotiationValue: items.filter(i => i.type === 'negotiation').reduce((sum, i) => sum + i.value, 0),
+    contractTermValue: items.filter(i => i.type === 'contractTerm').reduce((sum, i) => sum + i.value, 0),
     totalCount: items.length,
     contractCount: items.filter(i => i.type === 'contract').length,
-    negotiationCount: items.filter(i => i.type === 'negotiation').length,
+    contractTermCount: items.filter(i => i.type === 'contractTerm').length,
     avgDealSize: 0,
   };
 

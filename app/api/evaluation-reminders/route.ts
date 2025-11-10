@@ -1,4 +1,5 @@
 import { NextRequest } from 'next/server';
+import { logger } from "@/lib/logger";
 import { runDailyEvaluationReminders, checkOverdueEvaluations } from '@/lib/evaluations/reminders';
 import { createClient } from '@/lib/supabase/server';
 
@@ -36,7 +37,7 @@ export async function POST(request: NextRequest) {
       }
     );
   } catch (error) {
-    console.error('Error running evaluation reminders:', error);
+    logger.error(`Error running evaluation reminders: ${error instanceof Error ? error.message : String(error)}`);
     return new Response(
       JSON.stringify({ 
         success: false, 

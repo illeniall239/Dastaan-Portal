@@ -1,11 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { logger } from "@/lib/logger";
 import { getActiveContracts, getActiveContractsStats } from '@/lib/management/active-contracts';
 import { getSampleActiveContracts } from '@/lib/management/sample-data';
+import { contractsQuerySchema } from '@/lib/validations/management-filters';
 
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
-    const useSampleData = searchParams.get('sample') === 'true';
+    const rawQuery = {
+      sample: searchParams.get('sample') || undefined,
+    };
+
+    // Validate query parameters
+    const validation = contractsQuerySchema.safeParse(rawQuery);
+    if (!validation.success) {
+      return NextResponse.json(
+        { error: "Invalid query parameters", details: validation.error.format() },
+        { status: 400 }
+      );
+    }
+
+    const useSampleData = validation.data.sample === true;
 
     if (useSampleData) {
       const sampleContracts = getSampleActiveContracts();
@@ -47,7 +62,7 @@ export async function GET(request: NextRequest) {
       stats,
     });
   } catch (error) {
-    console.error('Error in contracts API:', error);
+    logger.error(`Error in contracts API: ${error instanceof Error ? error.message : String(error)}`);
     return NextResponse.json(
       { error: 'Failed to fetch active contracts' },
       { status: 500 }

@@ -19,6 +19,7 @@ import { createMeetingClient } from "@/lib/meetings/client";
 import { FileUpload } from "@/components/ui/file-upload";
 import { uploadFile } from "@/lib/attachments/client";
 import { MentionInput } from "@/components/ui/mention-input";
+import { ScoreCard } from "@/components/episodic-evaluations/score-card";
 
 interface User {
   id: string;
@@ -62,7 +63,8 @@ export function CallReportForm({
     location: "",
     notes: "",
     nextSteps: "",
-    status: "draft"
+    status: "draft",
+    overallRating: 5
   });
 
   // Attendees state
@@ -127,6 +129,10 @@ export function CallReportForm({
         toast.error("Please select a meeting time");
         return;
       }
+      if (!formData.overallRating || formData.overallRating < 1 || formData.overallRating > 10) {
+        toast.error("Please provide an initial assessment rating (1-10)");
+        return;
+      }
 
       // Find selected writer (only required for non-inhouse content)
       let selectedWriter = null;
@@ -167,7 +173,8 @@ export function CallReportForm({
         notes: formData.notes,
         next_steps: formData.nextSteps,
         status: formData.status,
-        created_by: userId
+        created_by: userId,
+        overall_rating: formData.overallRating
       });
 
       // Upload files if any
@@ -202,7 +209,8 @@ export function CallReportForm({
         location: "",
         notes: "",
         nextSteps: "",
-        status: "draft"
+        status: "draft",
+        overallRating: 5
       });
       setSelectedAttendees([]);
       setFilesToUpload([]);
@@ -423,6 +431,17 @@ export function CallReportForm({
                   <SelectItem value="9:00 PM">9:00 PM</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+
+            <div className="space-y-2">
+              <ScoreCard
+                label="Initial Assessment *"
+                description="Your initial rating of this story (1-10). Evaluators will see this when they evaluate."
+                score={formData.overallRating}
+                onChange={(score) => setFormData(prev => ({ ...prev, overallRating: score }))}
+                disabled={isLoading}
+                showGrade={true}
+              />
             </div>
           </CardContent>
         </Card>

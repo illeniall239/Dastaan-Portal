@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
+import { logger } from "@/lib/logger";
 import { createClient } from "@/lib/supabase/server";
+import { episodeIdParamSchema } from "@/lib/validations/uuid-params";
 
 /**
  * GET /api/episodic-evaluations/episode/[episodeId]
@@ -11,6 +13,16 @@ export async function GET(
   { params }: { params: Promise<{ episodeId: string }> }
 ) {
   const { episodeId } = await params;
+
+  // Validate UUID format
+  const paramValidation = episodeIdParamSchema.safeParse({ episodeId });
+  if (!paramValidation.success) {
+    return NextResponse.json(
+      { error: "Invalid episode ID format", details: paramValidation.error.format() },
+      { status: 400 }
+    );
+  }
+
   const supabase = await createClient();
 
   // Check authentication
@@ -65,7 +77,7 @@ export async function GET(
       .maybeSingle();
 
     if (error) {
-      console.error("Error fetching episodic evaluation:", error);
+      logger.error(`Error fetching episodic evaluation: ${error instanceof Error ? error.message : String(error)}`);
       return NextResponse.json(
         { error: "Failed to fetch episodic evaluation", details: error.message },
         { status: 500 }
@@ -79,7 +91,7 @@ export async function GET(
     });
 
   } catch (error) {
-    console.error("Unexpected error:", error);
+    logger.error(`Unexpected error: ${error instanceof Error ? error.message : String(error)}`);
     return NextResponse.json(
       { error: "An unexpected error occurred" },
       { status: 500 }

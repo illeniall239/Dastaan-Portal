@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, memo } from "react";
-import { Bell, CalendarIcon, FileTextIcon, CheckCircle2, Settings, LogOut, HomeIcon, ClipboardListIcon, Film, ClipboardCheck, Menu, X, Handshake } from "lucide-react";
+import { Bell, CalendarIcon, FileTextIcon, CheckCircle2, Settings, LogOut, HomeIcon, ClipboardListIcon, Film, ClipboardCheck, Menu, X, Handshake, FileSpreadsheet } from "lucide-react";
 import { logger } from "@/lib/logger";
 import { Button } from "@/components/ui/button";
 import {
@@ -67,6 +67,7 @@ function getIconComponent(iconName: string) {
     clipboardCheck: ClipboardCheck,
     film: Film,
     handshake: Handshake,
+    fileSpreadsheet: FileSpreadsheet,
     settings: Settings,
   };
   return icons[iconName] || HomeIcon;
@@ -94,8 +95,13 @@ const defaultNavItems: NavItem[] = [
     icon: "film",
   },
   {
-    title: "Negotiations",
-    href: "/content-department/negotiations",
+    title: "Content Delivery",
+    href: "/content-department/content-delivery",
+    icon: "fileSpreadsheet",
+  },
+  {
+    title: "Contract Terms",
+    href: "/content-department/contract-terms",
     icon: "handshake",
   },
   // Settings and Help routes are not yet implemented; hide to avoid 404s

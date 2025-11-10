@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
+import { logger } from "@/lib/logger";
 import { createClient } from "@/lib/supabase/server";
 import { z } from "zod";
 import { applyRateLimit, addRateLimitHeaders, withCors } from "@/lib/api-middleware";
-import { RateLimitPresets } from "@/lib/rate-limit";
+import { RateLimitPresets } from "@/lib/rate-limit-redis";
+import { logAdminAction, getRequestContext } from "@/lib/audit/server";
 
 const roleUpdateSchema = z.object({
   role: z.enum([
@@ -44,6 +46,13 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 
   const { role } = validation.data;
 
+  // Get previous role for audit trail
+  const { data: previousUserData } = await supabase
+    .from('users')
+    .select('role')
+    .eq('id', id)
+    .single();
+
   const { data: updatedUser, error } = await supabase.auth.admin.updateUserById(id, {
     user_metadata: { role },
   });
@@ -61,9 +70,23 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   if (publicUserError) {
     // If this fails, we should ideally roll back the auth user update
     // For now, we'll just log the error
-    console.error("Error updating public user role:", publicUserError);
+    logger.error(`Error updating public user role:: ${publicUserError instanceof Error ? publicUserError.message : String(publicUserError)}`);
     return withCors(request, NextResponse.json({ error: "Failed to update user role in public table" }, { status: 500 }));
   }
+
+  // Log admin action for audit trail
+  const requestContext = getRequestContext(request);
+  await logAdminAction({
+    entityType: "user",
+    entityId: id,
+    action: "role_changed",
+    performedBy: user.id,
+    details: {
+      ...requestContext,
+      previousValues: { role: previousUserData?.role },
+      newValues: { role },
+    },
+  });
 
   return addRateLimitHeaders(withCors(request, NextResponse.json(updatedUser)), rate.result);
 }

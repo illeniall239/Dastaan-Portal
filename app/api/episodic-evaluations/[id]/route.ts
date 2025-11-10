@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
+import { logger } from "@/lib/logger";
 import { createClient } from "@/lib/supabase/server";
 import { applyRateLimit, addRateLimitHeaders, withCors } from "@/lib/api-middleware";
-import { RateLimitPresets } from "@/lib/rate-limit";
+import { RateLimitPresets } from "@/lib/rate-limit-redis";
+import { idParamSchema } from "@/lib/validations/uuid-params";
+import { updateEpisodicEvaluationSchema } from "@/lib/validations/episodic-evaluations";
 
 /**
  * GET /api/episodic-evaluations/[id]
@@ -14,6 +17,16 @@ export async function GET(
   const rate = await applyRateLimit(request, RateLimitPresets.relaxed);
   if (!rate.success) return rate.response!;
   const { id } = await params;
+
+  // Validate UUID format
+  const paramValidation = idParamSchema.safeParse({ id });
+  if (!paramValidation.success) {
+    return NextResponse.json(
+      { error: "Invalid ID format", details: paramValidation.error.format() },
+      { status: 400 }
+    );
+  }
+
   const supabase = await createClient();
 
   // Check authentication
@@ -44,7 +57,7 @@ export async function GET(
           { status: 404 }
         );
       }
-      console.error("Error fetching episodic evaluation:", error);
+      logger.error(`Error fetching episodic evaluation: ${error instanceof Error ? error.message : String(error)}`);
       return NextResponse.json(
         { error: "Failed to fetch episodic evaluation", details: error.message },
         { status: 500 }
@@ -77,7 +90,7 @@ export async function GET(
     return addRateLimitHeaders(withCors(request, NextResponse.json({ evaluation })), rate.result);
 
   } catch (error) {
-    console.error("Unexpected error:", error);
+    logger.error(`Unexpected error: ${error instanceof Error ? error.message : String(error)}`);
     return withCors(request, NextResponse.json(
       { error: "An unexpected error occurred" },
       { status: 500 }
@@ -96,6 +109,16 @@ export async function DELETE(
   const rate = await applyRateLimit(request, RateLimitPresets.strict);
   if (!rate.success) return rate.response!;
   const { id } = await params;
+
+  // Validate UUID format
+  const paramValidation = idParamSchema.safeParse({ id });
+  if (!paramValidation.success) {
+    return NextResponse.json(
+      { error: "Invalid ID format", details: paramValidation.error.format() },
+      { status: 400 }
+    );
+  }
+
   const supabase = await createClient();
 
   // Check authentication
@@ -130,7 +153,7 @@ export async function DELETE(
           { status: 404 }
         );
       }
-      console.error("Error fetching episodic evaluation:", fetchError);
+      logger.error(`Error fetching episodic evaluation:: ${fetchError instanceof Error ? fetchError.message : String(fetchError)}`);
       return NextResponse.json(
         { error: "Failed to fetch episodic evaluation", details: fetchError.message },
         { status: 500 }
@@ -155,7 +178,7 @@ export async function DELETE(
       .eq("id", id);
 
     if (deleteError) {
-      console.error("Error deleting episodic evaluation:", deleteError);
+      logger.error(`Error deleting episodic evaluation:: ${deleteError instanceof Error ? deleteError.message : String(deleteError)}`);
       return NextResponse.json(
         { error: "Failed to delete episodic evaluation", details: deleteError.message },
         { status: 500 }
@@ -167,7 +190,7 @@ export async function DELETE(
     })), rate.result);
 
   } catch (error) {
-    console.error("Unexpected error:", error);
+    logger.error(`Unexpected error: ${error instanceof Error ? error.message : String(error)}`);
     return withCors(request, NextResponse.json(
       { error: "An unexpected error occurred" },
       { status: 500 }
@@ -186,6 +209,16 @@ export async function PATCH(
   const rate = await applyRateLimit(request, RateLimitPresets.strict);
   if (!rate.success) return rate.response!;
   const { id } = await params;
+
+  // Validate UUID format
+  const paramValidation = idParamSchema.safeParse({ id });
+  if (!paramValidation.success) {
+    return NextResponse.json(
+      { error: "Invalid ID format", details: paramValidation.error.format() },
+      { status: 400 }
+    );
+  }
+
   const supabase = await createClient();
 
   // Check authentication
@@ -220,7 +253,7 @@ export async function PATCH(
           { status: 404 }
         );
       }
-      console.error("Error fetching episodic evaluation:", fetchError);
+      logger.error(`Error fetching episodic evaluation:: ${fetchError instanceof Error ? fetchError.message : String(fetchError)}`);
       return NextResponse.json(
         { error: "Failed to fetch episodic evaluation", details: fetchError.message },
         { status: 500 }
@@ -238,25 +271,20 @@ export async function PATCH(
 
     const payload = await request.json();
 
-    // Whitelist updatable fields
-    const updatable: Record<string, any> = {};
-    const allowedFields = [
-      "no_of_pages",
-      "no_of_scenes",
-      "events",
-      "conflict_of_content_score",
-      "characterization_score",
-      "story_progression_score",
-      "freezes_score",
-      "whats_next_element_score",
-      "overall_average",
-      "overall_grade",
-      "comments",
-    ];
-    for (const key of allowedFields) {
-      if (key in payload) updatable[key] = payload[key];
+    // Validate request body with Zod schema
+    const bodyValidation = updateEpisodicEvaluationSchema.safeParse(payload);
+    if (!bodyValidation.success) {
+      return NextResponse.json(
+        { error: "Validation failed", details: bodyValidation.error.format() },
+        { status: 400 }
+      );
     }
-    updatable.updated_at = new Date().toISOString();
+
+    // Use validated data
+    const updatable = {
+      ...bodyValidation.data,
+      updated_at: new Date().toISOString(),
+    };
 
     const { error: updateError, data: updated } = await supabase
       .from("episodic_evaluations")
@@ -266,7 +294,7 @@ export async function PATCH(
       .single();
 
     if (updateError) {
-      console.error("Error updating episodic evaluation:", updateError);
+      logger.error(`Error updating episodic evaluation:: ${updateError instanceof Error ? updateError.message : String(updateError)}`);
       return NextResponse.json(
         { error: "Failed to update episodic evaluation", details: updateError.message },
         { status: 500 }
@@ -275,7 +303,7 @@ export async function PATCH(
 
     return addRateLimitHeaders(withCors(request, NextResponse.json({ evaluation: updated })), rate.result);
   } catch (error) {
-    console.error("Unexpected error:", error);
+    logger.error(`Unexpected error: ${error instanceof Error ? error.message : String(error)}`);
     return withCors(request, NextResponse.json(
       { error: "An unexpected error occurred" },
       { status: 500 }

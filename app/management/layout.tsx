@@ -15,6 +15,11 @@ const managementNavItems = [
     href: "/management/calendar",
     icon: "calendar",
   },
+  {
+    title: "Story Bank",
+    href: "/management/story-bank",
+    icon: "fileText",
+  },
 ];
 
 export default async function ManagementLayout({
@@ -29,8 +34,8 @@ export default async function ManagementLayout({
     redirect("/login");
   }
 
-  // Only allow management and admin roles
-  if (user.role !== "management" && user.role !== "admin") {
+  // Only allow management, executive, and admin roles
+  if (!["admin", "management", "executive"].includes(user.role)) {
     redirect("/dashboard");
   }
 

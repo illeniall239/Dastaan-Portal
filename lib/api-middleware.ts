@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { rateLimit, getClientIdentifier, RateLimitConfig, RateLimitResult } from "./rate-limit";
+import { rateLimit, getClientIdentifier, RateLimitConfig, RateLimitResult } from "./rate-limit-redis";
 
 /**
  * Apply rate limiting to an API route
@@ -21,7 +21,7 @@ export async function applyRateLimit(
   config: RateLimitConfig
 ): Promise<{ success: boolean; response?: NextResponse; result: RateLimitResult }> {
   const identifier = getClientIdentifier(request);
-  const result = rateLimit(identifier, config);
+  const result = await rateLimit(identifier, config);
 
   if (!result.success) {
     const retryAfter = Math.ceil((result.reset - Date.now()) / 1000);

@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
+import { logger } from "@/lib/logger";
 import { createClient } from "@/lib/supabase/server";
-import { applyRateLimit, addRateLimitHeaders } from "@/lib/api-middleware";
-import { RateLimitPresets } from "@/lib/rate-limit";
+import { applyRateLimit, addRateLimitHeaders, handleApiError } from "@/lib/api-middleware";
+import { RateLimitPresets } from "@/lib/rate-limit-redis";
+import { searchQuerySchema } from "@/lib/validations/query-params";
+import { UserRepository } from "@/lib/repositories/user-repository";
 
 export async function GET(request: Request) {
   // Apply rate limiting: 30 requests per minute for user search
@@ -19,45 +22,41 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Get search query from URL params
+    // Get and validate search query from URL params
     const { searchParams } = new URL(request.url);
-    const query = searchParams.get("q")?.trim() || "";
+    const rawQuery = {
+      q: searchParams.get("q") || undefined,
+    };
+
+    // Validate query parameters
+    const validation = searchQuerySchema.safeParse(rawQuery);
+    if (!validation.success) {
+      const response = NextResponse.json(
+        { error: "Invalid query parameters", details: validation.error.format() },
+        { status: 400 }
+      );
+      return addRateLimitHeaders(response, rateLimitResult.result);
+    }
+
+    const query = validation.data.q;
 
     if (!query) {
       const response = NextResponse.json({ users: [] });
       return addRateLimitHeaders(response, rateLimitResult.result);
     }
 
-    // Search users by name or email (case-insensitive)
-    // Use ilike for case-insensitive search
-    const { data: users, error } = await supabase
-      .from("users")
-      .select("id, name, email, role, department")
-      .ilike("name", `%${query}%`)
-      .limit(10)
-      .order("name", { ascending: true });
+    // Use UserRepository to search users
+    const userRepo = new UserRepository('server');
+    const users = await userRepo.searchUsers(query, {
+      select: 'id, name, email, role, department',
+      order: { column: 'name', ascending: true },
+      pagination: { limit: 10 },
+    });
 
-    if (error) {
-      console.error("❌ Supabase error searching users:", {
-        message: error.message,
-        details: error.details,
-        hint: error.hint,
-        code: error.code,
-      });
-      return NextResponse.json(
-        { error: "Failed to search users", details: error.message },
-        { status: 500 }
-      );
-    }
-
-    console.log("✅ Found users:", users?.length || 0);
-    const response = NextResponse.json({ users: users || [] });
+    logger.info(`Found ${users.length} users`);
+    const response = NextResponse.json({ users });
     return addRateLimitHeaders(response, rateLimitResult.result);
   } catch (error: any) {
-    console.error("❌ Unexpected error in user search:", error);
-    return NextResponse.json(
-      { error: "Internal server error", details: error?.message },
-      { status: 500 }
-    );
+    return handleApiError(error);
   }
 }

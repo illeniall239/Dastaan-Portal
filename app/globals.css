@@ -86,13 +86,11 @@
 .font-urdu {
   font-family: 'Noto Nastaliq Urdu', serif !important;
   line-height: 1.6 !important;
-  font-weight: inherit !important;
 }
 
 /* Ensure all Urdu text uses Nastaliq */
 [lang="ur"] {
   font-family: 'Noto Nastaliq Urdu', serif !important;
-  font-weight: inherit !important;
 }
 
 /* Extra specificity for Urdu spans */
@@ -103,7 +101,6 @@ h1[lang="ur"],
 h2[lang="ur"],
 h3[lang="ur"] {
   font-family: 'Noto Nastaliq Urdu', serif !important;
-  font-weight: inherit !important;
 }
 
 /* Override any body font for Urdu elements */
@@ -111,7 +108,6 @@ body .font-urdu,
 body [lang="ur"],
 body span[lang="ur"] {
   font-family: 'Noto Nastaliq Urdu', serif !important;
-  font-weight: inherit !important;
 }
 
 @layer utilities {

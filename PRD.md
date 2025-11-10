@@ -64,7 +64,7 @@ Build a web-based content management system that transforms the chaotic, email-b
 - Setup, authentication, story submission, evaluation system
 
 **Phase 2 (Days 8-11):** Extended Workflow & Business Logic
-- Approvals, negotiation, legal review, contracts, payments
+- Approvals, contract terms, legal review, contracts, payments
 
 **Phase 3 (Days 12-15):** Visibility & Intelligence Layer
 - Dashboard, analytics, archive, notifications, polish
@@ -700,7 +700,7 @@ notifications (
 
 ### Phase 2 Objectives
 ✅ Complete the full 8-stage workflow
-✅ Implement negotiation and legal review
+✅ Implement contract terms and legal review
 ✅ Build contract management system
 ✅ Create payment tracking with milestone-based releases
 ✅ Implement scripting phase (6 steps)
@@ -737,7 +737,7 @@ Acceptance:
   * Quick access buttons to supporting docs
   * Historical context (similar projects if any)
 - Decision options:
-  * ✅ Approve - Proceed to Negotiation
+  * ✅ Approve - Proceed to Contract Terms
   * ❌ Reject - Decline project
   * ⏸️ Request More Info
 - Additional fields:
@@ -751,9 +751,9 @@ Acceptance:
 
 **Routing Logic:**
 - IF APPROVED:
-  * Status → "Negotiation"
+  * Status → "Contract Terms"
   * Notify Content Manager
-  * Create negotiation task
+  * Create contract term task
   * Log approval
 - IF REJECTED:
   * Status → "Archived - Rejected at One-Liner"
@@ -792,12 +792,12 @@ one_liners (
 
 ---
 
-#### 2.2 Negotiation Phase (Day 8)
+#### 2.2 Contract Terms Phase (Day 8)
 
 **Features:**
-- Negotiation terms form
+- Contract terms form
 - Status tracking
-- Negotiation history log
+- Contract terms history log
 
 **User Story US-2.2: Negotiate Terms**
 ```
@@ -806,7 +806,7 @@ I want to negotiate terms with the writer/producer
 So that we agree on price, timeline, and scope
 
 Acceptance:
-- Negotiation form includes:
+- Contract terms form includes:
   Financial Terms:
   * Proposed Price (per episode OR total project OR both)
   * Payment Structure (Per Episode/Milestone-based/Upfront+Completion/Custom)
@@ -825,7 +825,7 @@ Acceptance:
   * Confidentiality Requirements
   * Additional Terms
 
-  Negotiation Notes:
+  Contract Terms Notes:
   * Meeting notes (rich text)
   * Negotiation history (auto-logged):
     - Date of each discussion
@@ -841,8 +841,8 @@ Acceptance:
   * Failed/Abandoned
 
 - Tracks:
-  * Number of negotiation rounds
-  * Duration of negotiation
+  * Number of contract terms rounds
+  * Duration of contract terms
   * Changes made to terms
   * Who made each change
 
@@ -852,7 +852,7 @@ Acceptance:
     - Timeline confirmed
     - Scope of work clear
     - Writer/Producer agreed
-  * Generates negotiation summary document
+  * Generates contract terms summary document
   * Routes to Legal Review
 
 - If "Failed":
@@ -865,7 +865,7 @@ Acceptance:
 ```sql
 negotiations (
   id UUID PRIMARY KEY,
-  negotiation_id TEXT UNIQUE, -- NEG-YYYY-NNNN
+  contract terms_id TEXT UNIQUE, -- NEG-YYYY-NNNN
   story_id UUID REFERENCES stories(id),
   writer_producer_name TEXT,
   -- Financial
@@ -885,8 +885,8 @@ negotiations (
   additional_terms TEXT,
   -- Tracking
   status TEXT DEFAULT 'in_progress',
-  negotiation_rounds INT DEFAULT 0,
-  negotiation_history JSONB[],
+  contract terms_rounds INT DEFAULT 0,
+  contract terms_history JSONB[],
   terms_agreed BOOLEAN DEFAULT FALSE,
   failed_reason TEXT,
   created_by UUID REFERENCES users(id),
@@ -995,7 +995,7 @@ legal_reviews (
   id UUID PRIMARY KEY,
   legal_review_id TEXT UNIQUE, -- LR-YYYY-NNNN
   story_id UUID REFERENCES stories(id),
-  negotiation_id UUID REFERENCES negotiations(id),
+  contract terms_id UUID REFERENCES contract termss(id),
   assigned_to UUID REFERENCES users(id),
   review_start_date TIMESTAMP DEFAULT NOW(),
   -- Checklist (JSONB for flexibility)
@@ -2343,7 +2343,7 @@ content-portal/
 │   │   ├── story-submission-form.tsx
 │   │   ├── call-report-form.tsx
 │   │   ├── evaluation-form.tsx
-│   │   ├── negotiation-form.tsx
+│   │   ├── contract terms-form.tsx
 │   │   ├── legal-review-form.tsx
 │   │   ├── contract-form.tsx
 │   │   └── payment-form.tsx
@@ -2569,9 +2569,9 @@ CREATE TABLE one_liners (
 );
 
 -- Negotiations
-CREATE TABLE negotiations (
+CREATE TABLE contract termss (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  negotiation_id TEXT UNIQUE NOT NULL,
+  contract terms_id TEXT UNIQUE NOT NULL,
   story_id UUID REFERENCES stories(id) ON DELETE CASCADE,
   writer_producer_name TEXT,
   proposed_price DECIMAL(12,2),
@@ -2587,8 +2587,8 @@ CREATE TABLE negotiations (
   confidentiality_requirements TEXT,
   additional_terms TEXT,
   status TEXT DEFAULT 'in_progress',
-  negotiation_rounds INT DEFAULT 0,
-  negotiation_history JSONB[],
+  contract terms_rounds INT DEFAULT 0,
+  contract terms_history JSONB[],
   terms_agreed BOOLEAN DEFAULT FALSE,
   failed_reason TEXT,
   created_by UUID REFERENCES users(id),
@@ -2604,7 +2604,7 @@ CREATE TABLE legal_reviews (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   legal_review_id TEXT UNIQUE NOT NULL,
   story_id UUID REFERENCES stories(id) ON DELETE CASCADE,
-  negotiation_id UUID REFERENCES negotiations(id),
+  contract terms_id UUID REFERENCES contract termss(id),
   assigned_to UUID REFERENCES users(id),
   review_start_date TIMESTAMP DEFAULT NOW(),
   checklist JSONB,

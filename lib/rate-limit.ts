@@ -1,8 +1,16 @@
 /**
  * Simple in-memory rate limiter
  *
+ * @deprecated This module is deprecated. Use @/lib/rate-limit-redis instead.
+ *
+ * IMPORTANT: This in-memory implementation does NOT work in production with multiple instances.
+ * All new code should use the Redis-backed rate limiter in @/lib/rate-limit-redis.
+ *
+ * Migration: Replace imports of this module with @/lib/rate-limit-redis
+ * Example: import { rateLimit, RateLimitPresets } from "@/lib/rate-limit-redis";
+ *
  * For production with multiple instances, consider using:
- * - Upstash Redis (@upstash/ratelimit)
+ * - Upstash Redis (@upstash/ratelimit) ✅ NOW IMPLEMENTED in rate-limit-redis.ts
  * - Vercel Edge Config
  *
  * Current implementation: Sliding window in memory

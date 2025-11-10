@@ -42,6 +42,7 @@ interface CallReport {
   short_synopsis?: string;
   episodic_synopsis?: string;
   category: string;
+  overall_rating?: number;
 }
 
 export function EvaluatorEvaluationForm({
@@ -397,8 +398,28 @@ export function EvaluatorEvaluationForm({
                   <p className="text-sm text-muted-foreground whitespace-pre-wrap">{callReport.episodic_synopsis}</p>
                 </div>
               )}
-              
-              
+
+              {callReport.overall_rating && (
+                <div className="bg-blue-50 p-4 rounded-lg border-2 border-blue-200">
+                  <span className="text-sm font-medium">Initial Assessment:</span>
+                  <div className="flex items-center gap-3 mt-2">
+                    <span className="text-3xl font-bold text-blue-600">{callReport.overall_rating}/10</span>
+                    <div className={`text-sm px-3 py-1 rounded-md border ${
+                      callReport.overall_rating >= 9 ? 'text-green-700 bg-green-50 border-green-300' :
+                      callReport.overall_rating >= 7 ? 'text-blue-700 bg-blue-50 border-blue-300' :
+                      callReport.overall_rating >= 5 ? 'text-amber-700 bg-amber-50 border-amber-300' :
+                      'text-red-700 bg-red-50 border-red-300'
+                    }`}>
+                      {callReport.overall_rating >= 9 ? 'High rating potential' :
+                       callReport.overall_rating >= 7 ? 'Rating potential audience appeal' :
+                       callReport.overall_rating >= 5 ? 'Need improvement' :
+                       'Need major re-writing'}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+
             </div>
           </div>
         </Card>

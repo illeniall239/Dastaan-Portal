@@ -30,6 +30,11 @@ export default async function AdminLayout({
       href: "/admin/users",
       icon: "clipboardList",
     },
+    {
+      title: "Audit Logs",
+      href: "/admin/audit-logs",
+      icon: "fileText",
+    },
   ];
 
   return (

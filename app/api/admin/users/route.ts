@@ -1,9 +1,11 @@
 import { NextResponse } from "next/server";
+import { logger } from "@/lib/logger";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { adminCreateUserSchema, departmentToRole } from "@/lib/validations/auth";
 import { applyRateLimit, addRateLimitHeaders, handleApiError, withApiPerf } from "@/lib/api-middleware";
-import { RateLimitPresets } from "@/lib/rate-limit";
+import { RateLimitPresets } from "@/lib/rate-limit-redis";
+import { logAdminAction, getRequestContext } from "@/lib/audit/server";
 
 export async function POST(request: Request) {
   // Apply strict rate limiting: 10 requests per minute for user creation
@@ -74,6 +76,25 @@ export async function POST(request: Request) {
         { status: 500 }
       );
     }
+
+    // Log admin action for audit trail
+    const requestContext = getRequestContext(request);
+    await logAdminAction({
+      entityType: "user",
+      entityId: newUser.user.id,
+      action: "created",
+      performedBy: user.id,
+      details: {
+        ...requestContext,
+        newValues: {
+          email,
+          role,
+          department,
+          position,
+          name,
+        },
+      },
+    });
 
     const response = NextResponse.json(newUser);
     return addRateLimitHeaders(response, rateLimitResult.result);

@@ -1,6 +1,8 @@
 import { NextRequest } from 'next/server';
+import { logger } from "@/lib/logger";
 import { getCurrentUser } from '@/lib/auth';
 import { getAttachmentById, getSignedUrlServer } from '@/lib/attachments/server';
+import { idParamSchema } from '@/lib/validations/uuid-params';
 import { redirect } from 'next/navigation';
 
 export async function GET(
@@ -20,8 +22,13 @@ export async function GET(
     const resolvedParams = await params;
     const { id } = resolvedParams;
 
-    if (!id) {
-      return new Response(JSON.stringify({ message: 'Invalid attachment ID' }), {
+    // Validate UUID format
+    const paramValidation = idParamSchema.safeParse({ id });
+    if (!paramValidation.success) {
+      return new Response(JSON.stringify({
+        message: 'Invalid ID format',
+        details: paramValidation.error.format()
+      }), {
         status: 400,
         headers: { 'Content-Type': 'application/json' },
       });
@@ -44,7 +51,7 @@ export async function GET(
     // Return a redirect response
     return Response.redirect(signedUrl as unknown as URL, 307);
   } catch (error) {
-    console.error('Error serving attachment:', error);
+    logger.error(`Error serving attachment: ${error instanceof Error ? error.message : String(error)}`);
     return new Response(JSON.stringify({ message: 'Internal server error' }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' },

@@ -1,6 +1,9 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+import { logger } from "@/lib/logger";
 import { createClient } from "@/lib/supabase/server";
 import { episodicEvaluationSchema } from "@/lib/validations/episodic-evaluations";
+import { episodicEvaluationsQuerySchema } from "@/lib/validations/query-params";
+import { parsePaginationParams, applyPagination, createPaginatedResponse } from "@/lib/utils/pagination";
 
 /**
  * POST /api/episodic-evaluations
@@ -84,6 +87,7 @@ export async function POST(request: Request) {
         no_of_pages: evaluationData.no_of_pages,
         no_of_scenes: evaluationData.no_of_scenes,
         events: evaluationData.events || [],
+        summary_analysis: evaluationData.summary_analysis || null,
         conflict_of_content_score: evaluationData.conflict_of_content_score,
         characterization_score: evaluationData.characterization_score,
         story_progression_score: evaluationData.story_progression_score,
@@ -102,7 +106,7 @@ export async function POST(request: Request) {
       .single();
 
     if (insertError) {
-      console.error("Error creating episodic evaluation:", insertError);
+      logger.error(`Error creating episodic evaluation:: ${insertError instanceof Error ? insertError.message : String(insertError)}`);
       return NextResponse.json(
         { error: "Failed to create episodic evaluation", details: insertError.message },
         { status: 500 }
@@ -118,7 +122,7 @@ export async function POST(request: Request) {
     );
 
   } catch (error) {
-    console.error("Unexpected error:", error);
+    logger.error(`Unexpected error: ${error instanceof Error ? error.message : String(error)}`);
     return NextResponse.json(
       { error: "An unexpected error occurred" },
       { status: 500 }
@@ -129,8 +133,15 @@ export async function POST(request: Request) {
 /**
  * GET /api/episodic-evaluations
  * List episodic evaluations for current evaluator
+ *
+ * Query parameters:
+ * - page: Page number (default: 1)
+ * - limit: Items per page (default: 20, max: 100)
+ * - sortBy: Field to sort by (default: submitted_at)
+ * - sortOrder: asc or desc (default: desc)
+ * - episode_id: Filter by episode
  */
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   const supabase = await createClient();
 
   // Check authentication
@@ -154,11 +165,25 @@ export async function GET(request: Request) {
   }
 
   try {
-    // Parse query parameters
-    const { searchParams } = new URL(request.url);
-    const episodeId = searchParams.get("episode_id");
-    const limit = parseInt(searchParams.get("limit") || "50");
-    const offset = parseInt(searchParams.get("offset") || "0");
+    // Parse pagination parameters
+    const paginationParams = parsePaginationParams(request);
+
+    // Parse and validate filter parameters
+    const { searchParams } = request.nextUrl;
+    const rawFilters = {
+      episode_id: searchParams.get("episode_id") || undefined,
+    };
+
+    // Validate query parameters
+    const validation = episodicEvaluationsQuerySchema.safeParse(rawFilters);
+    if (!validation.success) {
+      return NextResponse.json(
+        { error: "Invalid query parameters", details: validation.error.format() },
+        { status: 400 }
+      );
+    }
+
+    const episodeId = validation.data.episode_id;
 
     // Build query
     let query = supabase
@@ -184,30 +209,31 @@ export async function GET(request: Request) {
       query = query.eq("episode_id", episodeId);
     }
 
-    // Apply sorting and pagination
-    query = query
-      .order("submitted_at", { ascending: false })
-      .range(offset, offset + limit - 1);
+    // Apply pagination and sorting
+    query = applyPagination(query, paginationParams);
 
     const { data: evaluations, error, count } = await query;
 
     if (error) {
-      console.error("Error fetching episodic evaluations:", error);
+      logger.error(`Error fetching episodic evaluations: ${error instanceof Error ? error.message : String(error)}`);
       return NextResponse.json(
         { error: "Failed to fetch episodic evaluations", details: error.message },
         { status: 500 }
       );
     }
 
-    return NextResponse.json({
-      evaluations,
-      total: count,
-      limit,
-      offset,
-    });
+    // Create standardized paginated response
+    const response = createPaginatedResponse(
+      evaluations || [],
+      paginationParams.page,
+      paginationParams.limit,
+      count || 0
+    );
+
+    return NextResponse.json(response);
 
   } catch (error) {
-    console.error("Unexpected error:", error);
+    logger.error(`Unexpected error: ${error instanceof Error ? error.message : String(error)}`);
     return NextResponse.json(
       { error: "An unexpected error occurred" },
       { status: 500 }

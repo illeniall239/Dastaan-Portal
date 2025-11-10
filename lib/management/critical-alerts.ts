@@ -78,7 +78,7 @@ export async function getCriticalAlerts(): Promise<CriticalAlert[]> {
       }
     });
 
-    // Check for negotiation delays (stories in negotiation > 21 days)
+    // Check for contract terms delays (stories in contract terms > 21 days)
     const negotiationStories = stories.filter(s => s.status === 'in_negotiation');
     negotiationStories.forEach(story => {
       const lastUpdate = new Date(story.updated_at);
@@ -90,7 +90,7 @@ export async function getCriticalAlerts(): Promise<CriticalAlert[]> {
           type: 'long_negotiation',
           severity: daysInNegotiation > 45 ? 'critical' : 'warning',
           title: 'Prolonged negotiation',
-          description: `"${story.title}" in negotiation for ${daysInNegotiation} days`,
+          description: `"${story.title}" in contract terms for ${daysInNegotiation} days`,
           affectedEntity: story.title,
           entityId: story.id,
           daysDelayed: daysInNegotiation,

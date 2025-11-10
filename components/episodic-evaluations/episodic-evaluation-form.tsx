@@ -6,6 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { EventsList } from "./events-list";
 import { ScoreCard } from "./score-card";
@@ -37,6 +38,7 @@ interface DraftData {
   noOfPages: number;
   noOfScenes: number;
   events: any[];
+  summaryAnalysis?: string;
   conflictScore: number;
   characterizationScore: number;
   progressionScore: number;
@@ -70,6 +72,9 @@ export function EpisodicEvaluationForm({
   const [noOfScenes, setNoOfScenes] = useState(existingEvaluation?.no_of_scenes || 22);
   const [events, setEvents] = useState<any[]>(
     existingEvaluation?.events || []
+  );
+  const [summaryAnalysis, setSummaryAnalysis] = useState(
+    existingEvaluation?.summary_analysis || ""
   );
 
   // Score state
@@ -133,6 +138,7 @@ export function EpisodicEvaluationForm({
         noOfPages,
         noOfScenes,
         events,
+        summaryAnalysis,
         conflictScore,
         characterizationScore,
         progressionScore,
@@ -168,6 +174,7 @@ export function EpisodicEvaluationForm({
       setNoOfPages(pendingDraftData.noOfPages);
       setNoOfScenes(pendingDraftData.noOfScenes);
       setEvents(pendingDraftData.events);
+      setSummaryAnalysis(pendingDraftData.summaryAnalysis || "");
       setConflictScore(pendingDraftData.conflictScore);
       setCharacterizationScore(pendingDraftData.characterizationScore);
       setProgressionScore(pendingDraftData.progressionScore);
@@ -218,6 +225,7 @@ export function EpisodicEvaluationForm({
       no_of_pages: noOfPages,
       no_of_scenes: noOfScenes,
       events: filteredEvents,
+      summary_analysis: summaryAnalysis,
       conflict_of_content_score: conflictScore,
       characterization_score: characterizationScore,
       story_progression_score: progressionScore,
@@ -386,9 +394,29 @@ export function EpisodicEvaluationForm({
         </div>
       </Card>
 
-      {/* Section 3: Evaluation Scores */}
+      {/* Section 3: Summary/Analysis */}
       <div className="space-y-4">
-        <h3 className="text-xl font-bold">Section 3: Evaluation Scores</h3>
+        <h3 className="text-xl font-bold">Section 3: Summary/Analysis</h3>
+        <p className="text-sm text-muted-foreground">
+          Provide a written summary and analysis of the episode before rating.
+        </p>
+        <div className="space-y-2">
+          <Label htmlFor="summaryAnalysis">Your Analysis</Label>
+          <Textarea
+            id="summaryAnalysis"
+            placeholder="Write your summary and analysis of this episode..."
+            rows={8}
+            value={summaryAnalysis}
+            onChange={(e) => setSummaryAnalysis(e.target.value)}
+            disabled={isReadOnly}
+            className="min-h-[200px]"
+          />
+        </div>
+      </div>
+
+      {/* Section 4: Evaluation Scores */}
+      <div className="space-y-4">
+        <h3 className="text-xl font-bold">Section 4: Evaluation Scores</h3>
         <p className="text-sm text-muted-foreground">
           Rate each criterion on a scale of 1-10. The grade for each criterion will be calculated automatically.
         </p>
@@ -436,9 +464,9 @@ export function EpisodicEvaluationForm({
         </div>
       </div>
 
-      {/* Section 4: Overall Assessment */}
+      {/* Section 5: Overall Assessment */}
       <div className="space-y-4">
-        <h3 className="text-xl font-bold">Section 4: Overall Assessment</h3>
+        <h3 className="text-xl font-bold">Section 5: Overall Assessment</h3>
         <OverallAssessment average={overallAverage} grade={overallGrade} />
       </div>
 

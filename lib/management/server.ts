@@ -18,7 +18,7 @@ export interface PipelineFunnel {
   submitted: number;
   in_evaluation: number;
   approved: number;
-  in_negotiation: number;
+  in_contractTerm: number;
   in_legal_review: number;
   contracted: number;
   in_payment: number;
@@ -190,7 +190,7 @@ export async function getPipelineFunnel(): Promise<PipelineFunnel> {
       submitted: 0,
       in_evaluation: 0,
       approved: 0,
-      in_negotiation: 0,
+      in_contractTerm: 0,
       in_legal_review: 0,
       contracted: 0,
       in_payment: 0,
@@ -211,7 +211,7 @@ export async function getPipelineFunnel(): Promise<PipelineFunnel> {
       submitted: 0,
       in_evaluation: 0,
       approved: 0,
-      in_negotiation: 0,
+      in_contractTerm: 0,
       in_legal_review: 0,
       contracted: 0,
       in_payment: 0,

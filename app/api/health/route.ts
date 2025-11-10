@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { logger } from "@/lib/logger";
 
 /**
  * Health Check Endpoint
@@ -26,7 +27,7 @@ export async function GET() {
       .limit(1);
 
     if (dbError) {
-      console.error("[Health Check] Database connection failed:", dbError);
+      logger.error(`Health check failed: Database connection error - ${dbError.message} (code: ${dbError.code})`);
       return NextResponse.json(
         {
           status: "unhealthy",
@@ -57,7 +58,8 @@ export async function GET() {
       { status: 200 }
     );
   } catch (error) {
-    console.error("[Health Check] Unexpected error:", error);
+    const errorMsg = error instanceof Error ? error.message : String(error);
+    logger.error(`Health check failed: Unexpected error - ${errorMsg}`);
     return NextResponse.json(
       {
         status: "unhealthy",

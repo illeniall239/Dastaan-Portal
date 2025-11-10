@@ -1,8 +1,10 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+import { logger } from "@/lib/logger";
 import { createClient } from "@/lib/supabase/server";
 import { createMultipleEpisodesSchema, episodesQuerySchema } from "@/lib/validations/episodes";
 import { withApiPerf, applyRateLimit, addRateLimitHeaders, withCors } from "@/lib/api-middleware";
-import { RateLimitPresets } from "@/lib/rate-limit";
+import { RateLimitPresets } from "@/lib/rate-limit-redis";
+import { parsePaginationParams, applyPagination, createPaginatedResponse } from "@/lib/utils/pagination";
 
 /**
  * POST /api/episodes
@@ -67,7 +69,7 @@ export async function POST(request: Request) {
       .select();
 
     if (error) {
-      console.error("Error creating episodes:", error);
+      logger.error(`Error creating episodes: ${error instanceof Error ? error.message : String(error)}`);
       return NextResponse.json(
         { error: "Failed to create episodes", details: error.message },
         { status: 500 }
@@ -81,7 +83,7 @@ export async function POST(request: Request) {
     return addRateLimitHeaders(withCors(request, res), rate.result);
 
   } catch (error) {
-    console.error("Unexpected error:", error);
+    logger.error(`Unexpected error: ${error instanceof Error ? error.message : String(error)}`);
     return withCors(request, NextResponse.json(
       { error: "An unexpected error occurred" },
       { status: 500 }
@@ -92,8 +94,18 @@ export async function POST(request: Request) {
 /**
  * GET /api/episodes
  * List episodes with optional filters
+ *
+ * Query parameters:
+ * - page: Page number (default: 1)
+ * - limit: Items per page (default: 20, max: 100)
+ * - sortBy: Field to sort by (default: created_at)
+ * - sortOrder: asc or desc (default: desc)
+ * - call_report_id: Filter by call report
+ * - story_id: Filter by story
+ * - logged_by: Filter by user who logged the episode
+ * - episode_number: Filter by episode number
  */
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   // Rate limit GETs listing/search
   const rate = await applyRateLimit(request, RateLimitPresets.relaxed);
   if (!rate.success) return rate.response!;
@@ -120,44 +132,34 @@ export async function GET(request: Request) {
   }
 
   try {
-    // Parse query parameters
-    const { searchParams } = new URL(request.url);
-    const queryParams = {
+    // Parse pagination parameters (page, limit, sortBy, sortOrder)
+    const paginationParams = parsePaginationParams(request);
+
+    // Parse and validate filter parameters
+    const { searchParams } = request.nextUrl;
+    const rawFilters = {
       call_report_id: searchParams.get("call_report_id") || undefined,
       story_id: searchParams.get("story_id") || undefined,
       logged_by: searchParams.get("logged_by") || undefined,
-      episode_number: searchParams.get("episode_number")
-        ? parseInt(searchParams.get("episode_number")!)
-        : undefined,
-      limit: searchParams.get("limit")
-        ? parseInt(searchParams.get("limit")!)
-        : 50,
-      offset: searchParams.get("offset")
-        ? parseInt(searchParams.get("offset")!)
-        : 0,
-      sort_by: searchParams.get("sort_by") || "created_at",
-      sort_order: searchParams.get("sort_order") || "desc",
+      episode_number: searchParams.get("episode_number") || undefined,
     };
 
-    const validation = episodesQuerySchema.safeParse(queryParams);
-
+    // Validate query parameters
+    const validation = episodesQuerySchema.safeParse(rawFilters);
     if (!validation.success) {
-      return NextResponse.json(
-        { error: validation.error.format() },
-        { status: 400 }
+      return addRateLimitHeaders(
+        withCors(
+          request,
+          NextResponse.json(
+            { error: "Invalid query parameters", details: validation.error.format() },
+            { status: 400 }
+          )
+        ),
+        rate.result
       );
     }
 
-    const {
-      call_report_id,
-      story_id,
-      logged_by,
-      episode_number,
-      limit,
-      offset,
-      sort_by,
-      sort_order,
-    } = validation.data;
+    const filters = validation.data;
 
     // Build query
     let query = supabase
@@ -170,47 +172,47 @@ export async function GET(request: Request) {
       `, { count: "exact" });
 
     // Apply filters
-    if (call_report_id) {
-      query = query.eq("call_report_id", call_report_id);
+    if (filters.call_report_id) {
+      query = query.eq("call_report_id", filters.call_report_id);
     }
-    if (story_id) {
-      query = query.eq("story_id", story_id);
+    if (filters.story_id) {
+      query = query.eq("story_id", filters.story_id);
     }
-    if (logged_by) {
-      query = query.eq("logged_by", logged_by);
+    if (filters.logged_by) {
+      query = query.eq("logged_by", filters.logged_by);
     }
-    if (episode_number) {
-      query = query.eq("episode_number", episode_number);
+    if (filters.episode_number) {
+      query = query.eq("episode_number", filters.episode_number);
     }
 
-    // Apply sorting
-    query = query.order(sort_by!, { ascending: sort_order === "asc" });
-
-    // Apply pagination
-    query = query.range(offset!, offset! + limit! - 1);
+    // Apply pagination and sorting
+    query = applyPagination(query, paginationParams);
 
     const { data: episodes, error, count } = await query;
 
     if (error) {
-      console.error("Error fetching episodes:", error);
+      logger.error(`Error fetching episodes: ${error instanceof Error ? error.message : String(error)}`);
       return NextResponse.json(
         { error: "Failed to fetch episodes", details: error.message },
         { status: 500 }
       );
     }
 
+    // Create standardized paginated response
+    const response = createPaginatedResponse(
+      episodes || [],
+      paginationParams.page,
+      paginationParams.limit,
+      count || 0
+    );
+
     return withApiPerf(async () => {
-      const res = NextResponse.json({
-      episodes,
-      total: count,
-      limit,
-      offset,
-      });
+      const res = NextResponse.json(response);
       return addRateLimitHeaders(withCors(request, res), rate.result);
     }, request);
 
   } catch (error) {
-    console.error("Unexpected error:", error);
+    logger.error(`Unexpected error: ${error instanceof Error ? error.message : String(error)}`);
     return withCors(request, NextResponse.json(
       { error: "An unexpected error occurred" },
       { status: 500 }

@@ -10,7 +10,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import Link from "next/link";
-import { PlusIcon, FileTextIcon, TrendingUp, TrendingDown, Minus, EyeIcon } from "lucide-react";
+import { PlusIcon, FileTextIcon, TrendingUp, TrendingDown, Minus, EyeIcon, FilePenLine } from "lucide-react";
 import { getAllCallReports } from "@/lib/meetings/server";
 import { EvaluationProgressBar } from "@/components/evaluations/evaluation-progress-bar";
 import { Suspense } from "react";
@@ -43,13 +43,22 @@ export default async function EvaluatorCallReportsPage() {
             View all writer engagement reports and meeting documentation
           </p>
         </div>
-        <Button asChild className="bg-[#224794] hover:bg-[#1a3670] touch-target w-full sm:w-auto">
-          <Link href="/evaluator/log-call-report">
-            <PlusIcon className="h-4 w-4 mr-2" />
-            <span className="hidden sm:inline">Log New Writer Engagement Report</span>
-            <span className="sm:hidden">Log New Report</span>
-          </Link>
-        </Button>
+        <div className="flex gap-2 w-full sm:w-auto">
+          <Button asChild className="bg-[#224794] hover:bg-[#1a3670] touch-target flex-1 sm:flex-none">
+            <Link href="/evaluator/log-call-report">
+              <PlusIcon className="h-4 w-4 mr-2" />
+              <span className="hidden sm:inline">Log New Writer Engagement Report</span>
+              <span className="sm:hidden">Log New Report</span>
+            </Link>
+          </Button>
+          <Button asChild variant="outline" className="touch-target flex-1 sm:flex-none">
+            <Link href="/evaluator/log-detailed-one-liner">
+              <FilePenLine className="h-4 w-4 mr-2" />
+              <span className="hidden sm:inline">Log Detailed One-Liner</span>
+              <span className="sm:hidden">Log One-Liner</span>
+            </Link>
+          </Button>
+        </div>
       </div>
 
       {/* Call Reports List - Show skeleton while fetching */}

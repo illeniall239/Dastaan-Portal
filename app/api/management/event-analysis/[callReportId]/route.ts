@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
+import { logger } from "@/lib/logger";
 import { createClient } from "@/lib/supabase/server";
+import { callReportIdParamSchema } from "@/lib/validations/uuid-params";
 import { getEventAnalysisForDrama } from "@/lib/management/episode-pipeline";
 
 export async function GET(
@@ -7,6 +9,15 @@ export async function GET(
   { params }: { params: Promise<{ callReportId: string }> }
 ) {
   const { callReportId } = await params;
+
+  // Validate UUID format
+  const paramValidation = callReportIdParamSchema.safeParse({ callReportId });
+  if (!paramValidation.success) {
+    return NextResponse.json(
+      { error: "Invalid call report ID format", details: paramValidation.error.format() },
+      { status: 400 }
+    );
+  }
 
   try {
     const supabase = await createClient();
@@ -36,7 +47,7 @@ export async function GET(
 
     return NextResponse.json({ data });
   } catch (error) {
-    console.error("Error fetching event analysis:", error);
+    logger.error(`Error fetching event analysis: ${error instanceof Error ? error.message : String(error)}`);
     return NextResponse.json(
       { error: "Failed to fetch event analysis data" },
       { status: 500 }
