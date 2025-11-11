@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
@@ -14,17 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { Users, Loader2 } from "lucide-react";
 import { EvaluatorTimeFilter, TimeRange } from "./evaluator-time-filter";
 import { filterSampleEvaluatorStatsByTimeRange } from "@/lib/management/sample-data";
-
-interface EvaluatorStats {
-  id: string;
-  name: string;
-  email: string;
-  oneLinerCount: number;
-  episodicEvals: number;
-  callReportEvals: number;
-  totalEvaluations: number;
-  avgTimeSpent: number;
-}
+import { useEvaluatorStats, type EvaluatorStats } from "@/lib/hooks";
 
 interface EvaluatorLeaderboardProps {
   evaluators: EvaluatorStats[];
@@ -34,53 +24,40 @@ interface EvaluatorLeaderboardProps {
 export function EvaluatorLeaderboard({ evaluators, useSampleData = false }: EvaluatorLeaderboardProps) {
   const [selectedPreset, setSelectedPreset] = useState("all");
   const [selectedLabel, setSelectedLabel] = useState("All Time");
-  const [filteredStats, setFilteredStats] = useState(evaluators);
-  const [loading, setLoading] = useState(false);
+  const [dateRange, setDateRange] = useState<{ from?: Date; to?: Date }>({});
 
-  // Sync state with props when evaluators change (important for sample vs real mode)
-  useEffect(() => {
-    setFilteredStats(evaluators);
-    setSelectedPreset("all");
-    setSelectedLabel("All Time");
-  }, [evaluators]);
+  // React Query hook for fetching evaluator stats with time range filtering
+  const { data: apiStats, isLoading } = useEvaluatorStats({
+    from: dateRange.from,
+    to: dateRange.to,
+    enabled: !useSampleData && selectedPreset !== "all",
+  });
 
-  const handleTimeRangeChange = async (range: TimeRange) => {
+  const handleTimeRangeChange = (range: TimeRange) => {
     setSelectedPreset(range.preset);
     setSelectedLabel(range.label);
-    setLoading(true);
 
-    try {
-      if (useSampleData) {
-        // For sample data, filter client-side
-        const filtered = filterSampleEvaluatorStatsByTimeRange(evaluators, range.preset);
-        setFilteredStats(filtered);
-      } else {
-        // For real data, fetch from API with date params
-        const params = new URLSearchParams({
-          from: range.from.toISOString(),
-          to: range.to.toISOString(),
-        });
-
-        const response = await fetch(`/api/management/evaluator-stats?${params}`);
-        const data = await response.json();
-
-        if (data.success) {
-          setFilteredStats(data.stats);
-        } else {
-          console.error("Failed to fetch filtered stats:", data.error);
-          // Keep current stats on error
-        }
-      }
-    } catch (error) {
-      console.error("Error filtering evaluator stats:", error);
-      // Keep current stats on error
-    } finally {
-      setLoading(false);
+    if (!useSampleData && range.preset !== "all") {
+      // For real data, update date range to trigger React Query refetch
+      setDateRange({ from: range.from, to: range.to });
     }
   };
 
+  // Determine which stats to display
+  let displayStats: EvaluatorStats[];
+  if (useSampleData) {
+    // For sample data, filter client-side
+    displayStats = filterSampleEvaluatorStatsByTimeRange(evaluators, selectedPreset);
+  } else if (selectedPreset === "all") {
+    // For "all time", use the initial evaluators prop
+    displayStats = evaluators;
+  } else {
+    // For date-filtered real data, use React Query results
+    displayStats = apiStats || [];
+  }
+
   // Sort by total evaluations (highest to lowest)
-  const sortedEvaluators = [...filteredStats].sort((a, b) => b.totalEvaluations - a.totalEvaluations);
+  const sortedEvaluators = [...displayStats].sort((a, b) => b.totalEvaluations - a.totalEvaluations);
 
   return (
     <Card>
@@ -109,7 +86,7 @@ export function EvaluatorLeaderboard({ evaluators, useSampleData = false }: Eval
         </div>
       </CardHeader>
       <CardContent>
-        {loading ? (
+        {isLoading ? (
           <div className="flex items-center justify-center py-12">
             <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
             <span className="ml-3 text-muted-foreground">Loading data...</span>

@@ -21,7 +21,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
-import { Loader2, MoreVertical, Download, FileText, Plus, Search, ChevronRight, ChevronDown } from "lucide-react";
+import { Loader2, MoreVertical, Download, FileText, Plus, Search, ChevronRight, ChevronDown, Pencil } from "lucide-react";
 import { formatFileSize } from "@/lib/validations/episodes";
 import type { EpisodeWithDetails } from "@/types";
 
@@ -33,7 +33,9 @@ export default function EpisodesListPage() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [expandedProjects, setExpandedProjects] = useState<Set<string>>(new Set());
-  
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [currentUserRole, setCurrentUserRole] = useState<string | null>(null);
+
 
   const fetchEpisodes = async () => {
     setLoading(true);
@@ -46,6 +48,23 @@ export default function EpisodesListPage() {
       }
 
       setEpisodes(data.episodes || []);
+
+      // Fetch current user info
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        setCurrentUserId(user.id);
+
+        // Fetch user role
+        const { data: userData } = await supabase
+          .from("users")
+          .select("role")
+          .eq("id", user.id)
+          .single();
+
+        if (userData) {
+          setCurrentUserRole(userData.role);
+        }
+      }
     } catch (error: any) {
       console.error("Error fetching episodes:", error);
       toast.error(error.message || "Failed to load episodes");
@@ -151,6 +170,14 @@ export default function EpisodesListPage() {
     const next = new Set(expandedProjects);
     if (next.has(projectId)) next.delete(projectId); else next.add(projectId);
     setExpandedProjects(next);
+  };
+
+  const canEditEpisode = (episode: EpisodeWithDetails): boolean => {
+    if (!currentUserId || !currentUserRole) return false;
+    return (
+      episode.logged_by === currentUserId ||
+      ["content_manager", "admin"].includes(currentUserRole)
+    );
   };
 
   if (loading) {
@@ -292,6 +319,12 @@ export default function EpisodesListPage() {
                                 </Button>
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end" side="bottom" collisionPadding={10} className="z-50 w-[calc(100vw-2rem)] max-w-64 md:max-w-none md:w-56">
+                                {canEditEpisode(episode) && (
+                                  <DropdownMenuItem onClick={() => router.push(`/content-department/episodes/${episode.id}/edit`)}>
+                                    <Pencil className="mr-2 h-4 w-4" />
+                                    Edit
+                                  </DropdownMenuItem>
+                                )}
                                 {episode.attachment_url && (
                                   <DropdownMenuItem onClick={() => handleDownload(episode)}>
                                     <Download className="mr-2 h-4 w-4" />
@@ -371,6 +404,11 @@ export default function EpisodesListPage() {
                             <span className="text-sm text-muted-foreground flex-1">
                               By: {episode.logged_by_user?.name || "Unknown"}
                             </span>
+                            {canEditEpisode(episode) && (
+                              <Button size="sm" variant="outline" onClick={() => router.push(`/content-department/episodes/${episode.id}/edit`)} className="touch-target">
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                            )}
                             {episode.attachment_url && (
                               <Button size="sm" variant="outline" onClick={() => handleDownload(episode)} className="touch-target">
                                 <Download className="h-4 w-4 mr-1" />

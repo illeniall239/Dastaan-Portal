@@ -11,7 +11,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useNotifications } from "@/lib/providers/notification-provider";
+import { useNotificationContext } from "@/lib/providers/notification-provider";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -110,7 +110,7 @@ const defaultNavItems: NavItem[] = [
 export const Header = memo(function Header({ userName, userEmail, userPosition, navItems = defaultNavItems, dashboardHref }: HeaderProps) {
   const pathname = usePathname();
   const router = useRouter();
-  const { notifications, unreadCount, handleMarkAsRead, handleMarkAllAsRead } = useNotifications();
+  const { notifications, unreadCount, handleMarkAsRead, handleMarkAllAsRead } = useNotificationContext();
   const [isOpen, setIsOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);

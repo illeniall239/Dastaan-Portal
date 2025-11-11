@@ -4,6 +4,7 @@ import { EvaluatorEvaluationForm } from "./evaluation-form-prefilled";
 import { exampleWriters } from "@/lib/mock/writers";
 import { getAttachmentsForEntityServer } from "@/lib/attachments/server";
 import { getEvaluationProgress } from "@/lib/evaluations/assignments";
+import { getDetailedOneLinersByCallReport } from "@/lib/detailed-one-liner/server";
 
 interface CallReport {
   id: string;
@@ -43,6 +44,7 @@ export default async function EvaluatorEvaluatePage({
   let attachments: any[] = [];
   let progress = null;
   let writers: { id: string; name: string; email: string }[] = [];
+  let detailedOneLiner: any = null;
 
   try {
     const { createClient } = await import("@/lib/supabase/server");
@@ -77,6 +79,15 @@ export default async function EvaluatorEvaluatePage({
       // Continue without progress if there's an error
     }
 
+    // Fetch detailed one-liner for this call report
+    try {
+      const detailedOneLiners = await getDetailedOneLinersByCallReport(callReportId);
+      detailedOneLiner = detailedOneLiners[0] || null;
+    } catch (detailedOneLinerError) {
+      console.error("Error fetching detailed one-liner:", detailedOneLinerError);
+      // Continue without detailed one-liner if there's an error
+    }
+
     // Use the same example writers list as the writer engagement form
     writers = exampleWriters;
   } catch (error) {
@@ -97,6 +108,7 @@ export default async function EvaluatorEvaluatePage({
         attachments={attachments}
         progress={progress}
         writers={writers}
+        detailedOneLiner={detailedOneLiner}
       />
     </div>
   );

@@ -62,7 +62,34 @@ export const detailedOneLinerSchema = z.object({
   conclusion_recommendation: z.string().optional(),
 });
 
+/**
+ * Validation schema for updating detailed one-liner
+ * All fields except call_report_id can be updated
+ */
+export const updateDetailedOneLinerSchema = z.object({
+  preamble: z.string().min(1, "Preamble is required").optional(),
+  plot: z.string().min(1, "PLOT is required").optional(),
+  emotional_arena: z.string().min(1, "The Emotional Arena is required").optional(),
+  creed_conflict: z.string().min(1, "Creed and Conflict is required").optional(),
+  new_element: z.string().min(1, "New Element is required").optional(),
+  emotional_core_resolution: z.string().min(1, "Emotional Core and Resolution is required").optional(),
+  narrative_breakdown_items: z
+    .array(narrativeBreakdownItemSchema)
+    .min(1, "At least one narrative breakdown item is required")
+    .optional(),
+  event_planning_items: z
+    .array(eventPlanningItemSchema)
+    .optional(),
+  production_optimization_notes: z.string().optional(),
+  net_outcome: z.string().optional(),
+  potential_weaknesses_risks_items: z
+    .array(potentialWeaknessRiskItemSchema)
+    .optional(),
+  conclusion_recommendation: z.string().optional(),
+});
+
 export type DetailedOneLinerFormData = z.infer<typeof detailedOneLinerSchema>;
+export type UpdateDetailedOneLinerFormData = z.infer<typeof updateDetailedOneLinerSchema>;
 export type NarrativeBreakdownItemFormData = z.infer<typeof narrativeBreakdownItemSchema>;
 export type EventPlanningItemFormData = z.infer<typeof eventPlanningItemSchema>;
 export type PotentialWeaknessRiskItemFormData = z.infer<typeof potentialWeaknessRiskItemSchema>;

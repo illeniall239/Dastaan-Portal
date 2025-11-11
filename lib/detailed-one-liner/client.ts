@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/client";
-import type { DetailedOneLinerFormData } from "@/lib/validations/detailed-one-liner";
+import type { DetailedOneLinerFormData, UpdateDetailedOneLinerFormData } from "@/lib/validations/detailed-one-liner";
 import type { DetailedOneLinerWithDetails } from "@/types";
 
 /**
@@ -32,6 +32,30 @@ export async function getDetailedOneLinerClient(id: string): Promise<DetailedOne
   if (!response.ok) {
     const error = await response.json();
     throw new Error(error.error || "Failed to fetch detailed one-liner");
+  }
+
+  const result = await response.json();
+  return result.data;
+}
+
+/**
+ * Update an existing detailed one-liner from client components
+ */
+export async function updateDetailedOneLinerClient(
+  id: string,
+  formData: UpdateDetailedOneLinerFormData
+): Promise<DetailedOneLinerWithDetails> {
+  const response = await fetch(`/api/detailed-one-liner/${id}`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(formData),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || "Failed to update detailed one-liner");
   }
 
   const result = await response.json();

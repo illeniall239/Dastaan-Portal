@@ -27,7 +27,10 @@
       "Bash(move \"app\\api\\term-sheet\" \"app\\api\\content-delivery\")",
       "Bash(npx tsc:*)",
       "Bash(npm run test:*)",
-      "Bash(npm run test:coverage:*)"
+      "Bash(npm run test:coverage:*)",
+      "Bash(dir:*)",
+      "Bash(nul)",
+      "Bash(move \"app\\evaluator\\episodes\\[id]\" \"app\\evaluator\\episodes\\[episodeId]\")"
     ],
     "deny": [],
     "ask": []

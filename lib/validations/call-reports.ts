@@ -1,0 +1,30 @@
+import { z } from "zod";
+
+/**
+ * Validation schema for updating a call report (writer engagement report)
+ * These fields can be updated after creation
+ */
+export const updateCallReportSchema = z.object({
+  writer_name: z.string().min(1, "Writer name is required").max(200).optional(),
+  writer_email: z.string().max(255).optional(),
+  suggested_writer: z.string().max(200).optional(),
+  contact_email: z.string().email("Invalid email").optional(),
+  contact_phone: z.string().max(50).optional(),
+  contact_address: z.string().max(500).optional(),
+  working_title: z.string().min(1, "Working title is required").max(300).optional(),
+  logline: z.string().min(1, "Logline is required").optional(),
+  short_synopsis: z.string().optional(),
+  episodic_synopsis: z.string().optional(),
+  genre: z.string().max(100).optional(),
+  theme: z.string().max(200).optional(),
+  target_slot: z.string().max(100).optional(),
+  location: z.string().max(255).optional(),
+  meeting_date: z.string().datetime().optional(),
+  meeting_attendees: z.array(z.string()).optional(),
+  meeting_notes: z.string().optional(),
+  next_steps: z.string().max(1000).optional(),
+  status: z.string().max(50).optional(),
+  overall_rating: z.number().min(1).max(10).optional(),
+});
+
+export type UpdateCallReportFormData = z.infer<typeof updateCallReportSchema>;

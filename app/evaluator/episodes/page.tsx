@@ -42,6 +42,7 @@ import {
   CheckCircle2,
   ChevronRight,
   ChevronDown,
+  Pencil,
 } from "lucide-react";
 import { formatFileSize } from "@/lib/validations/episodes";
 import { EpisodeUploadForm, type EpisodeFormEntry } from "@/components/episodes/episode-upload-form";
@@ -97,7 +98,9 @@ export default function EvaluatorEpisodesPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [expandedProjects, setExpandedProjects] = useState<Set<string>>(new Set());
   const [expandedEvalProjects, setExpandedEvalProjects] = useState<Set<string>>(new Set());
-  
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [currentUserRole, setCurrentUserRole] = useState<string | null>(null);
+
 
   // Log episodes state
   const [logLoading, setLogLoading] = useState(false);
@@ -130,9 +133,22 @@ export default function EvaluatorEpisodesPage() {
 
       setEpisodes(data.episodes || []);
 
-      // Fetch evaluation status for each episode
+      // Fetch evaluation status for each episode and user info
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
+
+      setCurrentUserId(user.id);
+
+      // Fetch user role
+      const { data: userData } = await supabase
+        .from("users")
+        .select("role")
+        .eq("id", user.id)
+        .single();
+
+      if (userData) {
+        setCurrentUserRole(userData.role);
+      }
 
       const status: EvaluationStatus = {};
       for (const episode of data.episodes || []) {
@@ -443,6 +459,14 @@ export default function EvaluatorEpisodesPage() {
     setExpandedEvalProjects(next);
   };
 
+  const canEditEpisode = (episode: EpisodeWithDetails): boolean => {
+    if (!currentUserId || !currentUserRole) return false;
+    return (
+      episode.logged_by === currentUserId ||
+      ["content_manager", "admin"].includes(currentUserRole)
+    );
+  };
+
   return (
     <div className="mobile-container mobile-section">
       <div className="mb-4 sm:mb-6 md:mb-8">
@@ -616,6 +640,12 @@ export default function EvaluatorEpisodesPage() {
                                           </Button>
                                         </DropdownMenuTrigger>
                                         <DropdownMenuContent align="end" side="bottom" collisionPadding={10} className="z-50 w-[calc(100vw-2rem)] max-w-64 md:max-w-none md:w-56">
+                                          {canEditEpisode(episode) && (
+                                            <DropdownMenuItem onClick={() => router.push(`/evaluator/episodes/${episode.id}/edit`)}>
+                                              <Pencil className="mr-2 h-4 w-4" />
+                                              Edit
+                                            </DropdownMenuItem>
+                                          )}
                                           {episode.attachment_url && (
                                             <DropdownMenuItem onClick={() => handleDownload(episode)}>
                                               <Download className="mr-2 h-4 w-4" />
@@ -732,6 +762,11 @@ export default function EvaluatorEpisodesPage() {
                                       >
                                         <ClipboardCheck className="h-4 w-4 mr-1" />
                                         Evaluate
+                                      </Button>
+                                    )}
+                                    {canEditEpisode(episode) && (
+                                      <Button size="sm" variant="outline" onClick={() => router.push(`/evaluator/episodes/${episode.id}/edit`)} className="touch-target">
+                                        <Pencil className="h-4 w-4" />
                                       </Button>
                                     )}
                                     {episode.attachment_url && (

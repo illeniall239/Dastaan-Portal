@@ -6,7 +6,7 @@ import { getDetailedOneLinerById } from "@/lib/detailed-one-liner/server";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Pencil } from "lucide-react";
 
 export const metadata: Metadata = {
   title: "Detailed One-Liner | Dastaan Portal",
@@ -64,6 +64,11 @@ export default async function DetailedOneLinerPage({
   const eventPlanningItems = detailedOneLiner.event_planning_items || [];
   const weaknessRiskItems = detailedOneLiner.potential_weaknesses_risks_items || [];
 
+  // Check if user can edit (owner or manager/admin)
+  const canEdit =
+    detailedOneLiner.created_by === user.id ||
+    ["content_manager", "admin"].includes(userData.role);
+
   return (
     <div className="mobile-container mobile-section">
       <div className="mobile-header-spacing">
@@ -75,6 +80,14 @@ export default async function DetailedOneLinerPage({
               Back to Call Reports
             </Link>
           </Button>
+          {canEdit && (
+            <Button asChild variant="default" size="sm">
+              <Link href={`/evaluator/detailed-one-liner/${id}/edit`}>
+                <Pencil className="h-4 w-4 mr-2" />
+                Edit
+              </Link>
+            </Button>
+          )}
         </div>
 
         <div className="mb-6">

@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/client";
+import type { UpdateCallReportFormData } from "@/lib/validations/call-reports";
 
 export interface Meeting {
   id: string;
@@ -243,4 +244,44 @@ export async function getUserMeetingsClient(userId: string) {
   }));
 
   return meetings;
+}
+
+/**
+ * Get a single call report by ID
+ * Client-side function that calls the API endpoint
+ */
+export async function getCallReportClient(id: string): Promise<any> {
+  const response = await fetch(`/api/call-reports/${id}`);
+  const result = await response.json();
+
+  if (!response.ok) {
+    throw new Error(result.error || "Failed to fetch call report");
+  }
+
+  return result.callReport;
+}
+
+/**
+ * Update an existing call report
+ * Client-side function that calls the API endpoint
+ */
+export async function updateCallReportClient(
+  id: string,
+  data: UpdateCallReportFormData
+): Promise<any> {
+  const response = await fetch(`/api/call-reports/${id}`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(data),
+  });
+
+  const result = await response.json();
+
+  if (!response.ok) {
+    throw new Error(result.error || "Failed to update call report");
+  }
+
+  return result.callReport;
 }

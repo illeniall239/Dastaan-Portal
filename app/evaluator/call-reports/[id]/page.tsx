@@ -8,7 +8,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import Link from "next/link";
-import { ArrowLeftIcon, CalendarIcon, UserIcon, MapPinIcon, FileTextIcon, PaperclipIcon } from "lucide-react";
+import { ArrowLeftIcon, CalendarIcon, UserIcon, MapPinIcon, FileTextIcon, PaperclipIcon, Pencil } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { getAttachmentsForEntityServer } from "@/lib/attachments/server";
 
@@ -65,6 +65,11 @@ export default async function CallReportDetailPage({ params }: { params: Promise
     hour12: true,
   });
 
+  // Check if user can edit (owner or manager/admin)
+  const canEdit =
+    report.created_by === user.id ||
+    ["content_manager", "admin"].includes(user.role);
+
   return (
     <div className="p-6 space-y-4 max-w-5xl mx-auto">
       {/* Page Header */}
@@ -74,12 +79,20 @@ export default async function CallReportDetailPage({ params }: { params: Promise
             <ArrowLeftIcon className="h-4 w-4" />
           </Link>
         </Button>
-        <div>
+        <div className="flex-1">
           <h1 className="text-2xl font-semibold text-slate-900">{report.working_title}</h1>
           <p className="text-sm text-slate-500 mt-0.5">
             Writer Engagement Report ID: {report.call_report_id}
           </p>
         </div>
+        {canEdit && (
+          <Button variant="default" size="sm" asChild>
+            <Link href={`/evaluator/call-reports/${resolvedParams.id}/edit`}>
+              <Pencil className="h-4 w-4 mr-2" />
+              Edit
+            </Link>
+          </Button>
+        )}
       </div>
 
       {/* Single Column Layout */}

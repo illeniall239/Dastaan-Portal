@@ -14,6 +14,7 @@ import { Suspense } from "react";
 import { ArrowLeftIcon, PaperclipIcon, Loader2, FilePenLine } from "lucide-react";
 import { ScoreCard } from "@/components/episodic-evaluations/score-card";
 import { CallReportOverallAssessment } from "@/components/evaluations/call-report-overall-assessment";
+import { DetailedOneLinerDisplay } from "@/components/evaluations/detailed-one-liner-display";
 import {
   AlertDialog,
   AlertDialogContent,
@@ -52,6 +53,7 @@ export function EvaluatorEvaluationForm({
   attachments = [],
   progress = null,
   writers = [],
+  detailedOneLiner = null,
 }: {
   callReport: CallReport;
   userId: string;
@@ -59,6 +61,7 @@ export function EvaluatorEvaluationForm({
   attachments?: any[];
   progress?: any;
   writers?: { id: string; name: string; email: string }[];
+  detailedOneLiner?: any;
 }) {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
@@ -464,6 +467,9 @@ export function EvaluatorEvaluationForm({
             </CardContent>
           </Card>
         )}
+
+        {/* Detailed One-Liner Analysis - Display comprehensive project analysis */}
+        <DetailedOneLinerDisplay detailedOneLiner={detailedOneLiner} />
 
         {/* Rating Scale - Placed below attachments to guide evaluators before scoring */}
         <Card className="p-4 border-2 border-blue-100 bg-blue-50/30">

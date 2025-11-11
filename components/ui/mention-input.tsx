@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { UserBadge } from "@/components/ui/user-badge";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Loader2 } from "lucide-react";
+import { useSearchUsers } from "@/lib/hooks/queries/useSearchUsers";
 
 interface User {
   id: string;
@@ -30,20 +31,30 @@ export function MentionInput({
   className = "",
 }: MentionInputProps) {
   const [inputValue, setInputValue] = useState("");
-  const [searchResults, setSearchResults] = useState<User[]>([]);
-  const [isSearching, setIsSearching] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedQuery, setDebouncedQuery] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Search users when @ is typed
+  // React Query hook for user search
+  const { data: users, isLoading: isSearching } = useSearchUsers({
+    query: debouncedQuery,
+    enabled: debouncedQuery.length > 0,
+  });
+
+  // Filter out already selected users from search results
+  const searchResults =
+    users?.filter((user) => !selectedUsers.some((selected) => selected.id === user.id)) || [];
+
+  // Extract search query and handle @ mentions
   useEffect(() => {
     const atIndex = inputValue.lastIndexOf("@");
 
     if (atIndex === -1) {
       setShowDropdown(false);
       setSearchQuery("");
+      setDebouncedQuery("");
       return;
     }
 
@@ -52,54 +63,19 @@ export function MentionInput({
 
     if (query.length === 0) {
       setShowDropdown(true);
-      setIsSearching(false);
-      setSearchResults([]);
+      setDebouncedQuery("");
       return;
     }
 
-    // Debounce search
-    const timeoutId = setTimeout(async () => {
-      setIsSearching(true);
+    // Debounce the search query to avoid excessive API calls
+    const timeoutId = setTimeout(() => {
+      setDebouncedQuery(query);
       setShowDropdown(true);
-
-      try {
-        const response = await fetch(`/api/users/search?q=${encodeURIComponent(query)}`);
-
-        if (!response.ok) {
-          console.error("User search failed:", response.status, response.statusText);
-          setSearchResults([]);
-          setIsSearching(false);
-          return;
-        }
-
-        const text = await response.text();
-        if (!text) {
-          console.error("Empty response from user search");
-          setSearchResults([]);
-          setIsSearching(false);
-          return;
-        }
-
-        const data = JSON.parse(text);
-
-        if (data.users) {
-          // Filter out already selected users
-          const filteredUsers = data.users.filter(
-            (user: User) => !selectedUsers.some((selected) => selected.id === user.id)
-          );
-          setSearchResults(filteredUsers);
-          setSelectedIndex(0);
-        }
-      } catch (error) {
-        console.error("Error searching users:", error);
-        setSearchResults([]);
-      } finally {
-        setIsSearching(false);
-      }
+      setSelectedIndex(0);
     }, 300);
 
     return () => clearTimeout(timeoutId);
-  }, [inputValue, selectedUsers]);
+  }, [inputValue]);
 
   const handleSelectUser = (user: User) => {
     // Add user to selected list
@@ -108,8 +84,8 @@ export function MentionInput({
     // Clear input and close dropdown
     setInputValue("");
     setShowDropdown(false);
-    setSearchResults([]);
     setSearchQuery("");
+    setDebouncedQuery("");
 
     // Focus back on input
     inputRef.current?.focus();

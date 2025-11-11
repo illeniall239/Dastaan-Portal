@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -15,7 +16,7 @@ import {
 } from "@/components/ui/select";
 import Link from "next/link";
 import { toast } from "sonner";
-import { createMeetingClient } from "@/lib/meetings/client";
+import { createMeetingClient, updateCallReportClient } from "@/lib/meetings/client";
 import { FileUpload } from "@/components/ui/file-upload";
 import { uploadFile } from "@/lib/attachments/client";
 import { MentionInput } from "@/components/ui/mention-input";
@@ -30,16 +31,26 @@ interface User {
 }
 
 export function CallReportForm({
+  mode = "create",
+  initialData,
+  callReportId,
+  onSuccess,
   writers,
   userId,
   userName,
   userPosition
 }: {
-  writers: { id: string; name: string; email: string }[],
-  userId: string,
-  userName: string,
-  userPosition?: string
+  mode?: "create" | "edit";
+  initialData?: any;
+  callReportId?: string;
+  onSuccess?: () => void;
+  writers: { id: string; name: string; email: string }[];
+  userId: string;
+  userName: string;
+  userPosition?: string;
 }) {
+  const router = useRouter();
+
   // Format today's date for input default value (YYYY-MM-DD)
   const today = new Date().toISOString().split('T')[0];
   const [meetingDate, setMeetingDate] = useState<string>(today);
@@ -72,6 +83,45 @@ export function CallReportForm({
 
   // File upload state
   const [filesToUpload, setFilesToUpload] = useState<File[]>([]);
+
+  // Pre-populate form when in edit mode
+  useEffect(() => {
+    if (mode === "edit" && initialData) {
+      // Find the writer ID from the writer name
+      const writer = writers.find(w => w.name === initialData.writer_name || w.email === initialData.writer_email);
+
+      setFormData({
+        category: initialData.category || "",
+        writerId: writer?.id || "",
+        suggestedWriter: initialData.suggested_writer || "",
+        contactPhone: initialData.contact_phone || "",
+        contactAddress: initialData.contact_address || "",
+        workingTitle: initialData.working_title || "",
+        logline: initialData.logline || "",
+        shortSynopsis: initialData.short_synopsis || "",
+        episodicSynopsis: initialData.episodic_synopsis || "",
+        genre: initialData.genre || "",
+        theme: initialData.theme || "",
+        targetSlot: initialData.slot || "",
+        location: initialData.location || "",
+        notes: initialData.meeting_notes || "",
+        nextSteps: initialData.next_steps || "",
+        status: initialData.status || "draft",
+        overallRating: initialData.overall_rating || 5
+      });
+
+      // Set meeting date and time
+      if (initialData.meeting_date) {
+        const meetingDateTime = new Date(initialData.meeting_date);
+        setMeetingDate(meetingDateTime.toISOString().split('T')[0]);
+        const hours = meetingDateTime.getHours().toString().padStart(2, '0');
+        const minutes = meetingDateTime.getMinutes().toString().padStart(2, '0');
+        setMeetingTime(`${hours}:${minutes}`);
+      }
+
+      // Note: Attendees and files are not pre-populated as they require separate handling
+    }
+  }, [mode, initialData, writers]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { id, value } = e.target;
@@ -150,73 +200,122 @@ export function CallReportForm({
       // Extract attendee emails from selected users
       const attendeeEmails = selectedAttendees.map(user => user.email);
 
-      // Create meeting/call report
-      const result = await createMeetingClient({
-        meeting_type: "call_report",
-        logged_by: userName,
-        category: formData.category,
-        writer_name: selectedWriter?.name || formData.suggestedWriter || "In-house Content",
-        writer_email: selectedWriter?.email || "",
-        suggested_writer: formData.suggestedWriter,
-        contact_phone: formData.contactPhone,
-        contact_address: formData.contactAddress,
-        working_title: formData.workingTitle,
-        logline: formData.logline,
-        short_synopsis: formData.shortSynopsis,
-        episodic_synopsis: formData.episodicSynopsis,
-        genre: formData.genre,
-        theme: formData.theme || undefined,
-        slot: formData.targetSlot,
-        meeting_date: meetingDateTime.toISOString(),
-        attendees: selectedWriter?.email ? [selectedWriter.email, ...attendeeEmails] : attendeeEmails,
-        location: formData.location,
-        notes: formData.notes,
-        next_steps: formData.nextSteps,
-        status: formData.status,
-        created_by: userId,
-        overall_rating: formData.overallRating
-      });
+      if (mode === "edit" && callReportId) {
+        // Update existing call report
+        const updateData = {
+          writer_name: selectedWriter?.name || formData.suggestedWriter || "In-house Content",
+          writer_email: selectedWriter?.email || "",
+          suggested_writer: formData.suggestedWriter || undefined,
+          contact_phone: formData.contactPhone || undefined,
+          contact_address: formData.contactAddress || undefined,
+          working_title: formData.workingTitle,
+          logline: formData.logline,
+          short_synopsis: formData.shortSynopsis || undefined,
+          episodic_synopsis: formData.episodicSynopsis || undefined,
+          genre: formData.genre,
+          theme: formData.theme || undefined,
+          target_slot: formData.targetSlot,
+          meeting_date: meetingDateTime.toISOString(),
+          meeting_attendees: selectedWriter?.email ? [selectedWriter.email, ...attendeeEmails] : attendeeEmails,
+          location: formData.location || undefined,
+          meeting_notes: formData.notes || undefined,
+          next_steps: formData.nextSteps || undefined,
+          status: formData.status,
+          overall_rating: formData.overallRating,
+        };
 
-      // Upload files if any
-      if (filesToUpload.length > 0 && result.id) {
-        for (const file of filesToUpload) {
-          try {
-            await uploadFile(file, "call_report", result.id);
-          } catch (error) {
-            console.error("Error uploading file:", error);
-            toast.error(`Failed to upload file: ${file.name}. ${error instanceof Error ? error.message : 'Please try again.'}`);
+        await updateCallReportClient(callReportId, updateData);
+
+        // Upload new files if any
+        if (filesToUpload.length > 0) {
+          for (const file of filesToUpload) {
+            try {
+              await uploadFile(file, "call_report", callReportId);
+            } catch (error) {
+              console.error("Error uploading file:", error);
+              toast.error(`Failed to upload file: ${file.name}. ${error instanceof Error ? error.message : 'Please try again.'}`);
+            }
           }
+          toast.success(`Writer Engagement Report updated successfully with ${filesToUpload.length} new attachment(s)!`);
+        } else {
+          toast.success("Writer Engagement Report updated successfully!");
         }
-        toast.success(`Writer Engagement Report logged successfully with ${filesToUpload.length} attachment(s)!`);
-      } else {
-        toast.success("Writer Engagement Report logged successfully!");
-      }
 
-      // Reset form
-      setFormData({
-        category: "",
-        writerId: "",
-        suggestedWriter: "",
-        contactPhone: "",
-        contactAddress: "",
-        workingTitle: "",
-        logline: "",
-        shortSynopsis: "",
-        episodicSynopsis: "",
-        genre: "",
-        theme: "",
-        targetSlot: "",
-        location: "",
-        notes: "",
-        nextSteps: "",
-        status: "draft",
-        overallRating: 5
-      });
-      setSelectedAttendees([]);
-      setFilesToUpload([]);
+        // Navigate or call callback
+        if (onSuccess) {
+          onSuccess();
+        } else {
+          router.push("/content-department/call-reports");
+        }
+      } else {
+        // Create meeting/call report
+        const result = await createMeetingClient({
+          meeting_type: "call_report",
+          logged_by: userName,
+          category: formData.category,
+          writer_name: selectedWriter?.name || formData.suggestedWriter || "In-house Content",
+          writer_email: selectedWriter?.email || "",
+          suggested_writer: formData.suggestedWriter,
+          contact_phone: formData.contactPhone,
+          contact_address: formData.contactAddress,
+          working_title: formData.workingTitle,
+          logline: formData.logline,
+          short_synopsis: formData.shortSynopsis,
+          episodic_synopsis: formData.episodicSynopsis,
+          genre: formData.genre,
+          theme: formData.theme || undefined,
+          slot: formData.targetSlot,
+          meeting_date: meetingDateTime.toISOString(),
+          attendees: selectedWriter?.email ? [selectedWriter.email, ...attendeeEmails] : attendeeEmails,
+          location: formData.location,
+          notes: formData.notes,
+          next_steps: formData.nextSteps,
+          status: formData.status,
+          created_by: userId,
+          overall_rating: formData.overallRating
+        });
+
+        // Upload files if any
+        if (filesToUpload.length > 0 && result.id) {
+          for (const file of filesToUpload) {
+            try {
+              await uploadFile(file, "call_report", result.id);
+            } catch (error) {
+              console.error("Error uploading file:", error);
+              toast.error(`Failed to upload file: ${file.name}. ${error instanceof Error ? error.message : 'Please try again.'}`);
+            }
+          }
+          toast.success(`Writer Engagement Report logged successfully with ${filesToUpload.length} attachment(s)!`);
+        } else {
+          toast.success("Writer Engagement Report logged successfully!");
+        }
+
+        // Reset form
+        setFormData({
+          category: "",
+          writerId: "",
+          suggestedWriter: "",
+          contactPhone: "",
+          contactAddress: "",
+          workingTitle: "",
+          logline: "",
+          shortSynopsis: "",
+          episodicSynopsis: "",
+          genre: "",
+          theme: "",
+          targetSlot: "",
+          location: "",
+          notes: "",
+          nextSteps: "",
+          status: "draft",
+          overallRating: 5
+        });
+        setSelectedAttendees([]);
+        setFilesToUpload([]);
+      }
     } catch (error: any) {
-      console.error("Error logging call report:", error);
-      toast.error(`Failed to log Writer Engagement Report: ${error.message || "Please try again."}`);
+      console.error(`Error ${mode === "edit" ? "updating" : "logging"} call report:`, error);
+      toast.error(`Failed to ${mode === "edit" ? "update" : "log"} Writer Engagement Report: ${error.message || "Please try again."}`);
     } finally {
       setIsLoading(false);
     }
@@ -519,8 +618,8 @@ export function CallReportForm({
             <Link href="/content-department">Cancel</Link>
           </Button>
           <Button type="submit" disabled={isLoading} className="touch-target">
-            <span className="hidden sm:inline">{isLoading ? "Saving..." : "Log Writer Engagement Report"}</span>
-            <span className="sm:hidden">{isLoading ? "Saving..." : "Log Report"}</span>
+            <span className="hidden sm:inline">{isLoading ? "Saving..." : mode === "edit" ? "Update Writer Engagement Report" : "Log Writer Engagement Report"}</span>
+            <span className="sm:hidden">{isLoading ? "Saving..." : mode === "edit" ? "Update Report" : "Log Report"}</span>
           </Button>
         </div>
       </div>

@@ -17,6 +17,8 @@ export interface Meeting {
   call_report_id?: string;
   category?: string;
   logline?: string;
+  detailed_one_liner_id?: string | null;
+  has_detailed_one_liner?: boolean;
 }
 
 export interface CreateMeetingInput {
@@ -213,13 +215,19 @@ export async function getAllMeetings() {
  * Get all call reports for the content department (excludes scheduled meetings)
  * This function should be called from server components
  * Returns all call reports visible to the entire content department
+ * Includes detailed one-liner information if available
  */
 export async function getAllCallReports() {
   const supabase = await createClient();
 
   const { data, error } = await supabase
     .from("call_reports")
-    .select("*")
+    .select(`
+      *,
+      detailed_one_liners (
+        id
+      )
+    `)
     .eq("meeting_type", "call_report")
     .order("meeting_date", { ascending: false }); // Most recent first for call reports
 
@@ -241,6 +249,8 @@ export async function getAllCallReports() {
     call_report_id: report.call_report_id,
     category: report.category,
     logline: report.logline,
+    detailed_one_liner_id: report.detailed_one_liners?.[0]?.id || null,
+    has_detailed_one_liner: !!report.detailed_one_liners?.[0]?.id,
   }));
 
   return meetings;

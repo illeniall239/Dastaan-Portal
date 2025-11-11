@@ -1,88 +1,85 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState, ReactNode, useCallback } from "react";
-import {
-  getUserNotificationsClient,
-  getUnreadNotificationCountClient,
-  markNotificationAsReadClient,
-  markAllNotificationsAsReadClient,
-  subscribeToNotifications,
-  type Notification,
-} from "@/lib/notifications/client";
+import { createContext, useContext, useEffect, ReactNode } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { subscribeToNotifications, type Notification } from "@/lib/notifications/client";
 import { logger } from "@/lib/logger";
+import {
+  useNotifications as useNotificationsQuery,
+  useUnreadCount,
+  useMarkAsRead,
+  useMarkAllAsRead,
+} from "@/lib/hooks";
 
 interface NotificationContextType {
   notifications: Notification[];
   unreadCount: number;
   isLoading: boolean;
-  handleMarkAsRead: (notificationId: string) => Promise<void>;
-  handleMarkAllAsRead: () => Promise<void>;
+  handleMarkAsRead: (notificationId: string) => void;
+  handleMarkAllAsRead: () => void;
   refetch: () => Promise<void>;
 }
 
 const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
 
 export function NotificationProvider({ children }: { children: ReactNode }) {
-  const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [unreadCount, setUnreadCount] = useState(0);
-  const [isLoading, setIsLoading] = useState(true);
+  const queryClient = useQueryClient();
 
-  // Fetch notifications once on mount
-  const fetchNotifications = useCallback(async () => {
-    try {
-      const [notifs, count] = await Promise.all([
-        getUserNotificationsClient(10),
-        getUnreadNotificationCountClient(),
-      ]);
-      setNotifications(notifs);
-      setUnreadCount(count);
-    } catch (error) {
-      logger.error("❌ [NotificationProvider] Error fetching notifications:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
+  // React Query hooks for notifications data with automatic polling
+  const {
+    data: notifications = [],
+    isLoading: isLoadingNotifications,
+    refetch: refetchNotifications,
+  } = useNotificationsQuery({
+    limit: 10,
+    refetchInterval: 30000, // Poll every 30 seconds
+  });
 
-  // Initial fetch on mount
+  const {
+    data: unreadCount = 0,
+    isLoading: isLoadingCount,
+  } = useUnreadCount({
+    refetchInterval: 30000, // Poll every 30 seconds
+  });
+
+  // Mutation hooks for marking notifications as read
+  const markAsReadMutation = useMarkAsRead();
+  const markAllAsReadMutation = useMarkAllAsRead();
+
+  // Subscribe to real-time notifications for instant updates
   useEffect(() => {
-    fetchNotifications();
-
-    // Subscribe to real-time notifications
     const cleanup = subscribeToNotifications((newNotification) => {
-      setNotifications((prev) => [newNotification, ...prev]);
-      setUnreadCount((prev) => prev + 1);
+      // Invalidate queries to refetch with new notification
+      queryClient.invalidateQueries({ queryKey: ["notifications"] });
+      queryClient.invalidateQueries({ queryKey: ["notifications", "unread-count"] });
+
+      logger.info("📬 [NotificationProvider] New notification received via WebSocket");
     });
 
     return cleanup;
-  }, [fetchNotifications]);
+  }, [queryClient]);
 
-  const handleMarkAsRead = useCallback(async (notificationId: string) => {
-    await markNotificationAsReadClient(notificationId);
-    setNotifications((prev) =>
-      prev.map((notif) =>
-        notif.id === notificationId ? { ...notif, is_read: true } : notif
-      )
-    );
-    setUnreadCount((prev) => Math.max(0, prev - 1));
-  }, []);
+  const handleMarkAsRead = (notificationId: string) => {
+    markAsReadMutation.mutate(notificationId);
+  };
 
-  const handleMarkAllAsRead = useCallback(async () => {
-    await markAllNotificationsAsReadClient();
-    setNotifications((prev) =>
-      prev.map((notif) => ({ ...notif, is_read: true }))
-    );
-    setUnreadCount(0);
-  }, []);
+  const handleMarkAllAsRead = () => {
+    markAllAsReadMutation.mutate();
+  };
+
+  const refetch = async () => {
+    await refetchNotifications();
+  };
 
   return (
     <NotificationContext.Provider
       value={{
         notifications,
         unreadCount,
-        isLoading,
+        isLoading: isLoadingNotifications || isLoadingCount,
         handleMarkAsRead,
         handleMarkAllAsRead,
-        refetch: fetchNotifications,
+        refetch,
       }}
     >
       {children}
@@ -90,10 +87,10 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
   );
 }
 
-export function useNotifications() {
+export function useNotificationContext() {
   const context = useContext(NotificationContext);
   if (context === undefined) {
-    throw new Error("useNotifications must be used within a NotificationProvider");
+    throw new Error("useNotificationContext must be used within a NotificationProvider");
   }
   return context;
 }
