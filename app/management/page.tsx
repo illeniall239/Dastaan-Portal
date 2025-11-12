@@ -21,6 +21,7 @@ import { ScriptingPhase } from "@/components/management/scripting-phase";
 import { EvaluatorPipelineEpisodes } from "@/components/management/evaluator-pipeline-episodes";
 import { ContractTermsOverview } from "@/components/management/contract-terms-overview";
 import { StageWisePipeline } from "@/components/management/stage-wise-pipeline";
+import { WriterFinancialSummaryWidget } from "@/components/management/writer-financial-summary-widget";
 import { getAllSampleData, getSamplePipelineStories } from "@/lib/management/sample-data";
 import { ExportButton } from "@/components/management/export-button";
 import { getExecutiveSummary, getDepartmentWorkload } from "@/lib/management/server";
@@ -539,6 +540,19 @@ export default async function ManagementDashboard({
       {/* Contract Terms Overview Section */}
       <div id="contract-terms-section" className="mb-8">
         <ContractTermsOverview contractTerms={contractTerms || []} />
+      </div>
+
+      {/* Writer Financial Summary Section */}
+      <div id="writer-financial-section" className="mb-8">
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h2 className="text-2xl font-bold text-gray-900">Writer Payments & Financial Overview</h2>
+            <p className="text-muted-foreground mt-1">
+              Track negotiated amounts, contracts, and payments to writers and producers
+            </p>
+          </div>
+        </div>
+        <WriterFinancialSummaryWidget />
       </div>
     </div>
   );
