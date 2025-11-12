@@ -91,7 +91,7 @@ export function DetailedOneLinerDisplay({ detailedOneLiner }: DetailedOneLinerDi
             variant="ghost"
             size="sm"
             onClick={() => setIsExpanded(!isExpanded)}
-            className="hover:bg-blue-100"
+            className="hover:scale-105 transition-transform"
           >
             {isExpanded ? (
               <>

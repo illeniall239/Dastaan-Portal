@@ -71,7 +71,7 @@ export default async function CallReportDetailPage({ params }: { params: Promise
     ["content_manager", "admin"].includes(user.role);
 
   return (
-    <div className="p-6 space-y-4 max-w-5xl mx-auto">
+    <div className="mobile-container mobile-section space-y-4 sm:space-y-6 max-w-5xl mx-auto">
       {/* Page Header */}
       <div className="flex items-center gap-4 mb-6">
         <Button variant="outline" size="icon" asChild>

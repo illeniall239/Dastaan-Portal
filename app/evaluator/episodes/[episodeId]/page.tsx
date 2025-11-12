@@ -135,7 +135,7 @@ export default function EpisodicEvaluationPage({ params }: EpisodePageProps) {
 
   if (!episode) {
     return (
-      <div className="container mx-auto py-8">
+      <div className="mobile-container mobile-section">
         <Card className="p-12 text-center">
           <FileText className="mx-auto h-16 w-16 text-gray-400 mb-4" />
           <h2 className="text-2xl font-bold mb-2">Episode Not Found</h2>
@@ -152,7 +152,7 @@ export default function EpisodicEvaluationPage({ params }: EpisodePageProps) {
   }
 
   return (
-    <div className="container mx-auto px-4 py-6 max-w-5xl">
+    <div className="mobile-container mobile-section space-y-4 sm:space-y-6 max-w-5xl mx-auto">
       {/* Header */}
       <div className="mb-6">
         <Button

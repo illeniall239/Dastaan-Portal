@@ -228,14 +228,12 @@ async function CallReportsList() {
                         View Details
                       </Link>
                     </Button>
-                    {report.has_detailed_one_liner && (
-                      <Button variant="default" size="sm" asChild>
-                        <Link href={`/evaluator/detailed-one-liner/${report.detailed_one_liner_id}`}>
-                          <FilePenLine className="h-4 w-4 mr-2" />
-                          View Detailed One-Liner
-                        </Link>
-                      </Button>
-                    )}
+                    <Button variant="default" size="sm" asChild>
+                      <Link href={`/evaluator/call-reports/${report.id}/detailed-one-liner`}>
+                        <FilePenLine className="h-4 w-4 mr-2" />
+                        Detailed One-Liner
+                      </Link>
+                    </Button>
                   </div>
                 </CardContent>
               </Card>

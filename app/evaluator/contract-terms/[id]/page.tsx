@@ -55,7 +55,7 @@ export default async function EvaluatorContractTermDetailsPage({
   }
 
   return (
-    <div className="container mx-auto py-8 px-4">
+    <div className="mobile-container mobile-section">
       <ContractTermDetails
         contractTerm={contractTerm}
         basePath="/evaluator/contract-terms"

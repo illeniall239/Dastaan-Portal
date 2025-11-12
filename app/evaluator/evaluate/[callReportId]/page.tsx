@@ -100,7 +100,7 @@ export default async function EvaluatorEvaluatePage({
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="mobile-container mobile-section space-y-4 sm:space-y-6">
       <EvaluatorEvaluationForm
         callReport={callReport}
         userId={user.id}
