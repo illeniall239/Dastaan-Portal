@@ -346,6 +346,25 @@ export interface PotentialWeaknessRiskItem {
   created_at: string;
 }
 
+export interface CharacterRelationship {
+  id: string;
+  detailed_one_liner_id: string;
+  character_a_name: string;
+  character_a_role: 'protagonist' | 'antagonist' | 'supporting' | 'minor';
+  character_b_name: string;
+  character_b_role: 'protagonist' | 'antagonist' | 'supporting' | 'minor';
+  relationship_type: 'family' | 'romantic' | 'professional' | 'friendship' | 'rivalry' | 'mentor_mentee' | 'alliance' | 'conflict' | 'other';
+  relationship_description: string;
+  initial_state?: string;
+  final_state?: string;
+  key_turning_points?: string;
+  emotional_weight?: 'high' | 'medium' | 'low';
+  drives_plot: boolean;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface DetailedOneLinerWithDetails extends DetailedOneLiner {
   call_report?: {
     call_report_id: string;
@@ -355,6 +374,7 @@ export interface DetailedOneLinerWithDetails extends DetailedOneLiner {
   narrative_breakdown_items?: NarrativeBreakdownItem[];
   event_planning_items?: EventPlanningItem[];
   potential_weaknesses_risks_items?: PotentialWeaknessRiskItem[];
+  character_relationships?: CharacterRelationship[];
   created_by_user?: {
     name: string;
     email: string;

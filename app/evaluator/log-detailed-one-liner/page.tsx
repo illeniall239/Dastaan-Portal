@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useId } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,12 +13,23 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Loader2, Plus, X, ArrowLeft } from "lucide-react";
+import { Loader2, Plus, X, ArrowLeft, Network } from "lucide-react";
 import { createDetailedOneLinerClient, getAvailableCallReportsClient } from "@/lib/detailed-one-liner/client";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import type { NarrativeBreakdownItemFormData, EventPlanningItemFormData } from "@/lib/validations/detailed-one-liner";
+import type { NarrativeBreakdownItemFormData, EventPlanningItemFormData, CharacterRelationshipItemFormData } from "@/lib/validations/detailed-one-liner";
+import { CharacterRelationshipGraph } from "@/components/character-relationship-graph";
+import type { CharacterRelationship } from "@/types";
+import { ReactFlowProvider } from 'reactflow';
+import 'reactflow/dist/style.css';
 
 interface NarrativeRow {
   id: string;
@@ -43,11 +54,34 @@ interface PotentialWeaknessRiskRow {
   impact: string;
 }
 
+interface CharacterRelationshipRow {
+  id: string;
+  character_a_name: string;
+  character_a_role: 'protagonist' | 'antagonist' | 'supporting' | 'minor' | '';
+  character_b_name: string;
+  character_b_role: 'protagonist' | 'antagonist' | 'supporting' | 'minor' | '';
+  relationship_type: 'family' | 'romantic' | 'professional' | 'friendship' | 'rivalry' | 'mentor_mentee' | 'alliance' | 'conflict' | 'other' | '';
+  relationship_description: string;
+  initial_state: string;
+  final_state: string;
+  key_turning_points: string;
+  emotional_weight: 'high' | 'medium' | 'low' | '';
+  drives_plot: boolean;
+}
+
 export default function LogDetailedOneLinerPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [loadingCallReports, setLoadingCallReports] = useState(false);
   const [callReports, setCallReports] = useState<any[]>([]);
+  const [showVisualization, setShowVisualization] = useState(false);
+  const [idCounter, setIdCounter] = useState(0);
+
+  // Helper to generate stable IDs
+  const generateId = () => {
+    setIdCounter(prev => prev + 1);
+    return `row-${idCounter}`;
+  };
 
   // Form state
   const [callReportId, setCallReportId] = useState("");
@@ -58,15 +92,31 @@ export default function LogDetailedOneLinerPage() {
   const [newElement, setNewElement] = useState("");
   const [emotionalCoreResolution, setEmotionalCoreResolution] = useState("");
   const [narrativeRows, setNarrativeRows] = useState<NarrativeRow[]>([
-    { id: crypto.randomUUID(), story_stream: "", percentage: 0, narrative_purpose: "" }
+    { id: "narrative-0", story_stream: "", percentage: 0, narrative_purpose: "" }
   ]);
   const [eventPlanningRows, setEventPlanningRows] = useState<EventPlanningRow[]>([
-    { id: crypto.randomUUID(), episode_range: "", event_scale: "", on_screen_activity: "", approx_frequency: "", budget_category: "" }
+    { id: "event-0", episode_range: "", event_scale: "", on_screen_activity: "", approx_frequency: "", budget_category: "" }
   ]);
   const [productionOptimizationNotes, setProductionOptimizationNotes] = useState("");
   const [netOutcome, setNetOutcome] = useState("");
   const [weaknessRiskRows, setWeaknessRiskRows] = useState<PotentialWeaknessRiskRow[]>([
-    { id: crypto.randomUUID(), issue: "", explanation_risk_detail: "", impact: "" }
+    { id: "weakness-0", issue: "", explanation_risk_detail: "", impact: "" }
+  ]);
+  const [characterRelationshipRows, setCharacterRelationshipRows] = useState<CharacterRelationshipRow[]>([
+    {
+      id: "character-0",
+      character_a_name: "",
+      character_a_role: "",
+      character_b_name: "",
+      character_b_role: "",
+      relationship_type: "",
+      relationship_description: "",
+      initial_state: "",
+      final_state: "",
+      key_turning_points: "",
+      emotional_weight: "",
+      drives_plot: false,
+    }
   ]);
   const [conclusionRecommendation, setConclusionRecommendation] = useState("");
 
@@ -89,9 +139,10 @@ export default function LogDetailedOneLinerPage() {
   };
 
   const addNarrativeRow = () => {
+    const newId = `narrative-${Date.now()}`;
     setNarrativeRows([
       ...narrativeRows,
-      { id: crypto.randomUUID(), story_stream: "", percentage: 0, narrative_purpose: "" }
+      { id: newId, story_stream: "", percentage: 0, narrative_purpose: "" }
     ]);
   };
 
@@ -108,9 +159,10 @@ export default function LogDetailedOneLinerPage() {
   };
 
   const addEventPlanningRow = () => {
+    const newId = `event-${Date.now()}`;
     setEventPlanningRows([
       ...eventPlanningRows,
-      { id: crypto.randomUUID(), episode_range: "", event_scale: "", on_screen_activity: "", approx_frequency: "", budget_category: "" }
+      { id: newId, episode_range: "", event_scale: "", on_screen_activity: "", approx_frequency: "", budget_category: "" }
     ]);
   };
 
@@ -127,9 +179,10 @@ export default function LogDetailedOneLinerPage() {
   };
 
   const addWeaknessRiskRow = () => {
+    const newId = `weakness-${Date.now()}`;
     setWeaknessRiskRows([
       ...weaknessRiskRows,
-      { id: crypto.randomUUID(), issue: "", explanation_risk_detail: "", impact: "" }
+      { id: newId, issue: "", explanation_risk_detail: "", impact: "" }
     ]);
   };
 
@@ -141,6 +194,39 @@ export default function LogDetailedOneLinerPage() {
 
   const updateWeaknessRiskRow = (id: string, field: keyof PotentialWeaknessRiskRow, value: string) => {
     setWeaknessRiskRows(weaknessRiskRows.map(row =>
+      row.id === id ? { ...row, [field]: value } : row
+    ));
+  };
+
+  const addCharacterRelationshipRow = () => {
+    const newId = `character-${Date.now()}`;
+    setCharacterRelationshipRows([
+      ...characterRelationshipRows,
+      {
+        id: newId,
+        character_a_name: "",
+        character_a_role: "",
+        character_b_name: "",
+        character_b_role: "",
+        relationship_type: "",
+        relationship_description: "",
+        initial_state: "",
+        final_state: "",
+        key_turning_points: "",
+        emotional_weight: "",
+        drives_plot: false,
+      }
+    ]);
+  };
+
+  const removeCharacterRelationshipRow = (id: string) => {
+    if (characterRelationshipRows.length > 1) {
+      setCharacterRelationshipRows(characterRelationshipRows.filter(row => row.id !== id));
+    }
+  };
+
+  const updateCharacterRelationshipRow = (id: string, field: keyof CharacterRelationshipRow, value: string | boolean) => {
+    setCharacterRelationshipRows(characterRelationshipRows.map(row =>
       row.id === id ? { ...row, [field]: value } : row
     ));
   };
@@ -216,6 +302,21 @@ export default function LogDetailedOneLinerPage() {
         row.issue.trim() && row.explanation_risk_detail.trim() && row.impact.trim()
       );
 
+      // Validate character relationships (optional)
+      const validCharacterRelationshipRows = characterRelationshipRows.filter(row =>
+        row.character_a_name.trim() && row.character_a_role &&
+        row.character_b_name.trim() && row.character_b_role &&
+        row.relationship_type && row.relationship_description.trim()
+      );
+
+      // Check that characters are different
+      for (const row of validCharacterRelationshipRows) {
+        if (row.character_a_name.trim() === row.character_b_name.trim()) {
+          toast.error("Characters in a relationship must be different");
+          return;
+        }
+      }
+
       const formData = {
         call_report_id: callReportId,
         preamble: preamble.trim(),
@@ -246,6 +347,20 @@ export default function LogDetailedOneLinerPage() {
           impact: row.impact.trim(),
           sort_order: index,
         })) : undefined,
+        character_relationships: validCharacterRelationshipRows.length > 0 ? validCharacterRelationshipRows.map((row, index) => ({
+          character_a_name: row.character_a_name.trim(),
+          character_a_role: row.character_a_role as 'protagonist' | 'antagonist' | 'supporting' | 'minor',
+          character_b_name: row.character_b_name.trim(),
+          character_b_role: row.character_b_role as 'protagonist' | 'antagonist' | 'supporting' | 'minor',
+          relationship_type: row.relationship_type as 'family' | 'romantic' | 'professional' | 'friendship' | 'rivalry' | 'mentor_mentee' | 'alliance' | 'conflict' | 'other',
+          relationship_description: row.relationship_description.trim(),
+          initial_state: row.initial_state.trim() || undefined,
+          final_state: row.final_state.trim() || undefined,
+          key_turning_points: row.key_turning_points.trim() || undefined,
+          emotional_weight: row.emotional_weight || undefined,
+          drives_plot: row.drives_plot,
+          sort_order: index,
+        })) : undefined,
         conclusion_recommendation: conclusionRecommendation.trim() || undefined,
       };
 
@@ -272,7 +387,7 @@ export default function LogDetailedOneLinerPage() {
           <Button asChild variant="outline" size="sm">
             <Link href="/evaluator/call-reports">
               <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Call Reports
+              Back
             </Link>
           </Button>
         </div>
@@ -659,6 +774,228 @@ export default function LogDetailedOneLinerPage() {
             </CardContent>
           </Card>
 
+          {/* Character Relationships */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>Character Relationships</CardTitle>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Map character dynamics and relationships in the story
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    onClick={() => {
+                      console.log('=== VISUALIZE CLICKED ===');
+                      console.log('Raw characterRelationshipRows:', characterRelationshipRows);
+                      const filtered = characterRelationshipRows.filter(r =>
+                        r.character_a_name.trim() && r.character_b_name.trim() &&
+                        r.character_a_role && r.character_b_role &&
+                        r.relationship_type && r.relationship_description.trim()
+                      );
+                      console.log('Filtered relationships:', filtered);
+                      console.log('Filtered count:', filtered.length);
+                      setShowVisualization(true);
+                    }}
+                    size="sm"
+                    variant="secondary"
+                    disabled={characterRelationshipRows.filter(r =>
+                      r.character_a_name.trim() && r.character_b_name.trim() &&
+                      r.character_a_role && r.character_b_role &&
+                      r.relationship_type && r.relationship_description.trim()
+                    ).length === 0}
+                  >
+                    <Network className="h-4 w-4 mr-1" />
+                    Visualize
+                  </Button>
+                  <Button type="button" onClick={addCharacterRelationshipRow} size="sm" variant="outline">
+                    <Plus className="h-4 w-4 mr-1" />
+                    Add Relationship
+                  </Button>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {characterRelationshipRows.map((row, index) => (
+                  <div key={row.id} className="border rounded-lg p-4 space-y-4 bg-slate-50">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm font-medium text-muted-foreground">Relationship {index + 1}</span>
+                      {characterRelationshipRows.length > 1 && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => removeCharacterRelationshipRow(row.id)}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
+
+                    {/* Character A */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 p-3 bg-white rounded border">
+                      <div className="space-y-2">
+                        <Label>Character A Name</Label>
+                        <Input
+                          placeholder="Enter character name"
+                          value={row.character_a_name}
+                          onChange={(e) => updateCharacterRelationshipRow(row.id, "character_a_name", e.target.value)}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Character A Role</Label>
+                        <Select
+                          value={row.character_a_role}
+                          onValueChange={(value) => updateCharacterRelationshipRow(row.id, "character_a_role", value)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select role" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="protagonist">Protagonist</SelectItem>
+                            <SelectItem value="antagonist">Antagonist</SelectItem>
+                            <SelectItem value="supporting">Supporting</SelectItem>
+                            <SelectItem value="minor">Minor</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+
+                    {/* Character B */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 p-3 bg-white rounded border">
+                      <div className="space-y-2">
+                        <Label>Character B Name</Label>
+                        <Input
+                          placeholder="Enter character name"
+                          value={row.character_b_name}
+                          onChange={(e) => updateCharacterRelationshipRow(row.id, "character_b_name", e.target.value)}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Character B Role</Label>
+                        <Select
+                          value={row.character_b_role}
+                          onValueChange={(value) => updateCharacterRelationshipRow(row.id, "character_b_role", value)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select role" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="protagonist">Protagonist</SelectItem>
+                            <SelectItem value="antagonist">Antagonist</SelectItem>
+                            <SelectItem value="supporting">Supporting</SelectItem>
+                            <SelectItem value="minor">Minor</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+
+                    {/* Relationship Details */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div className="space-y-2">
+                        <Label>Relationship Type</Label>
+                        <Select
+                          value={row.relationship_type}
+                          onValueChange={(value) => updateCharacterRelationshipRow(row.id, "relationship_type", value)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select type" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="family">Family</SelectItem>
+                            <SelectItem value="romantic">Romantic</SelectItem>
+                            <SelectItem value="professional">Professional</SelectItem>
+                            <SelectItem value="friendship">Friendship</SelectItem>
+                            <SelectItem value="rivalry">Rivalry</SelectItem>
+                            <SelectItem value="mentor_mentee">Mentor-Mentee</SelectItem>
+                            <SelectItem value="alliance">Alliance</SelectItem>
+                            <SelectItem value="conflict">Conflict</SelectItem>
+                            <SelectItem value="other">Other</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Emotional Weight</Label>
+                        <Select
+                          value={row.emotional_weight}
+                          onValueChange={(value) => updateCharacterRelationshipRow(row.id, "emotional_weight", value)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Optional" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="high">High</SelectItem>
+                            <SelectItem value="medium">Medium</SelectItem>
+                            <SelectItem value="low">Low</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Relationship Description</Label>
+                      <Textarea
+                        placeholder="Describe the relationship dynamics..."
+                        rows={2}
+                        value={row.relationship_description}
+                        onChange={(e) => updateCharacterRelationshipRow(row.id, "relationship_description", e.target.value)}
+                      />
+                    </div>
+
+                    {/* Relationship Evolution (Optional) */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div className="space-y-2">
+                        <Label className="text-xs">Initial State (Optional)</Label>
+                        <Textarea
+                          placeholder="How the relationship begins..."
+                          rows={2}
+                          value={row.initial_state}
+                          onChange={(e) => updateCharacterRelationshipRow(row.id, "initial_state", e.target.value)}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-xs">Final State (Optional)</Label>
+                        <Textarea
+                          placeholder="How it evolves by the end..."
+                          rows={2}
+                          value={row.final_state}
+                          onChange={(e) => updateCharacterRelationshipRow(row.id, "final_state", e.target.value)}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className="text-xs">Key Turning Points (Optional)</Label>
+                      <Textarea
+                        placeholder="Critical moments that transform this relationship..."
+                        rows={2}
+                        value={row.key_turning_points}
+                        onChange={(e) => updateCharacterRelationshipRow(row.id, "key_turning_points", e.target.value)}
+                      />
+                    </div>
+
+                    {/* Drives Plot Checkbox */}
+                    <div className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        id={`drives_plot_${row.id}`}
+                        checked={row.drives_plot}
+                        onChange={(e) => updateCharacterRelationshipRow(row.id, "drives_plot", e.target.checked)}
+                        className="h-4 w-4 rounded border-gray-300"
+                      />
+                      <Label htmlFor={`drives_plot_${row.id}`} className="text-sm font-normal">
+                        This relationship is a key driver of plot progression
+                      </Label>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
           {/* Conclusion/Recommendation */}
           <Card>
             <CardHeader>
@@ -692,6 +1029,50 @@ export default function LogDetailedOneLinerPage() {
             </Button>
           </div>
         </form>
+
+        {/* Character Relationship Visualization Dialog */}
+        <Dialog open={showVisualization} onOpenChange={setShowVisualization}>
+          <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Character Relationship Visualization</DialogTitle>
+              <DialogDescription>
+                Interactive graph showing character connections and dynamics
+              </DialogDescription>
+            </DialogHeader>
+            <ReactFlowProvider>
+              <CharacterRelationshipGraph
+                relationships={characterRelationshipRows
+                .filter(r =>
+                  r.character_a_name.trim() && r.character_b_name.trim() &&
+                  r.character_a_role && r.character_b_role &&
+                  r.relationship_type && r.relationship_description.trim()
+                )
+                .map((r, index) => {
+                  const transformedData = {
+                    id: r.id,
+                    detailed_one_liner_id: '', // Not saved yet
+                    character_a_name: r.character_a_name.trim(),
+                    character_a_role: r.character_a_role as 'protagonist' | 'antagonist' | 'supporting' | 'minor',
+                    character_b_name: r.character_b_name.trim(),
+                    character_b_role: r.character_b_role as 'protagonist' | 'antagonist' | 'supporting' | 'minor',
+                    relationship_type: r.relationship_type as 'family' | 'romantic' | 'professional' | 'friendship' | 'rivalry' | 'mentor_mentee' | 'alliance' | 'conflict' | 'other',
+                    relationship_description: r.relationship_description,
+                    initial_state: r.initial_state || undefined,
+                    final_state: r.final_state || undefined,
+                    key_turning_points: r.key_turning_points || undefined,
+                    emotional_weight: (r.emotional_weight || undefined) as 'high' | 'medium' | 'low' | undefined,
+                    drives_plot: r.drives_plot,
+                    sort_order: index,
+                    created_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString(),
+                  };
+                  console.log('Transformed relationship data:', transformedData);
+                  return transformedData;
+                })}
+              />
+            </ReactFlowProvider>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );

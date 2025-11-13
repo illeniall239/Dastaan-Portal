@@ -118,7 +118,7 @@ export default function EvaluatorCallReportEditPage({ params }: CallReportEditPa
           </p>
           <Button onClick={() => router.push("/evaluator/call-reports")}>
             <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Call Reports
+            Back
           </Button>
         </Card>
       </div>
@@ -135,7 +135,7 @@ export default function EvaluatorCallReportEditPage({ params }: CallReportEditPa
           className="mb-4"
         >
           <ArrowLeft className="h-4 w-4 mr-2" />
-          Back to Call Reports
+          Back
         </Button>
 
         <div>

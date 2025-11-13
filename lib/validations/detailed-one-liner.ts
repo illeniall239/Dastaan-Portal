@@ -38,6 +38,43 @@ export const potentialWeaknessRiskItemSchema = z.object({
 });
 
 /**
+ * Validation schema for character relationship item
+ */
+export const characterRelationshipItemSchema = z.object({
+  character_a_name: z.string().min(1, "Character A name is required").max(200, "Character name must not exceed 200 characters"),
+  character_a_role: z.enum(["protagonist", "antagonist", "supporting", "minor"], {
+    errorMap: () => ({ message: "Character role must be protagonist, antagonist, supporting, or minor" }),
+  }),
+  character_b_name: z.string().min(1, "Character B name is required").max(200, "Character name must not exceed 200 characters"),
+  character_b_role: z.enum(["protagonist", "antagonist", "supporting", "minor"], {
+    errorMap: () => ({ message: "Character role must be protagonist, antagonist, supporting, or minor" }),
+  }),
+  relationship_type: z.enum([
+    "family",
+    "romantic",
+    "professional",
+    "friendship",
+    "rivalry",
+    "mentor_mentee",
+    "alliance",
+    "conflict",
+    "other",
+  ], {
+    errorMap: () => ({ message: "Invalid relationship type" }),
+  }),
+  relationship_description: z.string().min(1, "Relationship description is required").max(500, "Description must not exceed 500 characters"),
+  initial_state: z.string().max(500, "Initial state must not exceed 500 characters").optional(),
+  final_state: z.string().max(500, "Final state must not exceed 500 characters").optional(),
+  key_turning_points: z.string().max(1000, "Turning points must not exceed 1000 characters").optional(),
+  emotional_weight: z.enum(["high", "medium", "low"]).optional(),
+  drives_plot: z.boolean().default(false),
+  sort_order: z.number().int().min(0),
+}).refine(
+  (data) => data.character_a_name !== data.character_b_name,
+  { message: "Characters must be different", path: ["character_b_name"] }
+);
+
+/**
  * Validation schema for creating detailed one-liner
  */
 export const detailedOneLinerSchema = z.object({
@@ -58,6 +95,9 @@ export const detailedOneLinerSchema = z.object({
   net_outcome: z.string().optional(),
   potential_weaknesses_risks_items: z
     .array(potentialWeaknessRiskItemSchema)
+    .optional(),
+  character_relationships: z
+    .array(characterRelationshipItemSchema)
     .optional(),
   conclusion_recommendation: z.string().optional(),
 });
@@ -85,6 +125,9 @@ export const updateDetailedOneLinerSchema = z.object({
   potential_weaknesses_risks_items: z
     .array(potentialWeaknessRiskItemSchema)
     .optional(),
+  character_relationships: z
+    .array(characterRelationshipItemSchema)
+    .optional(),
   conclusion_recommendation: z.string().optional(),
 });
 
@@ -93,3 +136,4 @@ export type UpdateDetailedOneLinerFormData = z.infer<typeof updateDetailedOneLin
 export type NarrativeBreakdownItemFormData = z.infer<typeof narrativeBreakdownItemSchema>;
 export type EventPlanningItemFormData = z.infer<typeof eventPlanningItemSchema>;
 export type PotentialWeaknessRiskItemFormData = z.infer<typeof potentialWeaknessRiskItemSchema>;
+export type CharacterRelationshipItemFormData = z.infer<typeof characterRelationshipItemSchema>;

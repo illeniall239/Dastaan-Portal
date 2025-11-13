@@ -5,6 +5,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ChevronDown, ChevronUp, FileText, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { CharacterRelationshipGraph } from "@/components/character-relationship-graph";
+import type { CharacterRelationship } from "@/types";
+import { ReactFlowProvider } from 'reactflow';
+import 'reactflow/dist/style.css';
 
 interface NarrativeBreakdownItem {
   id: string;
@@ -47,6 +51,7 @@ interface DetailedOneLiner {
   narrative_breakdown_items?: NarrativeBreakdownItem[];
   event_planning_items?: EventPlanningItem[];
   potential_weaknesses_risks_items?: PotentialWeaknessRiskItem[];
+  character_relationships?: CharacterRelationship[];
   created_by_user?: {
     name: string;
     email: string;
@@ -281,6 +286,19 @@ export function DetailedOneLinerDisplay({ detailedOneLiner }: DetailedOneLinerDi
                 </div>
               </div>
             )}
+
+          {/* Character Relationships */}
+          {detailedOneLiner.character_relationships && detailedOneLiner.character_relationships.length > 0 && (
+            <div className="pt-3 border-t border-slate-100">
+              <h3 className="text-sm font-semibold text-slate-900 uppercase tracking-wide mb-3 flex items-center gap-2">
+                <span className="h-1 w-1 rounded-full bg-purple-600"></span>
+                Character Relationships
+              </h3>
+              <ReactFlowProvider>
+                <CharacterRelationshipGraph relationships={detailedOneLiner.character_relationships} />
+              </ReactFlowProvider>
+            </div>
+          )}
 
           {/* Production Optimization Notes */}
           {detailedOneLiner.production_optimization_notes && (

@@ -189,6 +189,43 @@ export async function POST(request: Request) {
       }
     }
 
+    // Insert character relationships (optional)
+    if (formData.character_relationships && formData.character_relationships.length > 0) {
+      const characterRelationshipItems = formData.character_relationships.map((item, index) => ({
+        detailed_one_liner_id: detailedOneLiner.id,
+        character_a_name: item.character_a_name,
+        character_a_role: item.character_a_role,
+        character_b_name: item.character_b_name,
+        character_b_role: item.character_b_role,
+        relationship_type: item.relationship_type,
+        relationship_description: item.relationship_description,
+        initial_state: item.initial_state || null,
+        final_state: item.final_state || null,
+        key_turning_points: item.key_turning_points || null,
+        emotional_weight: item.emotional_weight || null,
+        drives_plot: item.drives_plot ?? false,
+        sort_order: item.sort_order ?? index,
+      }));
+
+      const { error: characterError } = await supabase
+        .from("character_relationships")
+        .insert(characterRelationshipItems);
+
+      if (characterError) {
+        logger.error(`Error creating character relationships:: ${characterError instanceof Error ? characterError.message : String(characterError)}`);
+        // Rollback: delete the detailed one-liner if character relationships fail
+        await supabase
+          .from("detailed_one_liners")
+          .delete()
+          .eq("id", detailedOneLiner.id);
+
+        return NextResponse.json(
+          { error: "Failed to create character relationships", details: characterError.message },
+          { status: 500 }
+        );
+      }
+    }
+
     // Fetch the complete detailed one-liner with all related items
     const { data: complete, error: fetchError } = await supabase
       .from("detailed_one_liners")
@@ -197,7 +234,8 @@ export async function POST(request: Request) {
         call_report:call_reports(call_report_id, working_title, writer_name),
         narrative_breakdown_items(*),
         event_planning_items(*),
-        potential_weaknesses_risks_items(*)
+        potential_weaknesses_risks_items(*),
+        character_relationships(*)
       `)
       .eq("id", detailedOneLiner.id)
       .single();

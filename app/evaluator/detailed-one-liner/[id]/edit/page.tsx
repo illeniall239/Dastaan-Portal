@@ -332,7 +332,7 @@ export default function EditDetailedOneLinerPage({ params }: EditDetailedOneLine
           <Button asChild variant="outline" size="sm">
             <Link href="/evaluator/call-reports">
               <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Call Reports
+              Back
             </Link>
           </Button>
         </div>

@@ -54,6 +54,41 @@ export async function GET(
           sort_order,
           created_at
         ),
+        event_planning_items(
+          id,
+          episode_range,
+          event_scale,
+          on_screen_activity,
+          approx_frequency,
+          budget_category,
+          sort_order,
+          created_at
+        ),
+        potential_weaknesses_risks_items(
+          id,
+          issue,
+          explanation_risk_detail,
+          impact,
+          sort_order,
+          created_at
+        ),
+        character_relationships(
+          id,
+          character_a_name,
+          character_a_role,
+          character_b_name,
+          character_b_role,
+          relationship_type,
+          relationship_description,
+          initial_state,
+          final_state,
+          key_turning_points,
+          emotional_weight,
+          drives_plot,
+          sort_order,
+          created_at,
+          updated_at
+        ),
         created_by_user:users!created_by(
           id,
           name,
@@ -77,9 +112,18 @@ export async function GET(
       );
     }
 
-    // Sort narrative breakdown items by sort_order
+    // Sort items by sort_order
     if (data.narrative_breakdown_items) {
       data.narrative_breakdown_items.sort((a: any, b: any) => a.sort_order - b.sort_order);
+    }
+    if (data.event_planning_items) {
+      data.event_planning_items.sort((a: any, b: any) => a.sort_order - b.sort_order);
+    }
+    if (data.potential_weaknesses_risks_items) {
+      data.potential_weaknesses_risks_items.sort((a: any, b: any) => a.sort_order - b.sort_order);
+    }
+    if (data.character_relationships) {
+      data.character_relationships.sort((a: any, b: any) => a.sort_order - b.sort_order);
     }
 
     return NextResponse.json({ data }, { status: 200 });
@@ -328,6 +372,54 @@ export async function PATCH(
       }
     }
 
+    // Handle character_relationships update
+    if (updates.character_relationships !== undefined) {
+      // Delete existing items
+      const { error: deleteCharacterError } = await supabase
+        .from("character_relationships")
+        .delete()
+        .eq("detailed_one_liner_id", id);
+
+      if (deleteCharacterError) {
+        logger.error(`Error deleting character relationships: ${deleteCharacterError instanceof Error ? deleteCharacterError.message : String(deleteCharacterError)}`);
+        return NextResponse.json(
+          { error: "Failed to update character relationships", details: deleteCharacterError.message },
+          { status: 500 }
+        );
+      }
+
+      // Insert new items
+      if (updates.character_relationships && updates.character_relationships.length > 0) {
+        const characterItems = updates.character_relationships.map((item) => ({
+          detailed_one_liner_id: id,
+          character_a_name: item.character_a_name,
+          character_a_role: item.character_a_role,
+          character_b_name: item.character_b_name,
+          character_b_role: item.character_b_role,
+          relationship_type: item.relationship_type,
+          relationship_description: item.relationship_description,
+          initial_state: item.initial_state || null,
+          final_state: item.final_state || null,
+          key_turning_points: item.key_turning_points || null,
+          emotional_weight: item.emotional_weight || null,
+          drives_plot: item.drives_plot ?? false,
+          sort_order: item.sort_order,
+        }));
+
+        const { error: insertCharacterError } = await supabase
+          .from("character_relationships")
+          .insert(characterItems);
+
+        if (insertCharacterError) {
+          logger.error(`Error inserting character relationships: ${insertCharacterError instanceof Error ? insertCharacterError.message : String(insertCharacterError)}`);
+          return NextResponse.json(
+            { error: "Failed to insert character relationships", details: insertCharacterError.message },
+            { status: 500 }
+          );
+        }
+      }
+    }
+
     // Fetch and return the updated detailed one-liner
     const { data: updated, error: fetchUpdatedError } = await supabase
       .from("detailed_one_liners")
@@ -349,6 +441,41 @@ export async function PATCH(
           sort_order,
           created_at
         ),
+        event_planning_items(
+          id,
+          episode_range,
+          event_scale,
+          on_screen_activity,
+          approx_frequency,
+          budget_category,
+          sort_order,
+          created_at
+        ),
+        potential_weaknesses_risks_items(
+          id,
+          issue,
+          explanation_risk_detail,
+          impact,
+          sort_order,
+          created_at
+        ),
+        character_relationships(
+          id,
+          character_a_name,
+          character_a_role,
+          character_b_name,
+          character_b_role,
+          relationship_type,
+          relationship_description,
+          initial_state,
+          final_state,
+          key_turning_points,
+          emotional_weight,
+          drives_plot,
+          sort_order,
+          created_at,
+          updated_at
+        ),
         created_by_user:users!created_by(
           id,
           name,
@@ -366,9 +493,18 @@ export async function PATCH(
       );
     }
 
-    // Sort narrative breakdown items
+    // Sort items by sort_order
     if (updated.narrative_breakdown_items) {
       updated.narrative_breakdown_items.sort((a: any, b: any) => a.sort_order - b.sort_order);
+    }
+    if (updated.event_planning_items) {
+      updated.event_planning_items.sort((a: any, b: any) => a.sort_order - b.sort_order);
+    }
+    if (updated.potential_weaknesses_risks_items) {
+      updated.potential_weaknesses_risks_items.sort((a: any, b: any) => a.sort_order - b.sort_order);
+    }
+    if (updated.character_relationships) {
+      updated.character_relationships.sort((a: any, b: any) => a.sort_order - b.sort_order);
     }
 
     return NextResponse.json({
