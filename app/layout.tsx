@@ -7,6 +7,7 @@ import { NotificationProvider } from "@/lib/providers/notification-provider";
 import RouteProgress from "@/components/ui/route-progress";
 import LayoutClient from "./layout-client";
 import { Suspense } from "react";
+import { Analytics } from "@vercel/analytics/react";
 
 const inter = Inter({ 
   subsets: ["latin"],
@@ -42,6 +43,7 @@ export default function RootLayout({
             </NotificationProvider>
           </QueryProvider>
         </LayoutClient>
+        <Analytics />
       </body>
     </html>
   );
