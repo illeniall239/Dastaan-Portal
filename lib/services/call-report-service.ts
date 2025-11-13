@@ -47,7 +47,7 @@ export interface CreateCallReportData {
   working_title: string;
   logline: string;
   usp: string;
-  genre: string;
+  genre: string[];
   meeting_notes: string;
   meeting_attendees: string[];
   next_steps?: string;
@@ -69,7 +69,7 @@ export interface UpdateCallReportData {
   working_title?: string;
   logline?: string;
   usp?: string;
-  genre?: string;
+  genre?: string[];
   meeting_notes?: string;
   meeting_attendees?: string[];
   next_steps?: string;

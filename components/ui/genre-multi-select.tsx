@@ -41,7 +41,7 @@ export function GenreMultiSelect({
   // Check if input value is a new custom genre
   const isCustomGenre =
     inputValue.trim() !== "" &&
-    !PREDEFINED_GENRES.includes(inputValue.trim()) &&
+    !(PREDEFINED_GENRES as readonly string[]).includes(inputValue.trim()) &&
     !selectedGenres.includes(inputValue.trim());
 
   // All available options (filtered predefined + custom option)
