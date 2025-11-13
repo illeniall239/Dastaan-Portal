@@ -8,8 +8,9 @@ import { CallReportForm } from "@/app/evaluator/log-call-report/call-report-form
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Loader2, ArrowLeft, FileText } from "lucide-react";
+import { Loader2, FileText } from "lucide-react";
 import Link from "next/link";
+import { BackButton } from "@/components/ui/back-button";
 
 interface CallReportEditPageProps {
   params: Promise<{ id: string }>;
@@ -116,10 +117,7 @@ export default function EvaluatorCallReportEditPage({ params }: CallReportEditPa
           <p className="text-muted-foreground mb-6">
             The call report you&apos;re looking for doesn&apos;t exist or you don&apos;t have permission to edit it.
           </p>
-          <Button onClick={() => router.push("/evaluator/call-reports")}>
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back
-          </Button>
+          <BackButton fallbackHref="/evaluator/call-reports" />
         </Card>
       </div>
     );
@@ -129,14 +127,7 @@ export default function EvaluatorCallReportEditPage({ params }: CallReportEditPa
     <div className="mobile-container mobile-section space-y-4 sm:space-y-6 max-w-5xl mx-auto">
       {/* Header */}
       <div className="mb-6">
-        <Button
-          variant="ghost"
-          onClick={() => router.push("/evaluator/call-reports")}
-          className="mb-4"
-        >
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Back
-        </Button>
+        <BackButton fallbackHref="/evaluator/call-reports" className="mb-4" />
 
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold mb-2">Edit Writer Engagement Report</h1>

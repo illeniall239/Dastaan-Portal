@@ -9,9 +9,10 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import Link from "next/link";
-import { ArrowLeftIcon, CalendarIcon, UserIcon, FileTextIcon, StarIcon, TrendingUp, TrendingDown, Minus, CheckCircle2, Clock } from "lucide-react";
+import { CalendarIcon, UserIcon, FileTextIcon, StarIcon, TrendingUp, TrendingDown, Minus, CheckCircle2, Clock } from "lucide-react";
 import { getEvaluationById } from "@/lib/evaluations/server";
 import { EvaluationProgressBar } from "@/components/evaluations/evaluation-progress-bar";
+import { BackButton } from "@/components/ui/back-button";
 
 // Add Next.js caching - revalidate every 30 seconds
 export const revalidate = 300; // 5 minutes for better performance
@@ -98,11 +99,7 @@ export default async function EvaluatorEvaluationDetailPage({ params }: { params
       {/* Page Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <Button variant="outline" size="icon" asChild>
-            <Link href="/evaluator/evaluations-list?view=completed">
-              <ArrowLeftIcon className="h-4 w-4" />
-            </Link>
-          </Button>
+          <BackButton fallbackHref="/evaluator/evaluations-list?view=completed" variant="outline" />
           <div>
             <h1 className="text-3xl font-bold tracking-tight">
               {evaluation.call_reports?.working_title || "Evaluation Details"}

@@ -8,7 +8,8 @@ import { EpisodeEditForm } from "@/components/episodes/episode-edit-form";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Loader2, ArrowLeft, FileText } from "lucide-react";
+import { Loader2, FileText } from "lucide-react";
+import { BackButton } from "@/components/ui/back-button";
 import type { Episode } from "@/types";
 
 interface EpisodeEditPageProps {
@@ -106,10 +107,7 @@ export default function EvaluatorEpisodeEditPage({ params }: EpisodeEditPageProp
           <p className="text-muted-foreground mb-6">
             The episode you&apos;re looking for doesn&apos;t exist or you don&apos;t have permission to edit it.
           </p>
-          <Button onClick={() => router.push("/evaluator/episodes")}>
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Episodes
-          </Button>
+          <BackButton fallbackHref="/evaluator/episodes" />
         </Card>
       </div>
     );
@@ -119,14 +117,7 @@ export default function EvaluatorEpisodeEditPage({ params }: EpisodeEditPageProp
     <div className="mobile-container mobile-section space-y-4 sm:space-y-6 max-w-4xl mx-auto">
       {/* Header */}
       <div className="mb-6">
-        <Button
-          variant="ghost"
-          onClick={() => router.push("/evaluator/episodes")}
-          className="mb-4"
-        >
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Back to Episodes
-        </Button>
+        <BackButton fallbackHref="/evaluator/episodes" className="mb-4" />
 
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold mb-2">Edit Episode</h1>

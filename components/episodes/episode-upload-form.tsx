@@ -5,13 +5,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
 import { EpisodeFileUpload } from "./episode-file-upload";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, AlertCircle } from "lucide-react";
 import { Card } from "@/components/ui/card";
 
 export interface EpisodeFormEntry {
   episode_number: number;
-  title: string;
   file: File | null;
   additional_info: string;
 }
@@ -20,12 +20,14 @@ interface EpisodeUploadFormProps {
   episodes: EpisodeFormEntry[];
   onEpisodesChange: (episodes: EpisodeFormEntry[]) => void;
   disabled?: boolean;
+  existingEpisodeNumbers?: number[];
 }
 
 export function EpisodeUploadForm({
   episodes,
   onEpisodesChange,
   disabled = false,
+  existingEpisodeNumbers = [],
 }: EpisodeUploadFormProps) {
   const addEpisode = () => {
     const nextEpisodeNumber =
@@ -35,7 +37,6 @@ export function EpisodeUploadForm({
 
     const newEpisode: EpisodeFormEntry = {
       episode_number: nextEpisodeNumber,
-      title: "",
       file: null,
       additional_info: "",
     };
@@ -79,9 +80,17 @@ export function EpisodeUploadForm({
 
             {/* Episode Number */}
             <div className="space-y-2">
-              <Label htmlFor={`episode-${index}-number`} className="text-sm sm:text-base">
-                Episode Number <span className="text-red-500">*</span>
-              </Label>
+              <div className="flex items-center justify-between">
+                <Label htmlFor={`episode-${index}-number`} className="text-sm sm:text-base">
+                  Episode Number <span className="text-red-500">*</span>
+                </Label>
+                {existingEpisodeNumbers.includes(episode.episode_number) && (
+                  <Badge variant="destructive" className="text-xs">
+                    <AlertCircle className="h-3 w-3 mr-1" />
+                    Already Exists
+                  </Badge>
+                )}
+              </div>
               <Input
                 id={`episode-${index}-number`}
                 type="number"
@@ -92,21 +101,14 @@ export function EpisodeUploadForm({
                 }
                 disabled={disabled}
                 required
+                className={existingEpisodeNumbers.includes(episode.episode_number) ? "border-destructive focus-visible:ring-destructive" : ""}
               />
-            </div>
-
-            {/* Episode Title */}
-            <div className="space-y-2">
-              <Label htmlFor={`episode-${index}-title`} className="text-sm sm:text-base">Episode Title (Optional)</Label>
-              <Input
-                id={`episode-${index}-title`}
-                type="text"
-                placeholder="e.g., The Beginning"
-                value={episode.title}
-                onChange={(e) => updateEpisode(index, "title", e.target.value)}
-                disabled={disabled}
-                maxLength={200}
-              />
+              {existingEpisodeNumbers.includes(episode.episode_number) && (
+                <p className="text-xs text-destructive flex items-center gap-1">
+                  <AlertCircle className="h-3 w-3" />
+                  This episode number already exists for this project
+                </p>
+              )}
             </div>
 
             {/* File Upload */}

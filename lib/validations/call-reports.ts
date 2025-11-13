@@ -15,7 +15,7 @@ export const updateCallReportSchema = z.object({
   logline: z.string().min(1, "Logline is required").optional(),
   short_synopsis: z.string().optional(),
   episodic_synopsis: z.string().optional(),
-  genre: z.string().max(100).optional(),
+  genre: z.array(z.string().min(1).max(50)).min(1, "At least one genre is required").optional(),
   theme: z.string().max(200).optional(),
   target_slot: z.string().max(100).optional(),
   location: z.string().max(255).optional(),

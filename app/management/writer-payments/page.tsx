@@ -12,9 +12,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { ArrowLeft, DollarSign, TrendingUp, Users, Briefcase, Download, ChevronDown, ChevronUp } from "lucide-react";
+import { DollarSign, TrendingUp, Users, Briefcase, Download, ChevronDown, ChevronUp } from "lucide-react";
 import Link from "next/link";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
+import { BackButton } from "@/components/ui/back-button";
 
 interface WriterSummary {
   writer_name: string;
@@ -150,11 +151,7 @@ export default function WriterPaymentsPage() {
       <div className="flex items-center justify-between">
         <div>
           <div className="flex items-center gap-2 mb-2">
-            <Button variant="ghost" size="icon" asChild>
-              <Link href="/management">
-                <ArrowLeft className="h-4 w-4" />
-              </Link>
-            </Button>
+            <BackButton fallbackHref="/management" variant="ghost" size="icon" />
             <h1 className="text-2xl sm:text-3xl font-bold">Writer Payments</h1>
           </div>
           <p className="text-muted-foreground text-sm sm:text-base">

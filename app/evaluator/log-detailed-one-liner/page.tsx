@@ -21,10 +21,11 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Loader2, Plus, X, ArrowLeft, Network } from "lucide-react";
+import { Loader2, Plus, X, Network } from "lucide-react";
 import { createDetailedOneLinerClient, getAvailableCallReportsClient } from "@/lib/detailed-one-liner/client";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { BackButton } from "@/components/ui/back-button";
 import type { NarrativeBreakdownItemFormData, EventPlanningItemFormData, CharacterRelationshipItemFormData } from "@/lib/validations/detailed-one-liner";
 import { CharacterRelationshipGraph } from "@/components/character-relationship-graph";
 import type { CharacterRelationship } from "@/types";
@@ -384,12 +385,7 @@ export default function LogDetailedOneLinerPage() {
       <div className="mobile-header-spacing">
         {/* Header */}
         <div className="flex items-center gap-4 mb-6">
-          <Button asChild variant="outline" size="sm">
-            <Link href="/evaluator/call-reports">
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back
-            </Link>
-          </Button>
+          <BackButton fallbackHref="/evaluator/call-reports" variant="outline" size="sm" />
         </div>
 
         <div className="mb-6">

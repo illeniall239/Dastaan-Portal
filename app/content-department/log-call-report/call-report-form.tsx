@@ -21,6 +21,7 @@ import { FileUpload } from "@/components/ui/file-upload";
 import { uploadFile } from "@/lib/attachments/client";
 import { MentionInput } from "@/components/ui/mention-input";
 import { ScoreCard } from "@/components/episodic-evaluations/score-card";
+import { GenreMultiSelect } from "@/components/ui/genre-multi-select";
 
 interface User {
   id: string;
@@ -68,7 +69,7 @@ export function CallReportForm({
     logline: "",
     shortSynopsis: "",
     episodicSynopsis: "",
-    genre: "",
+    genre: [],
     theme: "",
     targetSlot: "",
     location: "",
@@ -100,7 +101,7 @@ export function CallReportForm({
         logline: initialData.logline || "",
         shortSynopsis: initialData.short_synopsis || "",
         episodicSynopsis: initialData.episodic_synopsis || "",
-        genre: initialData.genre || "",
+        genre: Array.isArray(initialData.genre) ? initialData.genre : (initialData.genre ? [initialData.genre] : []),
         theme: initialData.theme || "",
         targetSlot: initialData.slot || "",
         location: initialData.location || "",
@@ -163,8 +164,8 @@ export function CallReportForm({
         return;
       }
       // Genre required
-      if (!formData.genre) {
-        toast.error("Please select a genre");
+      if (!formData.genre || formData.genre.length === 0) {
+        toast.error("Please select at least one genre");
         return;
       }
       if (!formData.targetSlot) {
@@ -497,15 +498,12 @@ export function CallReportForm({
               />
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="genre">Genre *</Label>
-              <Input
-                id="genre"
-                placeholder="e.g., Drama, Comedy, Thriller"
-                value={formData.genre}
-                onChange={handleInputChange}
-              />
-            </div>
+            <GenreMultiSelect
+              selectedGenres={formData.genre}
+              onChange={(genres) => setFormData({ ...formData, genre: genres })}
+              required={true}
+              label="Genre"
+            />
 
             <div className="space-y-2">
               <Label htmlFor="theme">Theme</Label>

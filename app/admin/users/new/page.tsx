@@ -17,8 +17,9 @@ import {
 } from "@/components/ui/select";
 import { adminCreateUserSchema, type AdminCreateUserFormData } from "@/lib/validations/auth";
 import { toast } from "sonner";
-import { UserPlus, ArrowLeft, Mail, Lock, User, Briefcase, Building2, Shield, Loader2 } from "lucide-react";
+import { UserPlus, Mail, Lock, User, Briefcase, Building2, Shield, Loader2 } from "lucide-react";
 import Link from "next/link";
+import { BackButton } from "@/components/ui/back-button";
 
 export default function NewUserPage() {
   const [loading, setLoading] = useState(false);
@@ -82,16 +83,7 @@ export default function NewUserPage() {
     <div className="mobile-container mobile-section space-y-4 sm:space-y-6">
       {/* Header */}
       <div className="flex flex-col gap-4">
-        <Button
-          asChild
-          variant="ghost"
-          className="-ml-2 hover:bg-slate-200 w-fit"
-        >
-          <Link href="/admin/users">
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Users
-          </Link>
-        </Button>
+        <BackButton fallbackHref="/admin/users" variant="ghost" className="-ml-2 hover:bg-slate-200 w-fit" label="Back to Users" />
 
         <div className="flex items-center gap-3">
           <div className="h-12 w-12 rounded-lg bg-[#224794] flex items-center justify-center flex-shrink-0">

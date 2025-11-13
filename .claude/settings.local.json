@@ -30,7 +30,8 @@
       "Bash(npm run test:coverage:*)",
       "Bash(dir:*)",
       "Bash(nul)",
-      "Bash(move \"app\\evaluator\\episodes\\[id]\" \"app\\evaluator\\episodes\\[episodeId]\")"
+      "Bash(move \"app\\evaluator\\episodes\\[id]\" \"app\\evaluator\\episodes\\[episodeId]\")",
+      "Bash(npx shadcn@latest list:*)"
     ],
     "deny": [],
     "ask": []

@@ -15,6 +15,7 @@ import { EpisodeUploadForm, type EpisodeFormEntry } from "@/components/episodes/
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
+import { BackButton } from "@/components/ui/back-button";
 
 interface CallReport {
   id: string;
@@ -35,13 +36,14 @@ export default function LogEpisodesPage() {
 
   // Data
   const [callReports, setCallReports] = useState<CallReport[]>([]);
-  
+
+  // Existing episode numbers for selected project
+  const [existingEpisodeNumbers, setExistingEpisodeNumbers] = useState<number[]>([]);
 
   // Episodes
   const [episodes, setEpisodes] = useState<EpisodeFormEntry[]>([
     {
       episode_number: 1,
-      title: "",
       file: null,
       additional_info: "",
     },
@@ -77,6 +79,31 @@ export default function LogEpisodesPage() {
     fetchData();
   }, [supabase]);
 
+  // Fetch existing episodes when source is selected
+  useEffect(() => {
+    async function fetchExistingEpisodes() {
+      if (!selectedSource) {
+        setExistingEpisodeNumbers([]);
+        return;
+      }
+
+      try {
+        const response = await fetch(`/api/episodes?call_report_id=${selectedSource}&limit=100`);
+        const data = await response.json();
+
+        if (response.ok && data.data) {
+          const numbers = data.data.map((ep: any) => ep.episode_number);
+          setExistingEpisodeNumbers(numbers);
+        }
+      } catch (error) {
+        console.error("Error fetching existing episodes:", error);
+        setExistingEpisodeNumbers([]);
+      }
+    }
+
+    fetchExistingEpisodes();
+  }, [selectedSource]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -87,6 +114,19 @@ export default function LogEpisodesPage() {
 
     if (episodes.length === 0) {
       toast.error("Please add at least one episode");
+      return;
+    }
+
+    // Check for duplicate episode numbers with existing episodes
+    const duplicates = episodes.filter(ep =>
+      existingEpisodeNumbers.includes(ep.episode_number)
+    );
+
+    if (duplicates.length > 0) {
+      const duplicateNumbers = duplicates.map(d => d.episode_number).sort((a, b) => a - b);
+      toast.error(
+        `Episode ${duplicateNumbers.join(', ')} already exist${duplicateNumbers.length > 1 ? '' : 's'} for this project`
+      );
       return;
     }
 
@@ -131,7 +171,6 @@ export default function LogEpisodesPage() {
 
           return {
             episode_number: episode.episode_number,
-            title: episode.title || null,
             attachment_url,
             attachment_name,
             attachment_type,
@@ -167,7 +206,6 @@ export default function LogEpisodesPage() {
       setEpisodes([
         {
           episode_number: 1,
-          title: "",
           file: null,
           additional_info: "",
         },
@@ -193,6 +231,10 @@ export default function LogEpisodesPage() {
 
   return (
     <div className="mobile-container mobile-section max-w-4xl mx-auto">
+      <div className="flex items-center gap-4 mb-6">
+        <BackButton fallbackHref="/content-department" variant="outline" size="sm" />
+      </div>
+
       <div className="mb-4 sm:mb-6 md:mb-8">
         <h1 className="text-xl sm:text-2xl md:text-3xl font-bold mb-2">Log Episodes</h1>
         <p className="text-muted-foreground text-sm sm:text-base">
@@ -234,6 +276,7 @@ export default function LogEpisodesPage() {
               episodes={episodes}
               onEpisodesChange={setEpisodes}
               disabled={loading}
+              existingEpisodeNumbers={existingEpisodeNumbers}
             />
           </div>
         )}

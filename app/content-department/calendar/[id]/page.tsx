@@ -8,9 +8,10 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import Link from "next/link";
-import { ArrowLeftIcon, CalendarIcon, UserIcon, MapPinIcon, FileTextIcon, ClipboardListIcon, ClockIcon } from "lucide-react";
+import { CalendarIcon, UserIcon, MapPinIcon, FileTextIcon, ClipboardListIcon, ClockIcon } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { format, parseISO } from "date-fns";
+import { BackButton } from "@/components/ui/back-button";
 
 export default async function MeetingDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = await params;
@@ -57,11 +58,7 @@ export default async function MeetingDetailPage({ params }: { params: Promise<{ 
       {/* Page Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <Button variant="outline" size="icon" asChild>
-            <Link href="/content-department/calendar">
-              <ArrowLeftIcon className="h-4 w-4" />
-            </Link>
-          </Button>
+          <BackButton fallbackHref="/content-department/calendar" variant="outline" />
           <div>
             <h1 className="text-3xl font-bold tracking-tight">{meeting.working_title}</h1>
             <p className="text-muted-foreground mt-1">

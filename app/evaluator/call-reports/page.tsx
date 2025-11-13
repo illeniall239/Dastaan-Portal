@@ -15,6 +15,7 @@ import { getAllCallReports } from "@/lib/meetings/server";
 import { EvaluationProgressBar } from "@/components/evaluations/evaluation-progress-bar";
 import { Suspense } from "react";
 import { CallReportCardsGridSkeleton } from "@/components/skeletons/call-report-card-skeleton";
+import { BackButton } from "@/components/ui/back-button";
 
 // Add Next.js caching - revalidate every 5 minutes (300 seconds)
 // This significantly improves navigation speed by caching call reports list
@@ -35,6 +36,8 @@ export default async function EvaluatorCallReportsPage() {
 
   return (
     <div className="mobile-container mobile-section space-y-4 sm:space-y-6">
+      <BackButton fallbackHref="/evaluator" variant="outline" size="sm" />
+
       {/* Page Header - Static, shows immediately */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
         <div>

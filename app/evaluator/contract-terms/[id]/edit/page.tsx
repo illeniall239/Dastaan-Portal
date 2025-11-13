@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect, notFound } from "next/navigation";
 import { ContractTermForm } from "@/components/contract-terms/contract-term-form";
+import { BackButton } from "@/components/ui/back-button";
 
 export const dynamic = "force-dynamic";
 
@@ -68,6 +69,7 @@ export default async function EditEvaluatorNegotiationPage({
   return (
     <div className="mobile-container mobile-section">
       <div className="mobile-header-spacing">
+        <BackButton fallbackHref="/evaluator/contract-terms" className="mb-4" />
         <h1 className="text-2xl sm:text-3xl font-bold">Edit Contract Term</h1>
         <p className="text-muted-foreground mt-2 text-sm sm:text-base">
           Update contract term details for {(contractTerm as any).stories?.title || "this project"}

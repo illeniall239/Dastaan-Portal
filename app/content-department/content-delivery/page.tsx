@@ -22,7 +22,8 @@ import {
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
 import { ContentDeliveryTable } from "@/components/content-delivery/content-delivery-table";
-import { ChevronLeft, Download, X } from "lucide-react";
+import { Download, X } from "lucide-react";
+import { BackButton } from "@/components/ui/back-button";
 import type { ContentDeliveryItem, ContentDeliveryStats } from "@/types";
 
 export default function ContentDeliveryPage() {
@@ -164,6 +165,9 @@ export default function ContentDeliveryPage() {
 
   return (
     <div className="p-6 space-y-6">
+      {/* Back Button */}
+      <BackButton fallbackHref="/content-department" variant="outline" size="sm" />
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -185,10 +189,6 @@ export default function ContentDeliveryPage() {
             Track episode delivery progress for all active projects
           </p>
         </div>
-        <Button onClick={() => router.back()} variant="outline" size="sm">
-          <ChevronLeft className="h-4 w-4 mr-1" />
-          Back
-        </Button>
       </div>
 
       {/* Filters */}

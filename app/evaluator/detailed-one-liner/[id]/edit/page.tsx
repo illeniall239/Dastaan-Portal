@@ -14,10 +14,11 @@ import {
 } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Loader2, Plus, X, ArrowLeft } from "lucide-react";
+import { Loader2, Plus, X } from "lucide-react";
 import { getDetailedOneLinerClient, updateDetailedOneLinerClient } from "@/lib/detailed-one-liner/client";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { BackButton } from "@/components/ui/back-button";
 import type { NarrativeBreakdownItemFormData, EventPlanningItemFormData } from "@/lib/validations/detailed-one-liner";
 
 interface NarrativeRow {
@@ -329,12 +330,7 @@ export default function EditDetailedOneLinerPage({ params }: EditDetailedOneLine
       <div className="mobile-header-spacing">
         {/* Header */}
         <div className="flex items-center gap-4 mb-6">
-          <Button asChild variant="outline" size="sm">
-            <Link href="/evaluator/call-reports">
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back
-            </Link>
-          </Button>
+          <BackButton fallbackHref="/evaluator/call-reports" variant="outline" size="sm" />
         </div>
 
         <div className="mb-6">

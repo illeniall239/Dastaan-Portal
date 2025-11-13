@@ -31,7 +31,7 @@ export interface CreateMeetingInput {
   episodic_synopsis?: string;
   // target_audience deprecated for call_reports, keep optional for compatibility
   // removed: target_audience
-  genre?: string;
+  genre?: string[];
   theme?: string;
   slot?: string;
   meeting_date: string;
@@ -77,7 +77,7 @@ export async function createMeetingClient(meetingData: CreateMeetingInput) {
     short_synopsis: meetingData.short_synopsis || null,
     episodic_synopsis: meetingData.episodic_synopsis || null,
     // target_audience removed from schema
-    genre: meetingData.genre || 'other',
+    genre: meetingData.genre && meetingData.genre.length > 0 ? meetingData.genre : ['other'],
     theme: meetingData.theme || null,
     // Map UI-provided slot to DB column target_slot
     target_slot: meetingData.slot || null,
@@ -110,7 +110,7 @@ export async function createMeetingClient(meetingData: CreateMeetingInput) {
     writer_originator_name: meetingData.writer_name,
     suggested_writer: meetingData.suggested_writer || null,
     synopsis: meetingData.short_synopsis || meetingData.logline,
-    genre: meetingData.genre || 'other',
+    genre: meetingData.genre && meetingData.genre.length > 0 ? meetingData.genre[0] : 'other', // Take first genre for story
     target_audience: meetingData.slot || 'general', // Use slot as target_audience fallback
     status: 'submitted',
     current_stage: 'evaluation',

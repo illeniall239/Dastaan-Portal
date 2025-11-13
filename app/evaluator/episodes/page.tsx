@@ -48,6 +48,7 @@ import { formatFileSize } from "@/lib/validations/episodes";
 import { EpisodeUploadForm, type EpisodeFormEntry } from "@/components/episodes/episode-upload-form";
 import { getGradeColorClasses } from "@/lib/validations/episodic-evaluations";
 import type { EpisodeWithDetails, EpisodicEvaluationWithDetails } from "@/types";
+import { BackButton } from "@/components/ui/back-button";
 
 interface CallReport {
   id: string;
@@ -111,7 +112,6 @@ export default function EvaluatorEpisodesPage() {
   const [newEpisodes, setNewEpisodes] = useState<EpisodeFormEntry[]>([
     {
       episode_number: 1,
-      title: "",
       file: null,
       additional_info: "",
     },
@@ -131,7 +131,7 @@ export default function EvaluatorEpisodesPage() {
         throw new Error(data.error || "Failed to fetch episodes");
       }
 
-      setEpisodes(data.episodes || []);
+      setEpisodes(data.data || []);
 
       // Fetch evaluation status for each episode and user info
       const { data: { user } } = await supabase.auth.getUser();
@@ -151,7 +151,7 @@ export default function EvaluatorEpisodesPage() {
       }
 
       const status: EvaluationStatus = {};
-      for (const episode of data.episodes || []) {
+      for (const episode of data.data || []) {
         const { data: evaluation } = await supabase
           .from("episodic_evaluations")
           .select("id")
@@ -282,7 +282,6 @@ export default function EvaluatorEpisodesPage() {
 
           return {
             episode_number: episode.episode_number,
-            title: episode.title || null,
             attachment_url,
             attachment_name,
             attachment_type,
@@ -317,7 +316,6 @@ export default function EvaluatorEpisodesPage() {
       setNewEpisodes([
         {
           episode_number: 1,
-          title: "",
           file: null,
           additional_info: "",
         },
@@ -469,6 +467,8 @@ export default function EvaluatorEpisodesPage() {
 
   return (
     <div className="mobile-container mobile-section">
+      <BackButton fallbackHref="/evaluator" variant="outline" size="sm" />
+
       <div className="mb-4 sm:mb-6 md:mb-8">
         <h1 className="text-xl sm:text-2xl md:text-3xl font-bold mb-2">Episodes</h1>
         <p className="text-muted-foreground text-sm sm:text-base">
@@ -523,7 +523,6 @@ export default function EvaluatorEpisodesPage() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Project</TableHead>
-                      <TableHead>Title</TableHead>
                       <TableHead>Attachment</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
@@ -543,7 +542,7 @@ export default function EvaluatorEpisodesPage() {
                             className="bg-slate-50 hover:bg-slate-100 cursor-pointer border-t-2 border-slate-200"
                             onClick={() => toggleProject(project.projectId)}
                           >
-                            <TableCell colSpan={5} className="font-semibold py-4">
+                            <TableCell colSpan={4} className="font-semibold py-4">
                               <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-3">
                                   {isExpanded ? (
@@ -582,11 +581,6 @@ export default function EvaluatorEpisodesPage() {
                                 <TableRow key={episode.id} className="hover:bg-slate-50">
                                   <TableCell className="pl-12">
                                     <Badge variant="outline">EP {episode.episode_number}</Badge>
-                                  </TableCell>
-                                  <TableCell>
-                                    {episode.title || (
-                                      <span className="text-muted-foreground italic">Untitled</span>
-                                    )}
                                   </TableCell>
                                   <TableCell>
                                     {episode.attachment_url ? (
@@ -880,7 +874,6 @@ export default function EvaluatorEpisodesPage() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Episode #</TableHead>
-                      <TableHead>Title</TableHead>
                       <TableHead>Project</TableHead>
                       <TableHead>Score</TableHead>
                       <TableHead>Grade</TableHead>
@@ -895,7 +888,7 @@ export default function EvaluatorEpisodesPage() {
                           className="bg-slate-50 hover:bg-slate-100 cursor-pointer border-t-2 border-slate-200"
                           onClick={() => toggleEvalProject(project.projectId)}
                         >
-                          <TableCell colSpan={7} className="font-semibold py-4">
+                          <TableCell colSpan={6} className="font-semibold py-4">
                             <div className="flex items-center justify-between">
                               <div className="flex items-center gap-3">
                                 {expandedEvalProjects.has(project.projectId) ? (
@@ -927,11 +920,6 @@ export default function EvaluatorEpisodesPage() {
                             <TableRow key={evaluation.id} className="hover:bg-slate-50">
                               <TableCell className="pl-12">
                                 <Badge variant="outline">EP {evaluation.episode?.episode_number}</Badge>
-                              </TableCell>
-                              <TableCell>
-                                {evaluation.episode?.title || (
-                                  <span className="text-muted-foreground italic">Untitled</span>
-                                )}
                               </TableCell>
                               <TableCell>{/* Project in header */}</TableCell>
                               <TableCell>

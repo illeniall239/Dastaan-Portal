@@ -5,8 +5,9 @@ import { createClient } from "@/lib/supabase/server";
 import { getDetailedOneLinersByCallReport } from "@/lib/detailed-one-liner/server";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, FilePenLine, AlertCircle } from "lucide-react";
+import { FilePenLine, AlertCircle } from "lucide-react";
 import { DetailedOneLinerDisplay } from "@/components/evaluations/detailed-one-liner-display";
+import { BackButton } from "@/components/ui/back-button";
 
 export const metadata: Metadata = {
   title: "Detailed One-Liner | Dastaan Portal",
@@ -65,12 +66,7 @@ export default async function CallReportDetailedOneLinerPage({
       <div className="mobile-header-spacing">
         {/* Header */}
         <div className="flex items-center gap-4 mb-6">
-          <Button asChild variant="outline" size="sm">
-            <Link href="/evaluator/call-reports">
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back
-            </Link>
-          </Button>
+          <BackButton fallbackHref="/evaluator/call-reports" variant="outline" />
           {canEdit && detailedOneLiner && (
             <Button asChild variant="default" size="sm">
               <Link href={`/evaluator/detailed-one-liner/${detailedOneLiner.id}/edit`}>

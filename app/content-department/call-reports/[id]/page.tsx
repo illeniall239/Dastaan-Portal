@@ -8,9 +8,10 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import Link from "next/link";
-import { ArrowLeftIcon, CalendarIcon, UserIcon, MapPinIcon, FileTextIcon, PaperclipIcon, Pencil } from "lucide-react";
+import { CalendarIcon, UserIcon, MapPinIcon, FileTextIcon, PaperclipIcon, Pencil } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { getAttachmentsForEntityServer } from "@/lib/attachments/server";
+import { BackButton } from "@/components/ui/back-button";
 
 // Add Next.js caching - revalidate every 30 seconds
 export const revalidate = 300; // 5 minutes for better performance
@@ -73,11 +74,7 @@ export default async function CallReportDetailPage({ params }: { params: Promise
     <div className="p-6 space-y-4 max-w-5xl mx-auto">
       {/* Page Header */}
       <div className="flex items-center gap-4 mb-6">
-        <Button variant="outline" size="icon" asChild>
-          <Link href="/content-department/call-reports">
-            <ArrowLeftIcon className="h-4 w-4" />
-          </Link>
-        </Button>
+        <BackButton fallbackHref="/content-department/call-reports" variant="outline" />
         <div className="flex-1">
           <h1 className="text-2xl font-semibold text-slate-900">{report.working_title}</h1>
           <p className="text-sm text-slate-500 mt-0.5">

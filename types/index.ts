@@ -92,7 +92,7 @@ export interface CallReport {
   working_title: string;
   logline: string;
   usp: string;
-  genre: string; // Required field, accepts any text value
+  genre: string[]; // Array of genre tags - supports multiple genres
   meeting_notes: string;
   meeting_attendees: string[];
   next_steps?: string;

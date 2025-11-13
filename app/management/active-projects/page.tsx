@@ -11,7 +11,8 @@ import { DataTable, ColumnDef } from "@/components/management/shared/data-table"
 import { ExportButton } from "@/components/management/shared/export-button";
 import { StatusBadge } from "@/components/management/shared/status-badge";
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
-import { ChevronLeft, Clock, X } from "lucide-react";
+import { Clock, X } from "lucide-react";
+import { BackButton } from "@/components/ui/back-button";
 import type { ActiveProject } from "@/lib/management/active-projects";
 
 export default function ActiveProjectsPage() {
@@ -169,6 +170,9 @@ export default function ActiveProjectsPage() {
 
   return (
     <div className="container mx-auto p-6 space-y-6">
+      {/* Back Button */}
+      <BackButton fallbackHref="/management" variant="outline" size="sm" />
+
       {/* Breadcrumb */}
       <Breadcrumb>
         <BreadcrumbList>
@@ -187,17 +191,6 @@ export default function ActiveProjectsPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="space-y-1">
-          <div className="flex items-center gap-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => router.push("/management")}
-              className="gap-1"
-            >
-              <ChevronLeft className="h-4 w-4" />
-              Back
-            </Button>
-          </div>
           <h1 className="text-3xl font-bold tracking-tight">Active Projects</h1>
           <p className="text-muted-foreground">
             All stories currently in development

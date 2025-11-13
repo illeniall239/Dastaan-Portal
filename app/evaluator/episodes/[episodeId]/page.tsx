@@ -8,7 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Loader2, ArrowLeft, FileText } from "lucide-react";
+import { Loader2, FileText } from "lucide-react";
+import { BackButton } from "@/components/ui/back-button";
 import type { Episode, EpisodicEvaluation } from "@/types";
 import type { EpisodicEvaluationFormData } from "@/lib/validations/episodic-evaluations";
 
@@ -142,10 +143,7 @@ export default function EpisodicEvaluationPage({ params }: EpisodePageProps) {
           <p className="text-muted-foreground mb-6">
             The episode you&apos;re looking for doesn&apos;t exist or has been removed.
           </p>
-          <Button onClick={() => router.push("/evaluator/episodes")}>
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Episodes
-          </Button>
+          <BackButton fallbackHref="/evaluator/episodes" />
         </Card>
       </div>
     );
@@ -155,14 +153,7 @@ export default function EpisodicEvaluationPage({ params }: EpisodePageProps) {
     <div className="mobile-container mobile-section space-y-4 sm:space-y-6 max-w-5xl mx-auto">
       {/* Header */}
       <div className="mb-6">
-        <Button
-          variant="ghost"
-          onClick={() => router.push("/evaluator/episodes")}
-          className="mb-4"
-        >
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Back to Episodes
-        </Button>
+        <BackButton fallbackHref="/evaluator/episodes" className="mb-4" />
 
         <div className="flex items-start justify-between">
           <div>

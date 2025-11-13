@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Plus, X, ChevronDown, ChevronUp } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
+import { BackButton } from "@/components/ui/back-button";
 
 const zodiacSigns = [
   "Aries",
@@ -166,6 +167,9 @@ export function CharacterForm() {
   return (
     <form onSubmit={handleSubmit}>
       <div className="py-6 space-y-6 max-w-6xl mx-auto px-4 sm:px-6">
+        {/* Back Button */}
+        <BackButton fallbackHref="/evaluator" variant="outline" size="sm" />
+
         {/* Header */}
         <div className="flex justify-between items-center">
           <h1 className="text-3xl font-bold text-gray-800">Character Development</h1>
@@ -178,9 +182,6 @@ export function CharacterForm() {
             >
               <Plus className="h-4 w-4 mr-2" />
               Add Character
-            </Button>
-            <Button variant="outline" size="sm" asChild>
-              <Link href="/evaluator">Back to Dashboard</Link>
             </Button>
           </div>
         </div>

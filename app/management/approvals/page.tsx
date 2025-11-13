@@ -10,7 +10,8 @@ import { FilterSidebar, FilterConfig } from "@/components/management/shared/filt
 import { ExportButton } from "@/components/management/shared/export-button";
 import { StatusBadge } from "@/components/management/shared/status-badge";
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
-import { ChevronLeft, Clock, Star, AlertTriangle } from "lucide-react";
+import { Clock, Star, AlertTriangle } from "lucide-react";
+import { BackButton } from "@/components/ui/back-button";
 import type { PendingApproval } from "@/lib/management/pending-approvals";
 
 export default function ApprovalsPage() {
@@ -230,15 +231,7 @@ export default function ApprovalsPage() {
       <div className="flex items-center justify-between">
         <div className="space-y-1">
           <div className="flex items-center gap-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => router.push("/management")}
-              className="gap-1"
-            >
-              <ChevronLeft className="h-4 w-4" />
-              Back
-            </Button>
+            <BackButton fallbackHref="/management" variant="ghost" size="sm" className="gap-1" />
           </div>
           <h1 className="text-3xl font-bold tracking-tight">Pending Approvals</h1>
           <p className="text-muted-foreground">

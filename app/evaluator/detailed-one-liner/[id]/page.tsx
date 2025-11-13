@@ -6,7 +6,8 @@ import { getDetailedOneLinerById } from "@/lib/detailed-one-liner/server";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Pencil } from "lucide-react";
+import { Pencil } from "lucide-react";
+import { BackButton } from "@/components/ui/back-button";
 
 export const metadata: Metadata = {
   title: "Detailed One-Liner | Dastaan Portal",
@@ -48,12 +49,7 @@ export default async function DetailedOneLinerPage({
           <h1 className="text-2xl font-bold text-muted-foreground mb-4">
             Detailed One-Liner Not Found
           </h1>
-          <Button asChild>
-            <Link href="/evaluator/call-reports">
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back
-            </Link>
-          </Button>
+          <BackButton fallbackHref="/evaluator/call-reports" />
         </div>
       </div>
     );
@@ -74,12 +70,7 @@ export default async function DetailedOneLinerPage({
       <div className="mobile-header-spacing">
         {/* Header */}
         <div className="flex items-center gap-4 mb-6">
-          <Button asChild variant="outline" size="sm">
-            <Link href="/evaluator/call-reports">
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back
-            </Link>
-          </Button>
+          <BackButton fallbackHref="/evaluator/call-reports" variant="outline" />
           {canEdit && (
             <Button asChild variant="default" size="sm">
               <Link href={`/evaluator/detailed-one-liner/${id}/edit`}>

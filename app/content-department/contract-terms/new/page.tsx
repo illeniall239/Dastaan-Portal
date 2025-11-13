@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { ContractTermForm } from "@/components/contract-terms/contract-term-form";
+import { BackButton } from "@/components/ui/back-button";
 
 export const dynamic = "force-dynamic";
 
@@ -50,6 +51,7 @@ export default async function NewContentDepartmentNegotiationPage() {
   return (
     <div className="mobile-container mobile-section">
       <div className="mobile-header-spacing">
+        <BackButton fallbackHref="/content-department/contract-terms" className="mb-4" />
         <h1 className="text-2xl sm:text-3xl font-bold">Create New Contract Term</h1>
         <p className="text-muted-foreground mt-2 text-sm sm:text-base">
           Start a new negotiation for an approved project

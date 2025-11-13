@@ -26,7 +26,6 @@ export function EpisodeEditForm({ episode, onSuccess }: EpisodeEditFormProps) {
 
   const [loading, setLoading] = useState(false);
   const [episodeNumber, setEpisodeNumber] = useState(episode.episode_number);
-  const [title, setTitle] = useState(episode.title || "");
   const [additionalInfo, setAdditionalInfo] = useState(episode.additional_info || "");
   const [file, setFile] = useState<File | null>(null);
   const [existingAttachment, setExistingAttachment] = useState({
@@ -85,7 +84,6 @@ export function EpisodeEditForm({ episode, onSuccess }: EpisodeEditFormProps) {
 
       const updateData = {
         episode_number: episodeNumber,
-        title: title.trim() || null,
         additional_info: additionalInfo.trim() || null,
         attachment_url,
         attachment_name,
@@ -134,23 +132,6 @@ export function EpisodeEditForm({ episode, onSuccess }: EpisodeEditFormProps) {
             />
             <p className="text-xs text-muted-foreground">
               The episode sequence number
-            </p>
-          </div>
-
-          {/* Episode Title */}
-          <div className="space-y-2">
-            <Label htmlFor="episode-title">Episode Title (Optional)</Label>
-            <Input
-              id="episode-title"
-              type="text"
-              placeholder="e.g., The Beginning"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              disabled={loading}
-              maxLength={200}
-            />
-            <p className="text-xs text-muted-foreground">
-              A descriptive title for this episode
             </p>
           </div>
 

@@ -49,6 +49,48 @@ export async function POST(request: Request) {
 
     const { call_report_id, story_id, episodes } = validation.data;
 
+    // Check for duplicate episode numbers within the incoming batch
+    const episodeNumbers = episodes.map(ep => ep.episode_number);
+    const duplicatesInBatch = episodeNumbers.filter((num, idx) =>
+      episodeNumbers.indexOf(num) !== idx
+    );
+
+    if (duplicatesInBatch.length > 0) {
+      const uniqueDuplicates = [...new Set(duplicatesInBatch)].sort((a, b) => a - b);
+      return NextResponse.json(
+        {
+          error: "Duplicate episode numbers in submission",
+          details: `Episode number(s) ${uniqueDuplicates.join(', ')} appear multiple times in your submission`
+        },
+        { status: 400 }
+      );
+    }
+
+    // Check for existing episodes in database
+    let existingQuery = supabase
+      .from("episodes")
+      .select("episode_number")
+      .in("episode_number", episodeNumbers);
+
+    if (call_report_id) {
+      existingQuery = existingQuery.eq("call_report_id", call_report_id);
+    } else if (story_id) {
+      existingQuery = existingQuery.eq("story_id", story_id);
+    }
+
+    const { data: existingEpisodes } = await existingQuery;
+
+    if (existingEpisodes && existingEpisodes.length > 0) {
+      const existingNumbers = existingEpisodes.map(ep => ep.episode_number).sort((a, b) => a - b);
+      return NextResponse.json(
+        {
+          error: "Duplicate episode numbers detected",
+          details: `Episode number(s) ${existingNumbers.join(', ')} already exist for this project`
+        },
+        { status: 409 } // 409 Conflict
+      );
+    }
+
     // Prepare episodes for insertion
     const episodesToInsert = episodes.map((episode) => ({
       call_report_id: call_report_id || null,

@@ -47,7 +47,7 @@ export default function EpisodesListPage() {
         throw new Error(data.error || "Failed to fetch episodes");
       }
 
-      setEpisodes(data.episodes || []);
+      setEpisodes(data.data || []);
 
       // Fetch current user info
       const { data: { user } } = await supabase.auth.getUser();
@@ -100,7 +100,6 @@ export default function EpisodesListPage() {
     const searchLower = searchTerm.toLowerCase();
     return (
       episode.episode_number.toString().includes(searchLower) ||
-      episode.title?.toLowerCase().includes(searchLower) ||
       episode.call_report?.working_title?.toLowerCase().includes(searchLower) ||
       episode.call_report?.writer_name?.toLowerCase().includes(searchLower) ||
       episode.story?.title?.toLowerCase().includes(searchLower) ||
@@ -140,7 +139,7 @@ export default function EpisodesListPage() {
         projectType = "story";
       } else {
         projectId = `episode_${ep.id}`;
-        projectName = ep.title || "Untitled Episode";
+        projectName = "Untitled Episode";
         projectType = "call_report";
       }
 
@@ -242,7 +241,6 @@ export default function EpisodesListPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Project</TableHead>
-                  <TableHead>Title</TableHead>
                   <TableHead>Attachment</TableHead>
                   <TableHead>Logged By</TableHead>
                   <TableHead>Date</TableHead>
@@ -256,7 +254,7 @@ export default function EpisodesListPage() {
                       className="bg-slate-50 hover:bg-slate-100 cursor-pointer border-t-2 border-slate-200"
                       onClick={() => toggleProject(project.projectId)}
                     >
-                      <TableCell colSpan={6} className="font-semibold py-4">
+                      <TableCell colSpan={5} className="font-semibold py-4">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-3">
                             {expandedProjects.has(project.projectId) ? (
@@ -288,9 +286,6 @@ export default function EpisodesListPage() {
                         <TableRow key={episode.id} className="hover:bg-slate-50">
                           <TableCell className="pl-12">
                             <Badge variant="outline">EP {episode.episode_number}</Badge>
-                          </TableCell>
-                          <TableCell>
-                            {episode.title || <span className="text-muted-foreground italic">Untitled</span>}
                           </TableCell>
                           <TableCell>
                             {episode.attachment_url ? (
@@ -379,9 +374,6 @@ export default function EpisodesListPage() {
                           <div className="flex items-center justify-between gap-2">
                             <div className="flex items-center gap-2 flex-1 min-w-0">
                               <Badge variant="outline" className="flex-shrink-0">EP {episode.episode_number}</Badge>
-                              <span className="font-medium text-sm truncate">
-                                {episode.title || <span className="text-muted-foreground italic">Untitled</span>}
-                              </span>
                             </div>
                             <span className="text-xs text-muted-foreground flex-shrink-0">{new Date(episode.created_at).toLocaleDateString()}</span>
                           </div>
