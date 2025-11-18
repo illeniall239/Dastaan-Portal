@@ -191,6 +191,11 @@ export const adminCreateUserSchema = z.object({
   ], {
     required_error: "Department is required",
   }),
+  team_id: z
+    .string()
+    .uuid("Invalid team ID")
+    .optional()
+    .or(z.literal("")),
 });
 
 /**

@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import {
   createNotifications,
-  getContentDepartmentUserIds,
+  getContentActivityNotificationRecipients,
 } from "@/lib/notifications/server";
 
 export interface Meeting {
@@ -143,9 +143,10 @@ export async function createMeeting(meetingData: CreateMeetingInput) {
     throw new Error(`Failed to create meeting: ${error.message}`);
   }
 
-  // Create notifications for content department members
+  // Create notifications for content department members, management, and evaluators
+  // Exclude the creator from receiving notification about their own action
   try {
-    const contentUserIds = await getContentDepartmentUserIds();
+    const recipientIds = await getContentActivityNotificationRecipients(meetingData.created_by);
     const meetingDate = new Date(meetingData.meeting_date);
     const formattedDate = meetingDate.toLocaleDateString("en-US", {
       month: "short",
@@ -160,14 +161,15 @@ export async function createMeeting(meetingData: CreateMeetingInput) {
 
     const isScheduledMeeting = meetingData.meeting_type === 'scheduled_meeting';
     await createNotifications(
-      contentUserIds,
+      recipientIds,
       "info",
       isScheduledMeeting
         ? `New meeting scheduled: ${meetingData.working_title}`
         : `New call report logged: ${meetingData.working_title}`,
       `Meeting with ${meetingData.writer_name} on ${formattedDate} at ${formattedTime}`,
       isScheduledMeeting ? "meeting_scheduled" : "call_report_logged",
-      data.id
+      data.id,
+      meetingData.created_by // Track who created this
     );
   } catch (notifError) {
     console.error("Failed to create notifications:", notifError);

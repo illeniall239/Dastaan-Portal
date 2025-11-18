@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, memo } from "react";
-import { Bell, CalendarIcon, FileTextIcon, CheckCircle2, Settings, LogOut, HomeIcon, ClipboardListIcon, Film, ClipboardCheck, Menu, X, Handshake, FileSpreadsheet } from "lucide-react";
+import { Bell, CalendarIcon, FileTextIcon, CheckCircle2, Settings, LogOut, HomeIcon, ClipboardListIcon, Film, ClipboardCheck, Menu, X, Handshake, FileSpreadsheet, ChefHat } from "lucide-react";
 import { logger } from "@/lib/logger";
 import { Button } from "@/components/ui/button";
 import {
@@ -69,6 +69,8 @@ function getIconComponent(iconName: string) {
     handshake: Handshake,
     fileSpreadsheet: FileSpreadsheet,
     settings: Settings,
+    chefHat: ChefHat,
+    users: ClipboardListIcon,
   };
   return icons[iconName] || HomeIcon;
 }
@@ -95,9 +97,9 @@ const defaultNavItems: NavItem[] = [
     icon: "film",
   },
   {
-    title: "Content Delivery",
-    href: "/content-department/content-delivery",
-    icon: "fileSpreadsheet",
+    title: "Status Report",
+    href: "/content-department/status-updater",
+    icon: "clipboardCheck",
   },
   {
     title: "Contract Terms",

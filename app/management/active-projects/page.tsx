@@ -31,10 +31,7 @@ export default function ActiveProjectsPage() {
   useEffect(() => {
     const fetchProjects = async () => {
       try {
-        // Check if we should use sample data from URL params
-        const searchParams = new URLSearchParams(window.location.search);
-        const useSampleData = searchParams.get('sample') === 'true';
-        const url = `/api/management/active-projects${useSampleData ? '?sample=true' : ''}`;
+        const url = `/api/management/active-projects`;
 
         const response = await fetch(url);
 

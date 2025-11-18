@@ -41,9 +41,9 @@ const evaluatorNavItems = [
     icon: "film",
   },
   {
-    title: "Content Delivery",
-    href: "/evaluator/content-delivery",
-    icon: "fileSpreadsheet",
+    title: "Status Report",
+    href: "/evaluator/status-updater",
+    icon: "clipboardCheck",
   },
   {
     title: "Contract Terms",

@@ -206,6 +206,12 @@ export default async function CallReportDetailPage({ params }: { params: Promise
                   <p className="text-slate-900 mt-0.5">{report.slot}</p>
                 </div>
               )}
+              {report.content_type && (
+                <div>
+                  <p className="text-slate-500 font-medium">Content Type</p>
+                  <p className="text-slate-900 mt-0.5">{report.content_type}</p>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>

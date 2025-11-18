@@ -12,10 +12,24 @@ export const updateCallReportSchema = z.object({
   contact_phone: z.string().max(50).optional(),
   contact_address: z.string().max(500).optional(),
   working_title: z.string().min(1, "Working title is required").max(300).optional(),
+  director: z.string().max(255).optional(),
+  total_episodes: z.number().min(0).optional(),
+  received_episodes: z.number().min(0).optional(),
   logline: z.string().min(1, "Logline is required").optional(),
   short_synopsis: z.string().optional(),
   episodic_synopsis: z.string().optional(),
   genre: z.array(z.string().min(1).max(50)).min(1, "At least one genre is required").optional(),
+  content_type: z.enum([
+    "Serial",
+    "Long Serial",
+    "Telefilm",
+    "Mini-serial",
+    "Ramadan Serial",
+    "Series Sitcom",
+    "Soap"
+  ], {
+    errorMap: () => ({ message: "Please select a valid content type" })
+  }).optional(),
   theme: z.string().max(200).optional(),
   target_slot: z.string().max(100).optional(),
   location: z.string().max(255).optional(),

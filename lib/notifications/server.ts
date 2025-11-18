@@ -20,6 +20,7 @@ export interface CreateNotificationInput {
   message?: string;
   entityType?: string;
   entityId?: string;
+  createdBy?: string;
 }
 
 /**
@@ -42,6 +43,7 @@ export async function createNotification(input: CreateNotificationInput) {
     message: input.message || null,
     entity_type: input.entityType || null,
     entity_id: input.entityId || null,
+    created_by: input.createdBy || null,
     is_read: false,
   };
 
@@ -74,7 +76,8 @@ export async function createNotifications(
   title: string,
   message?: string,
   entityType?: string,
-  entityId?: string
+  entityId?: string,
+  createdBy?: string
 ) {
   // Use admin client to bypass RLS (RLS policy blocks authenticated user inserts)
   const supabase = createAdminClient();
@@ -86,6 +89,7 @@ export async function createNotifications(
     message: message || null,
     entity_type: entityType || null,
     entity_id: entityId || null,
+    created_by: createdBy || null,
     is_read: false,
   }));
 
@@ -229,4 +233,54 @@ export async function getContentDepartmentUserIds() {
   }
 
   return data.map((user) => user.id);
+}
+
+/**
+ * Helper: Get user IDs by roles
+ * Generic function to get users by multiple roles
+ */
+export async function getUserIdsByRoles(roles: string[]) {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from("users")
+    .select("id")
+    .in("role", roles)
+    .eq("status", "active");
+
+  if (error) {
+    console.error("Failed to fetch users by roles:", error);
+    return [];
+  }
+
+  return data.map((user) => user.id);
+}
+
+/**
+ * Helper: Exclude a specific user ID from a list
+ * Used to prevent notifying the person who performed the action
+ */
+export function excludeUserFromList(userIds: string[], excludeUserId?: string): string[] {
+  if (!excludeUserId) return userIds;
+  return userIds.filter(id => id !== excludeUserId);
+}
+
+/**
+ * Helper: Get all relevant user IDs for content department activities
+ * Returns: management, evaluators, content_manager, content_creator
+ */
+export async function getContentActivityNotificationRecipients(excludeUserId?: string) {
+  const roles = ["management", "evaluator", "content_manager", "content_creator"];
+  const userIds = await getUserIdsByRoles(roles);
+  return excludeUserFromList(userIds, excludeUserId);
+}
+
+/**
+ * Helper: Get all relevant user IDs for evaluation activities
+ * Returns: management, content_manager, content_creator
+ */
+export async function getEvaluationActivityNotificationRecipients(excludeUserId?: string) {
+  const roles = ["management", "content_manager", "content_creator"];
+  const userIds = await getUserIdsByRoles(roles);
+  return excludeUserFromList(userIds, excludeUserId);
 }

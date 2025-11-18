@@ -19,9 +19,90 @@ export interface User {
   position?: string;
   avatar_url?: string;
   status?: string;
+  team_id?: string; // Team this user belongs to
+  team?: Team; // Populated when joining with teams table
   created_at?: string;
   last_login?: string;
   updated_at?: string;
+}
+
+// Team types
+export type TeamType = "production" | "channel" | "adaptation" | "evaluator" | "other";
+
+export interface Team {
+  id: string;
+  name: string;
+  description?: string;
+  parent_team_id?: string;
+  team_type: TeamType;
+  team_head_id?: string;
+  created_at: string;
+  updated_at: string;
+  // Populated when joining with other tables
+  parent_team?: Team;
+  team_head?: User;
+  member_count?: number;
+}
+
+export interface TeamHierarchy {
+  team_id: string;
+  team_name: string;
+  parent_team_id?: string;
+  team_head_id?: string;
+  team_type: TeamType;
+  level: number; // 0 for top-level teams
+  hierarchy_path: string[]; // Array of team IDs from root to this team
+  hierarchy_display: string; // Human-readable path like "Parent > Child > Grandchild"
+}
+
+export interface TeamPerformance {
+  team_id: string;
+  team_name: string;
+  team_type: TeamType;
+  description?: string;
+  team_head_id?: string;
+  team_head_name?: string;
+  team_head_email?: string;
+  // Team composition
+  team_member_count: number;
+  // Call Reports metrics
+  call_reports_created: number; // Last 90 days
+  call_reports_last_30_days: number;
+  // Evaluation metrics
+  evaluations_completed: number; // Last 90 days
+  evaluations_last_30_days: number;
+  avg_evaluation_score?: number;
+  // One-Liner metrics
+  one_liners_logged: number; // Last 90 days
+  one_liners_last_30_days: number;
+  // Approval/Rejection metrics
+  stories_approved: number; // Last 90 days
+  stories_rejected: number; // Last 90 days
+  stories_approved_last_30_days: number;
+  stories_rejected_last_30_days: number;
+  // Activity tracking
+  last_activity?: string;
+  team_created_at: string;
+  metrics_updated_at: string;
+}
+
+export interface TeamMember {
+  user_id: string;
+  user_name: string;
+  user_email: string;
+  user_role: UserRole;
+  user_team_id: string;
+  team_level: number; // 0 for direct team members, >0 for sub-team members
+  position?: string;
+  department?: string;
+}
+
+export interface TeamFormData {
+  name: string;
+  description?: string;
+  parent_team_id?: string;
+  team_type: TeamType;
+  team_head_id?: string;
 }
 
 // Story types
@@ -93,6 +174,7 @@ export interface CallReport {
   logline: string;
   usp: string;
   genre: string[]; // Array of genre tags - supports multiple genres
+  content_type: "Serial" | "Long Serial" | "Telefilm" | "Mini-serial" | "Ramadan Serial" | "Series Sitcom" | "Soap"; // Type/format of the content
   meeting_notes: string;
   meeting_attendees: string[];
   next_steps?: string;

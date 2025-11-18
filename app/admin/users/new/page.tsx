@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -17,12 +17,16 @@ import {
 } from "@/components/ui/select";
 import { adminCreateUserSchema, type AdminCreateUserFormData } from "@/lib/validations/auth";
 import { toast } from "sonner";
-import { UserPlus, Mail, Lock, User, Briefcase, Building2, Shield, Loader2 } from "lucide-react";
+import { UserPlus, Mail, Lock, User, Briefcase, Building2, Shield, Loader2, Users } from "lucide-react";
 import Link from "next/link";
 import { BackButton } from "@/components/ui/back-button";
+import { createClient } from "@/lib/supabase/client";
+import type { Team } from "@/types";
 
 export default function NewUserPage() {
   const [loading, setLoading] = useState(false);
+  const [teams, setTeams] = useState<Team[]>([]);
+  const [teamsLoading, setTeamsLoading] = useState(true);
   const router = useRouter();
 
   const {
@@ -39,8 +43,33 @@ export default function NewUserPage() {
       password: "",
       position: "",
       department: undefined,
+      team_id: undefined,
     },
   });
+
+  // Fetch teams on component mount
+  useEffect(() => {
+    const fetchTeams = async () => {
+      try {
+        const supabase = createClient();
+        const { data, error } = await supabase
+          .from("teams")
+          .select("id, name, team_type, parent_team_id, created_at, updated_at")
+          .order("name");
+
+        if (error) throw error;
+
+        setTeams(data || []);
+      } catch (error) {
+        console.error("Error fetching teams:", error);
+        toast.error("Failed to load teams");
+      } finally {
+        setTeamsLoading(false);
+      }
+    };
+
+    fetchTeams();
+  }, []);
 
   const onSubmit = async (data: AdminCreateUserFormData) => {
     setLoading(true);
@@ -298,6 +327,59 @@ export default function NewUserPage() {
                   )}
                   <p className="text-xs text-muted-foreground">
                     The department determines the user's role and access permissions
+                  </p>
+                </div>
+
+                {/* Team Field */}
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium flex items-center gap-2">
+                    <Users className="h-4 w-4 text-slate-500" />
+                    Team <span className="text-slate-400">(Optional)</span>
+                  </Label>
+                  <Controller
+                    control={control}
+                    name="team_id"
+                    render={({ field }) => (
+                      <Select
+                        onValueChange={field.onChange}
+                        defaultValue={field.value}
+                        disabled={teamsLoading}
+                      >
+                        <SelectTrigger className={`touch-target ${errors.team_id ? 'border-red-500' : ''}`}>
+                          <SelectValue placeholder={teamsLoading ? "Loading teams..." : "Select a team (optional)"} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {teams.length === 0 && !teamsLoading ? (
+                            <div className="px-2 py-3 text-sm text-muted-foreground">
+                              No teams available. Create teams first.
+                            </div>
+                          ) : (
+                            teams.map((team) => (
+                              <SelectItem key={team.id} value={team.id}>
+                                <div className="flex items-center gap-2">
+                                  <div className={`h-2 w-2 rounded-full ${
+                                    team.team_type === 'production' ? 'bg-blue-500' :
+                                    team.team_type === 'channel' ? 'bg-purple-500' :
+                                    team.team_type === 'adaptation' ? 'bg-green-500' :
+                                    team.team_type === 'evaluator' ? 'bg-yellow-500' :
+                                    'bg-slate-500'
+                                  }`} />
+                                  {team.name}
+                                </div>
+                              </SelectItem>
+                            ))
+                          )}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  />
+                  {errors.team_id && (
+                    <p className="text-xs text-red-600 flex items-center gap-1">
+                      {errors.team_id.message}
+                    </p>
+                  )}
+                  <p className="text-xs text-muted-foreground">
+                    Assign the user to a team for performance tracking
                   </p>
                 </div>
               </div>

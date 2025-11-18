@@ -1,7 +1,6 @@
 "use client";
 
-import { Badge } from "@/components/ui/badge";
-import { Activity, Download, Beaker, Database, Printer } from "lucide-react";
+import { Download, Printer } from "lucide-react";
 import { DateRangeSelector, DateRange } from "./date-range-selector";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -9,10 +8,9 @@ import { printDashboard } from "./export-utils";
 
 interface ManagementHeaderProps {
   userName: string;
-  useSampleData?: boolean;
 }
 
-export function ManagementHeader({ userName, useSampleData = false }: ManagementHeaderProps) {
+export function ManagementHeader({ userName }: ManagementHeaderProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -23,18 +21,6 @@ export function ManagementHeader({ userName, useSampleData = false }: Management
     params.set("to", range.to.toISOString());
     if (range.preset) {
       params.set("preset", range.preset);
-    }
-    router.push(`?${params.toString()}`);
-  };
-
-  const handleToggleSampleData = () => {
-    const params = new URLSearchParams(searchParams.toString());
-    if (useSampleData) {
-      // Switch to real data
-      params.delete("sample");
-    } else {
-      // Switch to sample data
-      params.set("sample", "true");
     }
     router.push(`?${params.toString()}`);
   };
@@ -89,23 +75,6 @@ export function ManagementHeader({ userName, useSampleData = false }: Management
       <div className="flex items-center gap-3">
         <DateRangeSelector onChange={handleDateRangeChange} />
         <Button
-          onClick={handleToggleSampleData}
-          variant={useSampleData ? "default" : "outline"}
-          className={`flex items-center gap-2 ${useSampleData ? 'bg-green-600 hover:bg-green-700' : 'bg-blue-600 text-white hover:bg-blue-700'}`}
-        >
-          {useSampleData ? (
-            <>
-              <Database className="h-4 w-4" />
-              View Real Data
-            </>
-          ) : (
-            <>
-              <Beaker className="h-4 w-4" />
-              Test with Sample Data
-            </>
-          )}
-        </Button>
-        <Button
           onClick={handlePrintDashboard}
           variant="outline"
           className="hidden md:flex items-center gap-2 no-print"
@@ -121,17 +90,6 @@ export function ManagementHeader({ userName, useSampleData = false }: Management
           <Download className="h-4 w-4" />
           Export Report
         </Button>
-        {useSampleData ? (
-          <Badge className="px-3 py-1 bg-orange-500 text-white">
-            <Beaker className="h-4 w-4 mr-2" />
-            SAMPLE DATA MODE
-          </Badge>
-        ) : (
-          <Badge variant="outline" className="px-3 py-1">
-            <Activity className="h-4 w-4 mr-2" />
-            Live Data
-          </Badge>
-        )}
       </div>
     </div>
   );

@@ -52,10 +52,6 @@ export function CallReportForm({
 }) {
   const router = useRouter();
 
-  // Format today's date for input default value (YYYY-MM-DD)
-  const today = new Date().toISOString().split('T')[0];
-  const [meetingDate, setMeetingDate] = useState<string>(today);
-  const [meetingTime, setMeetingTime] = useState<string>("09:00");
   const [isLoading, setIsLoading] = useState(false);
 
   // Form state
@@ -66,21 +62,21 @@ export function CallReportForm({
     contactPhone: "",
     contactAddress: "",
     workingTitle: "",
+    director: "",
+    totalEpisodes: "",
+    receivedEpisodes: "",
     logline: "",
     shortSynopsis: "",
     episodicSynopsis: "",
     genre: [] as string[],
     theme: "",
     targetSlot: "",
-    location: "",
+    contentType: "",
     notes: "",
     nextSteps: "",
     status: "draft",
     overallRating: 5
   });
-
-  // Attendees state
-  const [selectedAttendees, setSelectedAttendees] = useState<User[]>([]);
 
   // File upload state
   const [filesToUpload, setFilesToUpload] = useState<File[]>([]);
@@ -98,29 +94,21 @@ export function CallReportForm({
         contactPhone: initialData.contact_phone || "",
         contactAddress: initialData.contact_address || "",
         workingTitle: initialData.working_title || "",
+        director: initialData.director || "",
+        totalEpisodes: initialData.total_episodes?.toString() || "",
+        receivedEpisodes: initialData.received_episodes?.toString() || "",
         logline: initialData.logline || "",
         shortSynopsis: initialData.short_synopsis || "",
         episodicSynopsis: initialData.episodic_synopsis || "",
         genre: Array.isArray(initialData.genre) ? initialData.genre : (initialData.genre ? [initialData.genre] : []),
         theme: initialData.theme || "",
         targetSlot: initialData.slot || "",
-        location: initialData.location || "",
+        contentType: initialData.content_type || "",
         notes: initialData.meeting_notes || "",
         nextSteps: initialData.next_steps || "",
         status: initialData.status || "draft",
         overallRating: initialData.overall_rating || 5
       });
-
-      // Set meeting date and time
-      if (initialData.meeting_date) {
-        const meetingDateTime = new Date(initialData.meeting_date);
-        setMeetingDate(meetingDateTime.toISOString().split('T')[0]);
-        const hours = meetingDateTime.getHours().toString().padStart(2, '0');
-        const minutes = meetingDateTime.getMinutes().toString().padStart(2, '0');
-        setMeetingTime(`${hours}:${minutes}`);
-      }
-
-      // Note: Attendees and files are not pre-populated as they require separate handling
     }
   }, [mode, initialData, writers]);
 
@@ -172,12 +160,8 @@ export function CallReportForm({
         toast.error("Please select a target slot");
         return;
       }
-      if (!meetingDate) {
-        toast.error("Please select a meeting date");
-        return;
-      }
-      if (!meetingTime) {
-        toast.error("Please select a meeting time");
+      if (!formData.contentType) {
+        toast.error("Please select a content type");
         return;
       }
       if (!formData.overallRating || formData.overallRating < 1 || formData.overallRating > 10) {
@@ -195,11 +179,8 @@ export function CallReportForm({
         }
       }
 
-      // Combine date and time
-      const meetingDateTime = new Date(`${meetingDate}T${meetingTime}`);
-
-      // Extract attendee emails from selected users
-      const attendeeEmails = selectedAttendees.map(user => user.email);
+      // Use current date/time as meeting date
+      const meetingDateTime = new Date();
 
       if (mode === "edit" && callReportId) {
         // Update existing call report
@@ -210,15 +191,17 @@ export function CallReportForm({
           contact_phone: formData.contactPhone || undefined,
           contact_address: formData.contactAddress || undefined,
           working_title: formData.workingTitle,
+          director: formData.director || undefined,
+          total_episodes: formData.totalEpisodes ? parseInt(formData.totalEpisodes) : undefined,
+          received_episodes: formData.receivedEpisodes ? parseInt(formData.receivedEpisodes) : undefined,
           logline: formData.logline,
           short_synopsis: formData.shortSynopsis || undefined,
           episodic_synopsis: formData.episodicSynopsis || undefined,
           genre: formData.genre,
           theme: formData.theme || undefined,
           target_slot: formData.targetSlot,
+          content_type: formData.contentType as "Serial" | "Long Serial" | "Telefilm" | "Mini-serial" | "Ramadan Serial" | "Series Sitcom" | "Soap" | undefined,
           meeting_date: meetingDateTime.toISOString(),
-          meeting_attendees: selectedWriter?.email ? [selectedWriter.email, ...attendeeEmails] : attendeeEmails,
-          location: formData.location || undefined,
           meeting_notes: formData.notes || undefined,
           next_steps: formData.nextSteps || undefined,
           status: formData.status,
@@ -260,15 +243,18 @@ export function CallReportForm({
           contact_phone: formData.contactPhone,
           contact_address: formData.contactAddress,
           working_title: formData.workingTitle,
+          director: formData.director || undefined,
+          total_episodes: formData.totalEpisodes ? parseInt(formData.totalEpisodes) : undefined,
+          received_episodes: formData.receivedEpisodes ? parseInt(formData.receivedEpisodes) : undefined,
           logline: formData.logline,
           short_synopsis: formData.shortSynopsis,
           episodic_synopsis: formData.episodicSynopsis,
           genre: formData.genre,
           theme: formData.theme || undefined,
           slot: formData.targetSlot,
+          content_type: formData.contentType as "Serial" | "Long Serial" | "Telefilm" | "Mini-serial" | "Ramadan Serial" | "Series Sitcom" | "Soap" | undefined,
           meeting_date: meetingDateTime.toISOString(),
-          attendees: selectedWriter?.email ? [selectedWriter.email, ...attendeeEmails] : attendeeEmails,
-          location: formData.location,
+          attendees: selectedWriter?.email ? [selectedWriter.email] : [],
           notes: formData.notes,
           next_steps: formData.nextSteps,
           status: formData.status,
@@ -299,19 +285,21 @@ export function CallReportForm({
           contactPhone: "",
           contactAddress: "",
           workingTitle: "",
+          director: "",
+          totalEpisodes: "",
+          receivedEpisodes: "",
           logline: "",
           shortSynopsis: "",
           episodicSynopsis: "",
           genre: [],
           theme: "",
           targetSlot: "",
-          location: "",
+          contentType: "",
           notes: "",
           nextSteps: "",
           status: "draft",
           overallRating: 5
         });
-        setSelectedAttendees([]);
         setFilesToUpload([]);
       }
     } catch (error: any) {
@@ -325,37 +313,6 @@ export function CallReportForm({
   return (
     <form onSubmit={handleSubmit}>
       <div className="space-y-4 sm:space-y-6 md:space-y-8 max-w-4xl mx-auto px-0">
-        {/* Section 0: When Meeting Occurred */}
-        <Card>
-          <CardHeader className="p-3 sm:p-4 md:p-6">
-            <CardTitle className="text-base sm:text-lg">When did the meeting occur?</CardTitle>
-          </CardHeader>
-          <CardContent className="p-3 sm:p-4 md:p-6 pt-0">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="meetingDate">Date *</Label>
-                <Input
-                  id="meetingDate"
-                  type="date"
-                  value={meetingDate}
-                  onChange={(e) => setMeetingDate(e.target.value)}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="meetingTime">Time *</Label>
-                <Input
-                  id="meetingTime"
-                  type="time"
-                  value={meetingTime}
-                  onChange={(e) => setMeetingTime(e.target.value)}
-                  required
-                />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
         {/* Section 1: Basic Information */}
         <Card>
           <CardHeader className="p-3 sm:p-4 md:p-6">
@@ -466,6 +423,42 @@ export function CallReportForm({
             </div>
 
             <div className="space-y-2">
+              <Label htmlFor="director">Director</Label>
+              <Input
+                id="director"
+                placeholder="Director name"
+                value={formData.director}
+                onChange={handleInputChange}
+              />
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="totalEpisodes">Total Episodes</Label>
+                <Input
+                  id="totalEpisodes"
+                  type="number"
+                  min="0"
+                  placeholder="Total planned episodes"
+                  value={formData.totalEpisodes}
+                  onChange={handleInputChange}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="receivedEpisodes">Received Episodes</Label>
+                <Input
+                  id="receivedEpisodes"
+                  type="number"
+                  min="0"
+                  placeholder="Episodes received so far"
+                  value={formData.receivedEpisodes}
+                  onChange={handleInputChange}
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
               <Label htmlFor="logline">Logline *</Label>
               <Textarea
                 id="logline"
@@ -531,6 +524,24 @@ export function CallReportForm({
             </div>
 
             <div className="space-y-2">
+              <Label htmlFor="contentType">Content Type *</Label>
+              <Select onValueChange={(value) => handleSelectChange("contentType", value)} value={formData.contentType}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select content type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Serial">Serial</SelectItem>
+                  <SelectItem value="Long Serial">Long Serial</SelectItem>
+                  <SelectItem value="Telefilm">Telefilm</SelectItem>
+                  <SelectItem value="Mini-serial">Mini-serial</SelectItem>
+                  <SelectItem value="Ramadan Serial">Ramadan Serial</SelectItem>
+                  <SelectItem value="Series Sitcom">Series Sitcom</SelectItem>
+                  <SelectItem value="Soap">Soap</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
               <ScoreCard
                 label="Initial Assessment *"
                 description="Your initial rating of this story (1-10). Evaluators will see this when they evaluate."
@@ -549,26 +560,6 @@ export function CallReportForm({
             <CardTitle className="text-base sm:text-lg">Meeting Information</CardTitle>
           </CardHeader>
           <CardContent className="p-3 sm:p-4 md:p-6 pt-0 space-y-3 sm:space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="attendees">Meeting Attendees</Label>
-              <MentionInput
-                selectedUsers={selectedAttendees}
-                onUsersChange={setSelectedAttendees}
-                placeholder="Type @ to mention users..."
-                disabled={isLoading}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="location">Location/Platform</Label>
-              <Input
-                id="location"
-                placeholder="e.g., Conference Room A, Zoom Meeting Link"
-                value={formData.location}
-                onChange={handleInputChange}
-              />
-            </div>
-
             <div className="space-y-2">
               <Label htmlFor="notes">Meeting Notes *</Label>
               <Textarea

@@ -38,10 +38,7 @@ export default function PipelineValuePage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Check if we should use sample data from URL params
-        const searchParams = new URLSearchParams(window.location.search);
-        const useSampleData = searchParams.get('sample') === 'true';
-        const url = `/api/management/pipeline-value${useSampleData ? '?sample=true' : ''}`;
+        const url = `/api/management/pipeline-value`;
 
         const response = await fetch(url);
         const data = await response.json();

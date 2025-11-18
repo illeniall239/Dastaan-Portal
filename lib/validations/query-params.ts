@@ -96,20 +96,11 @@ export const statusQueryParam = z.string().min(1).max(50).optional();
 export const uuidQueryParam = z.string().uuid().optional();
 
 /**
- * Sample data flag (for development/demo modes)
- * Usage: ?sample=true
- */
-export const sampleDataQuerySchema = z.object({
-  sample: booleanQueryParam,
-});
-
-/**
  * Common filter schema combining multiple query parameters
  */
 export const commonFilterQuerySchema = z.object({
   search: z.string().trim().max(200).optional(),
   status: statusQueryParam,
-  sample: booleanQueryParam,
 });
 
 /**
@@ -157,7 +148,6 @@ export const episodicEvaluationsQuerySchema = z.object({
  */
 export type PaginationQuery = z.infer<typeof paginationQuerySchema>;
 export type SearchQuery = z.infer<typeof searchQuerySchema>;
-export type SampleDataQuery = z.infer<typeof sampleDataQuerySchema>;
 export type CommonFilterQuery = z.infer<typeof commonFilterQuerySchema>;
 export type ContentDeliveryQuery = z.infer<typeof contentDeliveryQuerySchema>;
 export type EpisodesQuery = z.infer<typeof episodesQuerySchema>;

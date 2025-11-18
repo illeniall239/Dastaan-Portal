@@ -13,15 +13,13 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Users, Loader2 } from "lucide-react";
 import { EvaluatorTimeFilter, TimeRange } from "./evaluator-time-filter";
-import { filterSampleEvaluatorStatsByTimeRange } from "@/lib/management/sample-data";
 import { useEvaluatorStats, type EvaluatorStats } from "@/lib/hooks";
 
 interface EvaluatorLeaderboardProps {
   evaluators: EvaluatorStats[];
-  useSampleData?: boolean;
 }
 
-export function EvaluatorLeaderboard({ evaluators, useSampleData = false }: EvaluatorLeaderboardProps) {
+export function EvaluatorLeaderboard({ evaluators }: EvaluatorLeaderboardProps) {
   const [selectedPreset, setSelectedPreset] = useState("all");
   const [selectedLabel, setSelectedLabel] = useState("All Time");
   const [dateRange, setDateRange] = useState<{ from?: Date; to?: Date }>({});
@@ -30,29 +28,26 @@ export function EvaluatorLeaderboard({ evaluators, useSampleData = false }: Eval
   const { data: apiStats, isLoading } = useEvaluatorStats({
     from: dateRange.from,
     to: dateRange.to,
-    enabled: !useSampleData && selectedPreset !== "all",
+    enabled: selectedPreset !== "all",
   });
 
   const handleTimeRangeChange = (range: TimeRange) => {
     setSelectedPreset(range.preset);
     setSelectedLabel(range.label);
 
-    if (!useSampleData && range.preset !== "all") {
-      // For real data, update date range to trigger React Query refetch
+    if (range.preset !== "all") {
+      // Update date range to trigger React Query refetch
       setDateRange({ from: range.from, to: range.to });
     }
   };
 
   // Determine which stats to display
   let displayStats: EvaluatorStats[];
-  if (useSampleData) {
-    // For sample data, filter client-side
-    displayStats = filterSampleEvaluatorStatsByTimeRange(evaluators, selectedPreset);
-  } else if (selectedPreset === "all") {
+  if (selectedPreset === "all") {
     // For "all time", use the initial evaluators prop
     displayStats = evaluators;
   } else {
-    // For date-filtered real data, use React Query results
+    // For date-filtered data, use React Query results
     displayStats = apiStats || [];
   }
 
@@ -67,11 +62,6 @@ export function EvaluatorLeaderboard({ evaluators, useSampleData = false }: Eval
             <div className="flex items-center gap-2 mb-2">
               <CardTitle className="text-xl">Evaluator Activity Overview</CardTitle>
               <Users className="h-6 w-6 text-blue-500" />
-              {useSampleData && (
-                <Badge className="bg-yellow-100 text-yellow-800 border border-yellow-400 text-xs font-semibold">
-                  DEMO DATA
-                </Badge>
-              )}
             </div>
             <CardDescription>
               Activity and performance metrics for all evaluators - {selectedLabel}

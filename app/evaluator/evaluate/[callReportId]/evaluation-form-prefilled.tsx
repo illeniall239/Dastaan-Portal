@@ -43,6 +43,7 @@ interface CallReport {
   short_synopsis?: string;
   episodic_synopsis?: string;
   category: string;
+  content_type?: string;
   overall_rating?: number;
 }
 
@@ -389,6 +390,12 @@ export function EvaluatorEvaluationForm({
                 <span className="text-sm font-medium">Logline:</span>
                 <p className="text-sm text-muted-foreground">{callReport.logline}</p>
               </div>
+              {callReport.content_type && (
+                <div>
+                  <span className="text-sm font-medium">Content Type:</span>
+                  <p className="text-sm text-muted-foreground">{callReport.content_type}</p>
+                </div>
+              )}
               {callReport.short_synopsis && (
                 <div>
                   <span className="text-sm font-medium">Short Synopsis:</span>

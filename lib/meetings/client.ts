@@ -26,6 +26,9 @@ export interface CreateMeetingInput {
   contact_phone?: string;
   contact_address?: string;
   working_title: string;
+  director?: string;
+  total_episodes?: number;
+  received_episodes?: number;
   logline: string;
   short_synopsis?: string;
   episodic_synopsis?: string;
@@ -34,6 +37,7 @@ export interface CreateMeetingInput {
   genre?: string[];
   theme?: string;
   slot?: string;
+  content_type?: "Serial" | "Long Serial" | "Telefilm" | "Mini-serial" | "Ramadan Serial" | "Series Sitcom" | "Soap";
   meeting_date: string;
   duration_minutes?: number; // Meeting duration in minutes (default: 60)
   attendees: string[];
@@ -73,6 +77,9 @@ export async function createMeetingClient(meetingData: CreateMeetingInput) {
     contact_address: meetingData.contact_address || null,
     contact_type: meetingData.contact_type || "Direct",
     working_title: meetingData.working_title,
+    director: meetingData.director || null,
+    total_episodes: meetingData.total_episodes || null,
+    received_episodes: meetingData.received_episodes || null,
     logline: meetingData.logline,
     short_synopsis: meetingData.short_synopsis || null,
     episodic_synopsis: meetingData.episodic_synopsis || null,
@@ -145,43 +152,54 @@ export async function createMeetingClient(meetingData: CreateMeetingInput) {
     throw new Error(`Failed to create meeting: ${error.message}`);
   }
 
-  // Create notifications for content department members
+  // Create notifications for management, evaluators, and content department members
+  // Exclude the creator from receiving notification
   try {
-    // Get all content department users
-    const { data: contentUsers } = await supabase
+    // Get current user ID
+    const { data: { user } } = await supabase.auth.getUser();
+    const creatorId = user?.id;
+
+    // Get all relevant users (management, evaluator, content_manager, content_creator)
+    const { data: relevantUsers } = await supabase
       .from("users")
       .select("id")
-      .eq("role", "content_creator")
+      .in("role", ["management", "evaluator", "content_manager", "content_creator"])
       .eq("status", "active");
 
-    if (contentUsers && contentUsers.length > 0) {
-      const meetingDate = new Date(meetingData.meeting_date);
-      const formattedDate = meetingDate.toLocaleDateString("en-US", {
-        month: "short",
-        day: "numeric",
-        year: "numeric",
-      });
-      const formattedTime = meetingDate.toLocaleTimeString("en-US", {
-        hour: "numeric",
-        minute: "2-digit",
-        hour12: true,
-      });
+    if (relevantUsers && relevantUsers.length > 0) {
+      // Exclude the creator from notification list
+      const recipientUsers = relevantUsers.filter(u => u.id !== creatorId);
 
-      // Create notification for each content department member
-      const isScheduledMeeting = meetingData.meeting_type === 'scheduled_meeting';
-      const notifications = contentUsers.map((user) => ({
-        user_id: user.id,
-        type: "info",
-        title: isScheduledMeeting
-          ? `New meeting scheduled: ${meetingData.working_title}`
-          : `New call report logged: ${meetingData.working_title}`,
-        message: `Meeting with ${meetingData.writer_name} on ${formattedDate} at ${formattedTime}`,
-        entity_type: isScheduledMeeting ? "meeting_scheduled" : "call_report_logged",
-        entity_id: data.id,
-        is_read: false,
-      }));
+      if (recipientUsers.length > 0) {
+        const meetingDate = new Date(meetingData.meeting_date);
+        const formattedDate = meetingDate.toLocaleDateString("en-US", {
+          month: "short",
+          day: "numeric",
+          year: "numeric",
+        });
+        const formattedTime = meetingDate.toLocaleTimeString("en-US", {
+          hour: "numeric",
+          minute: "2-digit",
+          hour12: true,
+        });
 
-      await supabase.from("notifications").insert(notifications);
+        // Create notification for each relevant user (except creator)
+        const isScheduledMeeting = meetingData.meeting_type === 'scheduled_meeting';
+        const notifications = recipientUsers.map((user) => ({
+          user_id: user.id,
+          type: "info",
+          title: isScheduledMeeting
+            ? `New meeting scheduled: ${meetingData.working_title}`
+            : `New call report logged: ${meetingData.working_title}`,
+          message: `Meeting with ${meetingData.writer_name} on ${formattedDate} at ${formattedTime}`,
+          entity_type: isScheduledMeeting ? "meeting_scheduled" : "call_report_logged",
+          entity_id: data.id,
+          created_by: creatorId,
+          is_read: false,
+        }));
+
+        await supabase.from("notifications").insert(notifications);
+      }
     }
   } catch (notifError) {
     console.error("Failed to create notifications:", notifError);

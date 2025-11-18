@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Lightbulb } from "lucide-react";
 import { DrillDownModal, DrillDownData } from "@/components/management/drill-down-modal";
 import type { ActiveIdeaDetail } from "@/lib/management/active-ideas-details";
+import { GENRE_COLORS } from "@/lib/management/color-palettes";
 
 interface IdeasByGenreChartProps {
   data: {
@@ -13,20 +14,6 @@ interface IdeasByGenreChartProps {
     count: number;
   }[];
 }
-
-// All bars in blue for active ideas
-const GENRE_COLORS: Record<string, string> = {
-  'Drama': '#3b82f6',      // blue-500
-  'Comedy': '#3b82f6',     // blue-500
-  'Action': '#3b82f6',     // blue-500
-  'Thriller': '#3b82f6',   // blue-500
-  'Romance': '#3b82f6',    // blue-500
-  'Horror': '#3b82f6',     // blue-500
-  'Sci-Fi': '#3b82f6',     // blue-500
-  'Fantasy': '#3b82f6',    // blue-500
-  'Documentary': '#3b82f6', // blue-500
-  'Other': '#3b82f6',      // blue-500
-};
 
 export function IdeasByGenreChart({ data }: IdeasByGenreChartProps) {
   const totalIdeas = data.reduce((sum, item) => sum + item.count, 0);
@@ -39,10 +26,7 @@ export function IdeasByGenreChart({ data }: IdeasByGenreChartProps) {
     setLoading(true);
 
     try {
-      // Check if we should use sample data from URL params
-      const searchParams = new URLSearchParams(window.location.search);
-      const useSampleData = searchParams.get('sample') === 'true';
-      const url = `/api/management/active-ideas-details?genre=${encodeURIComponent(genre)}${useSampleData ? '&sample=true' : ''}`;
+      const url = `/api/management/active-ideas-details?genre=${encodeURIComponent(genre)}`;
 
       const response = await fetch(url);
       const result = await response.json();
@@ -59,7 +43,27 @@ export function IdeasByGenreChart({ data }: IdeasByGenreChartProps) {
           { key: "call_report_id", label: "Call Report ID" },
           { key: "working_title", label: "Working Title" },
           { key: "writer_name", label: "Writer Name" },
+          {
+            key: "overall_rating",
+            label: "Rating",
+            format: (value: number | null) => value !== null ? `${value}/10` : 'N/A'
+          },
           { key: "genre", label: "Genre" },
+          {
+            key: "slot",
+            label: "Time Slot",
+            format: (value: string | null) => value || 'TBD'
+          },
+          {
+            key: "content_type",
+            label: "Content Type",
+            format: (value: string | null) => value || 'Unspecified'
+          },
+          {
+            key: "theme",
+            label: "Theme",
+            format: (value: string | null) => value || 'No Theme'
+          },
           {
             key: "category",
             label: "Category",

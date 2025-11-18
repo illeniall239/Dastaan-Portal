@@ -31,7 +31,11 @@
       "Bash(dir:*)",
       "Bash(nul)",
       "Bash(move \"app\\evaluator\\episodes\\[id]\" \"app\\evaluator\\episodes\\[episodeId]\")",
-      "Bash(npx shadcn@latest list:*)"
+      "Bash(npx shadcn@latest list:*)",
+      "Bash(python:*)",
+      "Bash(npx jsrepo@latest:*)",
+      "Bash(npx reactbits-dev-mcp-server:*)",
+      "mcp__reactbits__*"
     ],
     "deny": [],
     "ask": []

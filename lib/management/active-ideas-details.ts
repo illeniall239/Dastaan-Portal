@@ -1,17 +1,35 @@
 import { createClient } from '@/lib/supabase/server';
 
+export interface EvaluatorScores {
+  nadeem?: number | null;
+  salman?: number | null;
+  imran?: number | null;
+  [key: string]: number | null | undefined; // Allow dynamic evaluator names
+}
+
 export interface ActiveIdeaDetail {
   id: string;
   call_report_id: string;
   working_title: string;
   writer_name: string;
-  genre: string;
+  director: string | null;
+  genre: string[];
   category: string;
   status: string;
   meeting_date: string;
   days_active: number;
   logline: string | null;
   created_at: string;
+  overall_rating: number | null;
+  slot: string | null;
+  content_type: string | null;
+  theme: string | null;
+  average_score: number | null;
+  evaluation_deadline: string | null;
+  total_episodes: number | null;
+  received_episodes: number | null;
+  completion_percentage: number | null;
+  evaluator_scores: EvaluatorScores | null;
 }
 
 /**
@@ -29,19 +47,29 @@ export async function getActiveIdeasByGenre(genre?: string): Promise<ActiveIdeaD
         call_report_id,
         working_title,
         writer_name,
+        director,
         genre,
         category,
         status,
         meeting_date,
         logline,
-        created_at
+        created_at,
+        overall_rating,
+        slot,
+        content_type,
+        theme,
+        average_score,
+        evaluation_deadline,
+        total_episodes,
+        received_episodes,
+        completion_percentage
       `)
       .is('archived_at', null)
       .order('created_at', { ascending: false });
 
-    // Filter by genre if provided
+    // Filter by genre if provided (genre is now an array)
     if (genre && genre !== 'all') {
-      query = query.eq('genre', genre);
+      query = query.contains('genre', [genre]);
     }
 
     const { data: callReports, error } = await query;
@@ -50,6 +78,25 @@ export async function getActiveIdeasByGenre(genre?: string): Promise<ActiveIdeaD
       console.error('Error fetching active ideas:', error);
       return [];
     }
+
+    // Fetch all evaluator scores for these call reports
+    const callReportIds = (callReports || []).map((r: any) => r.id);
+    const { data: evaluatorScoresData } = callReportIds.length > 0
+      ? await supabase
+          .from('evaluator_scores')
+          .select('call_report_id, evaluator_name, score')
+          .in('call_report_id', callReportIds)
+      : { data: [] };
+
+    // Group evaluator scores by call_report_id
+    const scoresByCallReport: Record<string, EvaluatorScores> = {};
+    (evaluatorScoresData || []).forEach((score: any) => {
+      if (!scoresByCallReport[score.call_report_id]) {
+        scoresByCallReport[score.call_report_id] = {};
+      }
+      const evaluatorKey = score.evaluator_name.toLowerCase();
+      scoresByCallReport[score.call_report_id][evaluatorKey] = score.score;
+    });
 
     const now = new Date();
 
@@ -62,13 +109,24 @@ export async function getActiveIdeasByGenre(genre?: string): Promise<ActiveIdeaD
         call_report_id: report.call_report_id,
         working_title: report.working_title,
         writer_name: report.writer_name,
-        genre: report.genre || 'Unspecified',
+        director: report.director,
+        genre: Array.isArray(report.genre) ? report.genre : (report.genre ? [report.genre] : ['Other']),
         category: report.category || 'N/A',
         status: report.status || 'draft',
         meeting_date: report.meeting_date,
         days_active: daysActive,
         logline: report.logline,
         created_at: report.created_at,
+        overall_rating: report.overall_rating,
+        slot: report.slot,
+        content_type: report.content_type,
+        theme: report.theme,
+        average_score: report.average_score,
+        evaluation_deadline: report.evaluation_deadline,
+        total_episodes: report.total_episodes,
+        received_episodes: report.received_episodes,
+        completion_percentage: report.completion_percentage,
+        evaluator_scores: scoresByCallReport[report.id] || null,
       };
     });
   } catch (error) {
@@ -101,5 +159,18 @@ export async function getActiveIdeasStats(genre?: string) {
     byStatus,
     byCategory,
     avgDaysActive,
+  };
+}
+
+/**
+ * Get active ideas with full details
+ * Returns all details needed for the What's Cooking dashboard
+ */
+export async function getActiveIdeasDetails(genre?: string) {
+  const details = await getActiveIdeasByGenre(genre);
+
+  return {
+    details,
+    total: details.length,
   };
 }

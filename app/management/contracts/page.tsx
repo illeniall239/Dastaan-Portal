@@ -35,10 +35,7 @@ export default function ActiveContractsPage() {
   useEffect(() => {
     const fetchContracts = async () => {
       try {
-        // Check if we should use sample data from URL params
-        const searchParams = new URLSearchParams(window.location.search);
-        const useSampleData = searchParams.get('sample') === 'true';
-        const url = `/api/management/contracts${useSampleData ? '?sample=true' : ''}`;
+        const url = `/api/management/contracts`;
 
         const response = await fetch(url);
         const data = await response.json();

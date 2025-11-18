@@ -29,10 +29,7 @@ export default function OverduePaymentsPage() {
   useEffect(() => {
     const fetchPayments = async () => {
       try {
-        // Check if we should use sample data from URL params
-        const searchParams = new URLSearchParams(window.location.search);
-        const useSampleData = searchParams.get('sample') === 'true';
-        const url = `/api/management/payments/overdue${useSampleData ? '?sample=true' : ''}`;
+        const url = `/api/management/payments/overdue`;
 
         const response = await fetch(url);
         const data = await response.json();

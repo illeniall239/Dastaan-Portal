@@ -11,6 +11,11 @@ const managementNavItems = [
     icon: "home",
   },
   {
+    title: "What's Cooking",
+    href: "/management/whats-cooking",
+    icon: "chefHat",
+  },
+  {
     title: "Calendar",
     href: "/management/calendar",
     icon: "calendar",
@@ -19,6 +24,11 @@ const managementNavItems = [
     title: "Story Bank",
     href: "/management/story-bank",
     icon: "fileText",
+  },
+  {
+    title: "Teams",
+    href: "/management/teams",
+    icon: "users",
   },
 ];
 

@@ -39,10 +39,7 @@ export function ArchiveGenreChart({ data }: ArchiveGenreChartProps) {
     setLoading(true);
 
     try {
-      // Check if we should use sample data from URL params
-      const searchParams = new URLSearchParams(window.location.search);
-      const useSampleData = searchParams.get('sample') === 'true';
-      const url = `/api/management/archive-details?genre=${encodeURIComponent(genre)}${useSampleData ? '&sample=true' : ''}`;
+      const url = `/api/management/archive-details?genre=${encodeURIComponent(genre)}`;
 
       const response = await fetch(url);
       const result = await response.json();

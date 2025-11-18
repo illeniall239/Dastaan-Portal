@@ -9,7 +9,6 @@ import {
 } from "@/components/ui/dialog";
 import { EventAnalysisChart } from "./charts/event-analysis-chart";
 import { EventAnalysisData } from "@/lib/management/episode-pipeline";
-import { getSampleEventAnalysisForDrama } from "@/lib/management/sample-data";
 import { Loader2 } from "lucide-react";
 
 interface EventAnalysisModalProps {
@@ -31,24 +30,13 @@ export function EventAnalysisModal({
   const fetchEventAnalysis = useCallback(async () => {
     setLoading(true);
     try {
-      // Check if this is sample data (sample callReportIds start with "cr-")
-      const isSampleData = callReportId.startsWith('cr-');
-
-      let analysisData: EventAnalysisData[];
-      if (isSampleData) {
-        // Use sample data generator
-        analysisData = getSampleEventAnalysisForDrama(callReportId);
-      } else {
-        // Fetch real data from API
-        const response = await fetch(`/api/management/event-analysis/${callReportId}`);
-        if (!response.ok) {
-          throw new Error("Failed to fetch event analysis data");
-        }
-        const result = await response.json();
-        analysisData = result.data;
+      // Fetch data from API
+      const response = await fetch(`/api/management/event-analysis/${callReportId}`);
+      if (!response.ok) {
+        throw new Error("Failed to fetch event analysis data");
       }
-
-      setData(analysisData);
+      const result = await response.json();
+      setData(result.data);
     } catch (error) {
       console.error("Error fetching event analysis:", error);
       setData([]);

@@ -126,25 +126,36 @@ export async function createEvaluationClient(evaluationData: CreateEvaluationInp
 
     callReport = callReportData;
 
-    // Get all content department users (they should be notified of evaluations)
-    const { data: contentUsers } = await supabase
+    // Get current evaluator ID
+    const { data: { user } } = await supabase.auth.getUser();
+    const evaluatorId = user?.id;
+
+    // Get all relevant users (management, content_manager, content_creator)
+    // Exclude the evaluator who submitted the evaluation
+    const { data: relevantUsers } = await supabase
       .from("users")
       .select("id")
-      .eq("role", "content_creator")
+      .in("role", ["management", "content_manager", "content_creator"])
       .eq("status", "active");
 
-    if (contentUsers && contentUsers.length > 0 && callReport) {
-      const notifications = contentUsers.map((user) => ({
-        user_id: user.id,
-        type: "success",
-        title: `New evaluation submitted: ${callReport.working_title}`,
-        message: `Evaluation completed with average score: ${data.average_score}/10`,
-        entity_type: "evaluation_submitted",
-        entity_id: data.id,
-        is_read: false,
-      }));
+    if (relevantUsers && relevantUsers.length > 0 && callReport) {
+      // Exclude the evaluator from notification list
+      const recipientUsers = relevantUsers.filter(u => u.id !== evaluatorId);
 
-      await supabase.from("notifications").insert(notifications);
+      if (recipientUsers.length > 0) {
+        const notifications = recipientUsers.map((user) => ({
+          user_id: user.id,
+          type: "success",
+          title: `New evaluation submitted: ${callReport.working_title}`,
+          message: `Evaluation completed with average score: ${data.average_score}/10`,
+          entity_type: "evaluation_submitted",
+          entity_id: data.id,
+          created_by: evaluatorId,
+          is_read: false,
+        }));
+
+        await supabase.from("notifications").insert(notifications);
+      }
     }
   } catch (notifError) {
     console.error("Failed to create notifications:", notifError);
