@@ -20,6 +20,8 @@ import { createMeetingClient, updateCallReportClient } from "@/lib/meetings/clie
 import { FileUpload } from "@/components/ui/file-upload";
 import { uploadFile } from "@/lib/attachments/client";
 import { GenreMultiSelect } from "@/components/ui/genre-multi-select";
+import { WriterSelect } from "@/components/writers/writer-select";
+import type { Writer } from "@/types";
 
 interface User {
   id: string;
@@ -34,7 +36,6 @@ export function CallReportForm({
   initialData,
   callReportId,
   onSuccess,
-  writers,
   userId,
   userName,
   userPosition
@@ -43,7 +44,6 @@ export function CallReportForm({
   initialData?: any;
   callReportId?: string;
   onSuccess?: () => void;
-  writers: { id: string; name: string; email: string }[];
   userId: string;
   userName: string;
   userPosition?: string;
@@ -51,6 +51,7 @@ export function CallReportForm({
   const router = useRouter();
 
   const [isLoading, setIsLoading] = useState(false);
+  const [selectedWriter, setSelectedWriter] = useState<Writer | undefined>();
 
   // Form state
   const [formData, setFormData] = useState({
@@ -82,12 +83,9 @@ export function CallReportForm({
   // Pre-populate form when in edit mode
   useEffect(() => {
     if (mode === "edit" && initialData) {
-      // Find the writer ID from the writer name
-      const writer = writers.find(w => w.name === initialData.writer_name || w.email === initialData.writer_email);
-
       setFormData({
         category: initialData.category || "",
-        writerId: writer?.id || "",
+        writerId: "",
         suggestedWriter: initialData.suggested_writer || "",
         contactPhone: initialData.contact_phone || "",
         contactAddress: initialData.contact_address || "",
@@ -109,7 +107,7 @@ export function CallReportForm({
 
       // Note: Files are not pre-populated as they require separate handling
     }
-  }, [mode, initialData, writers]);
+  }, [mode, initialData]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { id, value } = e.target;
@@ -163,14 +161,10 @@ export function CallReportForm({
         return;
       }
 
-      // Find selected writer (only required for non-inhouse content)
-      let selectedWriter = null;
-      if (formData.category !== "inhouse_content") {
-        selectedWriter = writers.find(w => w.id === formData.writerId);
-        if (!selectedWriter) {
-          toast.error("Please select a valid writer");
-          return;
-        }
+      // Validate selected writer (only required for non-inhouse content)
+      if (formData.category !== "inhouse_content" && !selectedWriter) {
+        toast.error("Please select a writer");
+        return;
       }
 
       // Use current date/time as meeting date
@@ -338,18 +332,16 @@ export function CallReportForm({
             {formData.category !== "inhouse_content" && (
               <div className="space-y-2">
                 <Label htmlFor="writer">Writer/Originator Name *</Label>
-                <Select onValueChange={(value) => handleSelectChange("writerId", value)} value={formData.writerId}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a writer" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {writers.map((writer) => (
-                      <SelectItem key={writer.id} value={writer.id}>
-                        {writer.name} ({writer.email})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <WriterSelect
+                  value={formData.writerId}
+                  onChange={(writerId, writer) => {
+                    setFormData(prev => ({ ...prev, writerId }));
+                    setSelectedWriter(writer);
+                  }}
+                  disabled={isLoading}
+                  required={true}
+                  placeholder="Select a writer"
+                />
               </div>
             )}
 

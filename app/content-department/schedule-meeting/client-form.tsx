@@ -18,6 +18,8 @@ import { MentionInput } from "@/components/ui/mention-input";
 import Link from "next/link";
 import { toast } from "sonner";
 import { createMeetingClient } from "@/lib/meetings/client";
+import { WriterSelect } from "@/components/writers/writer-select";
+import type { Writer } from "@/types";
 
 interface User {
   id: string;
@@ -27,10 +29,11 @@ interface User {
   department?: string;
 }
 
-export function ClientScheduleMeetingForm({ writers, userId }: { writers: { id: string; name: string; email: string }[], userId: string }) {
+export function ClientScheduleMeetingForm({ userId }: { userId: string }) {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   const [selectedTime, setSelectedTime] = useState<string>("09:00");
   const [isLoading, setIsLoading] = useState(false);
+  const [selectedWriter, setSelectedWriter] = useState<Writer | undefined>();
   const [selectedAttendees, setSelectedAttendees] = useState<User[]>([]);
 
   // Form state - simple meeting fields only
@@ -56,15 +59,8 @@ export function ClientScheduleMeetingForm({ writers, userId }: { writers: { id: 
 
     try {
       // Validate form
-      if (!formData.writerId || !formData.title || !selectedDate) {
+      if (!selectedWriter || !formData.title || !selectedDate) {
         toast.error("Please fill in all required fields");
-        return;
-      }
-
-      // Find selected writer
-      const selectedWriter = writers.find(w => w.id === formData.writerId);
-      if (!selectedWriter) {
-        toast.error("Please select a valid writer");
         return;
       }
 
@@ -167,18 +163,16 @@ export function ClientScheduleMeetingForm({ writers, userId }: { writers: { id: 
             <form className="space-y-6" onSubmit={handleSubmit}>
               <div className="space-y-2">
                 <Label htmlFor="writer">Writer *</Label>
-                <Select onValueChange={handleSelectChange} value={formData.writerId}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a writer" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {writers.map((writer) => (
-                      <SelectItem key={writer.id} value={writer.id}>
-                        {writer.name} ({writer.email})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <WriterSelect
+                  value={formData.writerId}
+                  onChange={(writerId, writer) => {
+                    setFormData(prev => ({ ...prev, writerId }));
+                    setSelectedWriter(writer);
+                  }}
+                  disabled={isLoading}
+                  required={true}
+                  placeholder="Select a writer"
+                />
               </div>
 
               <div className="space-y-2">

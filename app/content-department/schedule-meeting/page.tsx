@@ -28,14 +28,6 @@ export default async function ScheduleMeetingPage() {
     redirect("/content-department");
   }
 
-  // Mock data for writers
-  const writers = [
-    { id: "1", name: "Ahmed Khan", email: "ahmed@example.com" },
-    { id: "2", name: "Fatima Ali", email: "fatima@example.com" },
-    { id: "3", name: "Omar Siddiqui", email: "omar@example.com" },
-    { id: "4", name: "Zainab Raza", email: "zainab@example.com" },
-  ];
-
   return (
     <div className="mobile-container mobile-section">
       <div className="mobile-header-spacing">
@@ -45,7 +37,7 @@ export default async function ScheduleMeetingPage() {
         </p>
       </div>
 
-      <ClientScheduleMeetingForm writers={writers} userId={user.id} />
+      <ClientScheduleMeetingForm userId={user.id} />
     </div>
   );
 }

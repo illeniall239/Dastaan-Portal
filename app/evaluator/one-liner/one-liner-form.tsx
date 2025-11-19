@@ -16,15 +16,8 @@ import {
 import { Plus, X } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
-
-// Dummy writer data
-const dummyWriters = [
-  { id: "1", name: "Ahmed Khan", email: "ahmed@geo.com" },
-  { id: "2", name: "Fatima Ali", email: "fatima@geo.com" },
-  { id: "3", name: "Omar Siddiqui", email: "omar@geo.com" },
-  { id: "4", name: "Zainab Raza", email: "zainab@geo.com" },
-  { id: "5", name: "Sara Ahmed", email: "sara@geo.com" },
-];
+import { WriterSelect } from "@/components/writers/writer-select";
+import type { Writer } from "@/types";
 
 interface Track {
   id: number;
@@ -38,6 +31,7 @@ interface Act {
 
 export function OneLinerForm() {
   const [isLoading, setIsLoading] = useState(false);
+  const [selectedWriter, setSelectedWriter] = useState<Writer | undefined>();
   const [tracks, setTracks] = useState<Track[]>([{ id: 1, content: "" }]);
   const [acts, setActs] = useState<Act[]>([{ id: 1, content: "" }]);
 
@@ -179,18 +173,16 @@ export function OneLinerForm() {
                 <Label htmlFor="writer">
                   Writer <span className="text-red-500">*</span>
                 </Label>
-                <Select onValueChange={(value) => handleSelectChange("writerId", value)} value={formData.writerId}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a writer" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {dummyWriters.map((writer) => (
-                      <SelectItem key={writer.id} value={writer.id}>
-                        {writer.name} ({writer.email})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <WriterSelect
+                  value={formData.writerId}
+                  onChange={(writerId, writer) => {
+                    setFormData(prev => ({ ...prev, writerId }));
+                    setSelectedWriter(writer);
+                  }}
+                  disabled={isLoading}
+                  required={true}
+                  placeholder="Select a writer"
+                />
               </div>
 
               {/* Genre */}

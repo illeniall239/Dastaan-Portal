@@ -1,7 +1,6 @@
 import { getCurrentUser } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { CallReportForm } from "./call-report-form";
-import { exampleWriters } from "@/lib/mock/writers";
 import { BackButton } from "@/components/ui/back-button";
 
 export default async function LogCallReportPage() {
@@ -17,8 +16,6 @@ export default async function LogCallReportPage() {
     redirect("/content-department");
   }
 
-  const writers = exampleWriters;
-
   return (
     <div className="mobile-container mobile-section">
       <div className="flex items-center gap-4 mb-6">
@@ -32,7 +29,7 @@ export default async function LogCallReportPage() {
         </p>
       </div>
 
-      <CallReportForm writers={writers} userId={user.id} userName={user.name || "Unknown"} userPosition={user.position} />
+      <CallReportForm userId={user.id} userName={user.name || "Unknown"} userPosition={user.position} />
     </div>
   );
 }

@@ -24,6 +24,8 @@ import {
 import { MentionInput } from "@/components/ui/mention-input";
 import { toast } from "sonner";
 import { createMeetingClient } from "@/lib/meetings/client";
+import { WriterSelect } from "@/components/writers/writer-select";
+import type { Writer } from "@/types";
 
 interface User {
   id: string;
@@ -41,14 +43,6 @@ interface QuickMeetingDialogProps {
   userId: string;
 }
 
-// Mock writers data - in production, fetch from database
-const writers = [
-  { id: "1", name: "Ahmed Khan", email: "ahmed@example.com" },
-  { id: "2", name: "Fatima Ali", email: "fatima@example.com" },
-  { id: "3", name: "Omar Siddiqui", email: "omar@example.com" },
-  { id: "4", name: "Zainab Raza", email: "zainab@example.com" },
-];
-
 export function QuickMeetingDialog({
   open,
   onOpenChange,
@@ -57,6 +51,7 @@ export function QuickMeetingDialog({
   userId,
 }: QuickMeetingDialogProps) {
   const [isLoading, setIsLoading] = useState(false);
+  const [selectedWriter, setSelectedWriter] = useState<Writer | undefined>();
   const [selectedAttendees, setSelectedAttendees] = useState<User[]>([]);
   const [selectedTime, setSelectedTime] = useState<string>("09:00");
   const [formData, setFormData] = useState({
@@ -141,14 +136,13 @@ export function QuickMeetingDialog({
       let category = "";
 
       if (formData.sourceOfIdea === "writer") {
-        const selectedWriter = writers.find((w) => w.id === formData.writerId);
         if (!selectedWriter) {
-          toast.error("Please select a valid writer");
+          toast.error("Please select a writer");
           setIsLoading(false);
           return;
         }
         contactName = selectedWriter.name;
-        contactEmail = selectedWriter.email;
+        contactEmail = selectedWriter.email || "";
         contactType = "Writer";
         category = "writer_pitch";
       } else if (formData.sourceOfIdea === "external_producer") {
@@ -305,21 +299,16 @@ export function QuickMeetingDialog({
               <Label htmlFor="writer">
                 Writer <span className="text-red-500">*</span>
               </Label>
-              <Select
-                onValueChange={handleWriterChange}
+              <WriterSelect
                 value={formData.writerId}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select a writer" />
-                </SelectTrigger>
-                <SelectContent>
-                  {writers.map((writer) => (
-                    <SelectItem key={writer.id} value={writer.id}>
-                      {writer.name} ({writer.email})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                onChange={(writerId, writer) => {
+                  setFormData(prev => ({ ...prev, writerId }));
+                  setSelectedWriter(writer);
+                }}
+                disabled={isLoading}
+                required={true}
+                placeholder="Select a writer"
+              />
             </div>
           )}
 
