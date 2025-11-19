@@ -25,6 +25,8 @@ import {
   AlertDialogAction,
   AlertDialogCancel,
 } from "@/components/ui/alert-dialog";
+import { WriterSelect } from "@/components/writers/writer-select";
+import type { Writer } from "@/types";
 import {
   Select,
   SelectContent,
@@ -53,7 +55,6 @@ export function EvaluatorEvaluationForm({
   userName,
   attachments = [],
   progress = null,
-  writers = [],
   detailedOneLiner = null,
 }: {
   callReport: CallReport;
@@ -61,11 +62,11 @@ export function EvaluatorEvaluationForm({
   userName: string;
   attachments?: any[];
   progress?: any;
-  writers?: { id: string; name: string; email: string }[];
   detailedOneLiner?: any;
 }) {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
+  const [selectedWriter, setSelectedWriter] = useState<Writer | undefined>();
   const [savingDraft, setSavingDraft] = useState(false);
   const [loadingDraft, setLoadingDraft] = useState(false);
   const [showDraftDialog, setShowDraftDialog] = useState(false);
@@ -175,7 +176,6 @@ export function EvaluatorEvaluationForm({
 
     try {
       // Create evaluation
-      const selectedWriter = writers.find((w) => w.id === formData.targetWriterId);
       if (existingEvaluation && isEditing) {
         await updateEvaluationClient({
           id: existingEvaluation.id,
@@ -580,18 +580,15 @@ export function EvaluatorEvaluationForm({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="targetWriter">Target Writer</Label>
-                <Select onValueChange={handleWriterChange} value={formData.targetWriterId}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a writer" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {writers.map((writer) => (
-                      <SelectItem key={writer.id} value={writer.id}>
-                        {writer.name} ({writer.email})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <WriterSelect
+                  value={formData.targetWriterId}
+                  onChange={(writerId, writer) => {
+                    setFormData(prev => ({ ...prev, targetWriterId: writerId }));
+                    setSelectedWriter(writer);
+                  }}
+                  disabled={isLoading}
+                  placeholder="Select a writer"
+                />
               </div>
 
               <div className="space-y-2">

@@ -27,7 +27,6 @@ export default function EvaluatorCallReportEditPage({ params }: CallReportEditPa
   const [userId, setUserId] = useState<string>("");
   const [userName, setUserName] = useState<string>("");
   const [userPosition, setUserPosition] = useState<string>("");
-  const [writers, setWriters] = useState<any[]>([]);
 
   useEffect(() => {
     const loadData = async () => {
@@ -76,17 +75,6 @@ export default function EvaluatorCallReportEditPage({ params }: CallReportEditPa
         }
 
         setCanEdit(true);
-
-        // Fetch writers for dropdown
-        const { data: writersData } = await supabase
-          .from("users")
-          .select("id, name, email")
-          .eq("role", "content_creator")
-          .eq("status", "active")
-          .order("name");
-
-        setWriters(writersData || []);
-
         setLoading(false);
       } catch (error: any) {
         console.error("Error loading call report:", error);
@@ -142,7 +130,6 @@ export default function EvaluatorCallReportEditPage({ params }: CallReportEditPa
         mode="edit"
         initialData={callReport}
         callReportId={callReportId!}
-        writers={writers}
         userId={userId}
         userName={userName}
         userPosition={userPosition}

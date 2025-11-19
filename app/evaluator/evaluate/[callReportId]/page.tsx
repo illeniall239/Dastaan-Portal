@@ -1,7 +1,6 @@
 import { getCurrentUser } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { EvaluatorEvaluationForm } from "./evaluation-form-prefilled";
-import { exampleWriters } from "@/lib/mock/writers";
 import { getAttachmentsForEntityServer } from "@/lib/attachments/server";
 import { getEvaluationProgress } from "@/lib/evaluations/assignments";
 import { getDetailedOneLinersByCallReport } from "@/lib/detailed-one-liner/server";
@@ -43,7 +42,6 @@ export default async function EvaluatorEvaluatePage({
   let callReport: CallReport | null = null;
   let attachments: any[] = [];
   let progress = null;
-  let writers: { id: string; name: string; email: string }[] = [];
   let detailedOneLiner: any = null;
 
   try {
@@ -87,9 +85,6 @@ export default async function EvaluatorEvaluatePage({
       console.error("Error fetching detailed one-liner:", detailedOneLinerError);
       // Continue without detailed one-liner if there's an error
     }
-
-    // Use the same example writers list as the writer engagement form
-    writers = exampleWriters;
   } catch (error) {
     console.error("Error in evaluator evaluation page:", error);
     redirect("/evaluator/evaluations");
@@ -107,7 +102,6 @@ export default async function EvaluatorEvaluatePage({
         userName={user.name || "Evaluator"}
         attachments={attachments}
         progress={progress}
-        writers={writers}
         detailedOneLiner={detailedOneLiner}
       />
     </div>

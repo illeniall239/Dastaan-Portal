@@ -4,12 +4,12 @@ import { NextResponse } from "next/server";
 // PATCH /api/writers/[id] - Update a writer
 export async function PATCH(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const supabase = await createClient();
     const body = await request.json();
-    const { id } = params;
+    const { id } = await params;
 
     const { name, email, phone, status } = body;
 
@@ -88,11 +88,11 @@ export async function PATCH(
 // DELETE /api/writers/[id] - Soft delete a writer (set status to inactive)
 export async function DELETE(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const supabase = await createClient();
-    const { id } = params;
+    const { id } = await params;
 
     // Check if writer exists
     const { data: existingWriter } = await supabase
