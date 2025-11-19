@@ -172,6 +172,15 @@ export default async function CallReportDetailPage({ params }: { params: Promise
             <div>
               <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Logline</h3>
               <p className="text-sm text-slate-900 leading-relaxed">{report.logline}</p>
+              {report.logline_image_url && (
+                <div className="mt-3">
+                  <img
+                    src={report.logline_image_url}
+                    alt="Logline visual"
+                    className="max-w-sm rounded border border-slate-200"
+                  />
+                </div>
+              )}
             </div>
 
             {report.short_synopsis && (

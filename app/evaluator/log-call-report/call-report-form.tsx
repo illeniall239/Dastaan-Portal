@@ -21,6 +21,7 @@ import { FileUpload } from "@/components/ui/file-upload";
 import { uploadFile } from "@/lib/attachments/client";
 import { GenreMultiSelect } from "@/components/ui/genre-multi-select";
 import { WriterSelect } from "@/components/writers/writer-select";
+import { LoglineImageUpload } from "@/components/ui/logline-image-upload";
 import type { Writer } from "@/types";
 
 interface User {
@@ -52,6 +53,7 @@ export function CallReportForm({
 
   const [isLoading, setIsLoading] = useState(false);
   const [selectedWriter, setSelectedWriter] = useState<Writer | undefined>();
+  const [loglineImageUrl, setLoglineImageUrl] = useState<string | null>(null);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -104,6 +106,10 @@ export function CallReportForm({
         nextSteps: initialData.next_steps || "",
         status: initialData.status || "draft"
       });
+      // Pre-populate logline image if exists
+      if (initialData.logline_image_url) {
+        setLoglineImageUrl(initialData.logline_image_url);
+      }
 
       // Note: Files are not pre-populated as they require separate handling
     }
@@ -131,42 +137,6 @@ export function CallReportForm({
     setIsLoading(true);
 
     try {
-      // Validate required fields
-      if (!formData.category) {
-        toast.error("Please select a category");
-        return;
-      }
-      if (formData.category !== "inhouse_content" && !formData.writerId) {
-        toast.error("Please select a writer");
-        return;
-      }
-      if (!formData.workingTitle) {
-        toast.error("Please enter a working title");
-        return;
-      }
-      if (!formData.logline) {
-        toast.error("Please enter a logline");
-        return;
-      }
-      if (!formData.genre || formData.genre.length === 0) {
-        toast.error("Please select at least one genre");
-        return;
-      }
-      if (!formData.targetSlot) {
-        toast.error("Please select a target slot");
-        return;
-      }
-      if (!formData.contentType) {
-        toast.error("Please select a content type");
-        return;
-      }
-
-      // Validate selected writer (only required for non-inhouse content)
-      if (formData.category !== "inhouse_content" && !selectedWriter) {
-        toast.error("Please select a writer");
-        return;
-      }
-
       // Use current date/time as meeting date
       const meetingDateTime = new Date();
 
@@ -183,6 +153,7 @@ export function CallReportForm({
           total_episodes: formData.totalEpisodes ? parseInt(formData.totalEpisodes) : undefined,
           received_episodes: formData.receivedEpisodes ? parseInt(formData.receivedEpisodes) : undefined,
           logline: formData.logline,
+          logline_image_url: loglineImageUrl || undefined,
           short_synopsis: formData.shortSynopsis || undefined,
           episodic_synopsis: formData.episodicSynopsis || undefined,
           genre: formData.genre,
@@ -234,6 +205,7 @@ export function CallReportForm({
           total_episodes: formData.totalEpisodes ? parseInt(formData.totalEpisodes) : undefined,
           received_episodes: formData.receivedEpisodes ? parseInt(formData.receivedEpisodes) : undefined,
           logline: formData.logline,
+          logline_image_url: loglineImageUrl || undefined,
           short_synopsis: formData.shortSynopsis,
           episodic_synopsis: formData.episodicSynopsis,
           genre: formData.genre,
@@ -315,7 +287,7 @@ export function CallReportForm({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="category">Source of Idea *</Label>
+              <Label htmlFor="category">Source of Idea</Label>
               <Select onValueChange={(value) => handleSelectChange("category", value)} value={formData.category}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select source" />
@@ -331,7 +303,7 @@ export function CallReportForm({
             {/* Only show Writer/Originator field when NOT In-house Content */}
             {formData.category !== "inhouse_content" && (
               <div className="space-y-2">
-                <Label htmlFor="writer">Writer/Originator Name *</Label>
+                <Label htmlFor="writer">Writer/Originator Name</Label>
                 <WriterSelect
                   value={formData.writerId}
                   onChange={(writerId, writer) => {
@@ -339,7 +311,7 @@ export function CallReportForm({
                     setSelectedWriter(writer);
                   }}
                   disabled={isLoading}
-                  required={true}
+                  required={false}
                   placeholder="Select a writer"
                 />
               </div>
@@ -396,7 +368,7 @@ export function CallReportForm({
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="workingTitle">Working Title *</Label>
+              <Label htmlFor="workingTitle">Working Title</Label>
               <Input
                 id="workingTitle"
                 placeholder="Story working title"
@@ -442,14 +414,23 @@ export function CallReportForm({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="logline">Logline *</Label>
-              <Textarea
-                id="logline"
-                placeholder="Brief summary of the story in one or two sentences"
-                rows={3}
-                value={formData.logline}
-                onChange={handleInputChange}
-              />
+              <Label htmlFor="logline">Logline</Label>
+              <div className="relative">
+                <Textarea
+                  id="logline"
+                  placeholder="Brief summary of the story in one or two sentences"
+                  rows={3}
+                  value={formData.logline}
+                  onChange={handleInputChange}
+                  className="pr-12"
+                />
+                <LoglineImageUpload
+                  value={loglineImageUrl || undefined}
+                  onChange={(url) => setLoglineImageUrl(url)}
+                  disabled={isLoading}
+                  entityId={callReportId}
+                />
+              </div>
             </div>
 
             <div className="space-y-2">
@@ -477,7 +458,7 @@ export function CallReportForm({
             <GenreMultiSelect
               selectedGenres={formData.genre}
               onChange={(genres) => setFormData({ ...formData, genre: genres })}
-              required={true}
+              required={false}
               label="Genre"
             />
 
@@ -492,7 +473,7 @@ export function CallReportForm({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="targetSlot">Target Slot *</Label>
+              <Label htmlFor="targetSlot">Target Slot</Label>
               <Select onValueChange={(value) => handleSelectChange("targetSlot", value)} value={formData.targetSlot}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select slot" />
@@ -507,7 +488,7 @@ export function CallReportForm({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="contentType">Content Type *</Label>
+              <Label htmlFor="contentType">Content Type</Label>
               <Select onValueChange={(value) => handleSelectChange("contentType", value)} value={formData.contentType}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select content type" />
@@ -533,7 +514,7 @@ export function CallReportForm({
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="notes">Meeting Notes *</Label>
+              <Label htmlFor="notes">Meeting Notes</Label>
               <Textarea
                 id="notes"
                 placeholder="Detailed notes from the meeting..."

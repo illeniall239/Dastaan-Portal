@@ -30,6 +30,7 @@ export interface CreateMeetingInput {
   total_episodes?: number;
   received_episodes?: number;
   logline: string;
+  logline_image_url?: string;
   short_synopsis?: string;
   episodic_synopsis?: string;
   // target_audience deprecated for call_reports, keep optional for compatibility
@@ -81,6 +82,7 @@ export async function createMeetingClient(meetingData: CreateMeetingInput) {
     total_episodes: meetingData.total_episodes || null,
     received_episodes: meetingData.received_episodes || null,
     logline: meetingData.logline,
+    logline_image_url: meetingData.logline_image_url || null,
     short_synopsis: meetingData.short_synopsis || null,
     episodic_synopsis: meetingData.episodic_synopsis || null,
     // target_audience removed from schema

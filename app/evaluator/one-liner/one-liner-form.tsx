@@ -108,13 +108,6 @@ export function OneLinerForm() {
     e.preventDefault();
     setIsLoading(true);
 
-    // Validate required fields
-    if (!formData.timeSlot || !formData.writerId || !formData.genre || !formData.noOfEpisodes) {
-      toast.error("Please fill in all required fields");
-      setIsLoading(false);
-      return;
-    }
-
     try {
       // TODO: Implement API call to submit one-liner
       console.log("Form data:", { ...formData, tracks, acts });
@@ -150,7 +143,7 @@ export function OneLinerForm() {
               {/* Time Slot */}
               <div className="space-y-2">
                 <Label htmlFor="timeSlot">
-                  Time Slot <span className="text-red-500">*</span>
+                  Time Slot
                 </Label>
                 <select
                   id="timeSlot"
@@ -171,7 +164,7 @@ export function OneLinerForm() {
               {/* Writer */}
               <div className="space-y-2">
                 <Label htmlFor="writer">
-                  Writer <span className="text-red-500">*</span>
+                  Writer
                 </Label>
                 <WriterSelect
                   value={formData.writerId}
@@ -180,7 +173,7 @@ export function OneLinerForm() {
                     setSelectedWriter(writer);
                   }}
                   disabled={isLoading}
-                  required={true}
+                  required={false}
                   placeholder="Select a writer"
                 />
               </div>
@@ -188,7 +181,7 @@ export function OneLinerForm() {
               {/* Genre */}
               <div className="space-y-2">
                 <Label htmlFor="genre">
-                  Genre <span className="text-red-500">*</span>
+                  Genre
                 </Label>
                 <Input
                   id="genre"
@@ -202,7 +195,7 @@ export function OneLinerForm() {
               {/* No of Episodes */}
               <div className="space-y-2">
                 <Label htmlFor="noOfEpisodes">
-                  No of Episodes <span className="text-red-500">*</span>
+                  No of Episodes
                 </Label>
                 <Input
                   id="noOfEpisodes"

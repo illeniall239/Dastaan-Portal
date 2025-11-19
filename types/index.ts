@@ -183,6 +183,7 @@ export interface CallReport {
   contact_address?: string;
   working_title: string;
   logline: string;
+  logline_image_url?: string;
   usp: string;
   genre: string[]; // Array of genre tags - supports multiple genres
   content_type: "Serial" | "Long Serial" | "Telefilm" | "Mini-serial" | "Ramadan Serial" | "Series Sitcom" | "Soap"; // Type/format of the content
@@ -268,6 +269,7 @@ export interface RejectedArchiveItem {
   writer_name: string;
   working_title: string;
   logline: string;
+  logline_image_url?: string;
   usp: string;
   meeting_date: string;
   average_score: number;
