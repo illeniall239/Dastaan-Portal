@@ -44,6 +44,29 @@ export default async function CallReportDetailPage({ params }: { params: Promise
     redirect("/evaluator/call-reports");
   }
 
+  // Fetch writers for this call report
+  const { data: writers } = await supabase
+    .from("call_report_writers")
+    .select(`
+      id,
+      writer_id,
+      writer_email,
+      writer_phone,
+      display_order,
+      writer:writers(name)
+    `)
+    .eq("call_report_id", resolvedParams.id)
+    .order("display_order", { ascending: true });
+
+  const reportWriters = writers?.map(w => ({
+    id: w.id,
+    writer_id: w.writer_id,
+    writer_name: (w.writer as any)?.name || "",
+    writer_email: w.writer_email,
+    writer_phone: w.writer_phone,
+    display_order: w.display_order,
+  })) || [];
+
   // Fetch attachments for this call report
   let attachments: any[] = [];
   try {
@@ -111,9 +134,24 @@ export default async function CallReportDetailPage({ params }: { params: Promise
                 <p className="text-slate-900 mt-0.5 capitalize">{report.category?.replace("_", " ")}</p>
               </div>
               <div>
-                <p className="text-slate-500 font-medium">Writer/Originator</p>
-                <p className="text-slate-900 mt-0.5">{report.writer_name}</p>
-                <p className="text-slate-600 text-xs">{report.contact_email}</p>
+                <p className="text-slate-500 font-medium">Writers/Originators</p>
+                {reportWriters.length > 0 ? (
+                  <div className="mt-0.5 space-y-1">
+                    {reportWriters.map((writer, index) => (
+                      <div key={writer.id} className="text-slate-900">
+                        <span className="font-medium">{writer.writer_name}</span>
+                        {writer.writer_email && (
+                          <span className="text-slate-600 text-xs ml-2">{writer.writer_email}</span>
+                        )}
+                        {writer.writer_phone && (
+                          <span className="text-slate-600 text-xs ml-2">{writer.writer_phone}</span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-slate-900 mt-0.5">No writers assigned</p>
+                )}
               </div>
               <div>
                 <p className="text-slate-500 font-medium">Logged By</p>

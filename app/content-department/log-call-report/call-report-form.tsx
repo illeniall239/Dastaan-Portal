@@ -22,9 +22,9 @@ import { uploadFile } from "@/lib/attachments/client";
 import { MentionInput } from "@/components/ui/mention-input";
 import { ScoreCard } from "@/components/episodic-evaluations/score-card";
 import { GenreMultiSelect } from "@/components/ui/genre-multi-select";
-import { WriterSelect } from "@/components/writers/writer-select";
+import { WriterMultiSelect } from "@/components/writers/writer-multi-select";
 import { LoglineImageUpload } from "@/components/ui/logline-image-upload";
-import type { Writer } from "@/types";
+import type { Writer, CallReportWriter } from "@/types";
 
 interface User {
   id: string;
@@ -54,7 +54,13 @@ export function CallReportForm({
   const router = useRouter();
 
   const [isLoading, setIsLoading] = useState(false);
-  const [selectedWriter, setSelectedWriter] = useState<Writer | undefined>();
+  const [writers, setWriters] = useState<Array<{
+    writer_id: string;
+    writer_name: string;
+    writer_email?: string;
+    writer_phone?: string;
+    display_order: number;
+  }>>([]);
   const [loglineImageUrl, setLoglineImageUrl] = useState<string | null>(null);
 
   // Form state
@@ -116,6 +122,32 @@ export function CallReportForm({
     }
   }, [mode, initialData]);
 
+  // Fetch writers when in edit mode
+  useEffect(() => {
+    if (mode === "edit" && callReportId) {
+      const fetchWriters = async () => {
+        try {
+          const response = await fetch(`/api/call-reports/${callReportId}/writers`);
+          if (response.ok) {
+            const { writers: fetchedWriters } = await response.json();
+            // Map to the format expected by WriterMultiSelect
+            const mappedWriters = fetchedWriters?.map((w: any) => ({
+              writer_id: w.writer_id,
+              writer_name: w.writer_name,
+              writer_email: w.writer_email,
+              writer_phone: w.writer_phone,
+              display_order: w.display_order,
+            })) || [];
+            setWriters(mappedWriters);
+          }
+        } catch (error) {
+          console.error("Error fetching writers:", error);
+        }
+      };
+      fetchWriters();
+    }
+  }, [mode, callReportId]);
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { id, value } = e.target;
     setFormData(prev => ({ ...prev, [id]: value }));
@@ -144,8 +176,8 @@ export function CallReportForm({
       if (mode === "edit" && callReportId) {
         // Update existing call report
         const updateData = {
-          writer_name: selectedWriter?.name || formData.suggestedWriter || "In-house Content",
-          writer_email: selectedWriter?.email || "",
+          writer_name: writers.length > 0 ? writers[0].writer_name : (formData.suggestedWriter || "In-house Content"), // Deprecated field
+          writer_email: writers.length > 0 ? (writers[0].writer_email || "") : "", // Deprecated field
           suggested_writer: formData.suggestedWriter || undefined,
           contact_phone: formData.contactPhone || undefined,
           contact_address: formData.contactAddress || undefined,
@@ -169,6 +201,49 @@ export function CallReportForm({
         };
 
         await updateCallReportClient(callReportId, updateData);
+
+        // Update writers - first fetch existing, then delete removed ones, add new ones
+        try {
+          const response = await fetch(`/api/call-reports/${callReportId}/writers`);
+          const { writers: existingWriters } = await response.json();
+
+          // Delete writers that were removed
+          const existingWriterIds = existingWriters.map((w: any) => w.writer_id);
+          const currentWriterIds = writers.map(w => w.writer_id);
+          const toDelete = existingWriters.filter((w: any) => !currentWriterIds.includes(w.writer_id));
+
+          for (const writer of toDelete) {
+            await fetch(`/api/call-reports/${callReportId}/writers/${writer.writer_id}`, {
+              method: 'DELETE'
+            });
+          }
+
+          // Add new writers
+          const toAdd = writers.filter(w => !existingWriterIds.includes(w.writer_id));
+          if (toAdd.length > 0) {
+            await fetch(`/api/call-reports/${callReportId}/writers`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ writers: toAdd })
+            });
+          }
+
+          // Update contact info for existing writers
+          const toUpdate = writers.filter(w => existingWriterIds.includes(w.writer_id));
+          for (const writer of toUpdate) {
+            await fetch(`/api/call-reports/${callReportId}/writers/${writer.writer_id}`, {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                writer_email: writer.writer_email,
+                writer_phone: writer.writer_phone
+              })
+            });
+          }
+        } catch (error) {
+          console.error("Error updating writers:", error);
+          toast.error("Call report updated but failed to update writers.");
+        }
 
         // Upload new files if any
         if (filesToUpload.length > 0) {
@@ -197,8 +272,8 @@ export function CallReportForm({
           meeting_type: "call_report",
           logged_by: userName,
           category: formData.category,
-          writer_name: selectedWriter?.name || formData.suggestedWriter || "In-house Content",
-          writer_email: selectedWriter?.email || "",
+          writer_name: writers.length > 0 ? writers[0].writer_name : (formData.suggestedWriter || "In-house Content"), // Deprecated field
+          writer_email: writers.length > 0 ? (writers[0].writer_email || "") : "", // Deprecated field
           suggested_writer: formData.suggestedWriter,
           contact_phone: formData.contactPhone,
           contact_address: formData.contactAddress,
@@ -215,13 +290,31 @@ export function CallReportForm({
           slot: formData.targetSlot,
           content_type: formData.contentType as "Serial" | "Long Serial" | "Telefilm" | "Mini-serial" | "Ramadan Serial" | "Series Sitcom" | "Soap" | undefined,
           meeting_date: meetingDateTime.toISOString(),
-          attendees: selectedWriter?.email ? [selectedWriter.email] : [],
+          attendees: writers.map(w => w.writer_email).filter((email): email is string => !!email),
           notes: formData.notes,
           next_steps: formData.nextSteps,
           status: formData.status,
           created_by: userId,
           overall_rating: formData.overallRating
         });
+
+        // Add writers to call report
+        if (result.id && writers.length > 0) {
+          try {
+            const response = await fetch(`/api/call-reports/${result.id}/writers`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ writers })
+            });
+
+            if (!response.ok) {
+              throw new Error('Failed to add writers');
+            }
+          } catch (error) {
+            console.error("Error adding writers:", error);
+            toast.error("Call report created but failed to add writers. Please edit to add them.");
+          }
+        }
 
         // Upload files if any
         if (filesToUpload.length > 0 && result.id) {
@@ -261,6 +354,7 @@ export function CallReportForm({
           status: "draft",
           overallRating: 5
         });
+        setWriters([]);
         setFilesToUpload([]);
       }
     } catch (error: any) {
@@ -304,35 +398,28 @@ export function CallReportForm({
               </Select>
             </div>
 
-            {/* Only show Writer/Originator field when NOT In-house Content */}
-            {formData.category !== "inhouse_content" && (
-              <div className="space-y-2">
-                <Label htmlFor="writer">Writer/Originator Name</Label>
-                <WriterSelect
-                  value={formData.writerId}
-                  onChange={(writerId, writer) => {
-                    setFormData(prev => ({ ...prev, writerId }));
-                    setSelectedWriter(writer);
-                  }}
-                  disabled={isLoading}
-                  required={false}
-                  placeholder="Select a writer"
-                />
-              </div>
-            )}
+            {/* Writers/Originators - shown for all sources */}
+            <div className="space-y-2">
+              <WriterMultiSelect
+                value={writers}
+                onChange={setWriters}
+                required={false}
+                disabled={isLoading}
+                label="Writers/Originators"
+              />
+            </div>
 
-            {/* Only show Suggested Writer field when source is In-house Content */}
-            {formData.category === "inhouse_content" && (
-              <div className="space-y-2">
-                <Label htmlFor="suggestedWriter">Suggested Writer</Label>
-                <Input
-                  id="suggestedWriter"
-                  placeholder="If different from originator"
-                  value={formData.suggestedWriter}
-                  onChange={handleInputChange}
-                />
-              </div>
-            )}
+            {/* Suggested Writer - shown for all sources */}
+            <div className="space-y-2">
+              <Label htmlFor="suggestedWriter">Suggested Writer</Label>
+              <Input
+                id="suggestedWriter"
+                placeholder="If different from originator (optional)"
+                value={formData.suggestedWriter}
+                onChange={handleInputChange}
+                disabled={isLoading}
+              />
+            </div>
           </CardContent>
         </Card>
 

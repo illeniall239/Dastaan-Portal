@@ -176,10 +176,12 @@ export interface CallReport {
   meeting_date: string;
   duration_minutes?: number; // Meeting duration in minutes (default: 60)
   end_time?: string; // Computed end time (meeting_date + duration)
-  writer_name: string;
+  writer_name: string; // Deprecated: kept for backward compatibility
+  writers?: CallReportWriter[]; // NEW: Multiple writers with contact info
+  suggested_writer?: string; // Optional text field for suggesting writers
   contact_type: "Direct" | "Agent" | "Production Company" | "Other";
-  contact_email: string;
-  contact_phone?: string;
+  contact_email: string; // Deprecated: kept for backward compatibility
+  contact_phone?: string; // Deprecated: kept for backward compatibility
   contact_address?: string;
   working_title: string;
   logline: string;
@@ -209,6 +211,19 @@ export interface CallReport {
   required_evaluations?: number; // Default: 5
   minimum_evaluations_for_deadline?: number; // Default: 3 (for deadline-based decision)
   created_by: string;
+  created_at: string;
+  updated_at: string;
+}
+
+// Call Report Writer types (for multiple writers per call report)
+export interface CallReportWriter {
+  id: string;
+  call_report_id: string;
+  writer_id: string;
+  writer_name: string; // From writers table (via JOIN)
+  writer_email?: string;
+  writer_phone?: string;
+  display_order: number;
   created_at: string;
   updated_at: string;
 }

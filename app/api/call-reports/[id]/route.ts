@@ -52,7 +52,42 @@ export async function GET(
       );
     }
 
-    return NextResponse.json({ callReport });
+    // Fetch writers for this call report
+    const { data: writers } = await supabase
+      .from("call_report_writers")
+      .select(`
+        id,
+        call_report_id,
+        writer_id,
+        writer_email,
+        writer_phone,
+        display_order,
+        created_at,
+        updated_at,
+        writer:writers(name)
+      `)
+      .eq("call_report_id", id)
+      .order("display_order", { ascending: true });
+
+    // Transform writers data
+    const transformedWriters = writers?.map(w => ({
+      id: w.id,
+      call_report_id: w.call_report_id,
+      writer_id: w.writer_id,
+      writer_name: (w.writer as any)?.name || "",
+      writer_email: w.writer_email,
+      writer_phone: w.writer_phone,
+      display_order: w.display_order,
+      created_at: w.created_at,
+      updated_at: w.updated_at,
+    })) || [];
+
+    return NextResponse.json({
+      callReport: {
+        ...callReport,
+        writers: transformedWriters
+      }
+    });
   } catch (error) {
     logger.error(`Unexpected error: ${error instanceof Error ? error.message : String(error)}`);
     return NextResponse.json(
