@@ -65,13 +65,7 @@ export const episodeSchema = z.object({
 }).refine(
   (data) => data.call_report_id || data.story_id,
   {
-    message: "Either call_report_id or story_id must be provided",
-    path: ["call_report_id"],
-  }
-).refine(
-  (data) => !(data.call_report_id && data.story_id),
-  {
-    message: "Cannot provide both call_report_id and story_id",
+    message: "At least one of call_report_id or story_id must be provided",
     path: ["call_report_id"],
   }
 );
@@ -116,14 +110,8 @@ export const createMultipleEpisodesSchema = z.object({
 }).refine(
   (data) => data.call_report_id || data.story_id,
   {
-    message: "Either call_report_id or story_id must be provided",
+    message: "At least one of call_report_id or story_id must be provided",
     path: ["call_report_id"],
-  }
-).refine(
-  (data) => !(data.call_report_id && data.story_id),
-  {
-    message: "Cannot provide both call_report_id and story_id",
-    path: ["story_id"],
   }
 );
 

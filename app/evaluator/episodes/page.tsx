@@ -295,6 +295,8 @@ export default function EvaluatorEpisodesPage() {
         episodes: episodesData,
       };
 
+      console.log("Sending payload:", JSON.stringify(payload, null, 2));
+
       const response = await fetch("/api/episodes", {
         method: "POST",
         headers: {
@@ -306,7 +308,13 @@ export default function EvaluatorEpisodesPage() {
       const result = await response.json();
 
       if (!response.ok) {
-        throw new Error(result.error || "Failed to create episodes");
+        console.error("API Error Response:", result);
+        // Handle validation errors (Zod format)
+        if (result.error && typeof result.error === 'object') {
+          const errorMessage = result.details || JSON.stringify(result.error);
+          throw new Error(errorMessage);
+        }
+        throw new Error(result.error || result.details || "Failed to create episodes");
       }
 
       toast.success(`Successfully logged ${newEpisodes.length} episode(s)`);

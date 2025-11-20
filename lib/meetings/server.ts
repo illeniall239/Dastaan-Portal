@@ -95,34 +95,89 @@ export async function createMeeting(meetingData: CreateMeetingInput) {
 
   // First, create a story record for this call report
   // Generate unique story_id in format ST-YYYY-NNNN
-  const storyRandomNum = Math.floor(Math.random() * 10000)
-    .toString()
-    .padStart(4, "0");
-  const story_id = `ST-${year}-${storyRandomNum}`;
+  // Retry up to 5 times if duplicate story_id is generated
+  let storyRecord = null;
+  let storyError = null;
+  const maxRetries = 5;
+  
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    const storyRandomNum = Math.floor(Math.random() * 10000)
+      .toString()
+      .padStart(4, "0");
+    const story_id = `ST-${year}-${storyRandomNum}`;
 
-  const storyData = {
-    story_id: story_id,
-    title: meetingData.working_title,
-    logged_by: meetingData.logged_by,
-    category: meetingData.category,
-    writer_originator_name: meetingData.writer_name,
-    suggested_writer: meetingData.suggested_writer || null,
-    synopsis: meetingData.logline, // Use logline as synopsis since server version doesn't have short_synopsis
-    genre: meetingData.genre || 'other',
-    target_audience: meetingData.target_slot || 'general', // Use target_slot as target_audience fallback
-    status: 'submitted',
-    current_stage: 'evaluation',
-    created_by: meetingData.created_by,
-  };
+    const storyData = {
+      story_id: story_id,
+      title: meetingData.working_title,
+      logged_by: meetingData.logged_by,
+      category: meetingData.category,
+      writer_originator_name: meetingData.writer_name,
+      suggested_writer: meetingData.suggested_writer || null,
+      synopsis: meetingData.logline, // Use logline as synopsis since server version doesn't have short_synopsis
+      genre: meetingData.genre || 'other',
+      target_audience: meetingData.target_slot || 'general', // Use target_slot as target_audience fallback
+      status: 'submitted',
+      current_stage: 'evaluation',
+      created_by: meetingData.created_by,
+    };
 
-  const { data: storyRecord, error: storyError } = await supabase
-    .from("stories")
-    .insert(storyData)
-    .select()
-    .single();
+    // Insert and select the created record
+    const result = await supabase
+      .from("stories")
+      .insert(storyData)
+      .select()
+      .single();
+
+    storyRecord = result.data;
+    storyError = result.error;
+    
+    if (storyError) {
+      console.error("Supabase story insert error:", storyError);
+      // If we get a policy violation on SELECT but the INSERT might have worked (unlikely with .select()),
+      // we can try to fetch it again by the unique story_id we just generated.
+      if (storyError.code === '42501' || storyError.message?.includes('policy')) {
+         console.warn("Policy error on select, trying to fetch by story_id...");
+         const { data: fetchedStory, error: fetchError } = await supabase
+            .from("stories")
+            .select("*")
+            .eq("story_id", story_id)
+            .single();
+            
+         if (fetchedStory && !fetchError) {
+            storyRecord = fetchedStory;
+            storyError = null;
+         }
+      }
+    }
+
+    // If successful, break
+    if (!storyError && storyRecord && storyRecord.id) {
+      break;
+    }
+
+    // Check if error is a duplicate constraint violation (PostgreSQL error code 23505)
+    const isDuplicateError = storyError?.code === '23505' || 
+                             storyError?.message?.toLowerCase().includes('duplicate') ||
+                             storyError?.message?.toLowerCase().includes('unique');
+
+    // If duplicate and we have retries left, try again
+    if (isDuplicateError && attempt < maxRetries - 1) {
+      console.warn(`Duplicate story_id detected (${story_id}), retrying... (attempt ${attempt + 1}/${maxRetries})`);
+      continue;
+    }
+
+    // If not a duplicate error or no retries left, break (will throw error below)
+    break;
+  }
 
   if (storyError) {
+    console.error("Story creation error:", storyError);
     throw new Error(`Failed to create story: ${storyError.message}`);
+  }
+
+  if (!storyRecord || !storyRecord.id) {
+    console.error("Story record is null or missing id:", storyRecord);
+    throw new Error(`Failed to create story: Story record was not returned properly`);
   }
 
   // Now create the call report with the story_id linked

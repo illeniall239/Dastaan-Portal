@@ -17,11 +17,22 @@ import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 import { BackButton } from "@/components/ui/back-button";
 
+interface CallReportWriter {
+  id: string;
+  writer_id: string;
+  writer_name: string;
+  writer_email?: string;
+  writer_phone?: string;
+  display_order: number;
+}
+
 interface CallReport {
   id: string;
   working_title: string;
-  writer_name: string;
+  writer_name: string; // Deprecated: kept for backward compatibility
+  writers?: CallReportWriter[]; // NEW: Multiple writers
   meeting_type: string;
+  story_id?: string;
 }
 
 export default function LogEpisodesPage() {
@@ -58,15 +69,47 @@ export default function LogEpisodesPage() {
         // Fetch call reports (only logged reports, not scheduled meetings)
         const { data: callReportsData, error: crError } = await supabase
           .from("call_reports")
-          .select("id, working_title, writer_name, meeting_type")
+          .select("id, working_title, writer_name, meeting_type, story_id")
           .eq("meeting_type", "call_report")
           .order("created_at", { ascending: false })
           .limit(100);
 
         if (crError) {
           console.error("Error fetching call reports:", crError);
-        } else {
-          setCallReports(callReportsData || []);
+        } else if (callReportsData) {
+          // Fetch writers for each call report
+          const reportsWithWriters = await Promise.all(
+            callReportsData.map(async (report) => {
+              const { data: writers } = await supabase
+                .from("call_report_writers")
+                .select(`
+                  id,
+                  writer_id,
+                  writer_email,
+                  writer_phone,
+                  display_order,
+                  writer:writers(name)
+                `)
+                .eq("call_report_id", report.id)
+                .order("display_order", { ascending: true });
+
+              const transformedWriters: CallReportWriter[] = writers?.map(w => ({
+                id: w.id,
+                writer_id: w.writer_id,
+                writer_name: (w.writer as any)?.name || "",
+                writer_email: w.writer_email,
+                writer_phone: w.writer_phone,
+                display_order: w.display_order,
+              })) || [];
+
+              return {
+                ...report,
+                writers: transformedWriters
+              };
+            })
+          );
+
+          setCallReports(reportsWithWriters);
         }
       } catch (error) {
         console.error("Error fetching data:", error);
@@ -180,8 +223,10 @@ export default function LogEpisodesPage() {
       );
 
       // Create episodes via API
+      const selectedReport = callReports.find(cr => cr.id === selectedSource);
       const payload = {
         call_report_id: selectedSource,
+        story_id: selectedReport?.story_id || null,
         episodes: episodesData,
       };
 
@@ -258,11 +303,18 @@ export default function LogEpisodesPage() {
                 <SelectValue placeholder="Select a story" />
               </SelectTrigger>
               <SelectContent>
-                {callReports.map((cr) => (
-                  <SelectItem key={cr.id} value={cr.id}>
-                    {cr.working_title} - {cr.writer_name}
-                  </SelectItem>
-                ))}
+                {callReports.map((cr) => {
+                  // Get writer names from new writers array, fallback to old writer_name
+                  const writerNames = cr.writers && cr.writers.length > 0
+                    ? cr.writers.map(w => w.writer_name).join(", ")
+                    : cr.writer_name;
+
+                  return (
+                    <SelectItem key={cr.id} value={cr.id}>
+                      {cr.working_title} - {writerNames}
+                    </SelectItem>
+                  );
+                })}
               </SelectContent>
             </Select>
           </div>

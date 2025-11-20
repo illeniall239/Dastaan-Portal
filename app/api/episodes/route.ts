@@ -49,6 +49,41 @@ export async function POST(request: Request) {
 
     const { call_report_id, story_id, episodes } = validation.data;
 
+    // Verify the source exists
+    if (story_id) {
+      const { data: storyExists, error: storyCheckError } = await supabase
+        .from("stories")
+        .select("id, story_id")
+        .eq("id", story_id)
+        .single();
+      
+      if (storyCheckError || !storyExists) {
+        return NextResponse.json(
+          {
+            error: "Invalid story",
+            details: `Story with ID ${story_id} not found or you don't have permission to access it`
+          },
+          { status: 404 }
+        );
+      }
+    } else if (call_report_id) {
+      const { data: callReportExists, error: crCheckError } = await supabase
+        .from("call_reports")
+        .select("id, call_report_id")
+        .eq("id", call_report_id)
+        .single();
+      
+      if (crCheckError || !callReportExists) {
+        return NextResponse.json(
+          {
+            error: "Invalid call report",
+            details: `Call report with ID ${call_report_id} not found or you don't have permission to access it`
+          },
+          { status: 404 }
+        );
+      }
+    }
+
     // Check for duplicate episode numbers within the incoming batch
     const episodeNumbers = episodes.map(ep => ep.episode_number);
     const duplicatesInBatch = episodeNumbers.filter((num, idx) =>
@@ -78,14 +113,19 @@ export async function POST(request: Request) {
       existingQuery = existingQuery.eq("story_id", story_id);
     }
 
-    const { data: existingEpisodes } = await existingQuery;
+    const { data: existingEpisodes, error: checkError } = await existingQuery;
+
+    // Log if there's an error checking for existing episodes (might be RLS issue)
+    if (checkError) {
+      logger.warn(`Error checking for existing episodes: ${checkError.message}. Proceeding with insert - constraint will catch duplicates.`);
+    }
 
     if (existingEpisodes && existingEpisodes.length > 0) {
       const existingNumbers = existingEpisodes.map(ep => ep.episode_number).sort((a, b) => a - b);
       return NextResponse.json(
         {
           error: "Duplicate episode numbers detected",
-          details: `Episode number(s) ${existingNumbers.join(', ')} already exist for this project`
+          details: `Episode number(s) ${existingNumbers.join(', ')} already exist for this project. Please use different episode numbers or delete the existing episodes first.`
         },
         { status: 409 } // 409 Conflict
       );
@@ -111,9 +151,51 @@ export async function POST(request: Request) {
       .select();
 
     if (error) {
-      logger.error(`Error creating episodes: ${error instanceof Error ? error.message : String(error)}`);
+      logger.error(`Error creating episodes:`, error);
+      logger.error(`Attempted to create episodes for story_id: ${story_id}, call_report_id: ${call_report_id}`);
+      logger.error(`Episode numbers attempted: ${episodeNumbers.join(', ')}`);
+      console.error("Full Supabase error:", JSON.stringify(error, null, 2));
+
+      // Handle unique constraint violation for duplicate episode numbers
+      if (error.code === '23505' && (error.message.includes('unique_episode_per_call_report') || error.message.includes('unique_episode_per_story'))) {
+        // Try to fetch existing episodes to provide better error message
+        let conflictQuery = supabase
+          .from("episodes")
+          .select("episode_number")
+          .in("episode_number", episodeNumbers);
+        
+        if (call_report_id) {
+          conflictQuery = conflictQuery.eq("call_report_id", call_report_id);
+        } else if (story_id) {
+          conflictQuery = conflictQuery.eq("story_id", story_id);
+        }
+        
+        const { data: conflictingEpisodes } = await conflictQuery;
+        
+        let details = "One or more episode numbers already exist for this project. Please use different episode numbers or delete the existing episodes first.";
+        if (conflictingEpisodes && conflictingEpisodes.length > 0) {
+          const conflictingNumbers = conflictingEpisodes.map(ep => ep.episode_number).sort((a, b) => a - b);
+          details = `Episode number(s) ${conflictingNumbers.join(', ')} already exist for this ${call_report_id ? 'call report' : 'story'}. Please use different episode numbers or delete the existing episodes first.`;
+        } else {
+          // Episodes exist but might be hidden by RLS - provide helpful message
+          details = `One or more episode numbers (${episodeNumbers.sort((a, b) => a - b).join(', ')}) already exist for this ${call_report_id ? 'call report' : 'story'}, but may not be visible due to permissions. Please contact an administrator or try different episode numbers.`;
+        }
+        
+        return NextResponse.json(
+          {
+            error: "Duplicate episode numbers detected",
+            details: details,
+            conflicting_episodes: conflictingEpisodes?.map(ep => ep.episode_number) || episodeNumbers
+          },
+          { status: 409 } // 409 Conflict
+        );
+      }
+
       return NextResponse.json(
-        { error: "Failed to create episodes", details: error.message },
+        {
+          error: "Failed to create episodes",
+          details: error.message || error.hint || JSON.stringify(error)
+        },
         { status: 500 }
       );
     }
