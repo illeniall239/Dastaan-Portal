@@ -134,10 +134,10 @@ export async function PATCH(
       );
     }
 
-    // Check permissions: owner or manager/admin
+    // Check permissions: owner, evaluator, or manager/admin
     const canEdit =
       existingEpisode.logged_by === user.id ||
-      ["content_manager", "admin"].includes(userData.role);
+      ["evaluator", "content_manager", "admin"].includes(userData.role);
 
     if (!canEdit) {
       return NextResponse.json(
@@ -256,10 +256,10 @@ export async function DELETE(
       );
     }
 
-    // Check permissions: owner or manager/admin
+    // Check permissions: owner, evaluator, or manager/admin
     const canDelete =
       existingEpisode.logged_by === user.id ||
-      ["content_manager", "admin"].includes(userData.role);
+      ["evaluator", "content_manager", "admin"].includes(userData.role);
 
     if (!canDelete) {
       return NextResponse.json(

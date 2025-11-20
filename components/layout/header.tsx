@@ -159,7 +159,7 @@ export const Header = memo(function Header({ userName, userEmail, userPosition, 
           </div>
 
           {/* Center: Navigation Menu */}
-          <nav className="hidden xl:flex flex-1 items-center justify-center gap-4">
+          <nav className="hidden 2xl:flex flex-1 items-center justify-center gap-4">
             {navItems.map((item) => {
               const Icon = getIconComponent(item.icon);
               const isActive = pathname === item.href;
@@ -192,7 +192,7 @@ export const Header = memo(function Header({ userName, userEmail, userPosition, 
           {/* Right: Icons + Profile */}
           <div className="flex items-center gap-2">
             {/* Mobile hamburger */}
-            <div className="xl:hidden">
+            <div className="2xl:hidden">
               <Button
                 variant="ghost"
                 size="icon"
@@ -305,7 +305,7 @@ export const Header = memo(function Header({ userName, userEmail, userPosition, 
 
         {/* Mobile menu panel */}
         {isMobileMenuOpen && (
-          <div className="xl:hidden border-b bg-white">
+          <div className="2xl:hidden border-b bg-white">
             <nav className="px-4 sm:px-6 py-3 space-y-1">
               {navItems.map((item) => {
                 const Icon = getIconComponent(item.icon);

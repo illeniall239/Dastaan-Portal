@@ -27,6 +27,15 @@ export default function EvaluatorCallReportEditPage({ params }: CallReportEditPa
   const [userId, setUserId] = useState<string>("");
   const [userName, setUserName] = useState<string>("");
   const [userPosition, setUserPosition] = useState<string>("");
+  const [attachments, setAttachments] = useState<Array<{
+    id: string;
+    file_name: string;
+    file_path: string;
+    file_size?: number | null;
+    file_type?: string | null;
+    uploaded_at?: string | null;
+    public_url?: string | null;
+  }>>([]);
 
   useEffect(() => {
     const loadData = async () => {
@@ -62,6 +71,26 @@ export default function EvaluatorCallReportEditPage({ params }: CallReportEditPa
         // Fetch call report
         const callReportData = await getCallReportClient(resolvedParams.id);
         setCallReport(callReportData);
+
+        const { data: attachmentsData } = await supabase
+          .from("attachments")
+          .select("id, file_name, file_path, file_size, file_type, uploaded_at")
+          .eq("entity_type", "call_report")
+          .eq("entity_id", resolvedParams.id)
+          .order("uploaded_at", { ascending: false });
+
+        const attachmentsWithUrl =
+          attachmentsData?.map((attachment) => {
+            const { data: publicUrlData } = supabase.storage
+              .from("attachments")
+              .getPublicUrl(attachment.file_path);
+            return {
+              ...attachment,
+              public_url: publicUrlData.publicUrl,
+            };
+          }) || [];
+
+        setAttachments(attachmentsWithUrl);
 
         // Check permissions: owner or manager/admin
         const hasEditPermission =
@@ -133,6 +162,7 @@ export default function EvaluatorCallReportEditPage({ params }: CallReportEditPa
         userId={userId}
         userName={userName}
         userPosition={userPosition}
+        initialAttachments={attachments}
         onSuccess={() => {
           router.push(`/evaluator/call-reports/${callReportId}`);
         }}

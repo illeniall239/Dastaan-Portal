@@ -256,8 +256,9 @@ export default function LogEpisodesPage() {
         },
       ]);
 
-      // Navigate to episodes list
+      // Navigate to episodes list with fresh data
       router.push("/content-department/episodes");
+      router.refresh(); // Force data refresh to show new episodes
     } catch (error: any) {
       console.error("Error creating episodes:", error);
       toast.error(error.message || "Failed to log episodes");

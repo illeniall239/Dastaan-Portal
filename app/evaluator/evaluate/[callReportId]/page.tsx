@@ -5,6 +5,14 @@ import { getAttachmentsForEntityServer } from "@/lib/attachments/server";
 import { getEvaluationProgress } from "@/lib/evaluations/assignments";
 import { getDetailedOneLinersByCallReport } from "@/lib/detailed-one-liner/server";
 
+interface Writer {
+  writer_id: string;
+  writer_name: string;
+  writer_email?: string;
+  writer_phone?: string;
+  display_order: number;
+}
+
 interface CallReport {
   id: string;
   call_report_id: string;
@@ -16,6 +24,7 @@ interface CallReport {
   episodic_synopsis?: string;
   usp: string;
   category: string;
+  writers?: Writer[];
 }
 
 export default async function EvaluatorEvaluatePage({ 
@@ -60,6 +69,30 @@ export default async function EvaluatorEvaluatePage({
     }
 
     callReport = data as unknown as CallReport;
+
+    // Fetch writers for this call report from the junction table
+    const { data: writersData } = await supabase
+      .from("call_report_writers")
+      .select(`
+        writer_id,
+        writer_email,
+        writer_phone,
+        display_order,
+        writer:writers(name)
+      `)
+      .eq("call_report_id", callReportId)
+      .order("display_order", { ascending: true });
+
+    // Transform writers data
+    if (writersData && writersData.length > 0) {
+      callReport.writers = writersData.map((w: any) => ({
+        writer_id: w.writer_id,
+        writer_name: w.writer?.name || "",
+        writer_email: w.writer_email,
+        writer_phone: w.writer_phone,
+        display_order: w.display_order ?? 0,
+      }));
+    }
 
     // Fetch attachments for the call report using the proper helper function
     try {

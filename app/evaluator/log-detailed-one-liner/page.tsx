@@ -133,7 +133,7 @@ export default function LogDetailedOneLinerPage() {
       setCallReports(available);
     } catch (error) {
       console.error("Error fetching call reports:", error);
-      toast.error("Failed to fetch call reports");
+      toast.error("Failed to fetch stories");
     } finally {
       setLoadingCallReports(false);
     }
@@ -239,7 +239,7 @@ export default function LogDetailedOneLinerPage() {
     try {
       // Validate form
       if (!callReportId) {
-        toast.error("Please select a call report");
+        toast.error("Please select a story");
         return;
       }
 
@@ -399,12 +399,12 @@ export default function LogDetailedOneLinerPage() {
           {/* Call Report Selection */}
           <Card>
             <CardHeader>
-              <CardTitle>Select Call Report</CardTitle>
+              <CardTitle>Select Story</CardTitle>
             </CardHeader>
             <CardContent>
               <Select value={callReportId} onValueChange={setCallReportId}>
                 <SelectTrigger>
-                  <SelectValue placeholder={loadingCallReports ? "Loading..." : "Select a call report"} />
+                  <SelectValue placeholder={loadingCallReports ? "Loading..." : "Select a story"} />
                 </SelectTrigger>
                 <SelectContent>
                   {callReports.map((cr) => (

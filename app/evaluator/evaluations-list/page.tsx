@@ -17,6 +17,9 @@ import { getEvaluationsByEvaluator } from "@/lib/evaluations/server";
 import { format, parseISO } from "date-fns";
 import { EvaluationProgressBar } from "@/components/evaluations/evaluation-progress-bar";
 import { PendingEvaluationsNotificationEvaluator } from "@/components/evaluations/pending-evaluations-notification-evaluator";
+import { IndividualEvaluationProgress } from "@/components/evaluations/individual-evaluation-progress";
+import { calculateEvaluationProgress, hasDraftData } from "@/lib/evaluations/progress";
+import { createClient } from "@/lib/supabase/server";
 
 // Add Next.js caching - revalidate every 30 seconds
 export const revalidate = 300; // 5 minutes for better performance
@@ -52,6 +55,30 @@ export default async function EvaluatorEvaluationsListPage({ searchParams }: { s
   }
   const myEvaluatedReportIds = new Set(myEvaluations.map(e => e.call_report_id));
   const evaluationIdMap = new Map(myEvaluations.map(e => [e.call_report_id, e.id]));
+
+  // Fetch evaluation drafts to show progress
+  const supabase = await createClient();
+  let myDrafts: any[] = [];
+  try {
+    const { data: drafts, error: draftsError } = await supabase
+      .from("evaluator_form_drafts")
+      .select("call_report_id, draft_data")
+      .eq("evaluator_id", user.id);
+
+    if (!draftsError && drafts) {
+      myDrafts = drafts;
+    }
+  } catch (error) {
+    console.error("Error fetching drafts:", error);
+  }
+
+  // Create a map of call_report_id -> draft progress
+  const draftProgressMap = new Map(
+    myDrafts.map(draft => {
+      const progress = calculateEvaluationProgress(draft.draft_data);
+      return [draft.call_report_id, progress];
+    })
+  );
 
   // Determine view based on query parameter
   const currentView = resolvedSearchParams.view === 'completed' ? 'completed' : 'pending';
@@ -145,6 +172,10 @@ export default async function EvaluatorEvaluationsListPage({ searchParams }: { s
             const myEvaluation = myEvaluations.find(e => e.call_report_id === report.id);
             const myScore = myEvaluation?.average_score;
 
+            // Get draft progress for this report (only for pending evaluations)
+            const draftProgress = draftProgressMap.get(report.id);
+            const hasDraft = draftProgress && draftProgress.percentage > 0;
+
             // Get evaluation progress data
             const internalCompleted = report.completed_evaluations || 0;
             const internalRequired = report.required_evaluations || 5;
@@ -187,11 +218,26 @@ export default async function EvaluatorEvaluationsListPage({ searchParams }: { s
                             Evaluated
                           </span>
                         )}
+                        {!hasEvaluated && hasDraft && (
+                          <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs bg-blue-100 text-blue-800 border border-blue-300">
+                            Draft ({draftProgress.percentage}%)
+                          </span>
+                        )}
                       </div>
+                      {/* Individual evaluation progress bar for drafts */}
+                      {!hasEvaluated && hasDraft && (
+                        <div className="mt-3 mb-2">
+                          <IndividualEvaluationProgress progressPercentage={draftProgress.percentage} />
+                        </div>
+                      )}
                       <div className="mt-2 space-y-1 text-sm text-muted-foreground">
                         <div className="flex items-center gap-2">
                           <UserIcon className="h-4 w-4" />
-                          <span>Writer: {report.writer_name}</span>
+                          <span>
+                            {report.writer_names && report.writer_names.length > 1
+                              ? `Writers: ${report.writer_names.join(", ")}`
+                              : `Writer: ${report.writer_name || "N/A"}`}
+                          </span>
                         </div>
                         <div className="flex items-center gap-2">
                           <FileTextIcon className="h-4 w-4" />
@@ -276,7 +322,7 @@ export default async function EvaluatorEvaluationsListPage({ searchParams }: { s
                       <Button size="sm" asChild className="bg-[#224794] hover:bg-[#1a3670]">
                         <Link href={`/evaluator/evaluate/${report.id}`}>
                           <ClipboardListIcon className="h-4 w-4 mr-2" />
-                          Evaluate This Project
+                          {hasDraft ? 'Continue Evaluation' : 'Evaluate This Project'}
                         </Link>
                       </Button>
                     )}

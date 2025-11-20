@@ -6,31 +6,42 @@ import { z } from "zod";
  */
 export const updateCallReportSchema = z.object({
   writer_name: z.string().min(1, "Writer name is required").max(200).optional(),
-  writer_email: z.string().max(255).optional(),
   suggested_writer: z.string().max(200).optional(),
-  contact_email: z.string().email("Invalid email").optional(),
+  contact_email: z.preprocess(
+    (val) => (val === "" || val === null || val === undefined) ? undefined : val,
+    z.string().email("Invalid email").optional()
+  ),
   contact_phone: z.string().max(50).optional(),
   contact_address: z.string().max(500).optional(),
   working_title: z.string().min(1, "Working title is required").max(300).optional(),
   director: z.string().max(255).optional(),
   total_episodes: z.number().min(0).optional(),
   received_episodes: z.number().min(0).optional(),
-  logline: z.string().min(1, "Logline is required").optional(),
-  logline_image_url: z.string().url("Invalid URL").optional(),
+  logline: z.string().min(1, "Logline is required").optional()
+    .or(z.literal(""))
+    .transform(val => val === "" ? undefined : val),
+  logline_image_url: z.string().url("Invalid URL").optional().nullable()
+    .or(z.literal(""))
+    .transform(val => val === "" ? undefined : val),
   short_synopsis: z.string().optional(),
   episodic_synopsis: z.string().optional(),
-  genre: z.array(z.string().min(1).max(50)).min(1, "At least one genre is required").optional(),
-  content_type: z.enum([
-    "Serial",
-    "Long Serial",
-    "Telefilm",
-    "Mini-serial",
-    "Ramadan Serial",
-    "Series Sitcom",
-    "Soap"
-  ], {
-    errorMap: () => ({ message: "Please select a valid content type" })
-  }).optional(),
+  genre: z.array(z.string().min(1).max(50)).min(1, "At least one genre is required").optional()
+    .or(z.array(z.string()).length(0))
+    .transform(val => !val || val.length === 0 ? undefined : val),
+  content_type: z.preprocess(
+    (val) => (val === "" || val === null || val === undefined) ? undefined : val,
+    z.enum([
+      "Serial",
+      "Long Serial",
+      "Telefilm",
+      "Mini-serial",
+      "Ramadan Serial",
+      "Series Sitcom",
+      "Soap"
+    ], {
+      errorMap: () => ({ message: "Please select a valid content type" })
+    }).optional()
+  ),
   theme: z.string().max(200).optional(),
   target_slot: z.string().max(100).optional(),
   location: z.string().max(255).optional(),
@@ -40,6 +51,7 @@ export const updateCallReportSchema = z.object({
   next_steps: z.string().max(1000).optional(),
   status: z.string().max(50).optional(),
   overall_rating: z.number().min(1).max(10).optional(),
+  attachments_to_delete: z.array(z.string().uuid()).optional(),
 });
 
 export type UpdateCallReportFormData = z.infer<typeof updateCallReportSchema>;

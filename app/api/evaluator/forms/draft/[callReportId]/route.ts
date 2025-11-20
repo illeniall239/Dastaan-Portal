@@ -6,16 +6,17 @@ import { applyRateLimit, addRateLimitHeaders, withCors } from "@/lib/api-middlew
 import { RateLimitPresets } from "@/lib/rate-limit-redis";
 
 // Schema for validating draft data
+// All scoring fields are optional since drafts can be partial
 const draftDataSchema = z.object({
   targetWriter: z.string().optional(),
   perEpPriceRange: z.string().optional(),
   slot: z.string().optional(),
-  premiseConflictScore: z.number().min(1).max(10),
-  storylinePlotScore: z.number().min(1).max(10),
-  episodicProgressionScore: z.number().min(1).max(10),
-  charactersScore: z.number().min(1).max(10),
-  dialoguesScore: z.number().min(1).max(10),
-  first2EpsRequired: z.boolean(),
+  premiseConflictScore: z.number().min(1).max(10).optional(),
+  storylinePlotScore: z.number().min(1).max(10).optional(),
+  episodicProgressionScore: z.number().min(1).max(10).optional(),
+  charactersScore: z.number().min(1).max(10).optional(),
+  dialoguesScore: z.number().min(1).max(10).optional(),
+  first2EpsRequired: z.boolean().optional(),
   comments: z.string().optional(),
   decision: z.enum(["approve", "reject"]).optional(),
   decisionNotes: z.string().optional(),

@@ -35,6 +35,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
+interface CallReportWriter {
+  writer_id: string;
+  writer_name: string;
+  writer_email?: string;
+  writer_phone?: string;
+  display_order: number;
+}
+
 interface CallReport {
   id: string;
   call_report_id: string;
@@ -47,6 +55,7 @@ interface CallReport {
   category: string;
   content_type?: string;
   overall_rating?: number;
+  writers?: CallReportWriter[];
 }
 
 export function EvaluatorEvaluationForm({
@@ -381,10 +390,24 @@ export function EvaluatorEvaluationForm({
                 <p className="text-sm text-muted-foreground">{callReport.working_title}</p>
               </div>
               <div>
-                <span className="text-sm font-medium">Writer:</span>
-                <p className="text-sm text-muted-foreground">
-                  {callReport.writer_name} ({callReport.contact_email})
-                </p>
+                <span className="text-sm font-medium">
+                  {callReport.writers && callReport.writers.length > 1 ? "Writers:" : "Writer:"}
+                </span>
+                {callReport.writers && callReport.writers.length > 0 ? (
+                  <div className="text-sm text-muted-foreground space-y-1">
+                    {callReport.writers.map((writer, index) => (
+                      <p key={writer.writer_id}>
+                        {writer.writer_name}
+                        {writer.writer_email && ` (${writer.writer_email})`}
+                      </p>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    {callReport.writer_name || "N/A"}
+                    {callReport.contact_email && ` (${callReport.contact_email})`}
+                  </p>
+                )}
               </div>
               <div>
                 <span className="text-sm font-medium">Logline:</span>

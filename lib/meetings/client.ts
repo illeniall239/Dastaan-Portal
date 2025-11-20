@@ -359,7 +359,11 @@ export async function updateCallReportClient(
   const result = await response.json();
 
   if (!response.ok) {
-    throw new Error(result.error || "Failed to update call report");
+    // Handle both string errors and validation error objects
+    const errorMessage = typeof result.error === 'string'
+      ? result.error
+      : result.details || JSON.stringify(result.error) || "Failed to update call report";
+    throw new Error(errorMessage);
   }
 
   return result.callReport;

@@ -160,6 +160,13 @@ export default function EpisodesListPage() {
       group.totalCount++;
     });
 
+    // Sort episodes within each project by episode_number
+    projectsMap.forEach((group) => {
+      group.episodes.sort(
+        (a, b) => (a.episode_number ?? 0) - (b.episode_number ?? 0)
+      );
+    });
+
     return Array.from(projectsMap.values()).sort((a, b) => a.projectName.localeCompare(b.projectName));
   };
 
@@ -175,7 +182,7 @@ export default function EpisodesListPage() {
     if (!currentUserId || !currentUserRole) return false;
     return (
       episode.logged_by === currentUserId ||
-      ["content_manager", "admin"].includes(currentUserRole)
+      ["evaluator", "content_manager", "admin"].includes(currentUserRole)
     );
   };
 

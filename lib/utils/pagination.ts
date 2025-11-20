@@ -36,7 +36,8 @@ export const PAGINATION_DEFAULTS = {
  * ```
  */
 export function parsePaginationParams(
-  request: NextRequest
+  request: NextRequest,
+  overrideDefaults?: { sortBy?: string; sortOrder?: "asc" | "desc" }
 ): Required<PaginationParams> {
   const searchParams = request.nextUrl.searchParams;
 
@@ -56,11 +57,13 @@ export function parsePaginationParams(
     Math.max(1, rawLimit)
   );
 
-  // Parse sort parameters
-  const sortBy = searchParams.get("sortBy") || "created_at";
+  // Parse sort parameters with optional override defaults
+  const defaultSortBy = overrideDefaults?.sortBy || "created_at";
+  const defaultSortOrder = overrideDefaults?.sortOrder || PAGINATION_DEFAULTS.sortOrder;
+
+  const sortBy = searchParams.get("sortBy") || defaultSortBy;
   const sortOrder =
-    (searchParams.get("sortOrder") as "asc" | "desc") ||
-    PAGINATION_DEFAULTS.sortOrder;
+    (searchParams.get("sortOrder") as "asc" | "desc") || defaultSortOrder;
 
   return {
     page,

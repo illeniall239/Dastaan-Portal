@@ -63,7 +63,7 @@ export async function updateDetailedOneLinerClient(
 }
 
 /**
- * Get available call reports that don't have a detailed one-liner yet
+ * Get available stories that don't have a detailed one-liner yet
  */
 export async function getAvailableCallReportsClient() {
   const supabase = createClient();
@@ -77,7 +77,7 @@ export async function getAvailableCallReportsClient() {
     .limit(100);
 
   if (error) {
-    throw new Error("Failed to fetch call reports");
+    throw new Error("Failed to fetch stories");
   }
 
   // Get all call reports that already have a detailed one-liner

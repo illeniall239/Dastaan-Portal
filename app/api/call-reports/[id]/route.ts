@@ -180,7 +180,7 @@ export async function PATCH(
       );
     }
 
-    const updates = validation.data;
+    const { attachments_to_delete, ...updates } = validation.data;
 
     // Update call report
     const { data: updatedCallReport, error: updateError } = await supabase
@@ -196,6 +196,38 @@ export async function PATCH(
         { error: "Failed to update call report", details: updateError.message },
         { status: 500 }
       );
+    }
+
+    if (attachments_to_delete && attachments_to_delete.length > 0) {
+      const { data: attachments, error: attachmentsError } = await supabase
+        .from("attachments")
+        .select("id, file_path")
+        .eq("entity_type", "call_report")
+        .eq("entity_id", id)
+        .in("id", attachments_to_delete);
+
+      if (attachmentsError) {
+        logger.error(`Error fetching attachments for deletion: ${attachmentsError instanceof Error ? attachmentsError.message : String(attachmentsError)}`);
+      } else if (attachments && attachments.length > 0) {
+        const filePaths = attachments.map((attachment) => attachment.file_path);
+
+        const { error: storageError } = await supabase.storage
+          .from("attachments")
+          .remove(filePaths);
+
+        if (storageError) {
+          logger.error(`Error deleting attachment files: ${storageError instanceof Error ? storageError.message : String(storageError)}`);
+        }
+
+        const { error: deleteError } = await supabase
+          .from("attachments")
+          .delete()
+          .in("id", attachments.map((attachment) => attachment.id));
+
+        if (deleteError) {
+          logger.error(`Error deleting attachment records: ${deleteError instanceof Error ? deleteError.message : String(deleteError)}`);
+        }
+      }
     }
 
     return NextResponse.json({

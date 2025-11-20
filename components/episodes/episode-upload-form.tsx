@@ -23,12 +23,19 @@ interface EpisodeUploadFormProps {
   existingEpisodeNumbers?: number[];
 }
 
+const sortEpisodes = (list: EpisodeFormEntry[]) =>
+  [...list].sort((a, b) => a.episode_number - b.episode_number);
+
 export function EpisodeUploadForm({
   episodes,
   onEpisodesChange,
   disabled = false,
   existingEpisodeNumbers = [],
 }: EpisodeUploadFormProps) {
+  const updateEpisodes = (list: EpisodeFormEntry[]) => {
+    onEpisodesChange(sortEpisodes(list));
+  };
+
   const addEpisode = () => {
     const nextEpisodeNumber =
       episodes.length > 0
@@ -41,18 +48,18 @@ export function EpisodeUploadForm({
       additional_info: "",
     };
 
-    onEpisodesChange([...episodes, newEpisode]);
+    updateEpisodes([...episodes, newEpisode]);
   };
 
   const removeEpisode = (index: number) => {
-    onEpisodesChange(episodes.filter((_, i) => i !== index));
+    updateEpisodes(episodes.filter((_, i) => i !== index));
   };
 
   const updateEpisode = (index: number, field: keyof EpisodeFormEntry, value: any) => {
     const updated = episodes.map((episode, i) =>
       i === index ? { ...episode, [field]: value } : episode
     );
-    onEpisodesChange(updated);
+    updateEpisodes(updated);
   };
 
   return (
@@ -81,7 +88,7 @@ export function EpisodeUploadForm({
             {/* Episode Number */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <Label htmlFor={`episode-${index}-number`} className="text-sm sm:text-base">
+                <Label htmlFor={`episode-${episode.episode_number}-number`} className="text-sm sm:text-base">
                   Episode Number <span className="text-red-500">*</span>
                 </Label>
                 {existingEpisodeNumbers.includes(episode.episode_number) && (
@@ -92,10 +99,11 @@ export function EpisodeUploadForm({
                 )}
               </div>
               <Input
-                id={`episode-${index}-number`}
+                id={`episode-${episode.episode_number}-number`}
                 type="number"
                 min="1"
                 value={episode.episode_number}
+                data-episode-number={episode.episode_number}
                 onChange={(e) =>
                   updateEpisode(index, "episode_number", parseInt(e.target.value) || 1)
                 }

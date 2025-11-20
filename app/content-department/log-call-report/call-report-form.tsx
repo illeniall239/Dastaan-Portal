@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -19,6 +19,7 @@ import { toast } from "sonner";
 import { createMeetingClient, updateCallReportClient } from "@/lib/meetings/client";
 import { FileUpload } from "@/components/ui/file-upload";
 import { uploadFile } from "@/lib/attachments/client";
+import { formatFileSize } from "@/lib/validations/episodes";
 import { MentionInput } from "@/components/ui/mention-input";
 import { ScoreCard } from "@/components/episodic-evaluations/score-card";
 import { GenreMultiSelect } from "@/components/ui/genre-multi-select";
@@ -34,6 +35,16 @@ interface User {
   department?: string;
 }
 
+interface AttachmentRecord {
+  id: string;
+  file_name: string;
+  file_path: string;
+  file_size?: number | null;
+  file_type?: string | null;
+  uploaded_at?: string | null;
+  public_url?: string | null;
+}
+
 export function CallReportForm({
   mode = "create",
   initialData,
@@ -41,7 +52,8 @@ export function CallReportForm({
   onSuccess,
   userId,
   userName,
-  userPosition
+  userPosition,
+  initialAttachments,
 }: {
   mode?: "create" | "edit";
   initialData?: any;
@@ -50,8 +62,14 @@ export function CallReportForm({
   userId: string;
   userName: string;
   userPosition?: string;
+  initialAttachments?: AttachmentRecord[];
 }) {
   const router = useRouter();
+
+  const memoizedInitialAttachments = useMemo(
+    () => initialAttachments ?? [],
+    [initialAttachments]
+  );
 
   const [isLoading, setIsLoading] = useState(false);
   const [writers, setWriters] = useState<Array<{
@@ -89,6 +107,32 @@ export function CallReportForm({
 
   // File upload state
   const [filesToUpload, setFilesToUpload] = useState<File[]>([]);
+  const [existingAttachments, setExistingAttachments] = useState<AttachmentRecord[]>(memoizedInitialAttachments);
+  const [attachmentsMarkedForDeletion, setAttachmentsMarkedForDeletion] = useState<string[]>([]);
+
+  useEffect(() => {
+    setExistingAttachments(memoizedInitialAttachments);
+    setAttachmentsMarkedForDeletion([]);
+  }, [memoizedInitialAttachments]);
+
+  const handleExistingAttachmentDownload = (attachment: AttachmentRecord) => {
+    if (attachment.public_url) {
+      window.open(attachment.public_url, "_blank");
+    } else {
+      toast.error("Download link not available for this attachment.");
+    }
+  };
+
+  const handleExistingAttachmentRemove = (attachment: AttachmentRecord) => {
+    if (!attachment.id) {
+      setExistingAttachments((prev) => prev.filter((a) => a.file_path !== attachment.file_path));
+      return;
+    }
+
+    setAttachmentsMarkedForDeletion((prev) => [...prev, attachment.id as string]);
+    setExistingAttachments((prev) => prev.filter((a) => a.id !== attachment.id));
+    toast.info("Attachment marked for removal. Save to apply.", { duration: 4000 });
+  };
 
   // Pre-populate form when in edit mode
   useEffect(() => {
@@ -177,7 +221,7 @@ export function CallReportForm({
         // Update existing call report
         const updateData = {
           writer_name: writers.length > 0 ? writers[0].writer_name : (formData.suggestedWriter || "In-house Content"), // Deprecated field
-          writer_email: writers.length > 0 ? (writers[0].writer_email || "") : "", // Deprecated field
+          contact_email: writers.length > 0 ? (writers[0].writer_email || "") : "", // Changed from writer_email to contact_email
           suggested_writer: formData.suggestedWriter || undefined,
           contact_phone: formData.contactPhone || undefined,
           contact_address: formData.contactAddress || undefined,
@@ -198,6 +242,7 @@ export function CallReportForm({
           next_steps: formData.nextSteps || undefined,
           status: formData.status,
           overall_rating: formData.overallRating,
+          attachments_to_delete: attachmentsMarkedForDeletion.length > 0 ? attachmentsMarkedForDeletion : undefined,
         };
 
         await updateCallReportClient(callReportId, updateData);
@@ -260,6 +305,8 @@ export function CallReportForm({
           toast.success("Writer Engagement Report updated successfully!");
         }
 
+        setAttachmentsMarkedForDeletion([]);
+
         // Navigate or call callback
         if (onSuccess) {
           onSuccess();
@@ -273,7 +320,7 @@ export function CallReportForm({
           logged_by: userName,
           category: formData.category,
           writer_name: writers.length > 0 ? writers[0].writer_name : (formData.suggestedWriter || "In-house Content"), // Deprecated field
-          writer_email: writers.length > 0 ? (writers[0].writer_email || "") : "", // Deprecated field
+          writer_email: writers.length > 0 ? (writers[0].writer_email || "") : "", // Deprecated field (for create, kept for backward compatibility)
           suggested_writer: formData.suggestedWriter,
           contact_phone: formData.contactPhone,
           contact_address: formData.contactAddress,
@@ -330,6 +377,10 @@ export function CallReportForm({
         } else {
           toast.success("Writer Engagement Report logged successfully!");
         }
+
+        // Redirect to call reports list with fresh data
+        router.push("/content-department/call-reports");
+        router.refresh(); // Force cache revalidation to show new report
 
         // Reset form
         setFormData({
@@ -646,6 +697,63 @@ export function CallReportForm({
             </div>
           </CardContent>
         </Card>
+
+        {/* Existing Attachments (Edit Mode) */}
+        {mode === "edit" && (
+          <Card>
+            <CardHeader className="p-3 sm:p-4 md:p-6">
+              <CardTitle className="text-base sm:text-lg">Existing Attachments</CardTitle>
+              {attachmentsMarkedForDeletion.length > 0 && (
+                <p className="text-xs text-amber-600">
+                  {attachmentsMarkedForDeletion.length} attachment
+                  {attachmentsMarkedForDeletion.length > 1 ? "s" : ""} will be deleted after you save.
+                </p>
+              )}
+            </CardHeader>
+            <CardContent className="p-3 sm:p-4 md:p-6 pt-0">
+              {existingAttachments.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  No attachments uploaded for this report yet.
+                </p>
+              ) : (
+                <div className="space-y-3">
+                  {existingAttachments.map((attachment) => (
+                    <div
+                      key={attachment.id}
+                      className="flex items-center justify-between gap-3 border rounded p-3 flex-wrap"
+                    >
+                      <div>
+                        <p className="text-sm font-medium">{attachment.file_name}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {attachment.file_type || "Unknown type"} •{" "}
+                          {attachment.file_size
+                            ? formatFileSize(attachment.file_size)
+                            : "Unknown size"}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleExistingAttachmentDownload(attachment)}
+                        >
+                          Download
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleExistingAttachmentRemove(attachment)}
+                        >
+                          Remove
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
 
         {/* File Upload Section */}
         <FileUpload

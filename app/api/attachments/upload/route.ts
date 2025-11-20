@@ -18,6 +18,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    // Clone the request to avoid "body already used" errors
     const formData = await request.formData();
     const file = formData.get("file");
     const entityType = formData.get("entityType");
@@ -102,8 +103,13 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error("Unexpected error uploading attachment:", error);
+    console.error("Error details:", error instanceof Error ? error.message : String(error));
+    console.error("Error stack:", error instanceof Error ? error.stack : "No stack trace");
     return NextResponse.json(
-      { error: "Failed to upload file" },
+      {
+        error: "Failed to upload file",
+        details: error instanceof Error ? error.message : String(error)
+      },
       { status: 500 }
     );
   }

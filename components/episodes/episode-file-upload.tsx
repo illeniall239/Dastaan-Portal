@@ -3,7 +3,7 @@
 import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { Upload, X, FileText, Image as ImageIcon, File } from "lucide-react";
+import { Upload, X, FileText, Image as ImageIcon, File, Download } from "lucide-react";
 import {
   ALLOWED_EPISODE_FILE_TYPES,
   MAX_EPISODE_FILE_SIZE,
@@ -17,6 +17,9 @@ interface EpisodeFileUploadProps {
   onFileSelect: (file: File) => void;
   onFileRemove: () => void;
   disabled?: boolean;
+  existingFileName?: string;
+  existingFileUrl?: string;
+  onExistingFileDownload?: () => void;
 }
 
 export function EpisodeFileUpload({
@@ -24,6 +27,9 @@ export function EpisodeFileUpload({
   onFileSelect,
   onFileRemove,
   disabled = false,
+  existingFileName,
+  existingFileUrl,
+  onExistingFileDownload,
 }: EpisodeFileUploadProps) {
   const [dragActive, setDragActive] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -96,6 +102,61 @@ export function EpisodeFileUpload({
     }
   };
 
+  const renderExistingFile = () => (
+    <div className="border rounded-lg p-4 bg-gray-50 space-y-3">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="text-gray-600">{getFileIcon(existingFileName || "file")}</div>
+          <div>
+            <p className="text-sm font-medium text-gray-900">{existingFileName}</p>
+            <p className="text-xs text-gray-500">Previously uploaded</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          {existingFileUrl && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={(e) => {
+                e.stopPropagation();
+                onExistingFileDownload?.();
+              }}
+              disabled={disabled}
+            >
+              <Download className="h-4 w-4 mr-1" />
+              Download
+            </Button>
+          )}
+          {!disabled && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={(e) => {
+                e.stopPropagation();
+                onFileRemove();
+              }}
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          )}
+        </div>
+      </div>
+      <div className="flex flex-wrap gap-2">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={onButtonClick}
+          disabled={disabled}
+        >
+          Replace File
+        </Button>
+      </div>
+    </div>
+  );
+
   return (
     <div className="w-full">
       <input
@@ -107,7 +168,9 @@ export function EpisodeFileUpload({
         disabled={disabled}
       />
 
-      {!file ? (
+      {!file && existingFileName ? (
+        renderExistingFile()
+      ) : !file ? (
         <div
           className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors ${
             dragActive

@@ -257,7 +257,11 @@ export async function GET(request: NextRequest) {
 
   try {
     // Parse pagination parameters (page, limit, sortBy, sortOrder)
-    const paginationParams = parsePaginationParams(request);
+    // Override default sortBy for episodes to use episode_number instead of created_at
+    const paginationParams = parsePaginationParams(request, {
+      sortBy: "episode_number",
+      sortOrder: "asc"
+    });
 
     // Parse and validate filter parameters
     const { searchParams } = request.nextUrl;

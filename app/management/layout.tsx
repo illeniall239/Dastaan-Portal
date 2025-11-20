@@ -21,7 +21,7 @@ const managementNavItems = [
     icon: "calendar",
   },
   {
-    title: "Story Bank",
+    title: "Script Bank",
     href: "/management/story-bank",
     icon: "fileText",
   },
