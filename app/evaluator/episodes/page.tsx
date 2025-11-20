@@ -55,6 +55,16 @@ interface CallReport {
   working_title: string;
   writer_name: string;
   meeting_type: string;
+  story_id?: string;
+  writer_names?: string[];
+  writers?: {
+    id?: string;
+    writer_id: string;
+    writer_name: string;
+    writer_email?: string;
+    writer_phone?: string;
+    display_order: number;
+  }[];
 }
 
 interface Story {
@@ -176,15 +186,51 @@ export default function EvaluatorEpisodesPage() {
     try {
       const { data: callReportsData, error: crError } = await supabase
         .from("call_reports")
-        .select("id, working_title, writer_name, meeting_type")
+        .select(`
+          id,
+          working_title,
+          writer_name,
+          meeting_type,
+          story_id,
+          call_report_writers:call_report_writers (
+            writer_id,
+            writer_email,
+            writer_phone,
+            display_order,
+            writer:writers(name)
+          )
+        `)
         .eq("meeting_type", "call_report")
         .order("created_at", { ascending: false })
         .limit(100);
 
       if (crError) {
         console.error("Error fetching call reports:", crError);
-      } else {
-        setCallReports(callReportsData || []);
+      } else if (callReportsData) {
+        const transformedReports = callReportsData.map((report: any) => {
+          const writers =
+            report.call_report_writers?.map((w: any) => ({
+              writer_id: w.writer_id,
+              writer_name: w.writer?.name || "",
+              writer_email: w.writer_email,
+              writer_phone: w.writer_phone,
+              display_order: w.display_order ?? 0,
+            })) || [];
+
+          const sortedWriters = writers.sort(
+            (a, b) => a.display_order - b.display_order
+          );
+
+          return {
+            ...report,
+            writers: sortedWriters,
+            writer_names: sortedWriters
+              .map((w) => w.writer_name)
+              .filter((name) => !!name),
+          };
+        });
+
+        setCallReports(transformedReports);
       }
     } catch (error) {
       console.error("Error fetching data:", error);
@@ -815,11 +861,17 @@ export default function EvaluatorEpisodesPage() {
                     <SelectValue placeholder="Select a story" />
                   </SelectTrigger>
                   <SelectContent>
-                    {callReports.map((cr) => (
-                      <SelectItem key={cr.id} value={cr.id}>
-                        {cr.working_title} - {cr.writer_name}
-                      </SelectItem>
-                    ))}
+                    {callReports.map((cr) => {
+                      const writerDisplay =
+                        cr.writer_names && cr.writer_names.length > 0
+                          ? cr.writer_names.join(", ")
+                          : cr.writer_name;
+                      return (
+                        <SelectItem key={cr.id} value={cr.id}>
+                          {cr.working_title} - {writerDisplay}
+                        </SelectItem>
+                      );
+                    })}
                   </SelectContent>
                 </Select>
               </div>

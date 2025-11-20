@@ -4,6 +4,14 @@ import {
   getContentActivityNotificationRecipients,
 } from "@/lib/notifications/server";
 
+export interface MeetingWriter {
+  writer_id: string;
+  writer_name: string;
+  writer_email?: string | null;
+  writer_phone?: string | null;
+  display_order: number;
+}
+
 export interface Meeting {
   id: string;
   title: string;
@@ -19,6 +27,8 @@ export interface Meeting {
   logline?: string;
   detailed_one_liner_id?: string | null;
   has_detailed_one_liner?: boolean;
+  writer_names?: string[];
+  writers?: MeetingWriter[];
 }
 
 export interface CreateMeetingInput {
@@ -78,7 +88,7 @@ export async function createMeeting(meetingData: CreateMeetingInput) {
     logline: meetingData.logline,
 
     // target_audience removed from schema
-    genre: meetingData.genre || 'other',
+    genre: meetingData.genre || null,
     theme: meetingData.theme || null,
     target_slot: meetingData.target_slot || null,
     meeting_date: meetingData.meeting_date,
@@ -114,7 +124,7 @@ export async function createMeeting(meetingData: CreateMeetingInput) {
       writer_originator_name: meetingData.writer_name,
       suggested_writer: meetingData.suggested_writer || null,
       synopsis: meetingData.logline, // Use logline as synopsis since server version doesn't have short_synopsis
-      genre: meetingData.genre || 'other',
+      genre: meetingData.genre || null,
       target_audience: meetingData.target_slot || 'general', // Use target_slot as target_audience fallback
       status: 'submitted',
       current_stage: 'evaluation',
@@ -283,6 +293,13 @@ export async function getAllCallReports() {
       *,
       detailed_one_liners (
         id
+      ),
+      call_report_writers:call_report_writers (
+        writer_id,
+        writer_email,
+        writer_phone,
+        display_order,
+        writer:writers(name)
       )
     `)
     .eq("meeting_type", "call_report")
@@ -293,22 +310,42 @@ export async function getAllCallReports() {
   }
 
   // Transform call reports to meeting format
-  const meetings: Meeting[] = data.map((report: any) => ({
-    id: report.id,
-    title: report.working_title,
-    writer_name: report.writer_name,
-    meeting_date: report.meeting_date,
-    attendees: report.meeting_attendees || [],
-    location: "", // Not directly stored in call_reports
-    notes: report.meeting_notes,
-    created_by: report.created_by,
-    created_at: report.created_at,
-    call_report_id: report.call_report_id,
-    category: report.category,
-    logline: report.logline,
-    detailed_one_liner_id: report.detailed_one_liners?.[0]?.id || null,
-    has_detailed_one_liner: !!report.detailed_one_liners?.[0]?.id,
-  }));
+  const meetings: Meeting[] = data.map((report: any) => {
+    const writers: MeetingWriter[] =
+      report.call_report_writers?.map((writer: any) => ({
+        writer_id: writer.writer_id,
+        writer_name: writer.writer?.name || "",
+        writer_email: writer.writer_email,
+        writer_phone: writer.writer_phone,
+        display_order: writer.display_order ?? 0,
+      })) || [];
+
+    const sortedWriters = writers.sort(
+      (a, b) => a.display_order - b.display_order
+    );
+    const writerNames = sortedWriters
+      .map((writer) => writer.writer_name)
+      .filter((name) => !!name);
+
+    return {
+      id: report.id,
+      title: report.working_title,
+      writer_name: writerNames[0] || report.writer_name,
+      meeting_date: report.meeting_date,
+      attendees: report.meeting_attendees || [],
+      location: "", // Not directly stored in call_reports
+      notes: report.meeting_notes,
+      created_by: report.created_by,
+      created_at: report.created_at,
+      call_report_id: report.call_report_id,
+      category: report.category,
+      logline: report.logline,
+      detailed_one_liner_id: report.detailed_one_liners?.[0]?.id || null,
+      has_detailed_one_liner: !!report.detailed_one_liners?.[0]?.id,
+      writer_names: writerNames,
+      writers: sortedWriters,
+    };
+  });
 
   return meetings;
 }

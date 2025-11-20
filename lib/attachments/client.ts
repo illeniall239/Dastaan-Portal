@@ -1,63 +1,28 @@
 import { createClient } from '@/lib/supabase/client';
-import { v4 as uuidv4 } from 'uuid';
 
-// Function to upload files to Supabase storage
+// Function to upload files via server API route to avoid client-side Supabase storage issues
 export async function uploadFile(file: File, entityType: string, entityId: string) {
-  const supabase = createClient();
-  
-  // Generate a unique filename with UUID to avoid conflicts
-  const fileExtension = file.name.split('.').pop();
-  const fileName = `${entityType}/${entityId}/${uuidv4()}.${fileExtension}`;
-  
-  // Upload the file to Supabase storage
-  const { data, error } = await supabase.storage
-    .from('attachments')
-    .upload(fileName, file, {
-      cacheControl: '3600',
-      upsert: false
-    });
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('entityType', entityType);
+  formData.append('entityId', entityId);
 
-  if (error) {
-    console.error('Error uploading file:', error);
-    throw new Error(`Failed to upload file: ${error.message}`);
+  const response = await fetch('/api/attachments/upload', {
+    method: 'POST',
+    body: formData,
+  });
+
+  const result = await response.json();
+
+  if (!response.ok) {
+    console.error('Error uploading file:', result);
+    throw new Error(result.error || 'Failed to upload file');
   }
 
-  // Get the public URL for the uploaded file
-  const { data: publicUrlData } = supabase.storage
-    .from('attachments')
-    .getPublicUrl(fileName);
-
-  // Insert a record in the attachments table to track this file
-  const { data: attachmentData, error: insertError } = await supabase
-    .from('attachments')
-    .insert({
-      entity_type: entityType,
-      entity_id: entityId,
-      file_name: file.name,
-      file_path: fileName,
-      file_size: file.size,
-      file_type: file.type || `.${fileExtension}`,
-      uploaded_by: (await supabase.auth.getUser()).data.user?.id
-    })
-    .select()
-    .single();
-
-  if (insertError) {
-    console.error('Error creating attachment record:', insertError);
-    // Clean up the uploaded file if the database insert fails
-    await supabase.storage
-      .from('attachments')
-      .remove([fileName]);
-    throw new Error(`Failed to create attachment record: ${insertError.message}`);
-  }
-
-  return {
-    ...attachmentData,
-    publicUrl: publicUrlData.publicUrl
-  };
+  return result.attachment;
 }
 
-// Function to delete a file
+// Function to delete a file (still uses client-side Supabase for now)
 export async function deleteFile(fileId: string, filePath: string) {
   const supabase = createClient();
   

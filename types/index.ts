@@ -146,7 +146,7 @@ export interface Story {
   id: string;
   story_id: string; // ST-YYYY-NNNN
   title: string;
-  genre: Genre;
+  genre: Genre | null;
   synopsis: string;
   writer_name: string;
   writer_email: string;
@@ -187,7 +187,7 @@ export interface CallReport {
   logline: string;
   logline_image_url?: string;
   usp: string;
-  genre: string[]; // Array of genre tags - supports multiple genres
+  genre: string[] | null; // Array of genre tags - supports multiple genres
   content_type: "Serial" | "Long Serial" | "Telefilm" | "Mini-serial" | "Ramadan Serial" | "Series Sitcom" | "Soap"; // Type/format of the content
   meeting_notes: string;
   meeting_attendees: string[];
@@ -498,7 +498,7 @@ export interface ContentDeliveryItem {
   story_id: string;
   project_name: string;
   writer_name: string;
-  genre: string;
+  genre: string | null;
   contract_type: string;
   time_slot: string | null;
   total_episodes: number;
@@ -544,7 +544,7 @@ export interface PipelineStory {
   story_id: string;
   title: string;
   writer_name: string;
-  genre: string;
+  genre: string | null;
   current_stage: 1 | 2 | 3;
   days_in_current_stage: number;
 

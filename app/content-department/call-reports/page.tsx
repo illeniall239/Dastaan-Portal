@@ -100,6 +100,10 @@ async function CallReportsList() {
               minute: "2-digit",
               hour12: true,
             });
+            const writerDisplayName =
+              report.writer_names && report.writer_names.length > 0
+                ? report.writer_names.join(", ")
+                : report.writer_name || "Unknown writer";
 
             // Get evaluation progress data
             const completed = report.completed_evaluations || 0;
@@ -153,7 +157,7 @@ async function CallReportsList() {
                         )}
                       </div>
                       <CardDescription className="mt-1">
-                        Meeting with {report.writer_name}
+                        Writers: {writerDisplayName}
                       </CardDescription>
                     </div>
                     <div className="text-right text-sm text-muted-foreground">
