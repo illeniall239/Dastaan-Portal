@@ -50,6 +50,15 @@ import { getGradeColorClasses } from "@/lib/validations/episodic-evaluations";
 import type { EpisodeWithDetails, EpisodicEvaluationWithDetails } from "@/types";
 import { BackButton } from "@/components/ui/back-button";
 
+interface CallReportWriter {
+  id?: string;
+  writer_id: string;
+  writer_name: string;
+  writer_email?: string;
+  writer_phone?: string;
+  display_order: number;
+}
+
 interface CallReport {
   id: string;
   working_title: string;
@@ -57,14 +66,7 @@ interface CallReport {
   meeting_type: string;
   story_id?: string;
   writer_names?: string[];
-  writers?: {
-    id?: string;
-    writer_id: string;
-    writer_name: string;
-    writer_email?: string;
-    writer_phone?: string;
-    display_order: number;
-  }[];
+  writers?: CallReportWriter[];
 }
 
 interface Story {
@@ -208,7 +210,7 @@ export default function EvaluatorEpisodesPage() {
         console.error("Error fetching call reports:", crError);
       } else if (callReportsData) {
         const transformedReports = callReportsData.map((report: any) => {
-          const writers =
+          const writers: CallReportWriter[] =
             report.call_report_writers?.map((w: any) => ({
               writer_id: w.writer_id,
               writer_name: w.writer?.name || "",
@@ -218,7 +220,8 @@ export default function EvaluatorEpisodesPage() {
             })) || [];
 
           const sortedWriters = writers.sort(
-            (a, b) => a.display_order - b.display_order
+            (a: CallReportWriter, b: CallReportWriter) =>
+              a.display_order - b.display_order
           );
 
           return {

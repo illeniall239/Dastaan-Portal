@@ -188,9 +188,12 @@ export function StagePipelineTable({ stories, onStoryClick }: StagePipelineTable
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Genres</SelectItem>
-                {uniqueGenres.map((genre) => (
-                  <SelectItem key={genre} value={genre}>
-                    {genre}
+                {uniqueGenres.map((genre, index) => (
+                  <SelectItem
+                    key={genre ?? `genre-null-${index}`}
+                    value={genre ?? "unknown"}
+                  >
+                    {genre ?? "Unknown"}
                   </SelectItem>
                 ))}
               </SelectContent>
