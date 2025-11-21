@@ -202,6 +202,8 @@ export async function POST(request: Request) {
  * - story_id: Filter by story
  * - logged_by: Filter by user who logged the episode
  * - episode_number: Filter by episode number
+ * - group_by_project: If "true", paginate by projects instead of episodes
+ * - project_limit: Number of projects to fetch (default: 20, used with group_by_project)
  */
 export async function GET(request: NextRequest) {
   // Rate limit GETs listing/search
@@ -257,46 +259,142 @@ export async function GET(request: NextRequest) {
 
     const filters = validation.data;
 
-    // Build query - include call_report_writers to support multi-writer display
-    let query = supabase
-      .from("episodes")
-      .select(`
-        *,
-        logged_by_user:users!logged_by(name, email),
-        call_report:call_reports(
-          working_title,
-          writer_name,
-          call_report_writers:call_report_writers(
-            writer_id,
-            display_order,
-            writer:writers(name)
-          )
-        ),
-        story:stories(title, status)
-      `, { count: "exact" });
+    // Check for project-based pagination mode
+    const groupByProject = searchParams.get("group_by_project") === "true";
+    const projectLimit = Math.min(50, Math.max(1, parseInt(searchParams.get("project_limit") || "20", 10)));
+    const projectPage = Math.max(1, parseInt(searchParams.get("project_page") || "1", 10));
 
-    // Apply filters
-    if (filters.call_report_id) {
-      query = query.eq("call_report_id", filters.call_report_id);
-    }
-    if (filters.story_id) {
-      query = query.eq("story_id", filters.story_id);
-    }
-    if (filters.logged_by) {
-      query = query.eq("logged_by", filters.logged_by);
-    }
-    if (filters.episode_number) {
-      query = query.eq("episode_number", filters.episode_number);
-    }
+    let episodes: any[] = [];
+    let count: number | null = 0;
+    let totalProjects = 0;
+    let hasMoreProjects = false;
 
-    // Apply pagination and sorting
-    query = applyPagination(query, paginationParams);
+    if (groupByProject && !filters.call_report_id && !filters.story_id) {
+      // Project-based pagination: fetch projects first, then all episodes for those projects
 
-    const { data: episodes, error, count } = await query;
+      // Step 1: Get distinct call_report_ids with pagination
+      const projectOffset = (projectPage - 1) * projectLimit;
 
-    if (error) {
-      logger.error(`Error fetching episodes: ${error instanceof Error ? error.message : String(error)}`);
-      return handleDatabaseError(error, "fetching episodes");
+      // Get total count of distinct projects
+      const { data: allProjectIds, error: countError } = await supabase
+        .from("episodes")
+        .select("call_report_id")
+        .not("call_report_id", "is", null);
+
+      if (countError) {
+        logger.error(`Error counting projects: ${countError.message}`);
+        return handleDatabaseError(countError, "counting projects");
+      }
+
+      // Get unique project IDs
+      const uniqueProjectIds = [...new Set((allProjectIds || []).map((e: any) => e.call_report_id))];
+      totalProjects = uniqueProjectIds.length;
+
+      // Get paginated project IDs (we need to sort them somehow - by most recent episode)
+      const { data: paginatedProjects, error: projectError } = await supabase
+        .from("episodes")
+        .select("call_report_id, created_at")
+        .not("call_report_id", "is", null)
+        .order("created_at", { ascending: false });
+
+      if (projectError) {
+        logger.error(`Error fetching projects: ${projectError.message}`);
+        return handleDatabaseError(projectError, "fetching projects");
+      }
+
+      // Get unique project IDs in order of most recent episode
+      const seenProjects = new Set<string>();
+      const orderedProjectIds: string[] = [];
+      for (const ep of paginatedProjects || []) {
+        if (ep.call_report_id && !seenProjects.has(ep.call_report_id)) {
+          seenProjects.add(ep.call_report_id);
+          orderedProjectIds.push(ep.call_report_id);
+        }
+      }
+
+      // Slice for current page
+      const projectIdsForPage = orderedProjectIds.slice(projectOffset, projectOffset + projectLimit);
+      hasMoreProjects = projectOffset + projectLimit < orderedProjectIds.length;
+
+      if (projectIdsForPage.length === 0) {
+        // No projects on this page
+        episodes = [];
+        count = 0;
+      } else {
+        // Step 2: Fetch ALL episodes for these projects (no episode limit)
+        const { data: projectEpisodes, error: episodesError, count: episodeCount } = await supabase
+          .from("episodes")
+          .select(`
+            *,
+            logged_by_user:users!logged_by(name, email),
+            call_report:call_reports(
+              working_title,
+              writer_name,
+              call_report_writers:call_report_writers(
+                writer_id,
+                display_order,
+                writer:writers(name)
+              )
+            ),
+            story:stories(title, status)
+          `, { count: "exact" })
+          .in("call_report_id", projectIdsForPage)
+          .order("episode_number", { ascending: true });
+
+        if (episodesError) {
+          logger.error(`Error fetching episodes: ${episodesError.message}`);
+          return handleDatabaseError(episodesError, "fetching episodes");
+        }
+
+        episodes = projectEpisodes || [];
+        count = episodeCount;
+      }
+    } else {
+      // Standard episode-based pagination (original behavior)
+      // Build query - include call_report_writers to support multi-writer display
+      let query = supabase
+        .from("episodes")
+        .select(`
+          *,
+          logged_by_user:users!logged_by(name, email),
+          call_report:call_reports(
+            working_title,
+            writer_name,
+            call_report_writers:call_report_writers(
+              writer_id,
+              display_order,
+              writer:writers(name)
+            )
+          ),
+          story:stories(title, status)
+        `, { count: "exact" });
+
+      // Apply filters
+      if (filters.call_report_id) {
+        query = query.eq("call_report_id", filters.call_report_id);
+      }
+      if (filters.story_id) {
+        query = query.eq("story_id", filters.story_id);
+      }
+      if (filters.logged_by) {
+        query = query.eq("logged_by", filters.logged_by);
+      }
+      if (filters.episode_number) {
+        query = query.eq("episode_number", filters.episode_number);
+      }
+
+      // Apply pagination and sorting
+      query = applyPagination(query, paginationParams);
+
+      const result = await query;
+
+      if (result.error) {
+        logger.error(`Error fetching episodes: ${result.error.message}`);
+        return handleDatabaseError(result.error, "fetching episodes");
+      }
+
+      episodes = result.data || [];
+      count = result.count;
     }
 
     // Fetch evaluation status if requested (single batch query instead of N+1)
@@ -347,19 +445,35 @@ export async function GET(request: NextRequest) {
       return transformed;
     });
 
-    // Create standardized paginated response
-    const response = createPaginatedResponse(
-      transformedEpisodes,
-      paginationParams.page,
-      paginationParams.limit,
-      count || 0
-    );
+    // Create response based on pagination mode
+    let response;
+    if (groupByProject && !filters.call_report_id && !filters.story_id) {
+      // Project-based pagination response
+      response = {
+        data: transformedEpisodes,
+        pagination: {
+          currentPage: projectPage,
+          pageSize: projectLimit,
+          totalItems: count || 0,
+          totalProjects,
+          hasMoreProjects,
+          mode: "project" as const,
+        },
+      };
+    } else {
+      // Standard episode-based pagination response
+      response = createPaginatedResponse(
+        transformedEpisodes,
+        paginationParams.page,
+        paginationParams.limit,
+        count || 0
+      );
+    }
 
     return withApiPerf(async () => {
       const res = NextResponse.json(response);
-      // Add HTTP caching headers to reduce database hits on repeated loads
-      // Cache for 60 seconds privately (user-specific data)
-      res.headers.set('Cache-Control', 'private, max-age=60, must-revalidate');
+      // Disable caching to ensure fresh data after episodes are created/updated
+      res.headers.set('Cache-Control', 'no-store');
       return addRateLimitHeaders(withCors(request, res), rate.result);
     }, request);
 

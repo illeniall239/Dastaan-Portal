@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
@@ -22,12 +22,14 @@ interface AddWriterDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onWriterAdded: (writer: Writer) => void;
+  initialName?: string;
 }
 
 export function AddWriterDialog({
   open,
   onOpenChange,
   onWriterAdded,
+  initialName = "",
 }: AddWriterDialogProps) {
   const [isLoading, setIsLoading] = useState(false);
 
@@ -40,6 +42,13 @@ export function AddWriterDialog({
     resolver: zodResolver(createWriterSchema),
     mode: "onBlur",
   });
+
+  // Pre-fill name when dialog opens with initialName
+  useEffect(() => {
+    if (open && initialName) {
+      reset({ name: initialName, email: "", phone: "" });
+    }
+  }, [open, initialName, reset]);
 
   const onSubmit = async (data: CreateWriterInput) => {
     setIsLoading(true);
@@ -89,7 +98,10 @@ export function AddWriterDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit(onSubmit)}>
+        <form onSubmit={(e) => {
+          e.stopPropagation();
+          handleSubmit(onSubmit)(e);
+        }}>
           <div className="grid gap-4 py-4">
             <div className="space-y-2">
               <Label htmlFor="name">

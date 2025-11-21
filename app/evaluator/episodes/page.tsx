@@ -124,9 +124,15 @@ export default function EvaluatorEpisodesPage() {
   const [episodes, setEpisodes] = useState<EpisodeWithDetails[]>([]);
   const [evaluationStatus, setEvaluationStatus] = useState<EvaluationStatus>({});
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
   const [expandedProjects, setExpandedProjects] = useState<Set<string>>(new Set());
+
+  // Project-based pagination state
+  const [projectPage, setProjectPage] = useState(1);
+  const [hasMoreProjects, setHasMoreProjects] = useState(false);
+  const [totalProjects, setTotalProjects] = useState(0);
   const [expandedEvalProjects, setExpandedEvalProjects] = useState<Set<string>>(new Set());
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [currentUserRole, setCurrentUserRole] = useState<string | null>(null);
@@ -154,8 +160,12 @@ export default function EvaluatorEpisodesPage() {
   const [myEvaluations, setMyEvaluations] = useState<EpisodicEvaluationWithDetails[]>([]);
   const [evaluationsLoading, setEvaluationsLoading] = useState(false);
 
-  const fetchEpisodesAndStatus = useCallback(async () => {
-    setLoading(true);
+  const fetchEpisodesAndStatus = useCallback(async (page: number = 1, append: boolean = false) => {
+    if (page === 1) {
+      setLoading(true);
+    } else {
+      setLoadingMore(true);
+    }
 
     try {
       // Fetch user info first (needed for evaluation status)
@@ -175,9 +185,10 @@ export default function EvaluatorEpisodesPage() {
         setCurrentUserRole(userData.role);
       }
 
-      // Fetch episodes with evaluation status in one API call (optimized)
+      // Fetch episodes with project-based pagination (20 projects at a time, all their episodes)
       const response = await fetch(
-        `/api/episodes?limit=100&include_evaluation_status=true`
+        `/api/episodes?group_by_project=true&project_limit=20&project_page=${page}&include_evaluation_status=true`,
+        { cache: 'no-store' }
       );
       const data = await response.json();
 
@@ -186,21 +197,45 @@ export default function EvaluatorEpisodesPage() {
       }
 
       const fetchedEpisodes = data.data || [];
-      setEpisodes(fetchedEpisodes);
+
+      // Update episodes state (append for "load more")
+      if (append) {
+        setEpisodes(prev => [...prev, ...fetchedEpisodes]);
+      } else {
+        setEpisodes(fetchedEpisodes);
+      }
 
       // Build evaluation status from API response (already included)
       const status: EvaluationStatus = {};
       fetchedEpisodes.forEach((ep: any) => {
         status[ep.id] = ep.is_evaluated || false;
       });
-      setEvaluationStatus(status);
+
+      if (append) {
+        setEvaluationStatus(prev => ({ ...prev, ...status }));
+      } else {
+        setEvaluationStatus(status);
+      }
+
+      // Update pagination state
+      setProjectPage(page);
+      setHasMoreProjects(data.pagination?.hasMoreProjects || false);
+      setTotalProjects(data.pagination?.totalProjects || 0);
     } catch (error: any) {
       console.error("Error fetching episodes:", error);
       toast.error(error.message || "Failed to load episodes");
     } finally {
       setLoading(false);
+      setLoadingMore(false);
     }
   }, []); // supabase client is stable, no need to include in dependencies
+
+  // Load more projects
+  const loadMoreProjects = useCallback(() => {
+    if (!loadingMore && hasMoreProjects) {
+      fetchEpisodesAndStatus(projectPage + 1, true);
+    }
+  }, [loadingMore, hasMoreProjects, projectPage, fetchEpisodesAndStatus]);
 
   const fetchCallReports = useCallback(async () => {
     setFetchingData(true);
@@ -305,7 +340,8 @@ useEffect(() => {
     setExistingEpisodesLoading(true);
     try {
       const response = await fetch(
-        `/api/episodes?call_report_id=${selectedSource}&limit=100`
+        `/api/episodes?call_report_id=${selectedSource}&limit=100`,
+        { cache: 'no-store' }
       );
       const data = await response.json();
       if (!response.ok) {
@@ -496,8 +532,9 @@ const fetchMyEvaluations = async () => {
         },
       ]);
 
-      // Refresh episodes list
+      // Refresh episodes list and switch to list tab to show new episodes
       fetchEpisodesAndStatus();
+      setActiveTab("list");
     } catch (error: any) {
       console.error("Error creating episodes:", error);
       toast.error(error.message || "Failed to log episodes");
@@ -1167,6 +1204,30 @@ const handleSaveExistingEpisode = async (episodeId: string) => {
           {filteredEpisodes.length > 0 && debouncedSearchTerm && (
             <div className="text-sm text-muted-foreground">
               Found {filteredEpisodes.length} matching episode(s)
+            </div>
+          )}
+
+          {/* Load More Projects button */}
+          {!debouncedSearchTerm && hasMoreProjects && (
+            <div className="flex flex-col items-center gap-2 pt-4">
+              <Button
+                variant="outline"
+                onClick={loadMoreProjects}
+                disabled={loadingMore}
+                className="w-full max-w-xs"
+              >
+                {loadingMore ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Loading more projects...
+                  </>
+                ) : (
+                  "Load More Projects"
+                )}
+              </Button>
+              <p className="text-sm text-muted-foreground">
+                Showing {projects.length} of {totalProjects} projects
+              </p>
             </div>
           )}
         </TabsContent>

@@ -339,6 +339,7 @@ export function WriterMultiSelect({
         open={addWriterDialogOpen}
         onOpenChange={setAddWriterDialogOpen}
         onWriterAdded={handleWriterAdded}
+        initialName={newWriterInitialName}
       />
     </div>
   );
