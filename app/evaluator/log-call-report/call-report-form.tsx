@@ -99,7 +99,7 @@ export function CallReportForm({
     contentType: "",
     notes: "",
     nextSteps: "",
-    status: "draft"
+    status: "ready_for_evaluation"
   });
 
 
@@ -398,7 +398,7 @@ export function CallReportForm({
           targetSlot: "",
           notes: "",
           nextSteps: "",
-          status: "draft"
+          status: "ready_for_evaluation"
         });
         setWriters([]);
         setFilesToUpload([]);

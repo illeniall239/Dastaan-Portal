@@ -101,7 +101,7 @@ export function CallReportForm({
     contentType: "",
     notes: "",
     nextSteps: "",
-    status: "draft",
+    status: "ready_for_evaluation",
     overallRating: 5
   });
 
@@ -402,7 +402,7 @@ export function CallReportForm({
           contentType: "",
           notes: "",
           nextSteps: "",
-          status: "draft",
+          status: "ready_for_evaluation",
           overallRating: 5
         });
         setWriters([]);

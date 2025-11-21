@@ -166,7 +166,7 @@ export class CallReportService {
       const callReport = await this.callReportRepo.create({
         ...data,
         end_time: endTime,
-        status: 'draft',
+        status: 'ready_for_evaluation',
         evaluation_status: 'pending',
         required_evaluations: this.DEFAULT_REQUIRED_EVALUATIONS,
         required_internal_evaluators: this.DEFAULT_REQUIRED_INTERNAL,
