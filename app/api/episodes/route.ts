@@ -243,6 +243,9 @@ export async function GET(request: NextRequest) {
       episode_number: searchParams.get("episode_number") || undefined,
     };
 
+    // Check if client wants evaluation status included (for performance optimization)
+    const includeEvaluationStatus = searchParams.get("include_evaluation_status") === "true";
+
     // Validate query parameters
     const validation = episodesQuerySchema.safeParse(rawFilters);
     if (!validation.success) {
@@ -296,24 +299,52 @@ export async function GET(request: NextRequest) {
       return handleDatabaseError(error, "fetching episodes");
     }
 
+    // Fetch evaluation status if requested (single batch query instead of N+1)
+    let evaluationStatusMap: Record<string, boolean> = {};
+    if (includeEvaluationStatus && episodes && episodes.length > 0) {
+      const episodeIds = episodes.map((ep: any) => ep.id);
+      const { data: evaluations } = await supabase
+        .from("episodic_evaluations")
+        .select("episode_id")
+        .eq("evaluator_id", user.id)
+        .in("episode_id", episodeIds);
+
+      if (evaluations) {
+        evaluations.forEach((evaluation: any) => {
+          evaluationStatusMap[evaluation.episode_id] = true;
+        });
+      }
+    }
+
     // Transform episodes to include writer_names array for multi-writer support
     const transformedEpisodes = (episodes || []).map((episode: any) => {
+      let transformed = episode;
+
+      // Add writer_names if call_report_writers exists
       if (episode.call_report?.call_report_writers) {
-        // Extract and sort writer names
         const writers = episode.call_report.call_report_writers
           .sort((a: any, b: any) => (a.display_order ?? 0) - (b.display_order ?? 0))
           .map((w: any) => w.writer?.name)
           .filter((name: string | null) => !!name);
 
-        return {
-          ...episode,
+        transformed = {
+          ...transformed,
           call_report: {
             ...episode.call_report,
             writer_names: writers,
           },
         };
       }
-      return episode;
+
+      // Add evaluation status if requested
+      if (includeEvaluationStatus) {
+        transformed = {
+          ...transformed,
+          is_evaluated: !!evaluationStatusMap[episode.id],
+        };
+      }
+
+      return transformed;
     });
 
     // Create standardized paginated response

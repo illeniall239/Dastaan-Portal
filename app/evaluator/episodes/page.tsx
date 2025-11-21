@@ -125,6 +125,7 @@ export default function EvaluatorEpisodesPage() {
   const [evaluationStatus, setEvaluationStatus] = useState<EvaluationStatus>({});
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
   const [expandedProjects, setExpandedProjects] = useState<Set<string>>(new Set());
   const [expandedEvalProjects, setExpandedEvalProjects] = useState<Set<string>>(new Set());
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
@@ -155,17 +156,9 @@ export default function EvaluatorEpisodesPage() {
 
   const fetchEpisodesAndStatus = useCallback(async () => {
     setLoading(true);
+
     try {
-      const response = await fetch("/api/episodes?limit=100");
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || "Failed to fetch episodes");
-      }
-
-      setEpisodes(data.data || []);
-
-      // Fetch evaluation status for each episode and user info
+      // Fetch user info first (needed for evaluation status)
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
@@ -182,32 +175,24 @@ export default function EvaluatorEpisodesPage() {
         setCurrentUserRole(userData.role);
       }
 
-      // Fetch evaluation status for all episodes in a single query (batch operation)
-      const status: EvaluationStatus = {};
-      const episodeIds = (data.data || []).map((ep: EpisodeWithDetails) => ep.id);
+      // Fetch episodes with evaluation status in one API call (optimized)
+      const response = await fetch(
+        `/api/episodes?limit=100&include_evaluation_status=true`
+      );
+      const data = await response.json();
 
-      if (episodeIds.length > 0) {
-        const { data: evaluations } = await supabase
-          .from("episodic_evaluations")
-          .select("episode_id")
-          .eq("evaluator_id", user.id)
-          .in("episode_id", episodeIds);
-
-        // Build status map from results
-        if (evaluations) {
-          evaluations.forEach(evaluation => {
-            status[evaluation.episode_id] = true;
-          });
-        }
-
-        // Set false for episodes without evaluations
-        episodeIds.forEach((id: string) => {
-          if (!(id in status)) {
-            status[id] = false;
-          }
-        });
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to fetch episodes");
       }
 
+      const fetchedEpisodes = data.data || [];
+      setEpisodes(fetchedEpisodes);
+
+      // Build evaluation status from API response (already included)
+      const status: EvaluationStatus = {};
+      fetchedEpisodes.forEach((ep: any) => {
+        status[ep.id] = ep.is_evaluated || false;
+      });
       setEvaluationStatus(status);
     } catch (error: any) {
       console.error("Error fetching episodes:", error);
@@ -277,10 +262,25 @@ export default function EvaluatorEpisodesPage() {
     }
   }, []); // supabase client is stable, no need to include in dependencies
 
+  // Initial load - only fetch episodes, call reports loaded when Log tab is active
   useEffect(() => {
     fetchEpisodesAndStatus();
-    fetchCallReports();
-  }, [fetchEpisodesAndStatus, fetchCallReports]);
+  }, [fetchEpisodesAndStatus]);
+
+  // Lazy load call reports only when Log tab is active
+  useEffect(() => {
+    if (activeTab === "log" && callReports.length === 0) {
+      fetchCallReports();
+    }
+  }, [activeTab, callReports.length, fetchCallReports]);
+
+  // Search debounce effect (300ms)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
 
 useEffect(() => {
   const numbers = existingEpisodesForSource
@@ -507,10 +507,11 @@ const fetchMyEvaluations = async () => {
   };
 
   // Memoize filtering to avoid re-filtering on every render
+  // Use debouncedSearchTerm for better performance during typing
   const filteredEpisodes = useMemo(() => {
-    if (!searchTerm.trim()) return episodes;
+    if (!debouncedSearchTerm.trim()) return episodes;
 
-    const searchLower = searchTerm.toLowerCase();
+    const searchLower = debouncedSearchTerm.toLowerCase();
     return episodes.filter((episode) => (
       episode.episode_number.toString().includes(searchLower) ||
       episode.title?.toLowerCase().includes(searchLower) ||
@@ -519,7 +520,7 @@ const fetchMyEvaluations = async () => {
       episode.story?.title?.toLowerCase().includes(searchLower) ||
       episode.logged_by_user?.name?.toLowerCase().includes(searchLower)
     ));
-  }, [episodes, searchTerm]);
+  }, [episodes, debouncedSearchTerm]);
 
   // Group episodes by project (call_report or story), tracking evaluation progress
   const groupEpisodesByProject = (episodeList: EpisodeWithDetails[]): ProjectGroup[] => {
@@ -1163,9 +1164,9 @@ const handleSaveExistingEpisode = async (episodeId: string) => {
             </div>
           )}
 
-          {filteredEpisodes.length > 0 && (
+          {filteredEpisodes.length > 0 && debouncedSearchTerm && (
             <div className="text-sm text-muted-foreground">
-              Showing {filteredEpisodes.length} of {episodes.length} episode(s)
+              Found {filteredEpisodes.length} matching episode(s)
             </div>
           )}
         </TabsContent>
