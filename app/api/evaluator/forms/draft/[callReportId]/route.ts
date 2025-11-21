@@ -4,6 +4,15 @@ import { createClient } from "@/lib/supabase/server";
 import { z } from "zod";
 import { applyRateLimit, addRateLimitHeaders, withCors } from "@/lib/api-middleware";
 import { RateLimitPresets } from "@/lib/rate-limit-redis";
+import {
+  unauthorizedError,
+  forbiddenError,
+  notFoundError,
+  handleDatabaseError,
+  handleValidationError,
+  createSuccessResponse,
+  internalError,
+} from "@/lib/api/errors";
 
 // Schema for validating draft data
 // All scoring fields are optional since drafts can be partial
@@ -34,7 +43,7 @@ export async function GET(
   // Check authentication
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return unauthorizedError();
   }
 
   try {
@@ -48,10 +57,7 @@ export async function GET(
 
     if (error && error.code !== 'PGRST116') { // PGRST116 means no rows found
       logger.error(`Error fetching draft evaluation: ${error instanceof Error ? error.message : String(error)}`);
-      return NextResponse.json(
-        { error: "Failed to fetch draft evaluation", details: error.message },
-        { status: 500 }
-      );
+      return handleDatabaseError(error, "fetching draft evaluation");
     }
 
     if (!data) {
@@ -62,10 +68,7 @@ export async function GET(
     return addRateLimitHeaders(withCors(request, NextResponse.json({ draft: data })), rate.result);
   } catch (error) {
     logger.error(`Unexpected error: ${error instanceof Error ? error.message : String(error)}`);
-    return withCors(request, NextResponse.json(
-      { error: "An unexpected error occurred" },
-      { status: 500 }
-    ));
+    return withCors(request, internalError());
   }
 }
 
@@ -81,7 +84,7 @@ export async function POST(
   // Check authentication
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return unauthorizedError();
   }
 
   // Check user role
@@ -92,10 +95,7 @@ export async function POST(
     .single();
 
   if (userError || !userData || !["evaluator", "admin"].includes(userData.role)) {
-    return NextResponse.json(
-      { error: "Forbidden - Only evaluators can save draft evaluations" },
-      { status: 403 }
-    );
+    return forbiddenError("Only evaluators can save draft evaluations");
   }
 
   try {
@@ -105,10 +105,7 @@ export async function POST(
     const validation = draftDataSchema.safeParse(body);
 
     if (!validation.success) {
-      return NextResponse.json(
-        { error: "Validation failed", details: validation.error.format() },
-        { status: 400 }
-      );
+      return handleValidationError(validation.error);
     }
 
     const draftData = validation.data;
@@ -121,10 +118,7 @@ export async function POST(
       .single();
 
     if (callReportError || !callReport) {
-      return NextResponse.json(
-        { error: "Call report not found" },
-        { status: 404 }
-      );
+      return notFoundError("Call report");
     }
 
     // Insert or update draft evaluation
@@ -143,10 +137,7 @@ export async function POST(
 
     if (insertError) {
       logger.error(`Error saving draft evaluation:: ${insertError instanceof Error ? insertError.message : String(insertError)}`);
-      return NextResponse.json(
-        { error: "Failed to save draft evaluation", details: insertError.message },
-        { status: 500 }
-      );
+      return handleDatabaseError(insertError, "saving draft evaluation");
     }
 
     return addRateLimitHeaders(withCors(request, NextResponse.json(
@@ -158,10 +149,7 @@ export async function POST(
     )), rate.result);
   } catch (error) {
     logger.error(`Unexpected error: ${error instanceof Error ? error.message : String(error)}`);
-    return withCors(request, NextResponse.json(
-      { error: "An unexpected error occurred" },
-      { status: 500 }
-    ));
+    return withCors(request, internalError());
   }
 }
 
@@ -177,7 +165,7 @@ export async function DELETE(
   // Check authentication
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return unauthorizedError();
   }
 
   try {
@@ -197,10 +185,7 @@ export async function DELETE(
         );
       }
       logger.error(`Error fetching draft evaluation:: ${fetchError instanceof Error ? fetchError.message : String(fetchError)}`);
-      return NextResponse.json(
-        { error: "Failed to fetch draft evaluation", details: fetchError.message },
-        { status: 500 }
-      );
+      return handleDatabaseError(fetchError, "fetching draft evaluation");
     }
 
     // Delete the draft
@@ -212,10 +197,7 @@ export async function DELETE(
 
     if (deleteError) {
       logger.error(`Error deleting draft evaluation:: ${deleteError instanceof Error ? deleteError.message : String(deleteError)}`);
-      return NextResponse.json(
-        { error: "Failed to delete draft evaluation", details: deleteError.message },
-        { status: 500 }
-      );
+      return handleDatabaseError(deleteError, "deleting draft evaluation");
     }
 
     return addRateLimitHeaders(withCors(request, NextResponse.json({
@@ -223,9 +205,6 @@ export async function DELETE(
     })), rate.result);
   } catch (error) {
     logger.error(`Unexpected error: ${error instanceof Error ? error.message : String(error)}`);
-    return withCors(request, NextResponse.json(
-      { error: "An unexpected error occurred" },
-      { status: 500 }
-    ));
+    return withCors(request, internalError());
   }
 }

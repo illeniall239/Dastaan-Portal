@@ -168,7 +168,38 @@ export type EvaluationStatus =
   | "rejected"
   | "completed_after_deadline";
 
-// Call Report types
+/**
+ * Call Report type representing writer engagement meetings
+ *
+ * @remarks
+ * Call reports support multiple writers through the `writers` array.
+ * The `writer_name` field is deprecated but kept for backward compatibility.
+ *
+ * When displaying writers:
+ * - Use `writers` array if available (joined with getAllCallReports() or similar)
+ * - Fall back to `writer_name` for legacy data
+ * - Use the utility function `getWriterDisplayName()` for consistent formatting
+ *
+ * @example
+ * ```typescript
+ * // Fetching with writers
+ * const report = await supabase
+ *   .from("call_reports")
+ *   .select(`
+ *     *,
+ *     call_report_writers:call_report_writers (
+ *       writer_id,
+ *       writer_email,
+ *       display_order,
+ *       writer:writers(name)
+ *     )
+ *   `)
+ *   .single();
+ *
+ * // Display writers
+ * const displayName = getWriterDisplayName(report);
+ * ```
+ */
 export interface CallReport {
   id: string;
   call_report_id: string; // CR-YYYY-NNNN
@@ -176,9 +207,26 @@ export interface CallReport {
   meeting_date: string;
   duration_minutes?: number; // Meeting duration in minutes (default: 60)
   end_time?: string; // Computed end time (meeting_date + duration)
-  writer_name: string; // Deprecated: kept for backward compatibility
-  writers?: CallReportWriter[]; // NEW: Multiple writers with contact info
-  suggested_writer?: string; // Optional text field for suggesting writers
+
+  /** @deprecated Use `writers` array instead. Kept for backward compatibility with old data. */
+  writer_name: string;
+
+  /**
+   * Array of writers associated with this call report.
+   * Populated when joining with call_report_writers table.
+   * Use this for displaying multiple writers.
+   */
+  writers?: CallReportWriter[];
+
+  /**
+   * Convenience array of writer names (strings only).
+   * Typically populated by server-side processing from writers array.
+   * Example: ["John Doe", "Jane Smith"]
+   */
+  writer_names?: string[];
+
+  /** Optional text field for suggesting writers */
+  suggested_writer?: string;
   contact_type: "Direct" | "Agent" | "Production Company" | "Other";
   contact_email: string; // Deprecated: kept for backward compatibility
   contact_phone?: string; // Deprecated: kept for backward compatibility

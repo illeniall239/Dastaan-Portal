@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, Fragment, useRef } from "react";
+import { useState, useEffect, useCallback, useMemo, Fragment, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -182,16 +182,30 @@ export default function EvaluatorEpisodesPage() {
         setCurrentUserRole(userData.role);
       }
 
+      // Fetch evaluation status for all episodes in a single query (batch operation)
       const status: EvaluationStatus = {};
-      for (const episode of data.data || []) {
-        const { data: evaluation } = await supabase
-          .from("episodic_evaluations")
-          .select("id")
-          .eq("episode_id", episode.id)
-          .eq("evaluator_id", user.id)
-          .maybeSingle();
+      const episodeIds = (data.data || []).map((ep: EpisodeWithDetails) => ep.id);
 
-        status[episode.id] = !!evaluation;
+      if (episodeIds.length > 0) {
+        const { data: evaluations } = await supabase
+          .from("episodic_evaluations")
+          .select("episode_id")
+          .eq("evaluator_id", user.id)
+          .in("episode_id", episodeIds);
+
+        // Build status map from results
+        if (evaluations) {
+          evaluations.forEach(evaluation => {
+            status[evaluation.episode_id] = true;
+          });
+        }
+
+        // Set false for episodes without evaluations
+        episodeIds.forEach((id: string) => {
+          if (!(id in status)) {
+            status[id] = false;
+          }
+        });
       }
 
       setEvaluationStatus(status);
@@ -492,17 +506,20 @@ const fetchMyEvaluations = async () => {
     }
   };
 
-  const filteredEpisodes = episodes.filter((episode) => {
+  // Memoize filtering to avoid re-filtering on every render
+  const filteredEpisodes = useMemo(() => {
+    if (!searchTerm.trim()) return episodes;
+
     const searchLower = searchTerm.toLowerCase();
-    return (
+    return episodes.filter((episode) => (
       episode.episode_number.toString().includes(searchLower) ||
       episode.title?.toLowerCase().includes(searchLower) ||
       episode.call_report?.working_title?.toLowerCase().includes(searchLower) ||
       episode.call_report?.writer_name?.toLowerCase().includes(searchLower) ||
       episode.story?.title?.toLowerCase().includes(searchLower) ||
       episode.logged_by_user?.name?.toLowerCase().includes(searchLower)
-    );
-  });
+    ));
+  }, [episodes, searchTerm]);
 
   // Group episodes by project (call_report or story), tracking evaluation progress
   const groupEpisodesByProject = (episodeList: EpisodeWithDetails[]): ProjectGroup[] => {
@@ -519,7 +536,11 @@ const fetchMyEvaluations = async () => {
       if (ep.call_report_id && ep.call_report) {
         projectId = `call_report_${ep.call_report_id}`;
         projectName = ep.call_report.working_title;
-        writerName = ep.call_report.writer_name;
+        // Support multiple writers - use writer_names array if available, fallback to single writer_name
+        const callReport = ep.call_report as any; // Type assertion for writer_names field
+        writerName = callReport.writer_names && callReport.writer_names.length > 0
+          ? callReport.writer_names.join(", ")
+          : ep.call_report.writer_name;
         projectType = "call_report";
         sourceId = ep.call_report_id;
       } else if (ep.story_id && ep.story) {
@@ -564,7 +585,11 @@ const fetchMyEvaluations = async () => {
     return Array.from(projectsMap.values()).sort((a, b) => a.projectName.localeCompare(b.projectName));
   };
 
-  const projects = groupEpisodesByProject(filteredEpisodes);
+  // Memoize grouping operation to avoid re-grouping on every render
+  const projects = useMemo(
+    () => groupEpisodesByProject(filteredEpisodes),
+    [filteredEpisodes, evaluationStatus]
+  );
 
   // Group my evaluations by project for collapsible UI in My Evaluations tab
   const groupMyEvaluationsByProject = (

@@ -82,7 +82,21 @@ async function DashboardContent({ userId }: { userId: string }) {
     (async () => {
       const { data: allCallReports } = await supabase
         .from("call_reports")
-        .select("id, call_report_id, working_title, writer_name, meeting_date, logline")
+        .select(`
+          id,
+          call_report_id,
+          working_title,
+          writer_name,
+          meeting_date,
+          logline,
+          call_report_writers:call_report_writers (
+            writer_id,
+            writer_email,
+            writer_phone,
+            display_order,
+            writer:writers(name)
+          )
+        `)
         .eq("meeting_type", "call_report")
         .order("meeting_date", { ascending: false });
 
@@ -92,7 +106,17 @@ async function DashboardContent({ userId }: { userId: string }) {
         .eq("evaluator_id", userId);
 
       const evaluatedReportIds = new Set(myEvaluations?.map(e => e.call_report_id) || []);
-      return (allCallReports || []).filter(
+
+      // Process writers and add writer_names array
+      const processedReports = (allCallReports || []).map((report: any) => {
+        const writers = report.call_report_writers?.map((w: any) => w.writer?.name || "").filter(Boolean) || [];
+        return {
+          ...report,
+          writer_names: writers.length > 0 ? writers : undefined,
+        };
+      });
+
+      return processedReports.filter(
         report => !evaluatedReportIds.has(report.id)
       ).slice(0, 5);
     })(),
@@ -232,7 +256,9 @@ async function DashboardContent({ userId }: { userId: string }) {
                             {report.working_title || "Untitled Project"}
                           </p>
                           <p className="text-sm text-muted-foreground">
-                            Writer: {report.writer_name}
+                            {report.writer_names && report.writer_names.length > 1
+                              ? `Writers: ${report.writer_names.join(", ")}`
+                              : `Writer: ${report.writer_name || "Unknown"}`}
                           </p>
                           <p className="text-xs text-muted-foreground mt-1">
                             Meeting: {new Date(report.meeting_date).toLocaleDateString()}

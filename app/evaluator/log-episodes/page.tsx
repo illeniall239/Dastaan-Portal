@@ -66,10 +66,24 @@ export default function LogEpisodesPage() {
       setFetchingData(true);
 
       try {
-        // Fetch call reports (only logged reports, not scheduled meetings)
-        const { data: callReportsData, error: crError } = await supabase
+        // Fetch call reports with writers in a single query using JOIN (eliminates N+1)
+        const { data: callReportsData, error: crError} = await supabase
           .from("call_reports")
-          .select("id, working_title, writer_name, meeting_type, story_id")
+          .select(`
+            id,
+            working_title,
+            writer_name,
+            meeting_type,
+            story_id,
+            call_report_writers:call_report_writers (
+              id,
+              writer_id,
+              writer_email,
+              writer_phone,
+              display_order,
+              writer:writers(name)
+            )
+          `)
           .eq("meeting_type", "call_report")
           .order("created_at", { ascending: false })
           .limit(100);
@@ -77,37 +91,28 @@ export default function LogEpisodesPage() {
         if (crError) {
           console.error("Error fetching call reports:", crError);
         } else if (callReportsData) {
-          // Fetch writers for each call report
-          const reportsWithWriters = await Promise.all(
-            callReportsData.map(async (report) => {
-              const { data: writers } = await supabase
-                .from("call_report_writers")
-                .select(`
-                  id,
-                  writer_id,
-                  writer_email,
-                  writer_phone,
-                  display_order,
-                  writer:writers(name)
-                `)
-                .eq("call_report_id", report.id)
-                .order("display_order", { ascending: true });
-
-              const transformedWriters: CallReportWriter[] = writers?.map(w => ({
+          // Transform the joined data
+          const reportsWithWriters = callReportsData.map((report: any) => {
+            const transformedWriters: CallReportWriter[] =
+              report.call_report_writers?.map((w: any) => ({
                 id: w.id,
                 writer_id: w.writer_id,
-                writer_name: (w.writer as any)?.name || "",
+                writer_name: w.writer?.name || "",
                 writer_email: w.writer_email,
                 writer_phone: w.writer_phone,
                 display_order: w.display_order,
               })) || [];
 
-              return {
-                ...report,
-                writers: transformedWriters
-              };
-            })
-          );
+            // Sort writers by display_order
+            const sortedWriters = transformedWriters.sort(
+              (a, b) => a.display_order - b.display_order
+            );
+
+            return {
+              ...report,
+              writers: sortedWriters,
+            };
+          });
 
           setCallReports(reportsWithWriters);
         }
@@ -241,7 +246,9 @@ export default function LogEpisodesPage() {
       const result = await response.json();
 
       if (!response.ok) {
-        throw new Error(result.error || "Failed to create episodes");
+        // Show detailed error message if available (e.g., duplicate episode numbers)
+        const errorMessage = result.details || result.error || "Failed to create episodes";
+        throw new Error(errorMessage);
       }
 
       toast.success(`Successfully logged ${episodes.length} episode(s)`);

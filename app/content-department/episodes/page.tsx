@@ -130,7 +130,11 @@ export default function EpisodesListPage() {
       if (ep.call_report_id && ep.call_report) {
         projectId = `call_report_${ep.call_report_id}`;
         projectName = ep.call_report.working_title;
-        writerName = ep.call_report.writer_name;
+        // Support multiple writers - use writer_names array if available, fallback to single writer_name
+        const callReport = ep.call_report as any; // Type assertion for writer_names field
+        writerName = callReport.writer_names && callReport.writer_names.length > 0
+          ? callReport.writer_names.join(", ")
+          : ep.call_report.writer_name;
         projectType = "call_report";
       } else if (ep.story_id && ep.story) {
         projectId = `story_${ep.story_id}`;

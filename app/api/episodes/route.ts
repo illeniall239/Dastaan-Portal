@@ -5,6 +5,17 @@ import { createMultipleEpisodesSchema, episodesQuerySchema } from "@/lib/validat
 import { withApiPerf, applyRateLimit, addRateLimitHeaders, withCors } from "@/lib/api-middleware";
 import { RateLimitPresets } from "@/lib/rate-limit-redis";
 import { parsePaginationParams, applyPagination, createPaginatedResponse } from "@/lib/utils/pagination";
+import {
+  unauthorizedError,
+  forbiddenError,
+  notFoundError,
+  validationError,
+  conflictError,
+  handleDatabaseError,
+  handleValidationError,
+  createSuccessResponse,
+  internalError,
+} from "@/lib/api/errors";
 
 /**
  * POST /api/episodes
@@ -19,7 +30,7 @@ export async function POST(request: Request) {
   // Check authentication
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return unauthorizedError();
   }
 
   // Check user role
@@ -30,10 +41,7 @@ export async function POST(request: Request) {
     .single();
 
   if (!userData || !["content_creator", "content_manager", "evaluator", "admin"].includes(userData.role)) {
-    return NextResponse.json(
-      { error: "Forbidden - Insufficient permissions" },
-      { status: 403 }
-    );
+    return forbiddenError();
   }
 
   try {
@@ -41,10 +49,7 @@ export async function POST(request: Request) {
     const validation = createMultipleEpisodesSchema.safeParse(body);
 
     if (!validation.success) {
-      return NextResponse.json(
-        { error: validation.error.format() },
-        { status: 400 }
-      );
+      return handleValidationError(validation.error);
     }
 
     const { call_report_id, story_id, episodes } = validation.data;
@@ -58,13 +63,7 @@ export async function POST(request: Request) {
         .single();
       
       if (storyCheckError || !storyExists) {
-        return NextResponse.json(
-          {
-            error: "Invalid story",
-            details: `Story with ID ${story_id} not found or you don't have permission to access it`
-          },
-          { status: 404 }
-        );
+        return notFoundError("Story");
       }
     } else if (call_report_id) {
       const { data: callReportExists, error: crCheckError } = await supabase
@@ -74,13 +73,7 @@ export async function POST(request: Request) {
         .single();
       
       if (crCheckError || !callReportExists) {
-        return NextResponse.json(
-          {
-            error: "Invalid call report",
-            details: `Call report with ID ${call_report_id} not found or you don't have permission to access it`
-          },
-          { status: 404 }
-        );
+        return notFoundError("Call report");
       }
     }
 
@@ -92,12 +85,9 @@ export async function POST(request: Request) {
 
     if (duplicatesInBatch.length > 0) {
       const uniqueDuplicates = [...new Set(duplicatesInBatch)].sort((a, b) => a - b);
-      return NextResponse.json(
-        {
-          error: "Duplicate episode numbers in submission",
-          details: `Episode number(s) ${uniqueDuplicates.join(', ')} appear multiple times in your submission`
-        },
-        { status: 400 }
+      return validationError(
+        "Duplicate episode numbers in submission",
+        { duplicates: uniqueDuplicates }
       );
     }
 
@@ -122,12 +112,9 @@ export async function POST(request: Request) {
 
     if (existingEpisodes && existingEpisodes.length > 0) {
       const existingNumbers = existingEpisodes.map(ep => ep.episode_number).sort((a, b) => a - b);
-      return NextResponse.json(
-        {
-          error: "Duplicate episode numbers detected",
-          details: `Episode number(s) ${existingNumbers.join(', ')} already exist for this project. Please use different episode numbers or delete the existing episodes first.`
-        },
-        { status: 409 } // 409 Conflict
+      return conflictError(
+        `Episode number(s) ${existingNumbers.join(', ')} already exist for this project`,
+        { existingNumbers }
       );
     }
 
@@ -163,41 +150,31 @@ export async function POST(request: Request) {
           .from("episodes")
           .select("episode_number")
           .in("episode_number", episodeNumbers);
-        
+
         if (call_report_id) {
           conflictQuery = conflictQuery.eq("call_report_id", call_report_id);
         } else if (story_id) {
           conflictQuery = conflictQuery.eq("story_id", story_id);
         }
-        
+
         const { data: conflictingEpisodes } = await conflictQuery;
-        
-        let details = "One or more episode numbers already exist for this project. Please use different episode numbers or delete the existing episodes first.";
+
         if (conflictingEpisodes && conflictingEpisodes.length > 0) {
           const conflictingNumbers = conflictingEpisodes.map(ep => ep.episode_number).sort((a, b) => a - b);
-          details = `Episode number(s) ${conflictingNumbers.join(', ')} already exist for this ${call_report_id ? 'call report' : 'story'}. Please use different episode numbers or delete the existing episodes first.`;
+          return conflictError(
+            `Episode number(s) ${conflictingNumbers.join(', ')} already exist for this ${call_report_id ? 'call report' : 'story'}`,
+            { conflictingNumbers }
+          );
         } else {
           // Episodes exist but might be hidden by RLS - provide helpful message
-          details = `One or more episode numbers (${episodeNumbers.sort((a, b) => a - b).join(', ')}) already exist for this ${call_report_id ? 'call report' : 'story'}, but may not be visible due to permissions. Please contact an administrator or try different episode numbers.`;
+          return conflictError(
+            `One or more episode numbers already exist but may not be visible due to permissions`,
+            { attemptedNumbers: episodeNumbers.sort((a, b) => a - b) }
+          );
         }
-        
-        return NextResponse.json(
-          {
-            error: "Duplicate episode numbers detected",
-            details: details,
-            conflicting_episodes: conflictingEpisodes?.map(ep => ep.episode_number) || episodeNumbers
-          },
-          { status: 409 } // 409 Conflict
-        );
       }
 
-      return NextResponse.json(
-        {
-          error: "Failed to create episodes",
-          details: error.message || error.hint || JSON.stringify(error)
-        },
-        { status: 500 }
-      );
+      return handleDatabaseError(error, "creating episodes");
     }
 
     const res = NextResponse.json({
@@ -208,10 +185,7 @@ export async function POST(request: Request) {
 
   } catch (error) {
     logger.error(`Unexpected error: ${error instanceof Error ? error.message : String(error)}`);
-    return withCors(request, NextResponse.json(
-      { error: "An unexpected error occurred" },
-      { status: 500 }
-    ));
+    return withCors(request, internalError());
   }
 }
 
@@ -238,7 +212,7 @@ export async function GET(request: NextRequest) {
   // Check authentication
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return unauthorizedError();
   }
 
   // Check user role
@@ -249,10 +223,7 @@ export async function GET(request: NextRequest) {
     .single();
 
   if (!userData || !["content_creator", "content_manager", "evaluator", "executive", "admin"].includes(userData.role)) {
-    return NextResponse.json(
-      { error: "Forbidden - Insufficient permissions" },
-      { status: 403 }
-    );
+    return forbiddenError();
   }
 
   try {
@@ -276,26 +247,28 @@ export async function GET(request: NextRequest) {
     const validation = episodesQuerySchema.safeParse(rawFilters);
     if (!validation.success) {
       return addRateLimitHeaders(
-        withCors(
-          request,
-          NextResponse.json(
-            { error: "Invalid query parameters", details: validation.error.format() },
-            { status: 400 }
-          )
-        ),
+        withCors(request, handleValidationError(validation.error)),
         rate.result
       );
     }
 
     const filters = validation.data;
 
-    // Build query
+    // Build query - include call_report_writers to support multi-writer display
     let query = supabase
       .from("episodes")
       .select(`
         *,
         logged_by_user:users!logged_by(name, email),
-        call_report:call_reports(working_title, writer_name),
+        call_report:call_reports(
+          working_title,
+          writer_name,
+          call_report_writers:call_report_writers(
+            writer_id,
+            display_order,
+            writer:writers(name)
+          )
+        ),
         story:stories(title, status)
       `, { count: "exact" });
 
@@ -320,15 +293,32 @@ export async function GET(request: NextRequest) {
 
     if (error) {
       logger.error(`Error fetching episodes: ${error instanceof Error ? error.message : String(error)}`);
-      return NextResponse.json(
-        { error: "Failed to fetch episodes", details: error.message },
-        { status: 500 }
-      );
+      return handleDatabaseError(error, "fetching episodes");
     }
+
+    // Transform episodes to include writer_names array for multi-writer support
+    const transformedEpisodes = (episodes || []).map((episode: any) => {
+      if (episode.call_report?.call_report_writers) {
+        // Extract and sort writer names
+        const writers = episode.call_report.call_report_writers
+          .sort((a: any, b: any) => (a.display_order ?? 0) - (b.display_order ?? 0))
+          .map((w: any) => w.writer?.name)
+          .filter((name: string | null) => !!name);
+
+        return {
+          ...episode,
+          call_report: {
+            ...episode.call_report,
+            writer_names: writers,
+          },
+        };
+      }
+      return episode;
+    });
 
     // Create standardized paginated response
     const response = createPaginatedResponse(
-      episodes || [],
+      transformedEpisodes,
       paginationParams.page,
       paginationParams.limit,
       count || 0
@@ -336,14 +326,14 @@ export async function GET(request: NextRequest) {
 
     return withApiPerf(async () => {
       const res = NextResponse.json(response);
+      // Add HTTP caching headers to reduce database hits on repeated loads
+      // Cache for 60 seconds privately (user-specific data)
+      res.headers.set('Cache-Control', 'private, max-age=60, must-revalidate');
       return addRateLimitHeaders(withCors(request, res), rate.result);
     }, request);
 
   } catch (error) {
     logger.error(`Unexpected error: ${error instanceof Error ? error.message : String(error)}`);
-    return withCors(request, NextResponse.json(
-      { error: "An unexpected error occurred" },
-      { status: 500 }
-    ));
+    return withCors(request, internalError());
   }
 }

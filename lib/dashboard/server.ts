@@ -190,6 +190,13 @@ export async function getStakeholderDashboardStats() {
           writer_name,
           meeting_date,
           status,
+          call_report_writers:call_report_writers (
+            writer_id,
+            writer_email,
+            writer_phone,
+            display_order,
+            writer:writers(name)
+          ),
           evaluator_forms!left (
             id,
             average_score,
@@ -219,6 +226,13 @@ export async function getStakeholderDashboardStats() {
             writer_name,
             logline,
             meeting_date,
+            call_report_writers:call_report_writers (
+              writer_id,
+              writer_email,
+              writer_phone,
+              display_order,
+              writer:writers(name)
+            ),
             evaluator_forms (
               id,
               premise_conflict_score,
@@ -263,11 +277,16 @@ export async function getStakeholderDashboardStats() {
         ? submittedScores.reduce((sum: number, score: number) => sum + score, 0) / submittedScores.length
         : 0;
 
+      // Process writers - use writer_names array if available
+      const writers = report.call_report_writers?.map((w: any) => w.writer?.name || "").filter(Boolean) || [];
+      const writerDisplay = writers.length > 0 ? writers.join(", ") : report.writer_name;
+
       return {
         id: report.id,
         callReportId: report.call_report_id,
         title: report.working_title,
-        writer: report.writer_name,
+        writer: writerDisplay,
+        writerNames: writers.length > 0 ? writers : undefined,
         meetingDate: report.meeting_date,
         completedEvaluations,
         totalRequired,
@@ -299,10 +318,15 @@ export async function getStakeholderDashboardStats() {
         };
       });
 
+      // Process writers - use writer_names array if available
+      const writers = callReport.call_report_writers?.map((w: any) => w.writer?.name || "").filter(Boolean) || [];
+      const writerDisplay = writers.length > 0 ? writers.join(", ") : callReport.writer_name;
+
       return {
         id: log.id,
         callReportId: callReport.call_report_id,
-        writerName: callReport.writer_name,
+        writerName: writerDisplay,
+        writerNames: writers.length > 0 ? writers : undefined,
         workingTitle: callReport.working_title,
         logline: callReport.logline,
         meetingDate: callReport.meeting_date,

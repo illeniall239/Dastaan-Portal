@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -23,9 +23,6 @@ interface EpisodeUploadFormProps {
   existingEpisodeNumbers?: number[];
 }
 
-const sortEpisodes = (list: EpisodeFormEntry[]) =>
-  [...list].sort((a, b) => a.episode_number - b.episode_number);
-
 export function EpisodeUploadForm({
   episodes,
   onEpisodesChange,
@@ -33,7 +30,9 @@ export function EpisodeUploadForm({
   existingEpisodeNumbers = [],
 }: EpisodeUploadFormProps) {
   const updateEpisodes = (list: EpisodeFormEntry[]) => {
-    onEpisodesChange(sortEpisodes(list));
+    // Sort episodes by episode_number before updating parent
+    const sorted = [...list].sort((a, b) => a.episode_number - b.episode_number);
+    onEpisodesChange(sorted);
   };
 
   const addEpisode = () => {
@@ -65,7 +64,7 @@ export function EpisodeUploadForm({
   return (
     <div className="space-y-3 sm:space-y-4 md:space-y-6">
       {episodes.map((episode, index) => (
-        <Card key={index} className="p-3 sm:p-4 md:p-6">
+        <Card key={`episode-${episode.episode_number}-${index}`} className="p-3 sm:p-4 md:p-6">
           <div className="space-y-3 sm:space-y-4">
             {/* Header with Episode Number and Remove Button */}
             <div className="flex items-center justify-between mb-2 sm:mb-3 md:mb-4">

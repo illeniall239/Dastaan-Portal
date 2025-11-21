@@ -1,5 +1,13 @@
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
+import {
+  unauthorizedError,
+  notFoundError,
+  validationError,
+  handleDatabaseError,
+  internalError,
+  createSuccessResponse,
+} from "@/lib/api/errors";
 
 /**
  * GET /api/call-reports/[id]/writers
@@ -16,7 +24,7 @@ export async function GET(
     // Verify user is authenticated
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return unauthorizedError();
     }
 
     // Fetch writers with JOIN to get writer names
@@ -38,10 +46,7 @@ export async function GET(
 
     if (error) {
       console.error("Error fetching call report writers:", error);
-      return NextResponse.json(
-        { error: "Failed to fetch writers" },
-        { status: 500 }
-      );
+      return handleDatabaseError(error, "fetching call report writers");
     }
 
     // Transform to flatten writer name
@@ -60,10 +65,7 @@ export async function GET(
     return NextResponse.json({ writers: transformedWriters });
   } catch (error) {
     console.error("Error in GET /api/call-reports/[id]/writers:", error);
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
-    );
+    return internalError();
   }
 }
 
@@ -83,16 +85,13 @@ export async function POST(
     // Verify user is authenticated
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return unauthorizedError();
     }
 
     // Validate request body
     const { writers } = body;
     if (!Array.isArray(writers) || writers.length === 0) {
-      return NextResponse.json(
-        { error: "Writers array is required" },
-        { status: 400 }
-      );
+      return validationError("Writers array is required");
     }
 
     // Verify call report exists
@@ -103,10 +102,7 @@ export async function POST(
       .single();
 
     if (fetchError || !callReport) {
-      return NextResponse.json(
-        { error: "Call report not found" },
-        { status: 404 }
-      );
+      return notFoundError("Call report");
     }
 
     // Prepare writer records for insertion
@@ -126,10 +122,7 @@ export async function POST(
 
     if (insertError) {
       console.error("Error inserting writers:", insertError);
-      return NextResponse.json(
-        { error: "Failed to add writers", details: insertError.message },
-        { status: 500 }
-      );
+      return handleDatabaseError(insertError, "adding writers");
     }
 
     return NextResponse.json(
@@ -138,10 +131,7 @@ export async function POST(
     );
   } catch (error) {
     console.error("Error in POST /api/call-reports/[id]/writers:", error);
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
-    );
+    return internalError();
   }
 }
 
@@ -161,16 +151,13 @@ export async function PUT(
     // Verify user is authenticated
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return unauthorizedError();
     }
 
     // Validate request body
     const { writers } = body;
     if (!Array.isArray(writers) || writers.length === 0) {
-      return NextResponse.json(
-        { error: "Writers array with new order is required" },
-        { status: 400 }
-      );
+      return validationError("Writers array with new order is required");
     }
 
     // Update display_order for each writer
@@ -188,18 +175,12 @@ export async function PUT(
     const errors = results.filter(r => r.error);
     if (errors.length > 0) {
       console.error("Error reordering writers:", errors);
-      return NextResponse.json(
-        { error: "Failed to reorder writers" },
-        { status: 500 }
-      );
+      return handleDatabaseError(errors[0].error, "reordering writers");
     }
 
     return NextResponse.json({ message: "Writers reordered successfully" });
   } catch (error) {
     console.error("Error in PUT /api/call-reports/[id]/writers:", error);
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
-    );
+    return internalError();
   }
 }
