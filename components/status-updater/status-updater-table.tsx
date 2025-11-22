@@ -137,9 +137,14 @@ export function StatusUpdaterTable({ ideas }: StatusUpdaterTableProps) {
   // Filter and sort
   const filteredAndSortedIdeas = useMemo(() => {
     let filtered = ideas.filter(idea => {
+      // Search through all writer names
+      const writerNamesMatch = idea.writer_names?.some(name =>
+        name.toLowerCase().includes(searchTerm.toLowerCase())
+      ) || idea.writer_name?.toLowerCase().includes(searchTerm.toLowerCase());
+
       const matchesSearch = searchTerm === "" ||
         idea.working_title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        idea.writer_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        writerNamesMatch ||
         (idea.director && idea.director.toLowerCase().includes(searchTerm.toLowerCase()));
 
       const matchesGenre = genreFilter === "all" || idea.genre.includes(genreFilter);
@@ -164,8 +169,8 @@ export function StatusUpdaterTable({ ideas }: StatusUpdaterTableProps) {
           bVal = b.overall_rating || 0;
           break;
         case "writer":
-          aVal = a.writer_name.toLowerCase();
-          bVal = b.writer_name.toLowerCase();
+          aVal = (a.writer_names?.join(', ') || a.writer_name || '').toLowerCase();
+          bVal = (b.writer_names?.join(', ') || b.writer_name || '').toLowerCase();
           break;
         case "director":
           aVal = (a.director || "").toLowerCase();
@@ -372,7 +377,11 @@ export function StatusUpdaterTable({ ideas }: StatusUpdaterTableProps) {
                       </TableCell>
 
                       {/* Writer */}
-                      <TableCell className="text-sm text-slate-700">{idea.writer_name}</TableCell>
+                      <TableCell className="text-sm text-slate-700">
+                        {idea.writer_names && idea.writer_names.length > 0
+                          ? idea.writer_names.join(', ')
+                          : idea.writer_name || <span className="text-slate-400">N/A</span>}
+                      </TableCell>
 
                       {/* Director */}
                       <TableCell className="text-sm text-slate-700">

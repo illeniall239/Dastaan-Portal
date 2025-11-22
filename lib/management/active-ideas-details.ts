@@ -12,6 +12,7 @@ export interface ActiveIdeaDetail {
   call_report_id: string;
   working_title: string;
   writer_name: string;
+  writer_names: string[]; // All writers from call_report_writers table
   director: string | null;
   genre: string[];
   category: string;
@@ -88,6 +89,25 @@ export async function getActiveIdeasByGenre(genre?: string): Promise<ActiveIdeaD
           .in('call_report_id', callReportIds)
       : { data: [] };
 
+    // Fetch all writers for these call reports from call_report_writers junction table
+    const { data: callReportWritersData } = callReportIds.length > 0
+      ? await supabase
+          .from('call_report_writers')
+          .select('call_report_id, writers(id, name)')
+          .in('call_report_id', callReportIds)
+      : { data: [] };
+
+    // Group writers by call_report_id
+    const writersByCallReport: Record<string, string[]> = {};
+    (callReportWritersData || []).forEach((crw: any) => {
+      if (!writersByCallReport[crw.call_report_id]) {
+        writersByCallReport[crw.call_report_id] = [];
+      }
+      if (crw.writers?.name) {
+        writersByCallReport[crw.call_report_id].push(crw.writers.name);
+      }
+    });
+
     // Group evaluator scores by call_report_id
     const scoresByCallReport: Record<string, EvaluatorScores> = {};
     (evaluatorScoresData || []).forEach((score: any) => {
@@ -104,11 +124,18 @@ export async function getActiveIdeasByGenre(genre?: string): Promise<ActiveIdeaD
       const createdAt = new Date(report.created_at);
       const daysActive = Math.floor((now.getTime() - createdAt.getTime()) / (1000 * 60 * 60 * 24));
 
+      // Get writers from junction table, fallback to writer_name if none found
+      const writersFromJunction = writersByCallReport[report.id] || [];
+      const writerNames = writersFromJunction.length > 0
+        ? writersFromJunction
+        : (report.writer_name ? [report.writer_name] : []);
+
       return {
         id: report.id,
         call_report_id: report.call_report_id,
         working_title: report.working_title,
         writer_name: report.writer_name,
+        writer_names: writerNames,
         director: report.director,
         genre: Array.isArray(report.genre) ? report.genre : (report.genre ? [report.genre] : ['Other']),
         category: report.category || 'N/A',
