@@ -17,7 +17,7 @@ interface Meeting {
   working_title: string;
   logline?: string;
   usp?: string;
-  
+  location?: string;
   meeting_notes?: string;
   contact_email?: string;
   contact_phone?: string;
@@ -105,6 +105,16 @@ export function MeetingPeekPanel({ meeting, onClose }: MeetingPeekPanelProps) {
               </p>
             </div>
           </div>
+
+          {meeting.location && (
+            <div className="flex items-start gap-3">
+              <MapPin className="h-5 w-5 text-muted-foreground mt-0.5" />
+              <div>
+                <p className="text-sm font-medium">Location</p>
+                <p className="text-sm text-muted-foreground">{meeting.location}</p>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Writer Info */}
@@ -171,13 +181,13 @@ export function MeetingPeekPanel({ meeting, onClose }: MeetingPeekPanelProps) {
           </div>
         )}
 
-        {/* Meeting Notes */}
+        {/* Meeting Agenda */}
         {meeting.meeting_notes && (
           <div>
             <div className="flex items-start gap-3">
               <FileText className="h-5 w-5 text-muted-foreground mt-0.5" />
               <div className="flex-1">
-                <p className="text-sm font-medium mb-2">Meeting Notes</p>
+                <p className="text-sm font-medium mb-2">Meeting Agenda</p>
                 <p className="text-sm text-muted-foreground whitespace-pre-wrap">
                   {meeting.meeting_notes}
                 </p>

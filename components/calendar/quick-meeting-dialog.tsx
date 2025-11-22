@@ -30,9 +30,10 @@ import type { Writer } from "@/types";
 interface User {
   id: string;
   name: string;
-  email: string;
+  email: string | null;
   role?: string;
   department?: string;
+  type?: 'user' | 'writer';
 }
 
 interface QuickMeetingDialogProps {
@@ -168,8 +169,10 @@ export function QuickMeetingDialog({
       const minute = String(minutes).padStart(2, "0");
       const localDateTimeString = `${year}-${month}-${day}T${hour}:${minute}:00`;
 
-      // Map selected attendees to email array
-      const attendeeEmails = selectedAttendees.map(user => user.email);
+      // Map selected attendees - use email if available, otherwise use name for writers
+      const attendeeIdentifiers = selectedAttendees.map(user =>
+        user.email || `[Writer] ${user.name}`
+      );
 
       // Create meeting
       await createMeetingClient({
@@ -185,7 +188,7 @@ export function QuickMeetingDialog({
         // target_audience removed
         meeting_date: localDateTimeString,
         duration_minutes: parseInt(formData.duration), // Teams-style duration support
-        attendees: contactEmail ? [contactEmail, ...attendeeEmails] : attendeeEmails,
+        attendees: contactEmail ? [contactEmail, ...attendeeIdentifiers] : attendeeIdentifiers,
         location: formData.location,
         notes: formData.notes,
         status: "draft",
@@ -361,10 +364,10 @@ export function QuickMeetingDialog({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="notes">Meeting Notes</Label>
+            <Label htmlFor="notes">Meeting Agenda</Label>
             <Textarea
               id="notes"
-              placeholder="Add any relevant details..."
+              placeholder="Add agenda items or relevant details..."
               rows={3}
               value={formData.notes}
               onChange={handleInputChange}

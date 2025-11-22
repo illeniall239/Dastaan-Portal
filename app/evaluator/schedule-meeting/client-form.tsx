@@ -156,7 +156,7 @@ export function ClientScheduleMeetingForm({ userId }: { userId: string }) {
       });
 
       toast.success("Meeting scheduled successfully!");
-      router.push("/content-department/calendar");
+      router.push("/evaluator/calendar");
     } catch (error: any) {
       console.error("Error scheduling meeting:", error);
       toast.error(`Failed to schedule meeting: ${error.message || "Please try again."}`);

@@ -10,9 +10,10 @@ import { useSearchUsers } from "@/lib/hooks/queries/useSearchUsers";
 interface User {
   id: string;
   name: string;
-  email: string;
+  email: string | null;
   role?: string;
   department?: string;
+  type?: 'user' | 'writer';
 }
 
 interface MentionInputProps {
@@ -162,21 +163,26 @@ export function MentionInput({
                         index === selectedIndex ? "bg-muted" : ""
                       }`}
                     >
-                      <div className="font-medium text-sm">{user.name}</div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium text-sm">{user.name}</span>
+                        {user.type === 'writer' && (
+                          <span className="text-xs px-1.5 py-0.5 rounded bg-amber-100 text-amber-700">Writer</span>
+                        )}
+                      </div>
                       <div className="text-xs text-muted-foreground">
-                        {user.email}
-                        {user.role && ` • ${user.role}`}
+                        {user.email || (user.type === 'writer' ? 'External writer' : 'No email')}
+                        {user.role && user.type !== 'writer' && ` • ${user.role}`}
                       </div>
                     </button>
                   ))}
                 </div>
               ) : searchQuery.length > 0 ? (
                 <div className="p-4 text-sm text-muted-foreground text-center">
-                  No users found
+                  No users or writers found
                 </div>
               ) : (
                 <div className="p-4 text-sm text-muted-foreground text-center">
-                  Type to search users...
+                  Type to search users or writers...
                 </div>
               )}
             </div>
@@ -194,6 +200,7 @@ export function MentionInput({
               email={user.email}
               onRemove={() => handleRemoveUser(user.id)}
               disabled={disabled}
+              isWriter={user.type === 'writer'}
             />
           ))}
         </div>

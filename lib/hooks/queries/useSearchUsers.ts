@@ -3,10 +3,11 @@ import { useQuery } from "@tanstack/react-query";
 export interface User {
   id: string;
   name: string;
-  email: string;
+  email: string | null;
   role?: string;
   position?: string;
   department?: string;
+  type?: 'user' | 'writer';
 }
 
 interface UseSearchUsersOptions {

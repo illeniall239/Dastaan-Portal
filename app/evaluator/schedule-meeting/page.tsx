@@ -12,15 +12,15 @@ export default async function ScheduleMeetingPage() {
     redirect("/login");
   }
 
-  // Allow content department users to access this page
-  if (user.role !== "content_creator" && user.role !== "content_manager") {
-    redirect("/content-department");
+  // Allow only evaluators to access this page
+  if (user.role !== "evaluator") {
+    redirect("/evaluator");
   }
 
   return (
     <div className="mobile-container mobile-section max-w-4xl mx-auto">
       <div className="flex items-center gap-4 mb-6">
-        <BackButton fallbackHref="/content-department" variant="outline" />
+        <BackButton fallbackHref="/evaluator" variant="outline" />
         <div className="flex items-center gap-3">
           <div className="h-10 w-10 rounded-lg bg-[#224794] flex items-center justify-center">
             <CalendarPlus className="h-5 w-5 text-white" />

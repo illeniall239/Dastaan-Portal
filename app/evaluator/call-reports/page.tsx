@@ -43,7 +43,7 @@ export default async function EvaluatorCallReportsPage() {
         <div>
           <h1 className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight">Writer Engagement Reports</h1>
           <p className="text-muted-foreground mt-1 text-sm sm:text-base">
-            View all writer engagement reports and meeting documentation
+            View all logged writer engagement reports
           </p>
         </div>
         <div className="flex gap-2 w-full sm:w-auto">
@@ -90,7 +90,7 @@ async function CallReportsList() {
             <FileTextIcon className="h-12 w-12 text-muted-foreground mb-4" />
             <h3 className="text-lg font-semibold mb-2">No writer engagement reports yet</h3>
             <p className="text-sm text-muted-foreground mb-4 text-center max-w-md">
-              Start documenting your meetings with writers and producers by logging your first writer engagement report.
+              Start by logging your first writer engagement report.
             </p>
             <Button asChild>
               <Link href="/evaluator/log-call-report">
@@ -102,16 +102,11 @@ async function CallReportsList() {
         </Card>
       ) : (
         callReports.map((report: any) => {
-            const meetingDate = new Date(report.meeting_date);
-            const formattedDate = meetingDate.toLocaleDateString("en-US", {
+            const loggedDate = new Date(report.meeting_date);
+            const formattedDate = loggedDate.toLocaleDateString("en-US", {
               month: "short",
               day: "numeric",
               year: "numeric",
-            });
-            const formattedTime = meetingDate.toLocaleTimeString("en-US", {
-              hour: "numeric",
-              minute: "2-digit",
-              hour12: true,
             });
             const writerDisplayName =
               report.writer_names && report.writer_names.length > 0
@@ -172,8 +167,7 @@ async function CallReportsList() {
                       </CardDescription>
                     </div>
                     <div className="text-right text-sm text-muted-foreground">
-                      <div>{formattedDate}</div>
-                      <div>{formattedTime}</div>
+                      <div>Logged: {formattedDate}</div>
                     </div>
                   </div>
                 </CardHeader>

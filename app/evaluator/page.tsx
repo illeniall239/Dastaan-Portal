@@ -261,7 +261,7 @@ async function DashboardContent({ userId }: { userId: string }) {
                               : `Writer: ${report.writer_name || "Unknown"}`}
                           </p>
                           <p className="text-xs text-muted-foreground mt-1">
-                            Meeting: {new Date(report.meeting_date).toLocaleDateString()}
+                            Logged: {new Date(report.meeting_date).toLocaleDateString()}
                           </p>
                         </div>
                         <Button asChild variant="outline" size="sm">

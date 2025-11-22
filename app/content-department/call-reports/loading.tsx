@@ -11,7 +11,7 @@ export default function CallReportsLoading() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Writer Engagement Reports</h1>
           <p className="text-muted-foreground mt-1">
-            View all logged writer engagement reports and meeting documentation
+            View all logged writer engagement reports
           </p>
         </div>
         <Button asChild className="bg-[#224794] hover:bg-[#1a3670]">

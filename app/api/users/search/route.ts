@@ -53,8 +53,36 @@ export async function GET(request: Request) {
       pagination: { limit: 10 },
     });
 
-    logger.info(`Found ${users.length} users`);
-    const response = NextResponse.json({ users });
+    // Also search writers table
+    const { data: writers } = await supabase
+      .from('writers')
+      .select('id, name, email, phone')
+      .eq('status', 'active')
+      .or(`name.ilike.%${query}%,email.ilike.%${query}%`)
+      .order('name', { ascending: true })
+      .limit(10);
+
+    // Add type indicator to users
+    const usersWithType = users.map(user => ({
+      ...user,
+      type: 'user' as const,
+    }));
+
+    // Add type indicator to writers (with role as 'writer')
+    const writersWithType = (writers || []).map(writer => ({
+      id: writer.id,
+      name: writer.name,
+      email: writer.email || null,
+      role: 'writer',
+      department: null,
+      type: 'writer' as const,
+    }));
+
+    // Combine results (users first, then writers)
+    const combined = [...usersWithType, ...writersWithType];
+
+    logger.info(`Found ${users.length} users and ${writers?.length || 0} writers`);
+    const response = NextResponse.json({ users: combined });
     return addRateLimitHeaders(response, rateLimitResult.result);
   } catch (error: any) {
     return handleApiError(error);

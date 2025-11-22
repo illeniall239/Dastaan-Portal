@@ -37,7 +37,8 @@
       "Bash(npx reactbits-dev-mcp-server:*)",
       "mcp__reactbits__*",
       "Bash(git checkout:*)",
-      "Bash(git branch:*)"
+      "Bash(git branch:*)",
+      "Bash(if not exist \"C:\\Users\\Hamza\\Downloads\\Content-Portal\\Content-Portal\\app\\content-department\\schedule-meeting\" mkdir \"C:\\Users\\Hamza\\Downloads\\Content-Portal\\Content-Portal\\app\\content-department\\schedule-meeting\")"
     ],
     "deny": [],
     "ask": []

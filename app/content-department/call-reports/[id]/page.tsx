@@ -101,17 +101,11 @@ export default async function CallReportDetailPage({ params }: { params: Promise
     // Continue without attachments if there's an error
   }
 
-  const meetingDate = new Date(report.meeting_date);
-  const formattedDate = meetingDate.toLocaleDateString("en-US", {
-    weekday: "long",
+  const loggedDate = new Date(report.meeting_date);
+  const formattedDate = loggedDate.toLocaleDateString("en-US", {
     month: "long",
     day: "numeric",
     year: "numeric",
-  });
-  const formattedTime = meetingDate.toLocaleTimeString("en-US", {
-    hour: "numeric",
-    minute: "2-digit",
-    hour12: true,
   });
 
   // Check if user can edit (owner or manager/admin)
@@ -142,17 +136,16 @@ export default async function CallReportDetailPage({ params }: { params: Promise
 
       {/* Single Column Layout */}
       <div className="space-y-4">
-        {/* Meeting Details */}
+        {/* Report Details */}
         <Card className="border border-slate-200">
           <CardHeader className="pb-3 border-b border-slate-100">
-            <CardTitle className="text-base font-semibold text-slate-900">Meeting Details</CardTitle>
+            <CardTitle className="text-base font-semibold text-slate-900">Report Details</CardTitle>
           </CardHeader>
           <CardContent className="pt-4">
             <div className="grid grid-cols-2 gap-x-8 gap-y-3 text-sm">
               <div>
-                <p className="text-slate-500 font-medium">Date & Time</p>
+                <p className="text-slate-500 font-medium">Logged On</p>
                 <p className="text-slate-900 mt-0.5">{formattedDate}</p>
-                <p className="text-slate-600 text-xs">{formattedTime}</p>
               </div>
               <div>
                 <p className="text-slate-500 font-medium">Category</p>
@@ -208,21 +201,6 @@ export default async function CallReportDetailPage({ params }: { params: Promise
               )}
             </div>
 
-            {report.meeting_attendees && report.meeting_attendees.length > 0 && (
-              <div className="mt-4 pt-4 border-t border-slate-100">
-                <p className="text-slate-500 font-medium text-sm mb-2">Attendees</p>
-                <div className="flex flex-wrap gap-2">
-                  {report.meeting_attendees.map((attendee: string, index: number) => (
-                    <span
-                      key={index}
-                      className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-slate-50 border border-slate-200 text-sm text-slate-700"
-                    >
-                      {attendee}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
           </CardContent>
         </Card>
 
@@ -289,11 +267,11 @@ export default async function CallReportDetailPage({ params }: { params: Promise
           </CardContent>
         </Card>
 
-        {/* Meeting Notes */}
+        {/* Additional Notes */}
         {report.meeting_notes && (
           <Card className="border border-slate-200">
             <CardHeader className="pb-3 border-b border-slate-100">
-              <CardTitle className="text-base font-semibold text-slate-900">Meeting Notes</CardTitle>
+              <CardTitle className="text-base font-semibold text-slate-900">Additional Notes</CardTitle>
             </CardHeader>
             <CardContent className="pt-4">
               <p className="text-sm text-slate-900 whitespace-pre-wrap leading-relaxed">

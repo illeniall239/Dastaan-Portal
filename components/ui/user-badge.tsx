@@ -3,16 +3,20 @@ import { Button } from "@/components/ui/button";
 
 interface UserBadgeProps {
   name: string;
-  email: string;
+  email: string | null;
   onRemove: () => void;
   disabled?: boolean;
+  isWriter?: boolean;
 }
 
-export function UserBadge({ name, email, onRemove, disabled }: UserBadgeProps) {
+export function UserBadge({ name, email, onRemove, disabled, isWriter }: UserBadgeProps) {
   return (
-    <div className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-sm">
+    <div className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-sm ${
+      isWriter ? 'bg-amber-100 text-amber-800' : 'bg-blue-100 text-blue-800'
+    }`}>
       <span className="font-medium">{name}</span>
-      <span className="text-blue-600 text-xs">({email})</span>
+      {email && <span className={`text-xs ${isWriter ? 'text-amber-600' : 'text-blue-600'}`}>({email})</span>}
+      {!email && isWriter && <span className="text-xs text-amber-600">(Writer)</span>}
       <Button
         type="button"
         variant="ghost"

@@ -93,6 +93,7 @@ export async function createMeetingClient(meetingData: CreateMeetingInput) {
     meeting_date: meetingData.meeting_date,
     duration_minutes: meetingData.duration_minutes || 60, // Default to 60 minutes if not specified
     meeting_attendees: meetingData.attendees,
+    location: meetingData.location || null,
     meeting_notes: meetingData.notes,
     next_steps: meetingData.next_steps || null,
     status: meetingData.status,
@@ -316,7 +317,7 @@ export async function getUserMeetingsClient(userId: string) {
     writer_name: report.writer_name,
     meeting_date: report.meeting_date,
     attendees: report.meeting_attendees || [],
-    location: "", // Not directly stored in call_reports
+    location: report.location || "",
     notes: report.meeting_notes,
     created_by: report.created_by,
     created_at: report.created_at,

@@ -661,17 +661,17 @@ export function CallReportForm({
           </CardContent>
         </Card>
 
-        {/* Section 4: Meeting Details */}
+        {/* Section 4: Additional Notes */}
         <Card>
           <CardHeader className="p-3 sm:p-4 md:p-6">
-            <CardTitle className="text-base sm:text-lg">Meeting Information</CardTitle>
+            <CardTitle className="text-base sm:text-lg">Additional Notes</CardTitle>
           </CardHeader>
           <CardContent className="p-3 sm:p-4 md:p-6 pt-0 space-y-3 sm:space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="notes">Meeting Notes</Label>
+              <Label htmlFor="notes">Notes</Label>
               <Textarea
                 id="notes"
-                placeholder="Detailed notes from the meeting..."
+                placeholder="Any additional notes or context..."
                 rows={4}
                 value={formData.notes}
                 onChange={handleInputChange}
