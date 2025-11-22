@@ -35,7 +35,9 @@
       "Bash(python:*)",
       "Bash(npx jsrepo@latest:*)",
       "Bash(npx reactbits-dev-mcp-server:*)",
-      "mcp__reactbits__*"
+      "mcp__reactbits__*",
+      "Bash(git checkout:*)",
+      "Bash(git branch:*)"
     ],
     "deny": [],
     "ask": []

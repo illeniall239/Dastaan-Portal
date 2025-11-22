@@ -108,8 +108,9 @@ export function CallReportForm({
   const [existingAttachments, setExistingAttachments] = useState<AttachmentRecord[]>(memoizedInitialAttachments);
   const [attachmentsMarkedForDeletion, setAttachmentsMarkedForDeletion] = useState<string[]>([]);
   const handleExistingAttachmentDownload = (attachment: AttachmentRecord) => {
-    if (attachment.public_url) {
-      window.open(attachment.public_url, "_blank");
+    if (attachment.file_path) {
+      // Use signed URL endpoint for secure file access
+      window.open(`/api/attachments/download?path=${encodeURIComponent(attachment.file_path)}`, "_blank");
     } else {
       toast.error("Download link not available for this attachment.");
     }

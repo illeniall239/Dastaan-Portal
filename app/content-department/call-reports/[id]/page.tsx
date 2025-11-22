@@ -13,6 +13,32 @@ import { createClient } from "@/lib/supabase/server";
 import { getAttachmentsForEntityServer } from "@/lib/attachments/server";
 import { BackButton } from "@/components/ui/back-button";
 
+// Helper to convert stored image path to secure proxy URL
+function getSecureImageUrl(value: string | null | undefined): string | null {
+  if (!value) return null;
+
+  // If it's already a proxy URL, use it as-is
+  if (value.startsWith('/api/attachments/image')) {
+    return value;
+  }
+
+  // If it's a full URL (legacy), extract the path
+  if (value.startsWith('http')) {
+    try {
+      const url = new URL(value);
+      const pathMatch = url.pathname.match(/\/attachments\/(.+)$/);
+      if (pathMatch) {
+        return `/api/attachments/image?path=${encodeURIComponent(pathMatch[1])}`;
+      }
+    } catch {
+      return null;
+    }
+  }
+
+  // If it's just a file path, use the proxy
+  return `/api/attachments/image?path=${encodeURIComponent(value)}`;
+}
+
 // Add Next.js caching - revalidate every 30 seconds
 export const revalidate = 300; // 5 minutes for better performance
 
@@ -209,10 +235,10 @@ export default async function CallReportDetailPage({ params }: { params: Promise
             <div>
               <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Logline</h3>
               <p className="text-sm text-slate-900 leading-relaxed">{report.logline}</p>
-              {report.logline_image_url && (
+              {report.logline_image_url && getSecureImageUrl(report.logline_image_url) && (
                 <div className="mt-3">
                   <img
-                    src={report.logline_image_url}
+                    src={getSecureImageUrl(report.logline_image_url)!}
                     alt="Logline visual"
                     className="max-w-sm rounded border border-slate-200"
                   />

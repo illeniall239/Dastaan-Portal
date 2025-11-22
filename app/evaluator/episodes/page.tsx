@@ -430,7 +430,8 @@ const fetchMyEvaluations = async () => {
     }
 
     try {
-      window.open(episode.attachment_url, "_blank");
+      // Use signed URL endpoint for secure file access
+      window.open(`/api/episodes/download/${episode.id}`, "_blank");
       toast.success("Opening file...");
     } catch (error) {
       console.error("Download error:", error);
