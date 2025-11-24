@@ -201,3 +201,126 @@ export async function getActiveIdeasDetails(genre?: string) {
     total: details.length,
   };
 }
+
+/**
+ * Episode and production metrics for management dashboard
+ */
+export interface EpisodeMetrics {
+  totalEpisodesPlanned: number;
+  totalEpisodesReceived: number;
+  overallCompletionPercentage: number;
+  projectsNotStarted: number;      // 0% completion
+  projectsInProgress: number;      // 1-99% completion
+  projectsComplete: number;        // 100% completion
+  totalProjects: number;
+}
+
+/**
+ * Writer productivity metrics
+ */
+export interface WriterProductivity {
+  writerName: string;
+  projectCount: number;
+  totalEpisodesAssigned: number;
+  episodesDelivered: number;
+  completionRate: number;
+}
+
+/**
+ * Get episode-based metrics for management dashboard
+ */
+export function calculateEpisodeMetrics(ideas: ActiveIdeaDetail[]): EpisodeMetrics {
+  let totalEpisodesPlanned = 0;
+  let totalEpisodesReceived = 0;
+  let projectsNotStarted = 0;
+  let projectsInProgress = 0;
+  let projectsComplete = 0;
+
+  ideas.forEach(idea => {
+    const planned = idea.total_episodes || 0;
+    const received = idea.received_episodes || 0;
+
+    totalEpisodesPlanned += planned;
+    totalEpisodesReceived += received;
+
+    // Calculate completion status
+    if (planned === 0) {
+      // No episodes planned yet, count as not started
+      projectsNotStarted++;
+    } else {
+      const completion = (received / planned) * 100;
+      if (completion === 0) {
+        projectsNotStarted++;
+      } else if (completion >= 100) {
+        projectsComplete++;
+      } else {
+        projectsInProgress++;
+      }
+    }
+  });
+
+  const overallCompletionPercentage = totalEpisodesPlanned > 0
+    ? Math.round((totalEpisodesReceived / totalEpisodesPlanned) * 100)
+    : 0;
+
+  return {
+    totalEpisodesPlanned,
+    totalEpisodesReceived,
+    overallCompletionPercentage,
+    projectsNotStarted,
+    projectsInProgress,
+    projectsComplete,
+    totalProjects: ideas.length,
+  };
+}
+
+/**
+ * Get writer productivity metrics
+ */
+export function calculateWriterProductivity(ideas: ActiveIdeaDetail[]): WriterProductivity[] {
+  const writerMap = new Map<string, {
+    projectCount: number;
+    totalEpisodesAssigned: number;
+    episodesDelivered: number;
+  }>();
+
+  ideas.forEach(idea => {
+    // Use writer_names array (can have multiple writers per project)
+    const writers = idea.writer_names.length > 0
+      ? idea.writer_names
+      : (idea.writer_name ? [idea.writer_name] : []);
+
+    writers.forEach(writerName => {
+      if (!writerName) return;
+
+      const existing = writerMap.get(writerName) || {
+        projectCount: 0,
+        totalEpisodesAssigned: 0,
+        episodesDelivered: 0,
+      };
+
+      existing.projectCount++;
+      existing.totalEpisodesAssigned += idea.total_episodes || 0;
+      existing.episodesDelivered += idea.received_episodes || 0;
+
+      writerMap.set(writerName, existing);
+    });
+  });
+
+  // Convert to array and calculate completion rates
+  const result: WriterProductivity[] = [];
+  writerMap.forEach((data, writerName) => {
+    result.push({
+      writerName,
+      projectCount: data.projectCount,
+      totalEpisodesAssigned: data.totalEpisodesAssigned,
+      episodesDelivered: data.episodesDelivered,
+      completionRate: data.totalEpisodesAssigned > 0
+        ? Math.round((data.episodesDelivered / data.totalEpisodesAssigned) * 100)
+        : 0,
+    });
+  });
+
+  // Sort by project count descending
+  return result.sort((a, b) => b.projectCount - a.projectCount);
+}

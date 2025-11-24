@@ -6,8 +6,11 @@ import { TimeSlotAllocationChart } from "@/components/management/charts/time-slo
 import { ContentTypeDistributionChart } from "@/components/management/charts/content-type-distribution-chart";
 import { ThemeDistributionChart } from "@/components/management/charts/theme-distribution-chart";
 import { DaysActiveChart } from "@/components/management/charts/days-active-chart";
-import { getActiveIdeasDetails } from "@/lib/management/active-ideas-details";
+import { getActiveIdeasDetails, calculateEpisodeMetrics, calculateWriterProductivity } from "@/lib/management/active-ideas-details";
 import { IdeasByGenreChart } from "@/components/management/charts/ideas-by-genre-chart";
+import { EpisodeMetricsCards } from "@/components/management/episode-metrics-cards";
+import { WriterProductivityTable } from "@/components/management/writer-productivity-table";
+import { ProjectCompletionChart } from "@/components/management/charts/project-completion-chart";
 
 // Add Next.js caching
 export const revalidate = 300; // 5 minutes
@@ -36,6 +39,12 @@ export default async function WhatsCookingPage() {
 
   // Fetch active ideas details
   const activeIdeasDetails = await getActiveIdeasDetails();
+
+  // Calculate episode metrics
+  const episodeMetrics = calculateEpisodeMetrics(activeIdeasDetails.details);
+
+  // Calculate writer productivity
+  const writerProductivity = calculateWriterProductivity(activeIdeasDetails.details);
 
   // Process ideas by genre for chart
   const ideasByGenre = activeIdeasDetails.details.reduce((acc: any[], idea) => {
@@ -74,6 +83,15 @@ export default async function WhatsCookingPage() {
               <span className="text-slate-600">Live Pipeline View</span>
             </div>
           </div>
+        </div>
+
+        {/* Episode Metrics Summary Cards */}
+        <EpisodeMetricsCards metrics={episodeMetrics} />
+
+        {/* Project Completion & Writer Productivity */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+          <ProjectCompletionChart metrics={episodeMetrics} />
+          <WriterProductivityTable writers={writerProductivity} />
         </div>
 
         {/* Visual Charts Grid */}
