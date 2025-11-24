@@ -468,8 +468,9 @@ export default function ContentDepartmentEpisodesPage() {
         },
       ]);
 
-      // Refresh episodes list and switch to list tab to show new episodes
-      fetchEpisodesAndStatus();
+      // Small delay to ensure database writes are committed, then refresh
+      await new Promise(resolve => setTimeout(resolve, 300));
+      await fetchEpisodesAndStatus();
       setActiveTab("list");
     } catch (error: any) {
       console.error("Error creating episodes:", error);
