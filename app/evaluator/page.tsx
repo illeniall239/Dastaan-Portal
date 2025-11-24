@@ -12,7 +12,8 @@ import {
   ClipboardListIcon,
   FileTextIcon,
   CheckCircle2,
-  Clock
+  Clock,
+  CalendarIcon
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { StatCard } from "@/components/dashboard/stat-card";
@@ -205,6 +206,17 @@ async function DashboardContent({ userId }: { userId: string }) {
                   </div>
                 </div>
               </Link>
+              <Link href="/evaluator/calendar">
+                <div className="group flex items-center gap-3 sm:gap-4 p-3 sm:p-4 rounded-xl hover:bg-slate-50 active:scale-[0.98] transition-all duration-300 cursor-pointer border border-transparent hover:border-slate-200 hover:shadow-md animate-stagger touch-target" style={{ animationDelay: '50ms' }}>
+                  <div className="p-2.5 sm:p-3 rounded-xl bg-[#f59e0b] shadow-lg transition-shadow duration-300 flex-shrink-0">
+                    <CalendarIcon className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-slate-900 group-hover:text-[#f59e0b] transition-colors">Schedule a Meeting</p>
+                    <p className="text-xs text-slate-500">Book meetings on calendar</p>
+                  </div>
+                </div>
+              </Link>
               <Link href="/evaluator/evaluations-list">
                 <div className="group flex items-center gap-3 sm:gap-4 p-3 sm:p-4 rounded-xl hover:bg-slate-50 active:scale-[0.98] transition-all duration-300 cursor-pointer border border-transparent hover:border-slate-200 hover:shadow-md animate-stagger touch-target" style={{ animationDelay: '100ms' }}>
                   <div className="p-2.5 sm:p-3 rounded-xl bg-[#224794] shadow-lg transition-shadow duration-300 flex-shrink-0">
@@ -217,7 +229,7 @@ async function DashboardContent({ userId }: { userId: string }) {
                 </div>
               </Link>
               <Link href="/evaluator/evaluations-list?view=pending">
-                <div className="group flex items-center gap-3 sm:gap-4 p-3 sm:p-4 rounded-xl hover:bg-slate-50 active:scale-[0.98] transition-all duration-300 cursor-pointer border border-transparent hover:border-slate-200 hover:shadow-md animate-stagger touch-target" style={{ animationDelay: '200ms' }}>
+                <div className="group flex items-center gap-3 sm:gap-4 p-3 sm:p-4 rounded-xl hover:bg-slate-50 active:scale-[0.98] transition-all duration-300 cursor-pointer border border-transparent hover:border-slate-200 hover:shadow-md animate-stagger touch-target" style={{ animationDelay: '150ms' }}>
                   <div className="p-2.5 sm:p-3 rounded-xl bg-[#10b981] shadow-lg transition-shadow duration-300 flex-shrink-0">
                     <FileTextIcon className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
                   </div>
