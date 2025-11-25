@@ -10,8 +10,8 @@ interface WriterProductivityTableProps {
 }
 
 export function WriterProductivityTable({ writers }: WriterProductivityTableProps) {
-  // Show top 10 writers
-  const topWriters = writers.slice(0, 10);
+  // Show first 10 writers
+  const displayedWriters = writers.slice(0, 10);
 
   return (
     <Card className="border-0 shadow-lg">
@@ -21,7 +21,7 @@ export function WriterProductivityTable({ writers }: WriterProductivityTableProp
         </CardTitle>
       </CardHeader>
       <CardContent>
-        {topWriters.length === 0 ? (
+        {displayedWriters.length === 0 ? (
           <div className="text-center py-8 text-slate-500">
             No writer data available
           </div>
@@ -37,7 +37,7 @@ export function WriterProductivityTable({ writers }: WriterProductivityTableProp
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {topWriters.map((writer, index) => (
+                {displayedWriters.map((writer, index) => (
                   <TableRow key={writer.writerName} className="hover:bg-slate-50">
                     <TableCell className="font-medium text-slate-900">
                       <div className="flex items-center gap-2">
@@ -77,7 +77,7 @@ export function WriterProductivityTable({ writers }: WriterProductivityTableProp
 
         {writers.length > 10 && (
           <p className="text-xs text-slate-500 text-center mt-3">
-            Showing top 10 of {writers.length} writers
+            Showing 10 of {writers.length} writers
           </p>
         )}
       </CardContent>

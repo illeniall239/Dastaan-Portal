@@ -93,6 +93,9 @@ export function EpisodicEvaluationForm({
   const [whatsNextScore, setWhatsNextScore] = useState(
     existingEvaluation?.whats_next_element_score || 5
   );
+  const [overallAssessmentScore, setOverallAssessmentScore] = useState(
+    existingEvaluation?.overall_assessment_score || 5
+  );
 
   // Calculated values
   const pagesScore = calculatePagesScore(noOfPages);
@@ -103,6 +106,7 @@ export function EpisodicEvaluationForm({
     progression: progressionScore,
     freezes: freezesScore,
     whatsNext: whatsNextScore,
+    overallAssessment: overallAssessmentScore,
   });
   const overallGrade = calculateGrade(overallAverage) as EpisodicGrade;
 
@@ -144,6 +148,7 @@ export function EpisodicEvaluationForm({
         progressionScore,
         freezesScore,
         whatsNextScore,
+        overallAssessmentScore,
       };
 
       const response = await fetch(`/api/episodic-evaluations/draft/${episode.id}`, {
@@ -180,6 +185,7 @@ export function EpisodicEvaluationForm({
       setProgressionScore(pendingDraftData.progressionScore);
       setFreezesScore(pendingDraftData.freezesScore);
       setWhatsNextScore(pendingDraftData.whatsNextScore);
+      setOverallAssessmentScore(pendingDraftData.overallAssessmentScore || 5);
       toast.success("Draft loaded successfully!");
       setShowDraftDialog(false);
       setPendingDraftData(null);
@@ -231,6 +237,7 @@ export function EpisodicEvaluationForm({
       story_progression_score: progressionScore,
       freezes_score: freezesScore,
       whats_next_element_score: whatsNextScore,
+      overall_assessment_score: overallAssessmentScore,
     };
 
     const validation = episodicEvaluationSchema.safeParse(formData);
@@ -459,6 +466,14 @@ export function EpisodicEvaluationForm({
             description="How effective is the episode in creating anticipation for the next episode?"
             score={whatsNextScore}
             onChange={setWhatsNextScore}
+            disabled={isReadOnly}
+          />
+
+          <ScoreCard
+            label="Overall Assessment"
+            description="What is your overall assessment of this episode?"
+            score={overallAssessmentScore}
+            onChange={setOverallAssessmentScore}
             disabled={isReadOnly}
           />
         </div>

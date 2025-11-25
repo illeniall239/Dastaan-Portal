@@ -353,7 +353,7 @@ export default function WeeklyActivitiesPage() {
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
-              Top Activity Type
+              Most Common Activity
             </CardTitle>
           </CardHeader>
           <CardContent>

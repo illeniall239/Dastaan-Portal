@@ -46,10 +46,10 @@ export function WriterFinancialSummaryWidget() {
         throw new Error(data.error || "Failed to fetch financial summary");
       }
 
-      // Get top 5 writers by committed amount
+      // Get first 5 writers by committed amount
       const summary = data.summary || [];
-      const top5 = summary.slice(0, 5);
-      setTopWriters(top5);
+      const displayWriters = summary.slice(0, 5);
+      setTopWriters(displayWriters);
       setTotals(data.totals || null);
     } catch (err: any) {
       console.error("Error fetching financial summary:", err);
@@ -143,10 +143,10 @@ export function WriterFinancialSummaryWidget() {
               </div>
             )}
 
-            {/* Top Writers by Payment */}
+            {/* Writers by Payment */}
             <div>
               <h4 className="text-sm font-semibold text-slate-700 mb-3 flex items-center gap-2">
-                Top Writers by Amount
+                Writers by Amount
                 <Badge variant="secondary" className="text-xs">
                   {topWriters.length}
                 </Badge>

@@ -249,14 +249,14 @@ export default async function ManagementDashboard({
           <CriticalAlertsCard alerts={alerts} />
         </div>
 
-      {/* Top Performing Teams */}
-      <div id="top-teams-section" className="mb-8">
+      {/* Team Performance */}
+      <div id="teams-section" className="mb-8">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-2xl font-bold text-gray-900">Top Performing Teams</h2>
+          <h2 className="text-2xl font-bold text-gray-900">Team Performance</h2>
           <div className="no-print">
             <ExportButton
-              elementId="top-teams-section"
-              filename="top-teams"
+              elementId="teams-section"
+              filename="teams"
               formats={["png", "pdf"]}
               compact
             />

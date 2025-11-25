@@ -96,16 +96,6 @@ const defaultNavItems: NavItem[] = [
     href: "/content-department/episodes",
     icon: "film",
   },
-  {
-    title: "Status Report",
-    href: "/content-department/status-updater",
-    icon: "clipboardCheck",
-  },
-  {
-    title: "Contract Terms",
-    href: "/content-department/contract-terms",
-    icon: "handshake",
-  },
   // Settings and Help routes are not yet implemented; hide to avoid 404s
 ];
 

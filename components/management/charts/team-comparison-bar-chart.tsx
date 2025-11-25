@@ -46,7 +46,7 @@ export function TeamComparisonBarChart({
   // Sort data by the selected metric (descending)
   const sortedData = [...data].sort((a, b) => b[metric] - a[metric]);
 
-  // Take top 10 teams
+  // Show first 10 teams
   const chartData = sortedData.slice(0, 10).map(team => ({
     name: team.team_name.length > 20 ? team.team_name.substring(0, 18) + '...' : team.team_name,
     value: team[metric],
@@ -75,7 +75,7 @@ export function TeamComparisonBarChart({
           <div>
             <CardTitle className="flex items-center gap-2">
               <TrendingUp className="h-5 w-5 text-teal-600" />
-              {title || `Top Teams by ${METRIC_LABELS[metric]}`}
+              {title || `Teams by ${METRIC_LABELS[metric]}`}
             </CardTitle>
             {description && (
               <CardDescription className="mt-1">{description}</CardDescription>

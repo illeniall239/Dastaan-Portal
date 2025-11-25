@@ -202,7 +202,9 @@ export async function PATCH(
     if (updates.position) publicUpdates.position = updates.position;
     if (updates.department) publicUpdates.department = updates.department;
 
-    const { data: updatedUser, error: publicError } = await supabase
+    // Use admin client to bypass RLS policies
+    const adminSupabase = createAdminClient();
+    const { data: updatedUser, error: publicError } = await adminSupabase
       .from("users")
       .update(publicUpdates)
       .eq("id", id)

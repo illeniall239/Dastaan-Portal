@@ -15,8 +15,7 @@ export interface Evaluation {
   storyline_plot_score: number;
   episodic_progression_score: number;
   characters_score: number;
-  // dialogues_score removed
-  overall_assessment_score?: number; // DEPRECATED: Use average_score instead
+  overall_assessment_score: number;
   first_2_eps_required?: boolean;
   average_score?: number;
   comments?: string;
@@ -39,8 +38,7 @@ export interface CreateEvaluationInput {
   storyline_plot_score: number;
   episodic_progression_score: number;
   characters_score: number;
-  // dialogues_score removed
-  overall_assessment_score?: number; // DEPRECATED: Not used anymore, average is auto-calculated
+  overall_assessment_score: number;
   first_2_eps_required?: boolean;
   comments?: string;
   decision: "approve" | "reject";
@@ -59,6 +57,7 @@ export interface UpdateEvaluationInput {
   storyline_plot_score?: number;
   episodic_progression_score?: number;
   characters_score?: number;
+  overall_assessment_score?: number;
   first_2_eps_required?: boolean | null;
   comments?: string | null;
   decision?: "approve" | "reject";
@@ -96,9 +95,7 @@ export async function createEvaluationClient(evaluationData: CreateEvaluationInp
       storyline_plot_score: evaluationData.storyline_plot_score,
       episodic_progression_score: evaluationData.episodic_progression_score,
       characters_score: evaluationData.characters_score,
-      // dialogues_score removed
-      // overall_assessment_score is deprecated and set to NULL by database trigger
-      overall_assessment_score: null,
+      overall_assessment_score: evaluationData.overall_assessment_score,
       comments: evaluationData.comments || null,
       first_2_eps_required: evaluationData.first_2_eps_required || null,
       decision: evaluationData.decision,
@@ -205,6 +202,7 @@ export async function updateEvaluationClient(evaluationData: UpdateEvaluationInp
     storyline_plot_score,
     episodic_progression_score,
     characters_score,
+    overall_assessment_score,
     first_2_eps_required,
     comments,
   } = evaluationData;
@@ -220,6 +218,7 @@ export async function updateEvaluationClient(evaluationData: UpdateEvaluationInp
     storyline_plot_score,
     episodic_progression_score,
     characters_score,
+    overall_assessment_score,
     first_2_eps_required: first_2_eps_required ?? null,
     comments: comments ?? null,
     decision: evaluationData.decision,

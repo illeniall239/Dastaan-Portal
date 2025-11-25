@@ -55,6 +55,7 @@ export async function PATCH(
     "storyline_plot_score",
     "episodic_progression_score",
     "characters_score",
+    "overall_assessment_score",
     "first_2_eps_required",
     "comments",
     "decision",

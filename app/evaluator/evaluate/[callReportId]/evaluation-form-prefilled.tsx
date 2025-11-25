@@ -101,6 +101,7 @@ export function EvaluatorEvaluationForm({
     storylinePlotScore: 5,
     episodicProgressionScore: 5,
     charactersScore: 5,
+    overallAssessmentScore: 5,
     first2EpsRequired: false,
     comments: "",
     decision: "" as "approve" | "reject" | "",
@@ -116,6 +117,7 @@ export function EvaluatorEvaluationForm({
       formData.storylinePlotScore,
       formData.episodicProgressionScore,
       formData.charactersScore,
+      formData.overallAssessmentScore,
     ];
     const avg = scores.reduce((sum, score) => sum + score, 0) / scores.length;
     setAverageScore(Math.round(avg * 10) / 10);
@@ -124,6 +126,7 @@ export function EvaluatorEvaluationForm({
     formData.storylinePlotScore,
     formData.episodicProgressionScore,
     formData.charactersScore,
+    formData.overallAssessmentScore,
   ]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -195,6 +198,7 @@ export function EvaluatorEvaluationForm({
           storyline_plot_score: formData.storylinePlotScore,
           episodic_progression_score: formData.episodicProgressionScore,
           characters_score: formData.charactersScore,
+          overall_assessment_score: formData.overallAssessmentScore,
           first_2_eps_required: formData.first2EpsRequired,
           comments: formData.comments || null,
           decision: formData.decision,
@@ -211,6 +215,7 @@ export function EvaluatorEvaluationForm({
           storyline_plot_score: formData.storylinePlotScore,
           episodic_progression_score: formData.episodicProgressionScore,
           characters_score: formData.charactersScore,
+          overall_assessment_score: formData.overallAssessmentScore,
           first_2_eps_required: formData.first2EpsRequired,
           comments: formData.comments || undefined,
           decision: formData.decision,
@@ -251,6 +256,7 @@ export function EvaluatorEvaluationForm({
         storylinePlotScore: formData.storylinePlotScore,
         episodicProgressionScore: formData.episodicProgressionScore,
         charactersScore: formData.charactersScore,
+        overallAssessmentScore: formData.overallAssessmentScore,
         first2EpsRequired: formData.first2EpsRequired,
         comments: formData.comments,
       };
@@ -306,6 +312,7 @@ export function EvaluatorEvaluationForm({
         storylinePlotScore: pendingDraftData.storylinePlotScore || 5,
         episodicProgressionScore: pendingDraftData.episodicProgressionScore || 5,
         charactersScore: pendingDraftData.charactersScore || 5,
+        overallAssessmentScore: pendingDraftData.overallAssessmentScore || 5,
         first2EpsRequired: pendingDraftData.first2EpsRequired || false,
         comments: pendingDraftData.comments || "",
         decision: "",
@@ -341,6 +348,7 @@ export function EvaluatorEvaluationForm({
               storylinePlotScore: json.evaluation.storyline_plot_score || 5,
               episodicProgressionScore: json.evaluation.episodic_progression_score || 5,
               charactersScore: json.evaluation.characters_score || 5,
+              overallAssessmentScore: json.evaluation.overall_assessment_score || 5,
               first2EpsRequired: !!json.evaluation.first_2_eps_required,
               comments: json.evaluation.comments || "",
             }));
@@ -564,6 +572,13 @@ export function EvaluatorEvaluationForm({
               onChange={(value) => setFormData((prev) => ({ ...prev, charactersScore: value }))}
             />
 
+            <ScoreCard
+              label="Overall Assessment"
+              description="What is your overall assessment of this project?"
+              score={formData.overallAssessmentScore}
+              onChange={(value) => setFormData((prev) => ({ ...prev, overallAssessmentScore: value }))}
+            />
+
             {/* Dialogues score removed as per requirements */}
           </div>
         </div>
@@ -623,12 +638,18 @@ export function EvaluatorEvaluationForm({
                   className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <option value="">Select price range</option>
-                  <option value="50000-100000">Rs 50,000 - 100,000</option>
-                  <option value="100000-200000">Rs 100,000 - 200,000</option>
-                  <option value="200000-300000">Rs 200,000 - 300,000</option>
-                  <option value="300000-500000">Rs 300,000 - 500,000</option>
-                  <option value="500000-1000000">Rs 500,000 - 1,000,000</option>
-                  <option value="1000000+">Rs 1,000,000+</option>
+                  <option value="25000-50000">Rs 25,000 - 50,000</option>
+                  <option value="50000-75000">Rs 50,000 - 75,000</option>
+                  <option value="75000-100000">Rs 75,000 - 100,000</option>
+                  <option value="100000-125000">Rs 100,000 - 125,000</option>
+                  <option value="125000-150000">Rs 125,000 - 150,000</option>
+                  <option value="150000-175000">Rs 150,000 - 175,000</option>
+                  <option value="175000-200000">Rs 175,000 - 200,000</option>
+                  <option value="200000-225000">Rs 200,000 - 225,000</option>
+                  <option value="225000-250000">Rs 225,000 - 250,000</option>
+                  <option value="250000-275000">Rs 250,000 - 275,000</option>
+                  <option value="275000-300000">Rs 275,000 - 300,000</option>
+                  <option value="300000+">Rs 300,000+</option>
                 </select>
               </div>
 

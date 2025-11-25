@@ -37,7 +37,7 @@ export function TopTeamsWidget({ teams }: TopTeamsWidgetProps) {
           <div>
             <CardTitle className="flex items-center gap-2 text-teal-900">
               <Trophy className="h-5 w-5 text-teal-600" />
-              Top Performing Teams
+              Team Performance
             </CardTitle>
             <CardDescription className="text-teal-700 mt-1">
               Based on total call reports created

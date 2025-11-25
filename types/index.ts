@@ -14,6 +14,7 @@ export type UserRole =
   | "admin"
   | "management"
   | "content_manager"
+  | "content_head"
   | "evaluator"
   | "executive"
   | "legal"
@@ -418,6 +419,7 @@ export interface EpisodicEvaluation {
   story_progression_score: number;
   freezes_score: number;
   whats_next_element_score: number;
+  overall_assessment_score: number;
   // Calculated
   overall_average: number;
   overall_grade: EpisodicGrade;
@@ -441,6 +443,7 @@ export interface EpisodicEvaluationDraft {
     progressionScore: number;
     freezesScore: number;
     whatsNextScore: number;
+    overallAssessmentScore: number;
   };
   created_at: string;
   updated_at: string;

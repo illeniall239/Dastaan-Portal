@@ -67,6 +67,12 @@ export const episodicEvaluationSchema = z.object({
     .int("Score must be an integer")
     .min(1, "Score must be at least 1")
     .max(10, "Score must be at most 10"),
+
+  overall_assessment_score: z
+    .number()
+    .int("Score must be an integer")
+    .min(1, "Score must be at least 1")
+    .max(10, "Score must be at most 10"),
 });
 
 export type EpisodicEvaluationFormData = z.infer<typeof episodicEvaluationSchema>;
@@ -147,6 +153,13 @@ export const updateEpisodicEvaluationSchema = z.object({
     .max(10, "Score must be at most 10")
     .optional(),
 
+  overall_assessment_score: z
+    .number()
+    .int("Score must be an integer")
+    .min(1, "Score must be at least 1")
+    .max(10, "Score must be at most 10")
+    .optional(),
+
   // Rating description (computed field, can be updated manually)
   rating_description: z.string().max(200).optional(),
 }).refine(
@@ -189,8 +202,8 @@ export function calculateGrade(score: number): string {
 }
 
 /**
- * Calculate overall average from all 5 scores
- * @param scores - Object containing all 5 evaluation scores
+ * Calculate overall average from all 6 scores
+ * @param scores - Object containing all 6 evaluation scores
  * @returns Average score (0-10) with 2 decimal places
  */
 export function calculateOverallAverage(scores: {
@@ -199,14 +212,16 @@ export function calculateOverallAverage(scores: {
   progression: number;
   freezes: number;
   whatsNext: number;
+  overallAssessment: number;
 }): number {
   const sum =
     scores.conflict +
     scores.characterization +
     scores.progression +
     scores.freezes +
-    scores.whatsNext;
-  return Number((sum / 5).toFixed(2));
+    scores.whatsNext +
+    scores.overallAssessment;
+  return Number((sum / 6).toFixed(2));
 }
 
 /**
