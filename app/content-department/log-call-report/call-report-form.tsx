@@ -114,6 +114,7 @@ export function CallReportForm({
   const [attachmentsMarkedForDeletion, setAttachmentsMarkedForDeletion] = useState<string[]>([]);
 
   useEffect(() => {
+    console.log("📎 FORM - memoizedInitialAttachments updated:", memoizedInitialAttachments);
     setExistingAttachments(memoizedInitialAttachments);
     setAttachmentsMarkedForDeletion([]);
   }, [memoizedInitialAttachments]);
@@ -141,6 +142,9 @@ export function CallReportForm({
   // Pre-populate form when in edit mode
   useEffect(() => {
     if (mode === "edit" && initialData) {
+      console.log("📝 FORM - Populating with initialData:", initialData);
+      console.log("📝 FORM - Genre from initialData:", initialData.genre);
+      console.log("📝 FORM - Target Slot from initialData:", initialData.target_slot);
       setFormData({
         category: initialData.category || "",
         writerId: "",
@@ -156,7 +160,7 @@ export function CallReportForm({
         episodicSynopsis: initialData.episodic_synopsis || "",
         genre: Array.isArray(initialData.genre) ? initialData.genre : (initialData.genre ? [initialData.genre] : []),
         theme: initialData.theme || "",
-        targetSlot: initialData.slot || "",
+        targetSlot: initialData.target_slot || "",
         contentType: initialData.content_type || "",
         notes: initialData.meeting_notes || "",
         nextSteps: initialData.next_steps || "",
@@ -221,9 +225,6 @@ export function CallReportForm({
     setIsLoading(true);
 
     try {
-      // Use current date/time as meeting date
-      const meetingDateTime = new Date();
-
       if (mode === "edit" && callReportId) {
         // Update existing call report
         const updateData = {
@@ -232,26 +233,25 @@ export function CallReportForm({
           suggested_writer: formData.suggestedWriter || undefined,
           contact_phone: formData.contactPhone || undefined,
           contact_address: formData.contactAddress || undefined,
-          working_title: formData.workingTitle,
+          working_title: formData.workingTitle || undefined,
           director: formData.director || undefined,
           total_episodes: formData.totalEpisodes ? parseInt(formData.totalEpisodes) : undefined,
           received_episodes: formData.receivedEpisodes ? parseInt(formData.receivedEpisodes) : undefined,
-          logline: formData.logline,
+          logline: formData.logline || undefined,
           logline_image_url: loglineImageUrl || undefined,
           short_synopsis: formData.shortSynopsis || undefined,
           episodic_synopsis: formData.episodicSynopsis || undefined,
           genre: formData.genre,
           theme: formData.theme || undefined,
-          target_slot: formData.targetSlot,
-          content_type: formData.contentType as "Serial" | "Long Serial" | "Telefilm" | "Mini-serial" | "Ramadan Serial" | "Series Sitcom" | "Soap" | undefined,
-          category: (formData.category || undefined) as "external_producer" | "writer_pitch" | "inhouse_content" | "content_head_initiative" | "given_by_management" | undefined,
-          idea_by: formData.ideaBy || undefined,
-          developed_by: formData.developedBy || undefined,
+          target_slot: formData.targetSlot || undefined,
+          content_type: (formData.contentType || undefined) as "Serial" | "Long Serial" | "Telefilm" | "Mini-serial" | "Ramadan Serial" | "Series Sitcom" | "Soap" | undefined,
+          category: formData.category as "external_producer" | "writer_pitch" | "inhouse_content" | "content_head_initiative" | "given_by_management" | undefined,
+          idea_by: formData.ideaBy,
+          developed_by: formData.developedBy,
           management_member_name: formData.managementMemberName || undefined,
-          meeting_date: meetingDateTime.toISOString(),
           meeting_notes: formData.notes || undefined,
           next_steps: formData.nextSteps || undefined,
-          status: formData.status,
+          status: formData.status || undefined,
           overall_rating: formData.overallRating,
           attachments_to_delete: attachmentsMarkedForDeletion.length > 0 ? attachmentsMarkedForDeletion : undefined,
         };
@@ -350,7 +350,7 @@ export function CallReportForm({
           idea_by: formData.ideaBy || undefined,
           developed_by: formData.developedBy || undefined,
           management_member_name: formData.managementMemberName || undefined,
-          meeting_date: meetingDateTime.toISOString(),
+          meeting_date: new Date().toISOString(),
           attendees: writers.map(w => w.writer_email).filter((email): email is string => !!email),
           notes: formData.notes,
           next_steps: formData.nextSteps,

@@ -102,12 +102,24 @@ async function CallReportsList() {
         </Card>
       ) : (
         callReports.map((report: any) => {
-            const loggedDate = new Date(report.meeting_date);
+            const loggedTimestamp =
+              report.logged_at ||
+              report.created_at ||
+              report.meeting_date ||
+              report.updated_at ||
+              report.inserted_at;
+            const loggedDate = loggedTimestamp ? new Date(loggedTimestamp) : new Date();
             const formattedDate = loggedDate.toLocaleDateString("en-US", {
               month: "short",
               day: "numeric",
               year: "numeric",
             });
+            const formattedTime = loggedDate.toLocaleTimeString("en-US", {
+              hour: "numeric",
+              minute: "2-digit",
+              hour12: true,
+            });
+            const formattedDateTime = `${formattedDate} at ${formattedTime}`;
             const writerDisplayName =
               report.writer_names && report.writer_names.length > 0
                 ? report.writer_names.join(", ")
@@ -167,7 +179,7 @@ async function CallReportsList() {
                       </CardDescription>
                     </div>
                     <div className="text-right text-sm text-muted-foreground">
-                      <div>Logged: {formattedDate}</div>
+                      <div>Logged: {formattedDateTime}</div>
                     </div>
                   </div>
                 </CardHeader>

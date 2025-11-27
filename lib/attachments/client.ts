@@ -12,10 +12,27 @@ export async function uploadFile(file: File, entityType: string, entityId: strin
     body: formData,
   });
 
+  // Check content type before parsing
+  const contentType = response.headers.get('content-type');
+  if (!contentType || !contentType.includes('application/json')) {
+    console.error('Server returned non-JSON response:', {
+      status: response.status,
+      contentType,
+      url: response.url
+    });
+    const text = await response.text();
+    console.error('Response body:', text.substring(0, 500));
+    throw new Error(`Upload failed with status ${response.status}: Server returned HTML instead of JSON`);
+  }
+
   const result = await response.json();
 
   if (!response.ok) {
-    console.error('Error uploading file:', result);
+    console.error('Upload failed:', {
+      status: response.status,
+      error: result.error,
+      details: result.details
+    });
     throw new Error(result.error || 'Failed to upload file');
   }
 

@@ -1,6 +1,7 @@
 import { getCurrentUser } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import {
   Card,
   CardContent,
@@ -102,12 +103,24 @@ export default async function CallReportDetailPage({ params }: { params: Promise
     // Continue without attachments if there's an error
   }
 
-  const loggedDate = new Date(report.meeting_date);
+  const loggedTimestamp =
+    report.logged_at ||
+    report.created_at ||
+    report.meeting_date ||
+    report.updated_at ||
+    report.inserted_at;
+  const loggedDate = loggedTimestamp ? new Date(loggedTimestamp) : new Date();
   const formattedDate = loggedDate.toLocaleDateString("en-US", {
     month: "long",
     day: "numeric",
     year: "numeric",
   });
+  const formattedTime = loggedDate.toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  });
+  const formattedDateTime = `${formattedDate} at ${formattedTime}`;
 
   // Check if user can edit (owner or manager/admin)
   const canEdit =
@@ -146,11 +159,11 @@ export default async function CallReportDetailPage({ params }: { params: Promise
             <div className="grid grid-cols-2 gap-x-8 gap-y-3 text-sm">
               <div>
                 <p className="text-slate-500 font-medium">Logged On</p>
-                <p className="text-slate-900 mt-0.5">{formattedDate}</p>
+                <p className="text-slate-900 mt-0.5">{formattedDateTime}</p>
               </div>
               <div>
                 <p className="text-slate-500 font-medium">Category</p>
-                <p className="text-slate-900 mt-0.5 capitalize">{report.category?.replace("_", " ")}</p>
+                <p className="text-slate-900 mt-0.5">{report.category?.replaceAll("_", " ").split(" ").map((word: string) => word.charAt(0).toUpperCase() + word.slice(1)).join(" ")}</p>
               </div>
               <div>
                 <p className="text-slate-500 font-medium">Writers/Originators</p>
@@ -240,10 +253,16 @@ export default async function CallReportDetailPage({ params }: { params: Promise
             )}
 
             <div className="pt-3 border-t border-slate-100 grid grid-cols-2 gap-x-8 gap-y-3 text-sm">
-              {report.genre && (
+              {report.genre && Array.isArray(report.genre) && report.genre.length > 0 && (
                 <div>
-                  <p className="text-slate-500 font-medium">Genre</p>
-                  <p className="text-slate-900 mt-0.5">{report.genre}</p>
+                  <p className="text-slate-500 font-medium mb-2">Genre</p>
+                  <div className="flex flex-wrap gap-2">
+                    {report.genre.map((g: string) => (
+                      <Badge key={g} variant="secondary" className="text-sm">
+                        {g}
+                      </Badge>
+                    ))}
+                  </div>
                 </div>
               )}
               {report.theme && (
@@ -252,10 +271,10 @@ export default async function CallReportDetailPage({ params }: { params: Promise
                   <p className="text-slate-900 mt-0.5">{report.theme}</p>
                 </div>
               )}
-              {report.slot && (
+              {report.target_slot && (
                 <div>
                   <p className="text-slate-500 font-medium">Target Slot</p>
-                  <p className="text-slate-900 mt-0.5">{report.slot}</p>
+                  <p className="text-slate-900 mt-0.5">{report.target_slot}</p>
                 </div>
               )}
               {report.content_type && (

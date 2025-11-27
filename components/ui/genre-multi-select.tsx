@@ -5,8 +5,14 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { X, Plus } from "lucide-react";
-import { PREDEFINED_GENRES } from "@/lib/constants/genres";
+import { AddGenreDialog } from "@/components/ui/add-genre-dialog";
 import { cn } from "@/lib/utils";
+
+interface Genre {
+  id: string;
+  name: string;
+  is_predefined?: boolean;
+}
 
 interface GenreMultiSelectProps {
   selectedGenres: string[];
@@ -28,23 +34,49 @@ export function GenreMultiSelect({
   const [inputValue, setInputValue] = useState("");
   const [showDropdown, setShowDropdown] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState(0);
+  const [genres, setGenres] = useState<Genre[]>([]);
+  const [isLoadingGenres, setIsLoadingGenres] = useState(true);
+  const [showAddDialog, setShowAddDialog] = useState(false);
+  const [customGenreName, setCustomGenreName] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // Filter predefined genres based on input and exclude already selected
-  const filteredGenres = PREDEFINED_GENRES.filter(
-    (genre) =>
-      genre.toLowerCase().includes(inputValue.toLowerCase()) &&
-      !selectedGenres.includes(genre)
-  );
+  // Fetch genres from database on mount
+  useEffect(() => {
+    fetchGenres();
+  }, []);
+
+  const fetchGenres = async () => {
+    setIsLoadingGenres(true);
+    try {
+      const response = await fetch("/api/genres");
+      if (response.ok) {
+        const data = await response.json();
+        setGenres(data.genres || []);
+      }
+    } catch (error) {
+      console.error("Error fetching genres:", error);
+    } finally {
+      setIsLoadingGenres(false);
+    }
+  };
+
+  // Filter genres based on input and exclude already selected
+  const filteredGenres = genres
+    .filter(
+      (genre) =>
+        genre.name.toLowerCase().includes(inputValue.toLowerCase()) &&
+        !selectedGenres.includes(genre.name)
+    )
+    .map((genre) => genre.name);
 
   // Check if input value is a new custom genre
   const isCustomGenre =
     inputValue.trim() !== "" &&
-    !(PREDEFINED_GENRES as readonly string[]).includes(inputValue.trim()) &&
+    !genres.some((g) => g.name.toLowerCase() === inputValue.trim().toLowerCase()) &&
     !selectedGenres.includes(inputValue.trim());
 
-  // All available options (filtered predefined + custom option)
+  // All available options (filtered genres + custom option)
   const options = [
     ...filteredGenres,
     ...(isCustomGenre ? [`Add "${inputValue.trim()}" (custom)`] : []),
@@ -53,16 +85,29 @@ export function GenreMultiSelect({
   // Add genre to selection
   const addGenre = (genre: string) => {
     // Handle custom genre display text
-    const actualGenre = genre.startsWith('Add "')
-      ? genre.replace('Add "', "").replace('" (custom)', "")
-      : genre;
+    if (genre.startsWith('Add "')) {
+      const genreName = genre.replace('Add "', "").replace('" (custom)', "");
+      setCustomGenreName(genreName);
+      setShowAddDialog(true);
+      return;
+    }
 
-    if (!selectedGenres.includes(actualGenre)) {
-      onChange([...selectedGenres, actualGenre]);
+    if (!selectedGenres.includes(genre)) {
+      onChange([...selectedGenres, genre]);
     }
     setInputValue("");
     setShowDropdown(false);
     setHighlightedIndex(0);
+  };
+
+  // Handle genre added from dialog
+  const handleGenreAdded = (newGenre: Genre) => {
+    // Refresh genres list
+    fetchGenres();
+    // Add to selection
+    if (!selectedGenres.includes(newGenre.name)) {
+      onChange([...selectedGenres, newGenre.name]);
+    }
   };
 
   // Remove genre from selection
@@ -216,6 +261,14 @@ export function GenreMultiSelect({
           ? "Type to search genres or add custom ones"
           : `${selectedGenres.length} genre${selectedGenres.length > 1 ? "s" : ""} selected`}
       </p>
+
+      {/* Add Genre Dialog */}
+      <AddGenreDialog
+        open={showAddDialog}
+        onOpenChange={setShowAddDialog}
+        onGenreAdded={handleGenreAdded}
+        initialName={customGenreName}
+      />
     </div>
   );
 }

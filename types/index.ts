@@ -239,6 +239,7 @@ export interface CallReport {
   genre: string[] | null; // Array of genre tags - supports multiple genres
   category: "external_producer" | "writer_pitch" | "inhouse_content" | "content_head_initiative" | "given_by_management"; // Source of idea
   content_type: "Serial" | "Long Serial" | "Telefilm" | "Mini-serial" | "Ramadan Serial" | "Series Sitcom" | "Soap"; // Type/format of the content
+  target_slot?: string; // Target time slot for the content (e.g., "7:00 PM", "8:00 PM")
 
   // Content Head Initiative fields (privacy-controlled)
   idea_by?: string; // Private: visible only to creator and management

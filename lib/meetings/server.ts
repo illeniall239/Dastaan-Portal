@@ -109,10 +109,13 @@ export async function createMeeting(meetingData: CreateMeetingInput) {
   const call_report_id = `CR-${year}-${randomNum}`;
 
   // Convert the meeting data to call report format
+  const loggedAt = new Date().toISOString();
+
   const callReportData = {
     call_report_id: call_report_id,
     meeting_type: meetingData.meeting_type,
     team_id: teamId,
+    created_at: loggedAt,
     logged_by: meetingData.logged_by,
     category: meetingData.category,
     writer_name: meetingData.writer_name,
@@ -157,6 +160,7 @@ export async function createMeeting(meetingData: CreateMeetingInput) {
       story_id: story_id,
       title: meetingData.working_title,
       team_id: teamId,
+      created_at: loggedAt,
       logged_by: meetingData.logged_by,
       category: meetingData.category,
       writer_originator_name: meetingData.writer_name,

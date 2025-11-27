@@ -53,7 +53,10 @@ export const updateCallReportSchema = z.object({
   idea_by: z.string().max(200).optional(),
   developed_by: z.string().max(200).optional(),
   management_member_name: z.string().max(200).optional(),
-  target_slot: z.string().max(100).optional(),
+  target_slot: z.preprocess(
+    (val) => (val === "" || val === null || val === undefined) ? undefined : val,
+    z.string().max(100).optional()
+  ),
   location: z.string().max(255).optional(),
   meeting_date: z.string().datetime().optional(),
   meeting_attendees: z.array(z.string()).optional(),
@@ -63,22 +66,26 @@ export const updateCallReportSchema = z.object({
   overall_rating: z.number().min(1).max(10).optional(),
   attachments_to_delete: z.array(z.string().uuid()).optional(),
 }).refine((data) => {
-  // If category is content_head_initiative, idea_by and developed_by should be provided
+  // Only validate when creating or explicitly changing category
+  // In edit mode, if these fields are undefined, they preserve DB values
   if (data.category === "content_head_initiative") {
-    return data.idea_by && data.developed_by;
+    // Only fail if the fields exist but are empty
+    const idea_by_valid = data.idea_by === undefined || Boolean(data.idea_by);
+    const developed_by_valid = data.developed_by === undefined || Boolean(data.developed_by);
+    return idea_by_valid && developed_by_valid;
   }
   return true;
 }, {
-  message: "Idea By and Developed By are required for Content Head Initiative",
+  message: "Idea By and Developed By cannot be empty for Content Head Initiative",
   path: ["category"]
 }).refine((data) => {
-  // If category is given_by_management, management_member_name should be provided
+  // Only validate when creating or explicitly changing category
   if (data.category === "given_by_management") {
-    return data.management_member_name;
+    return data.management_member_name === undefined || Boolean(data.management_member_name);
   }
   return true;
 }, {
-  message: "Management Member Name is required when Given by Management",
+  message: "Management Member Name cannot be empty when Given by Management",
   path: ["category"]
 });
 

@@ -178,7 +178,7 @@ export async function getTopPerformingTeams(limit: number = 5): Promise<TeamPerf
 
   if (error) {
     console.error("Error fetching top performing teams:", error);
-    throw new Error("Failed to fetch top performing teams");
+    return []; // Gracefully return empty array instead of throwing
   }
 
   return data || [];

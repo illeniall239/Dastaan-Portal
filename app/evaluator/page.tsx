@@ -318,9 +318,30 @@ async function DashboardContent({ userId }: { userId: string }) {
                       ? `Writers: ${report.writer_names.join(", ")}`
                       : `Writer: ${report.writer_name || "Unknown"}`}
                   </p>
-                  <p className="text-xs text-gray-400 mt-0.5">
-                    Logged: {new Date(report.meeting_date).toLocaleDateString()}
-                  </p>
+                  {(() => {
+                    const loggedTimestamp =
+                      report.logged_at ||
+                      report.created_at ||
+                      report.meeting_date ||
+                      report.updated_at ||
+                      report.inserted_at;
+                    const loggedDate = loggedTimestamp ? new Date(loggedTimestamp) : new Date();
+                    const loggedDateStr = loggedDate.toLocaleDateString("en-US", {
+                      month: "short",
+                      day: "numeric",
+                      year: "numeric",
+                    });
+                    const loggedTimeStr = loggedDate.toLocaleTimeString("en-US", {
+                      hour: "numeric",
+                      minute: "2-digit",
+                      hour12: true,
+                    });
+                    return (
+                      <p className="text-xs text-gray-400 mt-0.5">
+                        Logged: {loggedDateStr} at {loggedTimeStr}
+                      </p>
+                    );
+                  })()}
                 </Link>
               ))}
             </div>

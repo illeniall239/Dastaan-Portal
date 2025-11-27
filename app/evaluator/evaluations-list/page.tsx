@@ -166,13 +166,19 @@ export default async function EvaluatorEvaluationsListPage({ searchParams }: { s
           </Card>
         ) : (
           filteredReports.map((report: any) => {
-            const meetingDate = new Date(report.meeting_date);
-            const formattedDate = meetingDate.toLocaleDateString("en-US", {
+            const loggedTimestamp =
+              report.logged_at ||
+              report.created_at ||
+              report.meeting_date ||
+              report.updated_at ||
+              report.inserted_at;
+            const loggedDate = loggedTimestamp ? new Date(loggedTimestamp) : new Date();
+            const formattedDate = loggedDate.toLocaleDateString("en-US", {
               month: "short",
               day: "numeric",
               year: "numeric",
             });
-            const formattedTime = meetingDate.toLocaleTimeString("en-US", {
+            const formattedTime = loggedDate.toLocaleTimeString("en-US", {
               hour: "numeric",
               minute: "2-digit",
               hour12: true,
