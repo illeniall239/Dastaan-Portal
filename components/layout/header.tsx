@@ -128,7 +128,7 @@ export const Header = memo(function Header({ userName, userEmail, userPosition, 
     <>
       {isLoggingOut && <LoadingSpinner text="Logging out..." />}
       <header className="bg-white border-b sticky top-0 z-50 shadow-sm safe-top">
-        <div className="flex items-center justify-between px-4 sm:px-6 md:px-8 py-3">
+        <div className="flex items-center justify-between px-4 sm:px-6 md:px-8 py-4">
           {/* Left: Branding */}
           <div className="flex items-center gap-2 sm:gap-3">
             {/* Brand */}
@@ -142,14 +142,15 @@ export const Header = memo(function Header({ userName, userEmail, userPosition, 
                 className="object-contain"
               />
               <div className="flex flex-col leading-none">
-                <span dir="rtl" lang="ur" className="text-lg font-bold text-slate-900 font-urdu">داستان</span>
-                <span className="text-sm font-semibold text-slate-700 -mt-1">Dastaan</span>
+                <span dir="rtl" lang="ur" className="text-lg font-bold text-slate-900 font-urdu">
+                  داستان
+                </span>
               </div>
             </Link>
           </div>
 
           {/* Center: Navigation Menu */}
-          <nav className="hidden 2xl:flex flex-1 items-center justify-center gap-4">
+          <nav className="hidden 2xl:flex flex-1 items-center justify-center gap-1">
             {navItems.map((item) => {
               const Icon = getIconComponent(item.icon);
               const isActive = pathname === item.href;
@@ -160,19 +161,13 @@ export const Header = memo(function Header({ userName, userEmail, userPosition, 
                   href={item.href}
                   prefetch
                   className={cn(
-                    "flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-all duration-200",
+                    "flex items-center gap-2 px-4 py-2 text-sm font-medium transition-all duration-150 border-b-2",
                     isActive
-                      ? "bg-[#224794] text-white shadow-md"
-                      : "text-slate-700 hover:bg-slate-100 hover:text-slate-900"
+                      ? "border-[#224794] text-[#224794]"
+                      : "border-transparent text-gray-600 hover:bg-gray-50 hover:text-gray-900"
                   )}
-                  onClick={(e) => {
-                    // Provide immediate pressed feedback
-                    const target = e.currentTarget;
-                    target.classList.add("scale-[0.99]");
-                    setTimeout(() => target.classList.remove("scale-[0.99]"), 150);
-                  }}
                 >
-                  <Icon className="h-4 w-4" />
+                  <Icon className="h-5 w-5" />
                   {item.title}
                 </Link>
               );
@@ -197,10 +192,10 @@ export const Header = memo(function Header({ userName, userEmail, userPosition, 
             {/* Notifications Dropdown */}
             <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="relative h-10 w-10 rounded-lg hover:bg-slate-100 transition-colors">
-                  <Bell className="h-5 w-5 text-slate-600" />
+                <Button variant="ghost" size="icon" className="relative h-10 w-10 rounded-lg hover:bg-gray-50 transition-colors">
+                  <Bell className="h-5 w-5 text-gray-600" />
                   {unreadCount > 0 && (
-                    <span className="absolute -top-1 -right-1 h-5 w-5 bg-red-500 rounded-full text-[10px] text-white flex items-center justify-center font-bold shadow-lg animate-badge-pulse">
+                    <span className="absolute -top-1 -right-1 h-5 w-5 bg-red-500 rounded-full text-[10px] text-white flex items-center justify-center font-bold shadow-sm">
                       {unreadCount > 9 ? "9+" : unreadCount}
                     </span>
                   )}
@@ -269,7 +264,7 @@ export const Header = memo(function Header({ userName, userEmail, userPosition, 
             {/* Profile Dropdown */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <button className="h-9 w-9 rounded-full bg-[#224794] flex items-center justify-center text-white font-bold text-xs shadow-md hover:shadow-lg transition-all" aria-label="Profile menu">
+                <button className="h-9 w-9 rounded-full bg-[#224794] flex items-center justify-center text-white font-semibold text-sm hover:bg-[#1a3670] transition-all" aria-label="Profile menu">
                   {userName.charAt(0).toUpperCase()}
                 </button>
               </DropdownMenuTrigger>
@@ -295,7 +290,7 @@ export const Header = memo(function Header({ userName, userEmail, userPosition, 
 
         {/* Mobile menu panel */}
         {isMobileMenuOpen && (
-          <div className="2xl:hidden border-b bg-white">
+          <div className="2xl:hidden border-t bg-white">
             <nav className="px-4 sm:px-6 py-3 space-y-1">
               {navItems.map((item) => {
                 const Icon = getIconComponent(item.icon);
@@ -306,12 +301,12 @@ export const Header = memo(function Header({ userName, userEmail, userPosition, 
                     href={item.href}
                     prefetch
                     className={cn(
-                      "flex items-center gap-3 px-3 py-3 rounded-lg text-sm font-medium",
-                      isActive ? "bg-[#224794] text-white" : "text-slate-700 hover:bg-slate-100 hover:text-slate-900"
+                      "flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors",
+                      isActive ? "bg-blue-50 text-[#224794] border-l-2 border-[#224794]" : "text-gray-700 hover:bg-gray-50 hover:text-gray-900"
                     )}
                     onClick={() => setIsMobileMenuOpen(false)}
                   >
-                    <Icon className="h-4 w-4" />
+                    <Icon className="h-5 w-5" />
                     {item.title}
                   </Link>
                 );

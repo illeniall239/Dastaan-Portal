@@ -6,6 +6,7 @@ import { adminCreateUserSchema, departmentToRole } from "@/lib/validations/auth"
 import { applyRateLimit, addRateLimitHeaders, handleApiError, withApiPerf } from "@/lib/api-middleware";
 import { RateLimitPresets } from "@/lib/rate-limit-redis";
 import { logAdminAction, getRequestContext } from "@/lib/audit/server";
+import { parseAuthError, createErrorResponse } from "@/lib/error-handler";
 
 /**
  * GET /api/admin/users
@@ -97,13 +98,20 @@ export async function POST(request: Request) {
     const { name, email, password, position, department, team_id } = validation.data;
 
     // Map department to role
-    const role = department === "admin" ? "admin" : departmentToRole(department);
+    let role: string;
+    if (department === "admin") {
+      role = "admin";
+    } else if (department === "content_head") {
+      role = "content_head";
+    } else {
+      role = departmentToRole(department);
+    }
 
     // Use admin client with service role key for user creation
     // This bypasses RLS and has full admin privileges
     const adminClient = createAdminClient();
 
-    const { data: newUser, error } = await adminClient.auth.admin.createUser({
+    const { data: newUser, error: authError } = await adminClient.auth.admin.createUser({
       email,
       password,
       email_confirm: true, // Automatically confirm email for admin-created users
@@ -117,31 +125,35 @@ export async function POST(request: Request) {
       },
     });
 
-    if (error) {
-      return NextResponse.json(
-        {
-          error: "User creation failed",
-          message: error.message,
-        },
-        { status: 500 }
-      );
+    if (authError) {
+      const parsedError = parseAuthError(authError, {
+        operation: 'auth_user_creation',
+        email,
+        details: { role, department },
+      });
+
+      logger.errorWithContext('Auth user creation failed', authError, parsedError.context);
+      return createErrorResponse(parsedError, 500);
     }
 
-    // Update the user record in public.users table with team_id if provided
-    if (team_id) {
+    // Note: Profile creation happens via trigger (on_auth_user_created)
+    // Team creation happens via trigger (users_auto_create_team_trigger) for evaluators
+    // Both triggers run automatically, errors will be captured in auth creation response
+
+    // Optional: Update team_id if explicitly provided and not auto-created
+    if (team_id && role !== 'evaluator') {
       const { error: updateError } = await adminClient
         .from('users')
         .update({ team_id })
         .eq('id', newUser.user.id);
 
       if (updateError) {
-        logger.error("Failed to assign user to team", {
+        logger.dbError('team_assignment', updateError, {
           userId: newUser.user.id,
           teamId: team_id,
-          error: updateError,
+          email,
         });
-        // Note: We don't fail the entire request if team assignment fails
-        // The user is created successfully, just without a team
+        // Don't fail - user created successfully
       }
     }
 
@@ -168,7 +180,15 @@ export async function POST(request: Request) {
     const response = NextResponse.json(newUser);
     return addRateLimitHeaders(response, rateLimitResult.result);
     } catch (error) {
-      return handleApiError(error);
+      logger.errorWithContext('Unexpected error in user creation', error, {
+        operation: 'create_user_endpoint',
+      });
+      return createErrorResponse({
+        code: 'INTERNAL_ERROR',
+        message: 'An unexpected error occurred',
+        technicalDetails: error instanceof Error ? error.message : String(error),
+        context: { operation: 'create_user_endpoint' },
+      }, 500);
     }
   });
 }

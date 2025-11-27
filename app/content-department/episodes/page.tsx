@@ -143,10 +143,10 @@ export default function ContentDepartmentEpisodesPage() {
 
       setCurrentUserId(user.id);
 
-      // Fetch user role
+      // Fetch user role and team (team_id not used here but good to have for consistency)
       const { data: userData } = await supabase
         .from("users")
-        .select("role")
+        .select("team_id, role")
         .eq("id", user.id)
         .single();
 
@@ -197,7 +197,20 @@ export default function ContentDepartmentEpisodesPage() {
   const fetchCallReports = useCallback(async () => {
     setFetchingData(true);
     try {
-      const { data: callReportsData, error: crError } = await supabase
+      // Get current user's team context for team isolation
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: currentUser } = await supabase
+        .from("users")
+        .select("team_id, role")
+        .eq("id", user.id)
+        .single();
+
+      const hasGlobalAccess = currentUser?.role && ['admin', 'management'].includes(currentUser.role);
+
+      // Build query with team filter
+      let callReportsQuery = supabase
         .from("call_reports")
         .select(`
           id,
@@ -205,6 +218,7 @@ export default function ContentDepartmentEpisodesPage() {
           writer_name,
           meeting_type,
           story_id,
+          team_id,
           call_report_writers:call_report_writers (
             writer_id,
             writer_email,
@@ -216,6 +230,13 @@ export default function ContentDepartmentEpisodesPage() {
         .eq("meeting_type", "call_report")
         .order("created_at", { ascending: false })
         .limit(100);
+
+      // TEAM ISOLATION: Apply filter
+      if (!hasGlobalAccess && currentUser?.team_id) {
+        callReportsQuery = callReportsQuery.eq("team_id", currentUser.team_id);
+      }
+
+      const { data: callReportsData, error: crError } = await callReportsQuery;
 
       if (crError) {
         console.error("Error fetching call reports:", crError);

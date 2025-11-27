@@ -1,6 +1,6 @@
-import { Header } from "@/components/layout/header";
 import { getCurrentUser } from "@/lib/auth";
 import { redirect } from "next/navigation";
+import { SidebarWrapper } from "./sidebar-wrapper";
 
 // Evaluator-specific navigation items
 const evaluatorNavItems = [
@@ -13,6 +13,11 @@ const evaluatorNavItems = [
     title: "Calendar",
     href: "/evaluator/calendar",
     icon: "calendar",
+  },
+  {
+    title: "Team",
+    href: "/evaluator/team",
+    icon: "users",
   },
   // Temporarily hidden - will be enabled later
   // {
@@ -70,19 +75,13 @@ export default async function EvaluatorLayout({
   }
 
   return (
-    <div className="flex flex-col min-h-screen bg-slate-50">
-      {/* Header - Navbar */}
-      <Header
-        userName={user.name || "Evaluator"}
-        userEmail={user.email}
-        userPosition={user.position}
-        navItems={evaluatorNavItems}
-      />
-
-      {/* Main Content - Full Width */}
-      <main className="flex-1">
-        {children}
-      </main>
-    </div>
+    <SidebarWrapper
+      userName={user.name || "Evaluator"}
+      userEmail={user.email}
+      userPosition={user.position}
+      navItems={evaluatorNavItems}
+    >
+      {children}
+    </SidebarWrapper>
   );
 }

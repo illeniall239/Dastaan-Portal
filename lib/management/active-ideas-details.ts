@@ -36,11 +36,20 @@ export interface ActiveIdeaDetail {
 /**
  * Get active call reports (ideas) by genre
  * These are call reports that haven't been archived yet
+ * @param genre - Optional genre filter
+ * @param teamId - Optional team_id for team isolation
+ * @param userRole - Optional user role for global access check
  */
-export async function getActiveIdeasByGenre(genre?: string): Promise<ActiveIdeaDetail[]> {
+export async function getActiveIdeasByGenre(
+  genre?: string,
+  teamId?: string | null,
+  userRole?: string | null
+): Promise<ActiveIdeaDetail[]> {
   const supabase = await createClient();
 
   try {
+    const hasGlobalAccess = userRole && ['admin', 'management'].includes(userRole);
+
     let query = supabase
       .from('call_reports')
       .select(`
@@ -63,10 +72,16 @@ export async function getActiveIdeasByGenre(genre?: string): Promise<ActiveIdeaD
         evaluation_deadline,
         total_episodes,
         received_episodes,
-        completion_percentage
+        completion_percentage,
+        team_id
       `)
       .is('archived_at', null)
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false});
+
+    // TEAM ISOLATION: Apply filter unless admin/management
+    if (!hasGlobalAccess && teamId) {
+      query = query.eq('team_id', teamId);
+    }
 
     // Filter by genre if provided (genre is now an array)
     if (genre && genre !== 'all') {
@@ -164,9 +179,16 @@ export async function getActiveIdeasByGenre(genre?: string): Promise<ActiveIdeaD
 
 /**
  * Get statistics for active ideas
+ * @param genre - Optional genre filter
+ * @param teamId - Optional team_id for team isolation
+ * @param userRole - Optional user role for global access check
  */
-export async function getActiveIdeasStats(genre?: string) {
-  const ideas = await getActiveIdeasByGenre(genre);
+export async function getActiveIdeasStats(
+  genre?: string,
+  teamId?: string | null,
+  userRole?: string | null
+) {
+  const ideas = await getActiveIdeasByGenre(genre, teamId, userRole);
 
   const byStatus: Record<string, number> = {};
   const byCategory: Record<string, number> = {};
@@ -192,9 +214,16 @@ export async function getActiveIdeasStats(genre?: string) {
 /**
  * Get active ideas with full details
  * Returns all details needed for the What's Cooking dashboard
+ * @param genre - Optional genre filter
+ * @param teamId - Optional team_id for team isolation
+ * @param userRole - Optional user role for global access check
  */
-export async function getActiveIdeasDetails(genre?: string) {
-  const details = await getActiveIdeasByGenre(genre);
+export async function getActiveIdeasDetails(
+  genre?: string,
+  teamId?: string | null,
+  userRole?: string | null
+) {
+  const details = await getActiveIdeasByGenre(genre, teamId, userRole);
 
   return {
     details,

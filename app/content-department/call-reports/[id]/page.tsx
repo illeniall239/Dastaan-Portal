@@ -12,6 +12,8 @@ import { CalendarIcon, UserIcon, MapPinIcon, FileTextIcon, PaperclipIcon, Pencil
 import { createClient } from "@/lib/supabase/server";
 import { getAttachmentsForEntityServer } from "@/lib/attachments/server";
 import { BackButton } from "@/components/ui/back-button";
+import { canViewPrivateFields } from "@/lib/call-reports/privacy";
+import type { User } from "@/types";
 
 // Helper to convert stored image path to secure proxy URL
 function getSecureImageUrl(value: string | null | undefined): string | null {
@@ -56,15 +58,32 @@ export default async function CallReportDetailPage({ params }: { params: Promise
     redirect("/content-department");
   }
 
-  // Fetch the call report
   const supabase = await createClient();
-  const { data: report, error } = await supabase
+
+  // STEP 1: Get current user's team context for team isolation
+  const { data: currentUser } = await supabase
+    .from("users")
+    .select("team_id, role")
+    .eq("id", user.id)
+    .single();
+
+  const hasGlobalAccess = currentUser?.role && ['admin', 'management'].includes(currentUser.role);
+
+  // STEP 2: Fetch call report with team verification
+  let query = supabase
     .from("call_reports")
     .select("*")
     .eq("id", resolvedParams.id)
-    .eq("meeting_type", "call_report")
-    .single();
+    .eq("meeting_type", "call_report");
 
+  // TEAM ISOLATION: Verify user can access this call report
+  if (!hasGlobalAccess && currentUser?.team_id) {
+    query = query.eq("team_id", currentUser.team_id);
+  }
+
+  const { data: report, error } = await query.single();
+
+  // If no data returned, user doesn't have access to this call report
   if (error || !report) {
     redirect("/content-department/call-reports");
   }
@@ -113,6 +132,9 @@ export default async function CallReportDetailPage({ params }: { params: Promise
     report.created_by === user.id ||
     ["content_manager", "admin"].includes(user.role);
 
+  // Check if user can view private fields
+  const canViewPrivate = canViewPrivateFields(user as User, report.created_by);
+
   return (
     <div className="p-6 space-y-4 max-w-5xl mx-auto">
       {/* Page Header */}
@@ -151,6 +173,33 @@ export default async function CallReportDetailPage({ params }: { params: Promise
                 <p className="text-slate-500 font-medium">Category</p>
                 <p className="text-slate-900 mt-0.5 capitalize">{report.category?.replace("_", " ")}</p>
               </div>
+
+              {/* Content Head Initiative Fields */}
+              {report.category === "content_head_initiative" && (
+                <>
+                  <div>
+                    <p className="text-slate-500 font-medium">Idea By</p>
+                    <p className="text-slate-900 mt-0.5">
+                      {canViewPrivate ? report.idea_by : "In-House Team"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-slate-500 font-medium">Developed By</p>
+                    <p className="text-slate-900 mt-0.5">
+                      {canViewPrivate ? report.developed_by : "In-House Team"}
+                    </p>
+                  </div>
+                </>
+              )}
+
+              {/* Given by Management Field */}
+              {report.category === "given_by_management" && report.management_member_name && (
+                <div>
+                  <p className="text-slate-500 font-medium">Management Member</p>
+                  <p className="text-slate-900 mt-0.5">{report.management_member_name}</p>
+                </div>
+              )}
+
               <div>
                 <p className="text-slate-500 font-medium">Writers/Originators</p>
                 {reportWriters.length > 0 ? (

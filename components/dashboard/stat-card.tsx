@@ -74,39 +74,39 @@ export function StatCard({ title, value, icon: iconName, trend, variant = "defau
 
   const cardContent = (
     <Card className={cn(
-      "relative overflow-hidden transition-all duration-300 hover:shadow-2xl hover:-translate-y-1 border-0 touch-target",
-      href && "cursor-pointer active:scale-[0.98]",
+      "relative overflow-hidden transition-all duration-150 hover:shadow-md hover:-translate-y-0.5 touch-target",
+      href && "cursor-pointer active:scale-[0.99]",
       isPrimary
-        ? "bg-[#224794] text-white shadow-xl hover:shadow-blue-500/30"
-        : "bg-white shadow-lg hover:shadow-blue-100"
+        ? "bg-[#224794] text-white border-[#224794]"
+        : "bg-white border-gray-200"
     )}>
-      <CardContent className="p-4 sm:p-6 md:p-7 relative z-10">
-        <div className="flex items-start justify-between mb-3 sm:mb-4 md:mb-5">
+      <CardContent className="p-6 relative z-10">
+        <div className="flex items-start justify-between mb-4">
           <h3 className={cn(
-            "text-xs sm:text-sm font-semibold uppercase tracking-wider",
-            isPrimary ? "text-white/90" : "text-slate-500"
+            "text-sm font-medium",
+            isPrimary ? "text-white/80" : "text-gray-600"
           )}>
             {title}
           </h3>
           {Icon && (
             <div className={cn(
-              "p-2 sm:p-2.5 rounded-xl shadow-lg transition-all duration-300 flex-shrink-0",
+              "p-2 rounded-lg transition-colors duration-150 flex-shrink-0",
               isPrimary
-                ? "bg-white/20"
-                : "bg-slate-100"
+                ? "bg-white/10"
+                : "bg-blue-50"
             )}>
               <Icon className={cn(
-                "h-4 w-4 sm:h-5 sm:w-5",
-                isPrimary ? "text-white" : "text-slate-700"
+                "h-5 w-5",
+                isPrimary ? "text-white" : "text-[#224794]"
               )} />
             </div>
           )}
         </div>
 
-        <div className="space-y-2 sm:space-y-3">
+        <div className="space-y-2">
           <p className={cn(
-            "text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight animate-count-up",
-            isPrimary ? "text-white" : "text-slate-900"
+            "text-3xl font-bold tracking-tight",
+            isPrimary ? "text-white" : "text-gray-900"
           )}>
             {displayValue}
           </p>
@@ -115,22 +115,22 @@ export function StatCard({ title, value, icon: iconName, trend, variant = "defau
             <div className="flex items-center gap-1.5">
               {trend.isPositive ? (
                 <div className={cn(
-                  "flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full",
+                  "flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-md",
                   isPrimary
-                    ? "bg-white/20 text-white"
+                    ? "bg-white/10 text-white"
                     : "bg-green-50 text-green-700"
                 )}>
-                  <TrendingUp className="h-3.5 w-3.5" />
+                  <TrendingUp className="h-3 w-3" />
                   <span>{trend.value}</span>
                 </div>
               ) : (
                 <div className={cn(
-                  "flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full",
+                  "flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-md",
                   isPrimary
-                    ? "bg-white/20 text-white"
+                    ? "bg-white/10 text-white"
                     : "bg-red-50 text-red-700"
                 )}>
-                  <TrendingDown className="h-3.5 w-3.5" />
+                  <TrendingDown className="h-3 w-3" />
                   <span>{trend.value}</span>
                 </div>
               )}

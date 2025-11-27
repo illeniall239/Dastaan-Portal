@@ -276,17 +276,42 @@ export async function removeEvaluatorAssignment(assignmentId: string) {
 
 /**
  * Get all evaluators by type (for assignment selection)
+ * TEAM ISOLATION: Only return evaluators from the same team
  */
-export async function getEvaluatorsByType(type: "internal" | "external") {
+export async function getEvaluatorsByType(type: "internal" | "external", teamId?: string) {
   const supabase = await createClient();
 
-  const { data, error } = await supabase
+  // Get current user's team_id if not provided
+  let filterTeamId = teamId;
+  if (!filterTeamId) {
+    const { data: { user } } = await supabase.auth.getUser();
+    const { data: currentUser } = await supabase
+      .from("users")
+      .select("team_id, role")
+      .eq("id", user?.id)
+      .single();
+
+    // If user is admin/management, they can see all evaluators (no team filter)
+    if (currentUser?.role === "admin" || currentUser?.role === "management") {
+      filterTeamId = undefined;
+    } else {
+      filterTeamId = currentUser?.team_id;
+    }
+  }
+
+  let query = supabase
     .from("users")
-    .select("id, name, email, evaluator_type")
+    .select("id, name, email, evaluator_type, team_id")
     .eq("role", "evaluator")
     .eq("evaluator_type", type)
-    .eq("status", "active")
-    .order("name", { ascending: true });
+    .eq("status", "active");
+
+  // Apply team filter only if teamId is specified (non-management users)
+  if (filterTeamId) {
+    query = query.eq("team_id", filterTeamId);
+  }
+
+  const { data, error } = await query.order("name", { ascending: true });
 
   if (error) {
     throw new Error(`Failed to fetch evaluators: ${error.message}`);

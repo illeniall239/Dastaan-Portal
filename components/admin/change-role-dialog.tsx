@@ -113,15 +113,13 @@ export function ChangeRoleDialog({
                 <SelectValue placeholder="Select new role" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="production_content_1">Production Content 1</SelectItem>
-                <SelectItem value="production_content_2">Production Content 2</SelectItem>
-                <SelectItem value="channel_content_1">Channel Content 1</SelectItem>
-                <SelectItem value="channel_content_2">Channel Content 2</SelectItem>
-                <SelectItem value="adaptation_content">Adaptation Content</SelectItem>
-                <SelectItem value="management">Management</SelectItem>
+                <SelectItem value="content_creator">Content Creator</SelectItem>
+                <SelectItem value="content_manager">Content Manager</SelectItem>
                 <SelectItem value="evaluator">Evaluator</SelectItem>
-                <SelectItem value="legal">Legal Department</SelectItem>
-                <SelectItem value="finance">Finance Department</SelectItem>
+                <SelectItem value="executive">Executive</SelectItem>
+                <SelectItem value="legal">Legal</SelectItem>
+                <SelectItem value="finance">Finance</SelectItem>
+                <SelectItem value="management">Management</SelectItem>
                 <SelectItem value="admin">Admin</SelectItem>
               </SelectContent>
             </Select>

@@ -237,7 +237,14 @@ export interface CallReport {
   logline_image_url?: string;
   usp: string;
   genre: string[] | null; // Array of genre tags - supports multiple genres
+  category: "external_producer" | "writer_pitch" | "inhouse_content" | "content_head_initiative" | "given_by_management"; // Source of idea
   content_type: "Serial" | "Long Serial" | "Telefilm" | "Mini-serial" | "Ramadan Serial" | "Series Sitcom" | "Soap"; // Type/format of the content
+
+  // Content Head Initiative fields (privacy-controlled)
+  idea_by?: string; // Private: visible only to creator and management
+  developed_by?: string; // Private: visible only to creator and management
+  management_member_name?: string; // For "Given by Management" category
+
   meeting_notes: string;
   meeting_attendees: string[];
   next_steps?: string;

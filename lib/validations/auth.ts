@@ -4,7 +4,7 @@ import { z } from "zod";
 // const ALLOWED_EMAIL_DOMAIN = "geo.com";
 
 // Helper function to map department to role
-export const departmentToRole = (department: string): "content_creator" | "evaluator" | "legal" | "finance" | "management" | "admin" => {
+export const departmentToRole = (department: string): "content_creator" | "content_head" | "evaluator" | "legal" | "finance" | "management" | "admin" => {
   const contentDepartments = [
     "production_content_1",
     "production_content_2",
@@ -20,6 +20,8 @@ export const departmentToRole = (department: string): "content_creator" | "evalu
   switch (department) {
     case "management":
       return "management";
+    case "content_head":
+      return "content_head";
     case "evaluator":
       return "evaluator";
     case "legal":
@@ -184,6 +186,7 @@ export const adminCreateUserSchema = z.object({
     "channel_content_2",
     "adaptation_content",
     "management",
+    "content_head",
     "evaluator",
     "legal",
     "finance",

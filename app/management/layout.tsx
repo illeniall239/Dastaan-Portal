@@ -1,7 +1,7 @@
-import { Header } from "@/components/layout/header";
 import { getCurrentUser } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import "./print.css";
+import { SidebarWrapper } from "./sidebar-wrapper";
 
 // Management-specific navigation items
 const managementNavItems = [
@@ -50,19 +50,13 @@ export default async function ManagementLayout({
   }
 
   return (
-    <div className="flex flex-col min-h-screen bg-slate-50">
-      {/* Header - Navbar */}
-      <Header
-        userName={user.name || "Management"}
-        userEmail={user.email}
-        userPosition={user.position}
-        navItems={managementNavItems}
-      />
-
-      {/* Main Content - Full Width */}
-      <main className="flex-1">
-        {children}
-      </main>
-    </div>
+    <SidebarWrapper
+      userName={user.name || "Management"}
+      userEmail={user.email}
+      userPosition={user.position}
+      navItems={managementNavItems}
+    >
+      {children}
+    </SidebarWrapper>
   );
 }

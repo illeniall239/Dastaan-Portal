@@ -39,6 +39,9 @@ export interface CreateMeetingInput {
   theme?: string;
   slot?: string;
   content_type?: "Serial" | "Long Serial" | "Telefilm" | "Mini-serial" | "Ramadan Serial" | "Series Sitcom" | "Soap";
+  idea_by?: string; // Private: Who originated the idea (Content Head Initiative only)
+  developed_by?: string; // Private: Who developed the concept (Content Head Initiative only)
+  management_member_name?: string; // Which management member assigned this (Given by Management only)
   meeting_date: string;
   duration_minutes?: number; // Meeting duration in minutes (default: 60)
   attendees: string[];
@@ -90,6 +93,10 @@ export async function createMeetingClient(meetingData: CreateMeetingInput) {
     theme: meetingData.theme || null,
     // Map UI-provided slot to DB column target_slot
     target_slot: meetingData.slot || null,
+    content_type: meetingData.content_type || null,
+    idea_by: meetingData.idea_by || null,
+    developed_by: meetingData.developed_by || null,
+    management_member_name: meetingData.management_member_name || null,
     meeting_date: meetingData.meeting_date,
     duration_minutes: meetingData.duration_minutes || 60, // Default to 60 minutes if not specified
     meeting_attendees: meetingData.attendees,
@@ -216,17 +223,26 @@ export async function createMeetingClient(meetingData: CreateMeetingInput) {
 
   // Create notifications for management, evaluators, and content department members
   // Exclude the creator from receiving notification
+  // TEAM ISOLATION: Only notify team members + management
   try {
-    // Get current user ID
+    // Get current user ID and team
     const { data: { user } } = await supabase.auth.getUser();
     const creatorId = user?.id;
 
-    // Get all relevant users (management, evaluator, content_manager, content_creator)
+    // Get current user's team_id
+    const { data: currentUser } = await supabase
+      .from("users")
+      .select("team_id")
+      .eq("id", creatorId)
+      .single();
+
+    // Get all relevant users (management sees all, team members see only their team)
     const { data: relevantUsers } = await supabase
       .from("users")
-      .select("id")
-      .in("role", ["management", "evaluator", "content_manager", "content_creator"])
-      .eq("status", "active");
+      .select("id, role, team_id")
+      .in("role", ["management", "evaluator", "content_manager", "content_creator", "admin"])
+      .eq("status", "active")
+      .or(`team_id.eq.${currentUser?.team_id},role.in.(admin,management)`);
 
     if (relevantUsers && relevantUsers.length > 0) {
       // Exclude the creator from notification list

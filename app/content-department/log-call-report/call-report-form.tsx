@@ -102,7 +102,10 @@ export function CallReportForm({
     notes: "",
     nextSteps: "",
     status: "ready_for_evaluation",
-    overallRating: 5
+    overallRating: 5,
+    ideaBy: "",
+    developedBy: "",
+    managementMemberName: ""
   });
 
   // File upload state
@@ -158,7 +161,10 @@ export function CallReportForm({
         notes: initialData.meeting_notes || "",
         nextSteps: initialData.next_steps || "",
         status: initialData.status || "draft",
-        overallRating: initialData.overall_rating || 5
+        overallRating: initialData.overall_rating || 5,
+        ideaBy: initialData.idea_by || "",
+        developedBy: initialData.developed_by || "",
+        managementMemberName: initialData.management_member_name || ""
       });
       // Pre-populate logline image if exists
       if (initialData.logline_image_url) {
@@ -238,6 +244,10 @@ export function CallReportForm({
           theme: formData.theme || undefined,
           target_slot: formData.targetSlot,
           content_type: formData.contentType as "Serial" | "Long Serial" | "Telefilm" | "Mini-serial" | "Ramadan Serial" | "Series Sitcom" | "Soap" | undefined,
+          category: (formData.category || undefined) as "external_producer" | "writer_pitch" | "inhouse_content" | "content_head_initiative" | "given_by_management" | undefined,
+          idea_by: formData.ideaBy || undefined,
+          developed_by: formData.developedBy || undefined,
+          management_member_name: formData.managementMemberName || undefined,
           meeting_date: meetingDateTime.toISOString(),
           meeting_notes: formData.notes || undefined,
           next_steps: formData.nextSteps || undefined,
@@ -337,6 +347,9 @@ export function CallReportForm({
           theme: formData.theme || undefined,
           slot: formData.targetSlot,
           content_type: formData.contentType as "Serial" | "Long Serial" | "Telefilm" | "Mini-serial" | "Ramadan Serial" | "Series Sitcom" | "Soap" | undefined,
+          idea_by: formData.ideaBy || undefined,
+          developed_by: formData.developedBy || undefined,
+          management_member_name: formData.managementMemberName || undefined,
           meeting_date: meetingDateTime.toISOString(),
           attendees: writers.map(w => w.writer_email).filter((email): email is string => !!email),
           notes: formData.notes,
@@ -404,7 +417,10 @@ export function CallReportForm({
           notes: "",
           nextSteps: "",
           status: "ready_for_evaluation",
-          overallRating: 5
+          overallRating: 5,
+          ideaBy: "",
+          developedBy: "",
+          managementMemberName: ""
         });
         setWriters([]);
         setFilesToUpload([]);
@@ -446,9 +462,57 @@ export function CallReportForm({
                   <SelectItem value="external_producer">External Producer</SelectItem>
                   <SelectItem value="writer_pitch">Writer Pitch</SelectItem>
                   <SelectItem value="inhouse_content">In-house Content</SelectItem>
+                  <SelectItem value="content_head_initiative">Content Head Initiative</SelectItem>
+                  <SelectItem value="given_by_management">Given by Management</SelectItem>
                 </SelectContent>
               </Select>
             </div>
+
+            {/* Content Head Initiative Fields */}
+            {formData.category === "content_head_initiative" && (
+              <div className="space-y-4 border-l-4 border-blue-500 pl-4 bg-blue-50 p-4 rounded">
+                <div className="space-y-2">
+                  <Label htmlFor="ideaBy">Idea By *</Label>
+                  <Input
+                    id="ideaBy"
+                    value={formData.ideaBy}
+                    onChange={handleInputChange}
+                    placeholder="Who originated this idea"
+                    required
+                    disabled={isLoading}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="developedBy">Developed By *</Label>
+                  <Input
+                    id="developedBy"
+                    value={formData.developedBy}
+                    onChange={handleInputChange}
+                    placeholder="Who developed this concept"
+                    required
+                    disabled={isLoading}
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Given by Management Field */}
+            {formData.category === "given_by_management" && (
+              <div className="space-y-4 border-l-4 border-purple-500 pl-4 bg-purple-50 p-4 rounded">
+                <div className="space-y-2">
+                  <Label htmlFor="managementMemberName">Management Member *</Label>
+                  <Input
+                    id="managementMemberName"
+                    value={formData.managementMemberName}
+                    onChange={handleInputChange}
+                    placeholder="Which management member assigned this"
+                    required
+                    disabled={isLoading}
+                  />
+                </div>
+              </div>
+            )}
 
             {/* Writers/Originators - shown for all sources */}
             <div className="space-y-2">

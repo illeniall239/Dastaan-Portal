@@ -58,6 +58,16 @@ export default async function EvaluatorEvaluationsListPage({ searchParams }: { s
 
   // Fetch evaluation drafts to show progress
   const supabase = await createClient();
+
+  // Get current user's team_id for defensive team isolation
+  const { data: currentUser } = await supabase
+    .from("users")
+    .select("team_id, role")
+    .eq("id", user.id)
+    .single();
+
+  const hasGlobalAccess = currentUser?.role && ['admin', 'management'].includes(currentUser.role);
+
   let myDrafts: any[] = [];
   try {
     const { data: drafts, error: draftsError } = await supabase

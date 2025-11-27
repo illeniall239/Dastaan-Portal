@@ -4,6 +4,7 @@ import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
 import { QueryProvider } from "@/lib/providers/query-provider";
 import { NotificationProvider } from "@/lib/providers/notification-provider";
+import { SidebarProvider } from "@/lib/providers/sidebar-provider";
 import RouteProgress from "@/components/ui/route-progress";
 import LayoutClient from "./layout-client";
 import { Suspense } from "react";
@@ -38,8 +39,10 @@ export default function RootLayout({
         <LayoutClient>
           <QueryProvider>
             <NotificationProvider>
-              {children}
-              <Toaster />
+              <SidebarProvider>
+                {children}
+                <Toaster />
+              </SidebarProvider>
             </NotificationProvider>
           </QueryProvider>
         </LayoutClient>

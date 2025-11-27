@@ -57,7 +57,23 @@ export default function EvaluatorCalendar() {
       setError(null);
 
       const supabase = createClient();
-      const { data, error: fetchError } = await supabase
+
+      // TEAM ISOLATION: Get current user's team_id
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        throw new Error("Not authenticated");
+      }
+
+      const { data: currentUser } = await supabase
+        .from("users")
+        .select("team_id, role")
+        .eq("id", user.id)
+        .single();
+
+      const hasGlobalAccess = currentUser?.role && ['admin', 'management'].includes(currentUser.role);
+
+      // Build query with team filter
+      let query = supabase
         .from("call_reports")
         .select(`
           id,
@@ -73,7 +89,14 @@ export default function EvaluatorCalendar() {
           contact_phone,
           organizer:users!created_by(name)
         `)
-        .eq("meeting_type", "scheduled_meeting")
+        .eq("meeting_type", "scheduled_meeting");
+
+      // TEAM ISOLATION: Apply team filter unless admin/management
+      if (!hasGlobalAccess && currentUser?.team_id) {
+        query = query.eq("team_id", currentUser.team_id);
+      }
+
+      const { data, error: fetchError } = await query
         .order("meeting_date", { ascending: true })
         .limit(200);
 

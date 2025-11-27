@@ -3,8 +3,15 @@ import { createClient } from "@/lib/supabase/server";
 /**
  * Get recent activity for the dashboard
  * Fetches recent audit logs or other activity from various tables
+ * @param limit - Number of items to return
+ * @param teamId - Optional team_id for team isolation
+ * @param userRole - Optional user role for global access check
  */
-export async function getRecentActivity(limit: number = 5) {
+export async function getRecentActivity(
+  limit: number = 5,
+  teamId?: string | null,
+  userRole?: string | null
+) {
   const supabase = await createClient();
 
   // Get recent audit logs - only select necessary columns for performance
@@ -25,7 +32,7 @@ export async function getRecentActivity(limit: number = 5) {
   if (error) {
     console.error("Error fetching recent activity:", error);
     // If audit_logs doesn't have data or has error, we can try to get recent activity from other tables
-    return await getRecentActivityFromOtherTables(limit);
+    return await getRecentActivityFromOtherTables(limit, teamId, userRole);
   }
 
   // Format the audit logs data for display
@@ -48,21 +55,37 @@ export async function getRecentActivity(limit: number = 5) {
 /**
  * Fallback function to get recent activity from other tables
  * if audit_logs doesn't have data
+ * @param limit - Number of items to return
+ * @param teamId - Optional team_id for team isolation
+ * @param userRole - Optional user role for global access check
  */
-async function getRecentActivityFromOtherTables(limit: number = 5) {
+async function getRecentActivityFromOtherTables(
+  limit: number = 5,
+  teamId?: string | null,
+  userRole?: string | null
+) {
   const supabase = await createClient();
-  
-  // Get recent call reports - only select necessary columns
-  const { data: callReports, error: callReportError } = await supabase
+
+  const hasGlobalAccess = userRole && ['admin', 'management'].includes(userRole);
+
+  // Build query for recent call reports with team filter
+  let callReportsQuery = supabase
     .from("call_reports")
-    .select(`id, call_report_id, working_title, created_at, users!call_reports_created_by_fkey(name)`)
+    .select(`id, call_report_id, working_title, created_at, team_id, users!call_reports_created_by_fkey(name)`)
     .order("created_at", { ascending: false })
     .limit(Math.floor(limit / 2));
+
+  // TEAM ISOLATION: Apply filter unless admin/management
+  if (!hasGlobalAccess && teamId) {
+    callReportsQuery = callReportsQuery.eq("team_id", teamId);
+  }
+
+  const { data: callReports, error: callReportError } = await callReportsQuery;
 
   // Get recent evaluations - only select necessary columns
   const { data: evaluations, error: evaluationError } = await supabase
     .from("evaluator_forms")
-    .select(`id, average_score, created_at, users!evaluator_forms_evaluator_id_fkey(name), call_reports(working_title)`) 
+    .select(`id, average_score, created_at, users!evaluator_forms_evaluator_id_fkey(name), call_reports(working_title)`)
     .order("created_at", { ascending: false })
     .limit(Math.floor(limit / 2));
 

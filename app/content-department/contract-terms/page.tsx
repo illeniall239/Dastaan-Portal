@@ -19,10 +19,10 @@ export default async function ContentDepartmentContractTermsPage() {
     redirect("/login");
   }
 
-  // Get user role
+  // Get user data including team_id for team isolation
   const { data: userData } = await supabase
     .from("users")
-    .select("role")
+    .select("team_id, role")
     .eq("id", user.id)
     .single();
 
@@ -33,8 +33,10 @@ export default async function ContentDepartmentContractTermsPage() {
     redirect("/dashboard");
   }
 
-  // Fetch contract terms
-  const { data: contractTerms, error } = await supabase
+  const hasGlobalAccess = userData.role && ['admin', 'management'].includes(userData.role);
+
+  // Fetch contract terms with team verification
+  let query = supabase
     .from("negotiations")
     .select(
       `
@@ -43,11 +45,19 @@ export default async function ContentDepartmentContractTermsPage() {
         story_id,
         title,
         writer_originator_name,
-        genre
+        genre,
+        team_id
       )
     `
     )
     .order("created_at", { ascending: false });
+
+  // TEAM ISOLATION: Filter through stories.team_id
+  if (!hasGlobalAccess && userData.team_id) {
+    query = query.eq("stories.team_id", userData.team_id);
+  }
+
+  const { data: contractTerms, error } = await query;
 
   if (error) {
     console.error("Error fetching contract terms:", error);

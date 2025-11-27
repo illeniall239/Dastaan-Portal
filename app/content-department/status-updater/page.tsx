@@ -12,10 +12,10 @@ export default async function StatusUpdaterPage() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  // Get user data and check role
+  // Get user data including team_id for team isolation
   const { data: userData } = await supabase
     .from("users")
-    .select("*")
+    .select("team_id, role")
     .eq("id", user.id)
     .single();
 
@@ -26,8 +26,12 @@ export default async function StatusUpdaterPage() {
     redirect("/dashboard");
   }
 
-  // Fetch all ideas/call reports with details
-  const activeIdeasDetails = await getActiveIdeasDetails();
+  // Fetch all ideas/call reports with details, passing team context
+  const activeIdeasDetails = await getActiveIdeasDetails(
+    undefined,         // genre (no filter)
+    userData.team_id,  // team_id for isolation
+    userData.role      // user_role for global access check
+  );
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50/30 p-6">

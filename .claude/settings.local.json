@@ -38,7 +38,10 @@
       "mcp__reactbits__*",
       "Bash(git checkout:*)",
       "Bash(git branch:*)",
-      "Bash(if not exist \"C:\\Users\\Hamza\\Downloads\\Content-Portal\\Content-Portal\\app\\content-department\\schedule-meeting\" mkdir \"C:\\Users\\Hamza\\Downloads\\Content-Portal\\Content-Portal\\app\\content-department\\schedule-meeting\")"
+      "Bash(if not exist \"C:\\Users\\Hamza\\Downloads\\Content-Portal\\Content-Portal\\app\\content-department\\schedule-meeting\" mkdir \"C:\\Users\\Hamza\\Downloads\\Content-Portal\\Content-Portal\\app\\content-department\\schedule-meeting\")",
+      "Bash(npx supabase:*)",
+      "Skill(frontend-design)",
+      "Skill(frontend-design:frontend-design)"
     ],
     "deny": [],
     "ask": []

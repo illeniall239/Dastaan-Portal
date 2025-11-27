@@ -62,5 +62,47 @@ export const logger = {
     if (isDevelopment) {
       console.info(message, ...args);
     }
+  },
+
+  /**
+   * Log error with structured context
+   * Always logged in production for debugging
+   */
+  errorWithContext: (
+    message: string,
+    error: any,
+    context?: Record<string, any>
+  ) => {
+    console.error(message, {
+      error: {
+        message: error?.message || String(error),
+        code: error?.code,
+        stack: error?.stack,
+      },
+      context,
+      timestamp: new Date().toISOString(),
+    });
+  },
+
+  /**
+   * Log database operation errors with full details
+   * Always logged in production for debugging
+   */
+  dbError: (
+    operation: string,
+    error: any,
+    context?: Record<string, any>
+  ) => {
+    console.error(`Database operation failed: ${operation}`, {
+      operation,
+      error: {
+        message: error?.message,
+        code: error?.code,
+        hint: error?.hint,
+        detail: error?.detail,
+      },
+      context,
+      timestamp: new Date().toISOString(),
+    });
   }
 };

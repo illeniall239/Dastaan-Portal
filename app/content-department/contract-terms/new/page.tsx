@@ -17,10 +17,10 @@ export default async function NewContentDepartmentNegotiationPage() {
     redirect("/login");
   }
 
-  // Get user role
+  // Get user data including team_id for team isolation
   const { data: userData } = await supabase
     .from("users")
-    .select("role")
+    .select("team_id, role")
     .eq("id", user.id)
     .single();
 
@@ -28,8 +28,10 @@ export default async function NewContentDepartmentNegotiationPage() {
     redirect("/dashboard");
   }
 
-  // Fetch approved stories that don't have contract terms yet
-  const { data: stories, error } = await supabase
+  const hasGlobalAccess = userData.role && ['admin', 'management'].includes(userData.role);
+
+  // Fetch approved stories that don't have contract terms yet, with team filtering
+  let storiesQuery = supabase
     .from("stories")
     .select(`
       id,
@@ -38,11 +40,19 @@ export default async function NewContentDepartmentNegotiationPage() {
       writer_originator_name,
       genre,
       status,
+      team_id,
       negotiations!left(id)
     `)
     .eq("status", "approved")
     .is("negotiations.id", null)
     .order("created_at", { ascending: false });
+
+  // TEAM ISOLATION: Filter stories by team
+  if (!hasGlobalAccess && userData.team_id) {
+    storiesQuery = storiesQuery.eq("team_id", userData.team_id);
+  }
+
+  const { data: stories, error } = await storiesQuery;
 
   if (error) {
     console.error("Error fetching approved stories:", error);

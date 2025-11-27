@@ -47,6 +47,19 @@ export default function NewUserPage() {
     },
   });
 
+  // Format team name for display
+  const formatTeamName = (team: Team): string => {
+    if (team.team_head?.name) {
+      return `${team.team_head.name}'s Team`;
+    }
+    // Fallback: use team head's email if name is not available
+    if (team.team_head?.email) {
+      return `${team.team_head.email}'s Team`;
+    }
+    // Final fallback for teams without heads
+    return team.name || "Unnamed Team";
+  };
+
   // Fetch teams on component mount
   useEffect(() => {
     const fetchTeams = async () => {
@@ -54,12 +67,28 @@ export default function NewUserPage() {
         const supabase = createClient();
         const { data, error } = await supabase
           .from("teams")
-          .select("id, name, team_type, parent_team_id, created_at, updated_at")
+          .select(`
+            id,
+            name,
+            team_type,
+            parent_team_id,
+            created_at,
+            updated_at,
+            team_head_id,
+            team_head:users!team_head_id(id, name, email)
+          `)
+          .not('team_head_id', 'is', null)  // Filter out orphaned teams
           .order("name");
 
         if (error) throw error;
 
-        setTeams(data || []);
+        // Transform the data: Supabase returns team_head as array, we need single object
+        const transformedTeams = (data || []).map(team => ({
+          ...team,
+          team_head: Array.isArray(team.team_head) ? team.team_head[0] || null : team.team_head
+        })) as Team[];
+
+        setTeams(transformedTeams);
       } catch (error) {
         console.error("Error fetching teams:", error);
         toast.error("Failed to load teams");
@@ -84,24 +113,54 @@ export default function NewUserPage() {
       const result = await response.json();
 
       if (!response.ok) {
-        console.error("❌ Validation error:", result.error);
-        const errorMessage = typeof result.error === 'string'
-          ? result.error
-          : "Failed to create user. Please check all fields.";
-        toast.error("User creation failed", {
-          description: errorMessage,
+        // Log full error for debugging
+        console.error("User creation failed:", {
+          status: response.status,
+          result,
+          timestamp: new Date().toISOString(),
+        });
+
+        // Determine user-friendly message based on error code
+        let userMessage = "Failed to create user";
+        let userDescription = "An unexpected error occurred. Please try again.";
+
+        if (result.code === 'UNIQUE_VIOLATION') {
+          userMessage = "User already exists";
+          userDescription = "A user with this email address already exists in the system.";
+        } else if (result.code === 'TRIGGER_ERROR') {
+          userMessage = "Team creation failed";
+          userDescription = "The user was created but automatic team setup failed. Please assign a team manually.";
+        } else if (result.code === 'AUTH_ERROR') {
+          userMessage = "Authentication setup failed";
+          userDescription = "Could not create user authentication credentials.";
+        } else if (result.code === 'VALIDATION_ERROR') {
+          userMessage = "Invalid input";
+          userDescription = result.message || "Please check all fields and try again.";
+        } else if (result.message) {
+          userDescription = result.message;
+        }
+
+        // In development, append technical details
+        if (process.env.NODE_ENV === 'development' && result.details) {
+          userDescription += `\n\nTechnical: ${result.details}`;
+        }
+
+        toast.error(userMessage, {
+          description: userDescription,
         });
         return;
       }
 
-      toast.success("User created successfully!", {
-        description: `${data.name} has been added to the system.`,
+      // Success
+      toast.success("User created successfully", {
+        description: `User ${data.email} has been created and can now log in.`,
       });
       router.push("/admin/users");
 
     } catch (error) {
-      toast.error("An error occurred", {
-        description: "Please try again later.",
+      console.error("Network error during user creation:", error);
+      toast.error("Network error", {
+        description: "Could not connect to the server. Please check your connection.",
       });
     } finally {
       setLoading(false);
@@ -292,6 +351,12 @@ export default function NewUserPage() {
                               Management
                             </div>
                           </SelectItem>
+                          <SelectItem value="content_head">
+                            <div className="flex items-center gap-2">
+                              <div className="h-2 w-2 rounded-full bg-indigo-500" />
+                              Content Head (Team Leader)
+                            </div>
+                          </SelectItem>
                           <SelectItem value="evaluator">
                             <div className="flex items-center gap-2">
                               <div className="h-2 w-2 rounded-full bg-yellow-500" />
@@ -364,7 +429,7 @@ export default function NewUserPage() {
                                     team.team_type === 'evaluator' ? 'bg-yellow-500' :
                                     'bg-slate-500'
                                   }`} />
-                                  {team.name}
+                                  {formatTeamName(team)}
                                 </div>
                               </SelectItem>
                             ))
@@ -381,6 +446,21 @@ export default function NewUserPage() {
                   <p className="text-xs text-muted-foreground">
                     Assign the user to a team for performance tracking
                   </p>
+                </div>
+              </div>
+
+              {/* Team Isolation Notice */}
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                <div className="flex gap-3">
+                  <Users className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                  <div className="space-y-1">
+                    <p className="text-sm font-medium text-amber-900">Team Isolation</p>
+                    <p className="text-xs text-amber-700">
+                      Users can only see data from their own team. Content heads automatically
+                      get a team created for them. Management and admin roles have global access
+                      across all teams.
+                    </p>
+                  </div>
                 </div>
               </div>
 

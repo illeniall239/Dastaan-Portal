@@ -3,6 +3,7 @@ import { logger } from "@/lib/logger";
 import { createClient } from "@/lib/supabase/server";
 import { idParamSchema } from "@/lib/validations/uuid-params";
 import { updateCallReportSchema } from "@/lib/validations/call-reports";
+import { sanitizeCallReportForUser } from "@/lib/call-reports/privacy";
 
 /**
  * GET /api/call-reports/[id]
@@ -52,6 +53,20 @@ export async function GET(
       );
     }
 
+    // Get current user's full profile for privacy check
+    const { data: userData } = await supabase
+      .from("users")
+      .select("*")
+      .eq("id", user.id)
+      .single();
+
+    if (!userData) {
+      return NextResponse.json({ error: "User profile not found" }, { status: 404 });
+    }
+
+    // Sanitize private fields based on user permissions
+    const sanitizedCallReport = sanitizeCallReportForUser(callReport, userData);
+
     // Fetch writers for this call report
     const { data: writers } = await supabase
       .from("call_report_writers")
@@ -84,7 +99,7 @@ export async function GET(
 
     return NextResponse.json({
       callReport: {
-        ...callReport,
+        ...sanitizedCallReport,
         writers: transformedWriters
       }
     });
@@ -124,10 +139,10 @@ export async function PATCH(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  // Check user role
+  // Check user role and team
   const { data: userData } = await supabase
     .from("users")
-    .select("role")
+    .select("role, team_id")
     .eq("id", user.id)
     .single();
 
@@ -136,10 +151,10 @@ export async function PATCH(
   }
 
   try {
-    // First, check if call report exists and get owner
+    // First, check if call report exists and get owner + team
     const { data: existing, error: fetchError } = await supabase
       .from("call_reports")
-      .select("created_by")
+      .select("created_by, team_id")
       .eq("id", id)
       .single();
 
@@ -157,10 +172,22 @@ export async function PATCH(
       );
     }
 
-    // Check permissions: owner or manager/admin
+    // TEAM ISOLATION: Check team access first (unless admin/management)
+    const isGlobalUser = ["admin", "management"].includes(userData.role);
+    const isSameTeam = existing.team_id === userData.team_id;
+
+    if (!isGlobalUser && !isSameTeam) {
+      return NextResponse.json(
+        { error: "Access denied: This call report belongs to another team" },
+        { status: 403 }
+      );
+    }
+
+    // Check permissions: owner or manager/admin or content_head (same team)
     const canEdit =
       existing.created_by === user.id ||
-      ["content_manager", "admin"].includes(userData.role);
+      ["content_manager", "admin", "content_head"].includes(userData.role) ||
+      isGlobalUser;
 
     if (!canEdit) {
       return NextResponse.json(

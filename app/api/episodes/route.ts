@@ -33,16 +33,18 @@ export async function POST(request: Request) {
     return unauthorizedError();
   }
 
-  // Check user role
+  // Get user data including team_id for team isolation
   const { data: userData } = await supabase
     .from("users")
-    .select("role")
+    .select("team_id, role")
     .eq("id", user.id)
     .single();
 
   if (!userData || !["content_creator", "content_manager", "evaluator", "admin"].includes(userData.role)) {
     return forbiddenError();
   }
+
+  const hasGlobalAccess = userData.role && ['admin', 'management'].includes(userData.role);
 
   try {
     const body = await request.json();
@@ -217,16 +219,18 @@ export async function GET(request: NextRequest) {
     return unauthorizedError();
   }
 
-  // Check user role
+  // Get user data including team_id for team isolation
   const { data: userData } = await supabase
     .from("users")
-    .select("role")
+    .select("team_id, role")
     .eq("id", user.id)
     .single();
 
   if (!userData || !["content_creator", "content_manager", "evaluator", "executive", "admin"].includes(userData.role)) {
     return forbiddenError();
   }
+
+  const hasGlobalAccess = userData.role && ['admin', 'management'].includes(userData.role);
 
   try {
     // Parse pagination parameters (page, limit, sortBy, sortOrder)
@@ -275,11 +279,21 @@ export async function GET(request: NextRequest) {
       // Step 1: Get distinct call_report_ids with pagination
       const projectOffset = (projectPage - 1) * projectLimit;
 
-      // Get total count of distinct projects
-      const { data: allProjectIds, error: countError } = await supabase
+      // Get total count of distinct projects with team filtering
+      let allProjectsQuery = supabase
         .from("episodes")
-        .select("call_report_id")
+        .select(`
+          call_report_id,
+          call_report:call_reports!inner(team_id)
+        `)
         .not("call_report_id", "is", null);
+
+      // TEAM ISOLATION: Filter through call_reports.team_id
+      if (!hasGlobalAccess && userData.team_id) {
+        allProjectsQuery = allProjectsQuery.eq("call_report.team_id", userData.team_id);
+      }
+
+      const { data: allProjectIds, error: countError } = await allProjectsQuery;
 
       if (countError) {
         logger.error(`Error counting projects: ${countError.message}`);
@@ -291,11 +305,22 @@ export async function GET(request: NextRequest) {
       totalProjects = uniqueProjectIds.length;
 
       // Get paginated project IDs (we need to sort them somehow - by most recent episode)
-      const { data: paginatedProjects, error: projectError } = await supabase
+      let paginatedProjectsQuery = supabase
         .from("episodes")
-        .select("call_report_id, created_at")
+        .select(`
+          call_report_id,
+          created_at,
+          call_report:call_reports!inner(team_id)
+        `)
         .not("call_report_id", "is", null)
         .order("created_at", { ascending: false });
+
+      // TEAM ISOLATION: Filter through call_reports.team_id
+      if (!hasGlobalAccess && userData.team_id) {
+        paginatedProjectsQuery = paginatedProjectsQuery.eq("call_report.team_id", userData.team_id);
+      }
+
+      const { data: paginatedProjects, error: projectError } = await paginatedProjectsQuery;
 
       if (projectError) {
         logger.error(`Error fetching projects: ${projectError.message}`);
@@ -322,14 +347,15 @@ export async function GET(request: NextRequest) {
         count = 0;
       } else {
         // Step 2: Fetch ALL episodes for these projects (no episode limit)
-        const { data: projectEpisodes, error: episodesError, count: episodeCount } = await supabase
+        let projectEpisodesQuery = supabase
           .from("episodes")
           .select(`
             *,
             logged_by_user:users!logged_by(name, email),
-            call_report:call_reports(
+            call_report:call_reports!inner(
               working_title,
               writer_name,
+              team_id,
               call_report_writers:call_report_writers(
                 writer_id,
                 display_order,
@@ -340,6 +366,13 @@ export async function GET(request: NextRequest) {
           `, { count: "exact" })
           .in("call_report_id", projectIdsForPage)
           .order("episode_number", { ascending: true });
+
+        // TEAM ISOLATION: Double-check team filter (should already be filtered by projectIdsForPage)
+        if (!hasGlobalAccess && userData.team_id) {
+          projectEpisodesQuery = projectEpisodesQuery.eq("call_report.team_id", userData.team_id);
+        }
+
+        const { data: projectEpisodes, error: episodesError, count: episodeCount } = await projectEpisodesQuery;
 
         if (episodesError) {
           logger.error(`Error fetching episodes: ${episodesError.message}`);
@@ -360,6 +393,7 @@ export async function GET(request: NextRequest) {
           call_report:call_reports(
             working_title,
             writer_name,
+            team_id,
             call_report_writers:call_report_writers(
               writer_id,
               display_order,
@@ -381,6 +415,12 @@ export async function GET(request: NextRequest) {
       }
       if (filters.episode_number) {
         query = query.eq("episode_number", filters.episode_number);
+      }
+
+      // TEAM ISOLATION: Filter episodes through call_reports.team_id
+      // Only apply if not already filtered by specific call_report_id or story_id
+      if (!hasGlobalAccess && userData.team_id && !filters.call_report_id && !filters.story_id) {
+        query = query.eq("call_report.team_id", userData.team_id);
       }
 
       // Apply pagination and sorting

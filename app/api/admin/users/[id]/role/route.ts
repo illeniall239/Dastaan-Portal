@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { logger } from "@/lib/logger";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { z } from "zod";
 import { applyRateLimit, addRateLimitHeaders, withCors } from "@/lib/api-middleware";
@@ -23,6 +24,8 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   const rate = await applyRateLimit(request, RateLimitPresets.strict);
   if (!rate.success) return rate.response!;
   const { id } = await params;
+
+  // Use regular client for authentication checks
   const supabase = await createClient();
 
   const { data: { user } } = await supabase.auth.getUser();
@@ -46,14 +49,17 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 
   const { role } = validation.data;
 
+  // Use admin client for privileged operations (bypasses RLS)
+  const adminClient = createAdminClient();
+
   // Get previous role for audit trail
-  const { data: previousUserData } = await supabase
+  const { data: previousUserData } = await adminClient
     .from('users')
     .select('role')
     .eq('id', id)
     .single();
 
-  const { data: updatedUser, error } = await supabase.auth.admin.updateUserById(id, {
+  const { data: updatedUser, error } = await adminClient.auth.admin.updateUserById(id, {
     user_metadata: { role },
   });
 
@@ -62,7 +68,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   }
 
   // Also update the public.users table
-  const { error: publicUserError } = await supabase
+  const { error: publicUserError } = await adminClient
     .from('users')
     .update({ role })
     .eq('id', id);

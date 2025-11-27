@@ -1,6 +1,8 @@
-import { Header } from "@/components/layout/header";
+import { Sidebar } from "@/components/layout/sidebar";
+import { MobileHeader } from "@/components/layout/mobile-header";
 import { getCurrentUser } from "@/lib/auth";
 import { redirect } from "next/navigation";
+import { SidebarWrapper } from "./sidebar-wrapper";
 
 export default async function ContentDepartmentLayout({
   children,
@@ -20,19 +22,37 @@ export default async function ContentDepartmentLayout({
     redirect("/dashboard");
   }
 
-  return (
-    <div className="flex flex-col min-h-screen bg-slate-50">
-      {/* Header - Navbar */}
-      <Header
-        userName={user.name || "User"}
-        userEmail={user.email}
-        userPosition={user.position}
-      />
+  const navItems = [
+    {
+      title: "Dashboard",
+      href: "/content-department",
+      icon: "home",
+    },
+    {
+      title: "Calendar",
+      href: "/content-department/calendar",
+      icon: "calendar",
+    },
+    {
+      title: "Writer Engagement Reports",
+      href: "/content-department/call-reports",
+      icon: "fileText",
+    },
+    {
+      title: "Episodes",
+      href: "/content-department/episodes",
+      icon: "film",
+    },
+  ];
 
-      {/* Main Content - Full Width */}
-      <main className="flex-1">
-        {children}
-      </main>
-    </div>
+  return (
+    <SidebarWrapper
+      userName={user.name || "User"}
+      userEmail={user.email}
+      userPosition={user.position}
+      navItems={navItems}
+    >
+      {children}
+    </SidebarWrapper>
   );
 }

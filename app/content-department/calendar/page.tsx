@@ -68,11 +68,28 @@ export default function ContentDepartmentCalendar() {
         throw new Error("User not authenticated");
       }
 
-      // Fetch meetings with simpler query
-      const { data, error: fetchError } = await supabase
+      // TEAM ISOLATION: Get current user's team_id
+      const { data: currentUser } = await supabase
+        .from("users")
+        .select("team_id, role")
+        .eq("id", user.id)
+        .single();
+
+      const hasGlobalAccess = currentUser?.role && ['admin', 'management'].includes(currentUser.role);
+
+      // Build query with team filter
+      let query = supabase
         .from("call_reports")
         .select("*")
-        .eq("meeting_type", "scheduled_meeting")
+        .eq("meeting_type", "scheduled_meeting");
+
+      // TEAM ISOLATION: Apply team filter unless admin/management
+      if (!hasGlobalAccess && currentUser?.team_id) {
+        query = query.eq("team_id", currentUser.team_id);
+      }
+
+      // Fetch meetings with team filter
+      const { data, error: fetchError } = await query
         .order("meeting_date", { ascending: true })
         .limit(200);
 

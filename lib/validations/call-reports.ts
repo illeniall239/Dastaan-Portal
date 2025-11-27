@@ -43,6 +43,16 @@ export const updateCallReportSchema = z.object({
     }).optional()
   ),
   theme: z.string().max(200).optional(),
+  category: z.enum([
+    "external_producer",
+    "writer_pitch",
+    "inhouse_content",
+    "content_head_initiative",
+    "given_by_management"
+  ]).optional(),
+  idea_by: z.string().max(200).optional(),
+  developed_by: z.string().max(200).optional(),
+  management_member_name: z.string().max(200).optional(),
   target_slot: z.string().max(100).optional(),
   location: z.string().max(255).optional(),
   meeting_date: z.string().datetime().optional(),
@@ -52,6 +62,24 @@ export const updateCallReportSchema = z.object({
   status: z.string().max(50).optional(),
   overall_rating: z.number().min(1).max(10).optional(),
   attachments_to_delete: z.array(z.string().uuid()).optional(),
+}).refine((data) => {
+  // If category is content_head_initiative, idea_by and developed_by should be provided
+  if (data.category === "content_head_initiative") {
+    return data.idea_by && data.developed_by;
+  }
+  return true;
+}, {
+  message: "Idea By and Developed By are required for Content Head Initiative",
+  path: ["category"]
+}).refine((data) => {
+  // If category is given_by_management, management_member_name should be provided
+  if (data.category === "given_by_management") {
+    return data.management_member_name;
+  }
+  return true;
+}, {
+  message: "Management Member Name is required when Given by Management",
+  path: ["category"]
 });
 
 export type UpdateCallReportFormData = z.infer<typeof updateCallReportSchema>;

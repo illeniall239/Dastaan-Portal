@@ -287,7 +287,20 @@ export async function getAllMeetings() {
 export async function getAllCallReports() {
   const supabase = await createClient();
 
-  const { data, error } = await supabase
+  // Get current user and their team for team isolation
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    throw new Error('Not authenticated');
+  }
+
+  const { data: currentUser } = await supabase
+    .from("users")
+    .select("team_id, role")
+    .eq("id", user.id)
+    .single();
+
+  // Build base query
+  let query = supabase
     .from("call_reports")
     .select(`
       *,
@@ -302,8 +315,15 @@ export async function getAllCallReports() {
         writer:writers(name)
       )
     `)
-    .eq("meeting_type", "call_report")
-    .order("meeting_date", { ascending: false }); // Most recent first for call reports
+    .eq("meeting_type", "call_report");
+
+  // TEAM ISOLATION: Apply filter unless admin/management
+  const hasGlobalAccess = currentUser?.role && ['admin', 'management'].includes(currentUser.role);
+  if (!hasGlobalAccess && currentUser?.team_id) {
+    query = query.eq("team_id", currentUser.team_id);
+  }
+
+  const { data, error } = await query.order("meeting_date", { ascending: false }); // Most recent first for call reports
 
   if (error) {
     throw new Error(`Failed to fetch call reports: ${error.message}`);

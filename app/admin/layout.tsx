@@ -1,6 +1,6 @@
-import { Header } from "@/components/layout/header";
 import { getCurrentUser } from "@/lib/auth";
 import { redirect } from "next/navigation";
+import { SidebarWrapper } from "./sidebar-wrapper";
 
 export default async function AdminLayout({
   children,
@@ -38,20 +38,13 @@ export default async function AdminLayout({
   ];
 
   return (
-    <div className="flex flex-col min-h-screen bg-slate-50">
-      {/* Header - Navbar */}
-      <Header
-        userName={user.name || "Admin"}
-        userEmail={user.email}
-        userPosition={user.position || "Administrator"}
-        navItems={navItems}
-        dashboardHref="/admin"
-      />
-
-      {/* Main Content - Full Width */}
-      <main className="flex-1">
-        {children}
-      </main>
-    </div>
+    <SidebarWrapper
+      userName={user.name || "Admin"}
+      userEmail={user.email}
+      userPosition={user.position || "Administrator"}
+      navItems={navItems}
+    >
+      {children}
+    </SidebarWrapper>
   );
 }

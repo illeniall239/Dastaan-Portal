@@ -21,10 +21,10 @@ export default async function ContentDepartmentContractTermDetailsPage({
     redirect("/login");
   }
 
-  // Get user role
+  // Get user data including team_id for team isolation
   const { data: userData } = await supabase
     .from("users")
-    .select("role")
+    .select("team_id, role")
     .eq("id", user.id)
     .single();
 
@@ -35,8 +35,10 @@ export default async function ContentDepartmentContractTermDetailsPage({
     redirect("/dashboard");
   }
 
-  // Fetch contract term
-  const { data: contractTerm, error } = await supabase
+  const hasGlobalAccess = userData.role && ['admin', 'management'].includes(userData.role);
+
+  // Fetch contract term with team verification
+  let query = supabase
     .from("negotiations")
     .select(
       `
@@ -45,16 +47,24 @@ export default async function ContentDepartmentContractTermDetailsPage({
         story_id,
         title,
         writer_originator_name,
-        genre
+        genre,
+        team_id
       )
     `
     )
-    .eq("id", resolvedParams.id)
-    .single();
+    .eq("id", resolvedParams.id);
 
+  // TEAM ISOLATION: Verify user can access this contract term
+  if (!hasGlobalAccess && userData.team_id) {
+    query = query.eq("stories.team_id", userData.team_id);
+  }
+
+  const { data: contractTerm, error } = await query.single();
+
+  // If no data returned, user doesn't have access to this contract term
   if (error || !contractTerm) {
     console.error("Error fetching contract term:", error);
-    notFound();
+    redirect("/content-department/contract-terms");
   }
 
   // Only content_manager can edit

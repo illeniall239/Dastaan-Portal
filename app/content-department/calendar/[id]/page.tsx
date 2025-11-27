@@ -27,15 +27,32 @@ export default async function MeetingDetailPage({ params }: { params: Promise<{ 
     redirect("/content-department");
   }
 
-  // Fetch the scheduled meeting
   const supabase = await createClient();
-  const { data: meeting, error } = await supabase
+
+  // STEP 1: Get current user's team context for team isolation
+  const { data: currentUser } = await supabase
+    .from("users")
+    .select("team_id, role")
+    .eq("id", user.id)
+    .single();
+
+  const hasGlobalAccess = currentUser?.role && ['admin', 'management'].includes(currentUser.role);
+
+  // STEP 2: Fetch scheduled meeting with team verification
+  let query = supabase
     .from("call_reports")
     .select("*")
     .eq("id", resolvedParams.id)
-    .eq("meeting_type", "scheduled_meeting")
-    .single();
+    .eq("meeting_type", "scheduled_meeting");
 
+  // TEAM ISOLATION: Verify user can access this meeting
+  if (!hasGlobalAccess && currentUser?.team_id) {
+    query = query.eq("team_id", currentUser.team_id);
+  }
+
+  const { data: meeting, error } = await query.single();
+
+  // If no data returned, user doesn't have access to this meeting
   if (error || !meeting) {
     redirect("/content-department/calendar");
   }
