@@ -60,6 +60,44 @@ export interface CreateMeetingInput {
 export async function createMeetingClient(meetingData: CreateMeetingInput) {
   const supabase = createClient();
 
+  // Fetch the current user's team_id to satisfy strict RLS policies
+  const { data: userProfile, error: userProfileError } = await supabase
+    .from("users")
+    .select("team_id, email")
+    .eq("id", meetingData.created_by)
+    .single();
+
+  if (userProfileError) {
+    console.error("Failed to fetch user profile for team_id", userProfileError);
+    throw new Error("Unable to verify your team. Please try again.");
+  }
+
+  let teamId = userProfile?.team_id || null;
+
+  // Fallback: try to find the team where this user is the head
+  if (!teamId) {
+    const { data: ownedTeam } = await supabase
+      .from("teams")
+      .select("id")
+      .eq("team_head_id", meetingData.created_by)
+      .single();
+
+    if (ownedTeam?.id) {
+      teamId = ownedTeam.id;
+      // Best effort to update the user profile so future requests succeed
+      await supabase
+        .from("users")
+        .update({ team_id: teamId })
+        .eq("id", meetingData.created_by);
+    }
+  }
+
+  if (!teamId) {
+    throw new Error(
+      "Your account is not assigned to a team yet. Please contact an administrator."
+    );
+  }
+
   // Generate unique call_report_id in format CR-YYYY-NNNN
   const now = new Date();
   const year = now.getFullYear();
@@ -72,6 +110,7 @@ export async function createMeetingClient(meetingData: CreateMeetingInput) {
   const callReportData = {
     call_report_id: call_report_id,
     meeting_type: meetingData.meeting_type,
+    team_id: teamId,
     logged_by: meetingData.logged_by,
     category: meetingData.category,
     writer_name: meetingData.writer_name,
@@ -128,6 +167,7 @@ export async function createMeetingClient(meetingData: CreateMeetingInput) {
     const storyData = {
       story_id: story_id,
       title: meetingData.working_title,
+      team_id: teamId,
       logged_by: meetingData.logged_by,
       category: meetingData.category,
       writer_originator_name: meetingData.writer_name,
