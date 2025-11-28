@@ -157,7 +157,7 @@ export default function EpisodicEvaluationPage({ params }: EpisodePageProps) {
 
         <div className="flex items-start justify-between">
           <div>
-            <h1 className="text-3xl font-bold mb-2">
+            <h1 className="text-xl sm:text-2xl font-bold mb-2">
               {existingEvaluation ? (isEditing ? "Edit Evaluation" : "View Evaluation") : "Evaluate Episode"}
             </h1>
             <p className="text-muted-foreground">

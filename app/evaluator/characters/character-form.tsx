@@ -172,7 +172,7 @@ export function CharacterForm() {
 
         {/* Header */}
         <div className="flex justify-between items-center">
-          <h1 className="text-3xl font-bold text-gray-800">Character Development</h1>
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-800">Character Development</h1>
           <div className="flex gap-3">
             <Button
               type="button"

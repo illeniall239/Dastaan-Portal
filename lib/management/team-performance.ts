@@ -165,7 +165,7 @@ export async function getTeamComparison(teamType?: TeamType): Promise<TeamCompar
 }
 
 /**
- * Get top performing teams across all metrics
+ * Get team performance data across all metrics
  */
 export async function getTopPerformingTeams(limit: number = 5): Promise<TeamPerformance[]> {
   const supabase = createClient();
@@ -177,7 +177,7 @@ export async function getTopPerformingTeams(limit: number = 5): Promise<TeamPerf
     .limit(limit);
 
   if (error) {
-    console.error("Error fetching top performing teams:", error);
+    console.error("Error fetching team performance data:", error);
     return []; // Gracefully return empty array instead of throwing
   }
 

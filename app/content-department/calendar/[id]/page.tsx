@@ -77,7 +77,7 @@ export default async function MeetingDetailPage({ params }: { params: Promise<{ 
         <div className="flex items-center gap-4">
           <BackButton fallbackHref="/content-department/calendar" variant="outline" />
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">{meeting.working_title}</h1>
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight">{meeting.working_title}</h1>
             <p className="text-muted-foreground mt-1">
               Scheduled Meeting
             </p>

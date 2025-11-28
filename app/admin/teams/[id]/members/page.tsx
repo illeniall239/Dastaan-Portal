@@ -257,7 +257,7 @@ export default function TeamMembersPage() {
 
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
           <div>
-            <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">{team?.name} - Members</h2>
+            <h2 className="text-xl sm:text-2xl font-bold tracking-tight">{team?.name} - Members</h2>
             <p className="text-muted-foreground mt-1 text-sm sm:text-base">
               Manage team members and assignments
             </p>

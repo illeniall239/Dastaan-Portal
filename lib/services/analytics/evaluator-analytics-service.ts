@@ -446,14 +446,14 @@ export class EvaluatorAnalyticsService extends BaseAnalyticsService {
   }
 
   /**
-   * Get top performing evaluators
+   * Get evaluator performance data
    *
-   * @param limit - Number of top evaluators to return (default: 10)
-   * @returns Array of top evaluator statistics
+   * @param limit - Number of evaluators to return (default: 10)
+   * @returns Array of evaluator statistics
    */
   async getTopPerformers(limit: number = 10): Promise<EvaluatorStats[]> {
     try {
-      logger.info(`Getting top ${limit} performing evaluators`);
+      logger.info(`Getting evaluator performance data (limit: ${limit})`);
 
       const allStats = await this.getAllEvaluatorStats();
       const sorted = allStats.sort((a, b) => b.totalEvaluations - a.totalEvaluations);

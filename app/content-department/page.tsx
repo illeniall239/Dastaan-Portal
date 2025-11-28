@@ -31,7 +31,7 @@ export default async function ContentDepartmentDashboard() {
       {/* Page Header with Actions - Static, shows immediately */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Welcome back, <span className="text-[#224794]">{user.name}</span>.</h1>
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Welcome back, <span className="text-[#224794]">{user.name}</span>.</h1>
           <p className="text-muted-foreground mt-1 text-sm sm:text-base">
             Here&apos;s what&apos;s happening today.
           </p>

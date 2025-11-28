@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+import { useState, useMemo } from "react";
+import { ScatterChart, Scatter, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell } from 'recharts';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { TrendingUp } from "lucide-react";
@@ -13,6 +13,7 @@ interface EventAnalysisChartProps {
 }
 
 type ImpactFilter = "All" | "High Impact" | "Medium Impact" | "Low Impact";
+type ViewMode = "scatter" | "ecg";
 
 interface ScatterPoint {
   episode: number;
@@ -24,6 +25,7 @@ interface ScatterPoint {
 export function EventAnalysisChart({ data, dramaTitle }: EventAnalysisChartProps) {
   const [selectedImpact, setSelectedImpact] = useState<ImpactFilter>("All");
   const [hoveredEvent, setHoveredEvent] = useState<EventDetail | null>(null);
+  const [viewMode, setViewMode] = useState<ViewMode>("scatter");
 
   if (!data || data.length === 0) {
     return (
@@ -50,6 +52,17 @@ export function EventAnalysisChart({ data, dramaTitle }: EventAnalysisChartProps
   const filteredScatterData = selectedImpact === "All"
     ? scatterData
     : scatterData.filter(point => point.impact === selectedImpact);
+
+  // Transform data into ECG frequency format
+  const ecgData = useMemo(() => {
+    return data.map(ep => ({
+      episode: ep.episodeNumber,
+      highCount: ep.events.filter(e => e.impact === 'High Impact').length,
+      mediumCount: ep.events.filter(e => e.impact === 'Medium Impact').length,
+      lowCount: ep.events.filter(e => e.impact === 'Low Impact').length,
+      totalCount: ep.events.length,
+    }));
+  }, [data]);
 
   // Get color based on impact
   const getImpactColor = (impact: string) => {
@@ -121,6 +134,27 @@ export function EventAnalysisChart({ data, dramaTitle }: EventAnalysisChartProps
     return null;
   };
 
+  // ECG Tooltip
+  const ECGTooltip = ({ active, payload, label }: any) => {
+    if (active && payload && payload.length) {
+      return (
+        <div className="bg-white p-3 border rounded-lg shadow-lg">
+          <p className="font-semibold text-sm mb-2">Episode {label}</p>
+          {payload.map((entry: any, index: number) => (
+            <div key={index} className="flex items-center gap-2 text-xs">
+              <div
+                className="w-3 h-3 rounded-full"
+                style={{ backgroundColor: entry.color }}
+              />
+              <span>{entry.name}: {entry.value} events</span>
+            </div>
+          ))}
+        </div>
+      );
+    }
+    return null;
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -132,7 +166,25 @@ export function EventAnalysisChart({ data, dramaTitle }: EventAnalysisChartProps
               {selectedImpact !== "All" && ` (${selectedImpact} only)`}
             </CardDescription>
           </div>
-          <TrendingUp className="h-6 w-6 text-muted-foreground" />
+          <div className="flex items-center gap-3">
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                variant={viewMode === "scatter" ? "default" : "outline"}
+                onClick={() => setViewMode("scatter")}
+              >
+                Scatter View
+              </Button>
+              <Button
+                size="sm"
+                variant={viewMode === "ecg" ? "default" : "outline"}
+                onClick={() => setViewMode("ecg")}
+              >
+                ECG View
+              </Button>
+            </div>
+            <TrendingUp className="h-6 w-6 text-muted-foreground" />
+          </div>
         </div>
 
         {/* Impact Filter Buttons */}
@@ -200,47 +252,101 @@ export function EventAnalysisChart({ data, dramaTitle }: EventAnalysisChartProps
           </Card>
         </div>
 
-        {/* Scatter Chart */}
-        <ResponsiveContainer width="100%" height={450}>
-          <ScatterChart margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-            <XAxis
-              type="number"
-              dataKey="episode"
-              name="Episode"
-              stroke="#64748b"
-              style={{ fontSize: '12px' }}
-              label={{ value: 'Episode', position: 'insideBottom', offset: -10, style: { fontSize: '12px' } }}
-              domain={[0.5, data.length + 0.5]}
-              ticks={data.map((_, idx) => idx + 1)}
-            />
-            <YAxis
-              type="number"
-              dataKey="position"
-              name="Position"
-              stroke="#64748b"
-              style={{ fontSize: '12px' }}
-              label={{ value: 'Event Count', angle: -90, position: 'insideLeft', style: { fontSize: '12px' } }}
-              domain={[0, maxEventsPerEpisode + 1]}
-            />
-            <Tooltip content={<CustomTooltip />} cursor={{ strokeDasharray: '3 3' }} />
-            <Scatter
-              data={filteredScatterData}
-              fill="#8884d8"
-            >
-              {filteredScatterData.map((entry, index) => (
-                <Cell
-                  key={`cell-${index}`}
-                  fill={getImpactColor(entry.impact)}
-                  stroke="white"
-                  strokeWidth={2}
-                  r={7}
-                  style={{ cursor: 'pointer' }}
+        {/* Chart - Conditional based on viewMode */}
+        {viewMode === "scatter" ? (
+          <ResponsiveContainer width="100%" height={450}>
+            <ScatterChart margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+              <XAxis
+                type="number"
+                dataKey="episode"
+                name="Episode"
+                stroke="#64748b"
+                style={{ fontSize: '12px' }}
+                label={{ value: 'Episode', position: 'insideBottom', offset: -10, style: { fontSize: '12px' } }}
+                domain={[0.5, data.length + 0.5]}
+                ticks={data.map((_, idx) => idx + 1)}
+              />
+              <YAxis
+                type="number"
+                dataKey="position"
+                name="Position"
+                stroke="#64748b"
+                style={{ fontSize: '12px' }}
+                label={{ value: 'Event Count', angle: -90, position: 'insideLeft', style: { fontSize: '12px' } }}
+                domain={[0, maxEventsPerEpisode + 1]}
+              />
+              <Tooltip content={<CustomTooltip />} cursor={{ strokeDasharray: '3 3' }} />
+              <Scatter
+                data={filteredScatterData}
+                fill="#8884d8"
+              >
+                {filteredScatterData.map((entry, index) => (
+                  <Cell
+                    key={`cell-${index}`}
+                    fill={getImpactColor(entry.impact)}
+                    stroke="white"
+                    strokeWidth={2}
+                    r={7}
+                    style={{ cursor: 'pointer' }}
+                  />
+                ))}
+              </Scatter>
+            </ScatterChart>
+          </ResponsiveContainer>
+        ) : (
+          <ResponsiveContainer width="100%" height={450}>
+            <LineChart data={ecgData} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+              <XAxis
+                dataKey="episode"
+                stroke="#64748b"
+                style={{ fontSize: '12px' }}
+                label={{ value: 'Episode Number', position: 'insideBottom', offset: -10, style: { fontSize: '12px' } }}
+              />
+              <YAxis
+                stroke="#64748b"
+                style={{ fontSize: '12px' }}
+                label={{ value: 'Event Frequency', angle: -90, position: 'insideLeft', style: { fontSize: '12px' } }}
+              />
+              <Tooltip content={<ECGTooltip />} />
+              <Legend />
+              {(selectedImpact === "All" || selectedImpact === "High Impact") && (
+                <Line
+                  type="monotone"
+                  dataKey="highCount"
+                  stroke="#ef4444"
+                  strokeWidth={3}
+                  dot={{ r: 5 }}
+                  activeDot={{ r: 7 }}
+                  name="High Impact"
                 />
-              ))}
-            </Scatter>
-          </ScatterChart>
-        </ResponsiveContainer>
+              )}
+              {(selectedImpact === "All" || selectedImpact === "Medium Impact") && (
+                <Line
+                  type="monotone"
+                  dataKey="mediumCount"
+                  stroke="#f59e0b"
+                  strokeWidth={3}
+                  dot={{ r: 5 }}
+                  activeDot={{ r: 7 }}
+                  name="Medium Impact"
+                />
+              )}
+              {(selectedImpact === "All" || selectedImpact === "Low Impact") && (
+                <Line
+                  type="monotone"
+                  dataKey="lowCount"
+                  stroke="#3b82f6"
+                  strokeWidth={3}
+                  dot={{ r: 5 }}
+                  activeDot={{ r: 7 }}
+                  name="Low Impact"
+                />
+              )}
+            </LineChart>
+          </ResponsiveContainer>
+        )}
 
         {/* Insights */}
         <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">

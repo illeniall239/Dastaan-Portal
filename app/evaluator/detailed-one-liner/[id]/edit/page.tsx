@@ -334,7 +334,7 @@ export default function EditDetailedOneLinerPage({ params }: EditDetailedOneLine
         </div>
 
         <div className="mb-6">
-          <h1 className="text-2xl sm:text-3xl font-bold mb-2">Edit Detailed One-Liner</h1>
+          <h1 className="text-xl sm:text-2xl font-bold mb-2">Edit Detailed One-Liner</h1>
           <p className="text-muted-foreground">
             Update the comprehensive one-liner analysis with narrative breakdown.
           </p>

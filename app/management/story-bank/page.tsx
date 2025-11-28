@@ -150,7 +150,7 @@ export default async function ManagementStoryBankPage() {
   return (
     <div className="mobile-container mobile-section">
       <div className="mobile-header-spacing">
-        <h1 className="text-2xl sm:text-3xl font-bold">Script Bank</h1>
+        <h1 className="text-xl sm:text-2xl font-bold">Script Bank</h1>
         <p className="text-muted-foreground mt-2 text-sm sm:text-base">
           Manage writer engagement reports and their linked episodes
         </p>

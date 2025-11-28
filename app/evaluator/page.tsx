@@ -36,7 +36,7 @@ export default async function EvaluatorDashboard() {
       {/* Page Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-900">
             Welcome back, <span className="text-[#224794]">{user.name}</span>.
           </h1>
           <p className="text-gray-500 mt-1">

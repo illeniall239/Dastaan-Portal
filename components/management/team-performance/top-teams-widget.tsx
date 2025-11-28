@@ -4,7 +4,7 @@ import Link from "next/link";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Trophy, ArrowRight, Users, FileText, CheckCircle, MessageSquare } from "lucide-react";
+import { ArrowRight, Users, FileText, CheckCircle, MessageSquare } from "lucide-react";
 import type { TeamPerformance } from "@/types";
 
 interface TopTeamsWidgetProps {
@@ -36,11 +36,10 @@ export function TopTeamsWidget({ teams }: TopTeamsWidgetProps) {
         <div className="flex items-center justify-between">
           <div>
             <CardTitle className="flex items-center gap-2 text-teal-900">
-              <Trophy className="h-5 w-5 text-teal-600" />
-              Team Performance
+              Team Activity Overview
             </CardTitle>
             <CardDescription className="text-teal-700 mt-1">
-              Based on total call reports created
+              Overview of team activities and contributions
             </CardDescription>
           </div>
         </div>
@@ -60,18 +59,6 @@ export function TopTeamsWidget({ teams }: TopTeamsWidgetProps) {
               >
                 <div className="bg-white rounded-lg p-4 border border-teal-200 hover:border-teal-400 hover:shadow-md transition-all cursor-pointer">
                   <div className="flex items-start justify-between gap-3">
-                    {/* Rank Badge */}
-                    <div className="flex-shrink-0">
-                      <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${
-                        index === 0 ? 'bg-yellow-400 text-yellow-900' :
-                        index === 1 ? 'bg-gray-300 text-gray-900' :
-                        index === 2 ? 'bg-orange-400 text-orange-900' :
-                        'bg-teal-100 text-teal-900'
-                      }`}>
-                        #{index + 1}
-                      </div>
-                    </div>
-
                     {/* Team Info */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">

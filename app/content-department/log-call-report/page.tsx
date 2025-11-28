@@ -23,7 +23,7 @@ export default async function LogCallReportPage() {
       </div>
 
       <div className="mb-4 sm:mb-6 text-center">
-        <h1 className="text-xl sm:text-2xl md:text-3xl font-bold">Log Writer Engagement Report</h1>
+        <h1 className="text-xl sm:text-2xl font-bold whitespace-nowrap">Log Writer Engagement Report</h1>
         <p className="text-muted-foreground text-sm sm:text-base">
           Document your meeting with a writer or producer
         </p>

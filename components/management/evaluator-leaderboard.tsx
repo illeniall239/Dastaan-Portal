@@ -51,8 +51,8 @@ export function EvaluatorLeaderboard({ evaluators }: EvaluatorLeaderboardProps) 
     displayStats = apiStats || [];
   }
 
-  // Sort by total evaluations (highest to lowest)
-  const sortedEvaluators = [...displayStats].sort((a, b) => b.totalEvaluations - a.totalEvaluations);
+  // Sort alphabetically by evaluator name
+  const sortedEvaluators = [...displayStats].sort((a, b) => a.name.localeCompare(b.name));
 
   return (
     <Card>

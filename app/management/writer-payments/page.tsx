@@ -152,7 +152,7 @@ export default function WriterPaymentsPage() {
         <div>
           <div className="flex items-center gap-2 mb-2">
             <BackButton fallbackHref="/management" variant="ghost" size="icon" />
-            <h1 className="text-2xl sm:text-3xl font-bold">Writer Payments</h1>
+            <h1 className="text-xl sm:text-2xl font-bold">Writer Payments</h1>
           </div>
           <p className="text-muted-foreground text-sm sm:text-base">
             Financial summary showing negotiated amounts, contracts, and payments by writer

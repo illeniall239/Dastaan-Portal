@@ -57,7 +57,7 @@ export default async function EvaluatorContractTermsPage() {
 
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0 mobile-header-spacing">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold">Contract Terms</h1>
+          <h1 className="text-xl sm:text-2xl font-bold">Contract Terms</h1>
           <p className="text-muted-foreground mt-2 text-sm sm:text-base">
             Manage project contract terms and term sheets
           </p>

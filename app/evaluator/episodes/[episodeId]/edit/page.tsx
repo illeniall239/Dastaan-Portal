@@ -120,7 +120,7 @@ export default function EvaluatorEpisodeEditPage({ params }: EpisodeEditPageProp
         <BackButton fallbackHref="/evaluator/episodes" className="mb-4" />
 
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold mb-2">Edit Episode</h1>
+          <h1 className="text-xl sm:text-2xl font-bold mb-2">Edit Episode</h1>
           <p className="text-muted-foreground">
             Update episode details and information
           </p>

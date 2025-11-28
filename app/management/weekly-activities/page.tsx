@@ -291,7 +291,7 @@ export default function WeeklyActivitiesPage() {
           <div className="flex items-center gap-2">
             <BackButton fallbackHref="/management" variant="ghost" size="sm" className="gap-1" />
           </div>
-          <h1 className="text-3xl font-bold tracking-tight">Weekly Activities</h1>
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Weekly Activities</h1>
           <p className="text-muted-foreground">
             All system activities from the past 7 days
           </p>

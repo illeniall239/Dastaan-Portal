@@ -181,7 +181,7 @@ export default function AuditLogsPage() {
     <div className="container mx-auto py-8 space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold">Audit Logs</h1>
+          <h1 className="text-xl sm:text-2xl font-bold">Audit Logs</h1>
           <p className="text-muted-foreground">Complete audit trail of all admin operations</p>
         </div>
         <Button onClick={exportToCSV} disabled={logs.length === 0}>

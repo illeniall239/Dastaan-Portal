@@ -230,7 +230,7 @@ export default function PipelineValuePage() {
           <div className="flex items-center gap-2">
             <BackButton fallbackHref="/management" variant="ghost" size="sm" className="gap-1" />
           </div>
-          <h1 className="text-3xl font-bold tracking-tight">Pipeline Value</h1>
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Pipeline Value</h1>
           <p className="text-muted-foreground">
             Combined value of active contracts and ongoing negotiations
           </p>

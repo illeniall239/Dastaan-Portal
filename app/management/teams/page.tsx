@@ -82,7 +82,7 @@ export default async function TeamAnalyticsPage() {
     <div className="mobile-container mobile-section">
       {/* Header */}
       <div className="mb-6">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">Team Performance Analytics</h1>
+        <h1 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2">Team Performance Analytics</h1>
         <p className="text-muted-foreground">
           Comprehensive overview of all team metrics and performance indicators
         </p>

@@ -41,8 +41,8 @@ const TEAM_TYPE_LABELS: Record<string, string> = {
 };
 
 export function TeamComparisonTable({ teams, filteredType }: TeamComparisonTableProps) {
-  const [sortField, setSortField] = useState<SortField>('call_reports_created');
-  const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
+  const [sortField, setSortField] = useState<SortField>('team_name');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {

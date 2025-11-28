@@ -52,7 +52,7 @@ export default async function NewEvaluatorNegotiationPage() {
     <div className="mobile-container mobile-section">
       <div className="mobile-header-spacing">
         <BackButton fallbackHref="/evaluator/contract-terms" className="mb-4" />
-        <h1 className="text-2xl sm:text-3xl font-bold">Create New Contract Term</h1>
+        <h1 className="text-xl sm:text-2xl font-bold">Create New Contract Term</h1>
         <p className="text-muted-foreground mt-2 text-sm sm:text-base">
           Start a new negotiation for an approved project
         </p>

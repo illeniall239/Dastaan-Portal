@@ -37,7 +37,7 @@ export default async function CallReportsPage() {
       {/* Page Header - Static, shows immediately */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
         <div>
-          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight">Writer Engagement Reports</h1>
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight whitespace-nowrap">Writer Engagement Reports</h1>
           <p className="text-muted-foreground mt-1 text-sm sm:text-base">
             View all logged writer engagement reports
           </p>

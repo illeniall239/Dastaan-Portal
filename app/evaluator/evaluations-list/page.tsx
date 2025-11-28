@@ -20,6 +20,7 @@ import { PendingEvaluationsNotificationEvaluator } from "@/components/evaluation
 import { IndividualEvaluationProgress } from "@/components/evaluations/individual-evaluation-progress";
 import { calculateEvaluationProgress, hasDraftData } from "@/lib/evaluations/progress";
 import { createClient } from "@/lib/supabase/server";
+import { BackButton } from "@/components/ui/back-button";
 
 // Add Next.js caching - revalidate every 30 seconds
 export const revalidate = 300; // 5 minutes for better performance
@@ -107,10 +108,12 @@ export default async function EvaluatorEvaluationsListPage({ searchParams }: { s
 
   return (
     <div className="mobile-container mobile-section space-y-4 sm:space-y-6">
+      <BackButton fallbackHref="/evaluator" variant="outline" size="sm" />
+
       {/* Page Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Evaluation List</h1>
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Evaluation List</h1>
           <p className="text-muted-foreground mt-1 text-sm sm:text-base">
             Select a One-Liner to evaluate and score
           </p>

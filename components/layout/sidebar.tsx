@@ -13,7 +13,10 @@ import {
   Settings,
   ChefHat,
   X,
-  Users
+  Users,
+  DollarSign,
+  AlertTriangle,
+  Activity
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useSidebar } from "@/lib/providers/sidebar-provider";
@@ -44,6 +47,9 @@ function getIconComponent(iconName: string) {
     settings: Settings,
     chefHat: ChefHat,
     users: Users,
+    dollarSign: DollarSign,
+    alertTriangle: AlertTriangle,
+    activity: Activity,
   };
   return icons[iconName] || HomeIcon;
 }

@@ -142,7 +142,7 @@ export default function NewTeamPage() {
             <Users className="h-6 w-6 text-white" />
           </div>
           <div>
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Create New Team</h1>
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Create New Team</h1>
             <p className="text-muted-foreground mt-1 text-sm sm:text-base">
               Add a new team to the organization
             </p>

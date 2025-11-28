@@ -127,7 +127,7 @@ export function OneLinerForm() {
       <div className="py-6 space-y-6 max-w-6xl mx-auto px-4 sm:px-6">
         {/* Header */}
         <div className="flex justify-between items-center">
-          <h1 className="text-3xl font-bold text-gray-800">One-Liner Submission</h1>
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-800">One-Liner Submission</h1>
           <Button variant="outline" size="sm" asChild>
             <Link href="/evaluator">Back to Dashboard</Link>
           </Button>

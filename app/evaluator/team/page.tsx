@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Users, FileText, ClipboardList, Mail } from 'lucide-react';
 import Link from 'next/link';
+import { BackButton } from '@/components/ui/back-button';
 
 export default async function EvaluatorTeamPage() {
   const supabase = await createClient();
@@ -22,10 +23,12 @@ export default async function EvaluatorTeamPage() {
 
     return (
       <div className="container mx-auto p-6 space-y-6">
+        <BackButton fallbackHref="/evaluator" variant="outline" size="sm" />
+
         {/* Page Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Team Management</h1>
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Team Management</h1>
             <p className="text-muted-foreground">
               Manage your team and track their work
             </p>

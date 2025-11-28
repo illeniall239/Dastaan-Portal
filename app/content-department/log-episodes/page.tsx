@@ -289,7 +289,7 @@ export default function LogEpisodesPage() {
       </div>
 
       <div className="mb-4 sm:mb-6 md:mb-8">
-        <h1 className="text-xl sm:text-2xl md:text-3xl font-bold mb-2">Log Episodes</h1>
+        <h1 className="text-xl sm:text-2xl font-bold mb-2 whitespace-nowrap">Log Episodes</h1>
         <p className="text-muted-foreground text-sm sm:text-base">
           Add episode details with attachments and additional information
         </p>

@@ -28,6 +28,7 @@ interface TopBarProps {
   userName: string;
   userEmail?: string;
   userPosition?: string;
+  isDemoMode?: boolean;
 }
 
 function getNotificationIcon(type: string) {
@@ -59,6 +60,7 @@ export const TopBar = memo(function TopBar({
   userName,
   userEmail,
   userPosition,
+  isDemoMode = false,
 }: TopBarProps) {
   const router = useRouter();
   const { notifications, unreadCount, handleMarkAsRead, handleMarkAllAsRead } = useNotificationContext();

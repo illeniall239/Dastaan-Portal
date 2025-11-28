@@ -188,7 +188,7 @@ export default function ActiveProjectsPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="space-y-1">
-          <h1 className="text-3xl font-bold tracking-tight">Active Projects</h1>
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Active Projects</h1>
           <p className="text-muted-foreground">
             All stories currently in development
           </p>

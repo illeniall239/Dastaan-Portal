@@ -187,7 +187,7 @@ export default function EditTeamPage() {
             <Users className="h-6 w-6 text-white" />
           </div>
           <div>
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Edit Team</h1>
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Edit Team</h1>
             <p className="text-muted-foreground mt-1 text-sm sm:text-base">
               Update team information and hierarchy
             </p>

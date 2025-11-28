@@ -87,7 +87,7 @@ export default async function EditContentDepartmentNegotiationPage({
     <div className="mobile-container mobile-section">
       <div className="mobile-header-spacing">
         <BackButton fallbackHref="/content-department/contract-terms" className="mb-4" />
-        <h1 className="text-2xl sm:text-3xl font-bold">Edit Contract Term</h1>
+        <h1 className="text-xl sm:text-2xl font-bold">Edit Contract Term</h1>
         <p className="text-muted-foreground mt-2 text-sm sm:text-base">
           Update contract term details for {(contractTerm as any).stories?.title || "this project"}
         </p>

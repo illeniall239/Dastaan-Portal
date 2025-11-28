@@ -12,7 +12,8 @@ import { Label } from "@/components/ui/label";
 import { PasswordInput } from "@/components/auth/password-input";
 import { loginSchema, type LoginFormData } from "@/lib/validations/auth";
 import { toast } from "sonner";
-import { Mail, Lock } from "lucide-react";
+import { Mail, Lock, BarChart3 } from "lucide-react";
+import Link from "next/link";
 
 export default function LoginPage() {
   const [loading, setLoading] = useState(false);
@@ -144,9 +145,9 @@ export default function LoginPage() {
           {/* Centered branding content */}
           <div className="space-y-6 max-w-xl">
             <div className="space-y-2">
-              <h1 className="font-heading text-5xl xl:text-6xl font-bold text-white leading-tight flex items-baseline gap-3">
+              <h1 className="font-heading text-3xl lg:text-4xl xl:text-6xl font-bold text-white leading-tight flex items-baseline gap-2 xl:gap-3 whitespace-nowrap">
                 <span>Welcome to</span>
-                <span lang="ur" className="font-urdu text-orange-300 text-6xl xl:text-7xl">
+                <span lang="ur" className="font-urdu text-orange-300 text-4xl lg:text-5xl xl:text-7xl">
                   داستان
                 </span>
               </h1>
@@ -278,6 +279,22 @@ export default function LoginPage() {
                 </p>
               </div>
             </form>
+
+            {/* Demo Dashboard Link */}
+            <div className="mt-8 pt-6 border-t border-gray-200">
+              <Link href="/demo-management">
+                <Button
+                  variant="outline"
+                  className="w-full h-11 flex items-center justify-center gap-2 text-base font-medium text-orange-600 border-orange-200 hover:bg-orange-50 hover:border-orange-300 transition-colors"
+                >
+                  <BarChart3 className="h-5 w-5" />
+                  View Demo Management Dashboard
+                </Button>
+              </Link>
+              <p className="text-xs text-center text-gray-500 mt-2">
+                Preview the management portal with sample data
+              </p>
+            </div>
           </div>
         </div>
       </main>

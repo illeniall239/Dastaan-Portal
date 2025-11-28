@@ -6,7 +6,7 @@ export default function CallReportsLoading() {
       {/* Page Header - Static, shows immediately */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Writer Engagement Reports</h1>
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Writer Engagement Reports</h1>
           <p className="text-muted-foreground mt-1">
             View all logged writer engagement reports
           </p>

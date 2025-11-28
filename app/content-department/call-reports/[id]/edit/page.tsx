@@ -151,7 +151,7 @@ export default function ContentDepartmentCallReportEditPage({ params }: CallRepo
         <BackButton fallbackHref="/content-department/call-reports" className="mb-4" />
 
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold mb-2">Edit Writer Engagement Report</h1>
+          <h1 className="text-xl sm:text-2xl font-bold mb-2">Edit Writer Engagement Report</h1>
           <p className="text-muted-foreground">
             Update the writer engagement report details
           </p>

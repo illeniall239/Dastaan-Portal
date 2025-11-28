@@ -212,7 +212,7 @@ export default function ActiveContractsPage() {
           <div className="flex items-center gap-2">
             <BackButton fallbackHref="/management" variant="ghost" size="sm" className="gap-1" />
           </div>
-          <h1 className="text-3xl font-bold tracking-tight">Active Contracts</h1>
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Active Contracts</h1>
           <p className="text-muted-foreground">
             All contracts currently in progress with payment tracking
           </p>

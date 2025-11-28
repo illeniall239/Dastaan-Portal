@@ -101,7 +101,7 @@ export default async function EvaluatorEvaluationDetailPage({ params }: { params
         <div className="flex items-center gap-4">
           <BackButton fallbackHref="/evaluator/evaluations-list?view=completed" variant="outline" />
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight">
               {evaluation.call_reports?.working_title || "Evaluation Details"}
             </h1>
             <p className="text-muted-foreground mt-1">

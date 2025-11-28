@@ -1,15 +1,18 @@
 import Link from "next/link";
 import { EvaluationCardsGridSkeleton } from "@/components/skeletons/evaluation-card-skeleton";
+import { BackButton } from "@/components/ui/back-button";
 
 export default function EvaluationsListLoading() {
   return (
     <div className="p-6 space-y-6">
+      <BackButton fallbackHref="/evaluator" variant="outline" size="sm" />
+
       {/* Page Header - Static, shows immediately */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Evaluator Dashboard</h1>
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Evaluation List</h1>
           <p className="text-muted-foreground mt-1">
-            Select a call report to evaluate and score
+            Select a One-Liner to evaluate and score
           </p>
         </div>
       </div>

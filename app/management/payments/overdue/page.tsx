@@ -214,7 +214,7 @@ export default function OverduePaymentsPage() {
           <div className="flex items-center gap-2">
             <BackButton fallbackHref="/management" variant="ghost" size="sm" className="gap-1" />
           </div>
-          <h1 className="text-3xl font-bold tracking-tight">Overdue Payments</h1>
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Overdue Payments</h1>
           <p className="text-muted-foreground">
             Payments past their due date requiring immediate attention
           </p>

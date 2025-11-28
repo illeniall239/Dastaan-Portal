@@ -41,24 +41,24 @@ export default async function EvaluatorCallReportsPage() {
       {/* Page Header - Static, shows immediately */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
         <div>
-          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight">Writer Engagement Reports</h1>
-          <p className="text-muted-foreground mt-1 text-sm sm:text-base">
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Writer Engagement Reports</h1>
+          <p className="text-muted-foreground mt-1 text-sm">
             View all logged writer engagement reports
           </p>
         </div>
-        <div className="flex gap-2 w-full sm:w-auto">
-          <Button asChild className="bg-[#224794] hover:bg-[#1a3670] touch-target flex-1 sm:flex-none">
+        <div className="flex gap-2 w-full sm:w-auto mt-2 sm:mt-0">
+          <Button asChild size="sm" className="bg-[#224794] hover:bg-[#1a3670] touch-target flex-1 sm:flex-none text-xs sm:text-sm">
             <Link href="/evaluator/log-call-report">
-              <PlusIcon className="h-4 w-4 mr-2" />
+              <PlusIcon className="h-4 w-4 mr-1.5" />
               <span className="hidden sm:inline">Log New Writer Engagement Report</span>
-              <span className="sm:hidden">Log New Report</span>
+              <span className="sm:hidden">Log Report</span>
             </Link>
           </Button>
-          <Button asChild variant="outline" className="touch-target flex-1 sm:flex-none">
+          <Button asChild variant="outline" size="sm" className="touch-target flex-1 sm:flex-none text-xs sm:text-sm">
             <Link href="/evaluator/log-detailed-one-liner">
-              <FilePenLine className="h-4 w-4 mr-2" />
+              <FilePenLine className="h-4 w-4 mr-1.5" />
               <span className="hidden sm:inline">Log Detailed One-Liner</span>
-              <span className="sm:hidden">Log One-Liner</span>
+              <span className="sm:hidden">One-Liner</span>
             </Link>
           </Button>
         </div>

@@ -188,7 +188,7 @@ export default function ExternalEvaluatePage({ params }: ExternalEvaluatePagePro
     <div className="min-h-screen bg-gray-50 py-8 px-4">
       <div className="max-w-4xl mx-auto">
         <div className="mb-6 text-center">
-          <h1 className="text-3xl font-bold mb-2">External Evaluation</h1>
+          <h1 className="text-xl sm:text-2xl font-bold mb-2">External Evaluation</h1>
           <p className="text-muted-foreground">
             You've been invited to provide feedback on this {linkData.content_type === "episode" ? "episode" : "concept"}
           </p>

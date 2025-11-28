@@ -31,6 +31,9 @@ export interface ActiveIdeaDetail {
   received_episodes: number | null;
   completion_percentage: number | null;
   evaluator_scores: EvaluatorScores | null;
+  management_member_name: string | null;
+  idea_by: string | null;
+  developed_by: string | null;
 }
 
 /**
@@ -73,7 +76,10 @@ export async function getActiveIdeasByGenre(
         total_episodes,
         received_episodes,
         completion_percentage,
-        team_id
+        team_id,
+        management_member_name,
+        idea_by,
+        developed_by
       `)
       .is('archived_at', null)
       .order('created_at', { ascending: false});
@@ -141,9 +147,30 @@ export async function getActiveIdeasByGenre(
 
       // Get writers from junction table, fallback to writer_name if none found
       const writersFromJunction = writersByCallReport[report.id] || [];
-      const writerNames = writersFromJunction.length > 0
-        ? writersFromJunction
-        : (report.writer_name ? [report.writer_name] : []);
+      
+      // Determine writer names based on category
+      let writerNames: string[] = [];
+      if (writersFromJunction.length > 0) {
+        // Use writers from junction table if available
+        writerNames = writersFromJunction;
+      } else if (report.category === 'given_by_management' && report.management_member_name) {
+        // For "Given by Management", show the management member name
+        writerNames = [`Mgmt: ${report.management_member_name}`];
+      } else if (report.category === 'content_head_initiative') {
+        // For "Content Head Initiative", show idea_by or developed_by
+        if (report.idea_by) {
+          writerNames = [report.idea_by];
+        } else if (report.developed_by) {
+          writerNames = [report.developed_by];
+        } else {
+          writerNames = ['In-house'];
+        }
+      } else if (report.category === 'inhouse_content') {
+        writerNames = ['In-house Content'];
+      } else if (report.writer_name && report.writer_name !== 'In-house Content') {
+        // Only use writer_name if it's not the default placeholder
+        writerNames = [report.writer_name];
+      }
 
       return {
         id: report.id,
@@ -169,6 +196,9 @@ export async function getActiveIdeasByGenre(
         received_episodes: report.received_episodes,
         completion_percentage: report.completion_percentage,
         evaluator_scores: scoresByCallReport[report.id] || null,
+        management_member_name: report.management_member_name,
+        idea_by: report.idea_by,
+        developed_by: report.developed_by,
       };
     });
   } catch (error) {

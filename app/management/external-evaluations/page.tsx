@@ -103,7 +103,7 @@ export default async function ManagementExternalEvaluationsPage() {
   return (
     <div className="mobile-container mobile-section">
       <div className="mobile-header-spacing">
-        <h1 className="text-2xl sm:text-3xl font-bold">External Evaluations</h1>
+        <h1 className="text-xl sm:text-2xl font-bold">External Evaluations</h1>
         <p className="text-muted-foreground mt-2 text-sm sm:text-base">
           Generate shareable links and manage external evaluator submissions
         </p>
