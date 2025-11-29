@@ -109,14 +109,14 @@ export default async function ManagementDashboard({
   };
 
   return (
-    <div className="p-6 space-y-6 animate-fade-in">
+    <div className="p-4 sm:p-6 space-y-4 sm:space-y-6 animate-fade-in">
       {/* Page Header */}
       <ManagementHeader userName={user.name} />
 
       {/* Executive Summary Stats */}
-      <div id="executive-summary" className="mb-8">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-2xl font-bold text-gray-900">Executive Summary</h2>
+      <div id="executive-summary" className="mb-6 sm:mb-8">
+        <div className="flex items-center justify-between mb-3 sm:mb-4">
+          <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900">Executive Summary</h2>
           <div className="no-print">
             <ExportButton
               elementId="executive-summary"
@@ -126,7 +126,7 @@ export default async function ManagementDashboard({
             />
           </div>
         </div>
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 lg:gap-6 lg:grid-cols-3">
           <Link href="/management/active-projects" className="transition-transform hover:scale-105">
             <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200 cursor-pointer hover:shadow-lg transition-shadow">
               <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -136,7 +136,7 @@ export default async function ManagementDashboard({
                 <FileText className="h-5 w-5 text-blue-600" />
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold text-blue-900">{summary.totalActiveProjects}</div>
+                <div className="text-xl sm:text-2xl md:text-3xl font-bold text-blue-900">{summary.totalActiveProjects}</div>
                 <p className="text-xs text-blue-700 mt-1">
                   Stories in development pipeline
                 </p>
@@ -153,7 +153,7 @@ export default async function ManagementDashboard({
                 <DollarSign className="h-5 w-5 text-green-600" />
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold text-green-900">
+                <div className="text-xl sm:text-2xl md:text-3xl font-bold text-green-900">
                   {formatCurrency(summary.pipelineValue)}
                 </div>
                 <p className="text-xs text-green-700 mt-1">
@@ -172,7 +172,7 @@ export default async function ManagementDashboard({
                 <Briefcase className="h-5 w-5 text-orange-600" />
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold text-orange-900">{summary.activeContracts}</div>
+                <div className="text-xl sm:text-2xl md:text-3xl font-bold text-orange-900">{summary.activeContracts}</div>
                 <p className="text-xs text-orange-700 mt-1">
                   Contracts currently in effect
                 </p>
@@ -189,7 +189,7 @@ export default async function ManagementDashboard({
                 <AlertTriangle className="h-5 w-5 text-red-600" />
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold text-red-900">{summary.overduePayments}</div>
+                <div className="text-xl sm:text-2xl md:text-3xl font-bold text-red-900">{summary.overduePayments}</div>
                 <p className="text-xs text-red-700 mt-1">
                   Payments requiring attention
                 </p>
@@ -206,7 +206,7 @@ export default async function ManagementDashboard({
                 <Activity className="h-5 w-5 text-purple-600" />
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold text-purple-900">{summary.weeklyActivities}</div>
+                <div className="text-xl sm:text-2xl md:text-3xl font-bold text-purple-900">{summary.weeklyActivities}</div>
                 <p className="text-xs text-purple-700 mt-1">
                   Actions taken this week
                 </p>
@@ -223,7 +223,7 @@ export default async function ManagementDashboard({
                 <Clock className="h-5 w-5 text-indigo-600" />
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold text-indigo-900">{workload.executives.pendingApprovals}</div>
+                <div className="text-xl sm:text-2xl md:text-3xl font-bold text-indigo-900">{workload.executives.pendingApprovals}</div>
                 <p className="text-xs text-indigo-700 mt-1">
                   Awaiting committee decision
                 </p>
@@ -234,25 +234,25 @@ export default async function ManagementDashboard({
       </div>
 
       {/* Critical Alerts */}
-      <div id="critical-alerts-section" className="mb-8">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-2xl font-bold text-gray-900">Critical Alerts</h2>
-            <div className="no-print">
-              <ExportButton
-                elementId="critical-alerts-section"
-                filename="critical-alerts"
-                formats={["png", "pdf"]}
-                compact
-              />
-            </div>
+      <div id="critical-alerts-section" className="mb-6 sm:mb-8">
+        <div className="flex items-center justify-between mb-3 sm:mb-4">
+          <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900">Critical Alerts</h2>
+          <div className="no-print">
+            <ExportButton
+              elementId="critical-alerts-section"
+              filename="critical-alerts"
+              formats={["png", "pdf"]}
+              compact
+            />
           </div>
-          <CriticalAlertsCard alerts={alerts} />
         </div>
+        <CriticalAlertsCard alerts={alerts} />
+      </div>
 
       {/* Team Performance */}
-      <div id="teams-section" className="mb-8">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-2xl font-bold text-gray-900">Team Performance</h2>
+      <div id="teams-section" className="mb-6 sm:mb-8">
+        <div className="flex items-center justify-between mb-3 sm:mb-4">
+          <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900">Team Performance</h2>
           <div className="no-print">
             <ExportButton
               elementId="teams-section"
@@ -266,10 +266,10 @@ export default async function ManagementDashboard({
       </div>
 
       {/* Scripting Phase & Episode Evaluation Pipeline */}
-      <div id="scripting-episode-section" className="mb-8">
-        <div className="flex items-center justify-between mb-6">
+      <div id="scripting-episode-section" className="mb-6 sm:mb-8">
+        <div className="flex items-center justify-between mb-4 sm:mb-6">
           <div>
-            <h2 className="text-2xl font-bold text-gray-900">Scripting Phase & Episode Evaluation Pipeline</h2>
+            <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900">Scripting Phase & Episode Evaluation Pipeline</h2>
             <p className="text-muted-foreground mt-1">
               Track episodic evaluation progress by drama
             </p>
@@ -296,10 +296,10 @@ export default async function ManagementDashboard({
       </div>
 
       {/* Content Pipeline Flow */}
-      <div id="pipeline-section" className="mb-8">
-        <div className="flex items-center justify-between mb-6">
+      <div id="pipeline-section" className="mb-6 sm:mb-8">
+        <div className="flex items-center justify-between mb-4 sm:mb-6">
           <div>
-            <h2 className="text-2xl font-bold text-gray-900">Content Pipeline Flow</h2>
+            <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900">Content Pipeline Flow</h2>
             <p className="text-muted-foreground mt-1">
               Story workflow from submission to completion
             </p>
@@ -328,10 +328,10 @@ export default async function ManagementDashboard({
       </div>
 
       {/* Evaluator Activity Section */}
-      <div id="evaluator-performance" className="mb-8">
-        <div className="flex items-center justify-between mb-6">
+      <div id="evaluator-performance" className="mb-6 sm:mb-8">
+        <div className="flex items-center justify-between mb-4 sm:mb-6">
           <div>
-            <h2 className="text-2xl font-bold text-gray-900">Evaluator Activity Tracking</h2>
+            <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900">Evaluator Activity Tracking</h2>
             <p className="text-muted-foreground mt-1">
               Monitor evaluator workload and activity across all evaluation tasks
             </p>
@@ -355,15 +355,15 @@ export default async function ManagementDashboard({
       </div>
 
       {/* Contract Terms Overview Section */}
-      <div id="contract-terms-section" className="mb-8">
+      <div id="contract-terms-section" className="mb-6 sm:mb-8">
         <ContractTermsOverview contractTerms={contractTerms || []} />
       </div>
 
       {/* Writer Financial Summary Section */}
-      <div id="writer-financial-section" className="mb-8">
-        <div className="flex items-center justify-between mb-6">
+      <div id="writer-financial-section" className="mb-6 sm:mb-8">
+        <div className="flex items-center justify-between mb-4 sm:mb-6">
           <div>
-            <h2 className="text-2xl font-bold text-gray-900">Writer Payments & Financial Overview</h2>
+            <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900">Writer Payments & Financial Overview</h2>
             <p className="text-muted-foreground mt-1">
               Track negotiated amounts, contracts, and payments to writers and producers
             </p>

@@ -100,13 +100,15 @@ export function WriterFinancialSummaryWidget() {
     <Card className="border-emerald-200 bg-gradient-to-br from-emerald-50/50 to-white">
       <CardHeader className="border-b border-emerald-100">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-base flex items-center gap-2">
+          <CardTitle className="text-sm sm:text-base flex items-center gap-2">
             <DollarSign className="h-4 w-4 text-emerald-600" />
-            Writer Payments Overview
+            <span className="hidden sm:inline">Writer Payments Overview</span>
+            <span className="sm:hidden">Writer Payments</span>
           </CardTitle>
           <Button variant="ghost" size="sm" asChild>
-            <Link href="/management/writer-payments">
-              View All
+            <Link href="/management/writer-payments" className="text-xs sm:text-sm">
+              <span className="hidden sm:inline">View All</span>
+              <span className="sm:hidden">All</span>
               <ArrowRight className="h-3 w-3 ml-1" />
             </Link>
           </Button>
@@ -121,22 +123,22 @@ export function WriterFinancialSummaryWidget() {
           <>
             {/* Financial Summary Stats */}
             {totals && (
-              <div className="grid grid-cols-3 gap-3 mb-4 pb-4 border-b border-emerald-100">
-                <div className="bg-white rounded-lg p-3 border border-emerald-100">
-                  <p className="text-xs text-muted-foreground mb-1">Total Committed</p>
-                  <p className="text-sm font-bold text-emerald-700">
+              <div className="grid grid-cols-3 gap-2 sm:gap-3 mb-4 pb-4 border-b border-emerald-100">
+                <div className="bg-white rounded-lg p-2 sm:p-3 border border-emerald-100">
+                  <p className="text-[10px] sm:text-xs text-muted-foreground mb-1">Total Committed</p>
+                  <p className="text-xs sm:text-sm md:text-base font-bold text-emerald-700">
                     {formatCompactCurrency(totals.total_committed)}
                   </p>
                 </div>
-                <div className="bg-white rounded-lg p-3 border border-emerald-100">
-                  <p className="text-xs text-muted-foreground mb-1">Total Paid</p>
-                  <p className="text-sm font-bold text-green-600">
+                <div className="bg-white rounded-lg p-2 sm:p-3 border border-emerald-100">
+                  <p className="text-[10px] sm:text-xs text-muted-foreground mb-1">Total Paid</p>
+                  <p className="text-xs sm:text-sm md:text-base font-bold text-green-600">
                     {formatCompactCurrency(totals.total_paid)}
                   </p>
                 </div>
-                <div className="bg-white rounded-lg p-3 border border-emerald-100">
-                  <p className="text-xs text-muted-foreground mb-1">Outstanding</p>
-                  <p className="text-sm font-bold text-orange-600">
+                <div className="bg-white rounded-lg p-2 sm:p-3 border border-emerald-100">
+                  <p className="text-[10px] sm:text-xs text-muted-foreground mb-1">Outstanding</p>
+                  <p className="text-xs sm:text-sm md:text-base font-bold text-orange-600">
                     {formatCompactCurrency(totals.total_outstanding)}
                   </p>
                 </div>
@@ -186,7 +188,7 @@ export function WriterFinancialSummaryWidget() {
                             </p>
                           </div>
                           <div className="text-right">
-                            <p className="text-sm font-bold text-emerald-700">
+                            <p className="text-xs sm:text-sm font-bold text-emerald-700">
                               {formatCompactCurrency(committed)}
                             </p>
                             <div className="flex items-center gap-1 mt-1">

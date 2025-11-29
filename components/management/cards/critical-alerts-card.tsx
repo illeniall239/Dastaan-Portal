@@ -90,7 +90,7 @@ export function CriticalAlertsCard({ alerts }: CriticalAlertsCardProps) {
       </CardHeader>
       <CardContent>
         {/* Summary Stats */}
-        <div className="grid grid-cols-3 gap-3 mb-6">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
           <div className="p-3 bg-red-50 rounded-lg border border-red-200 text-center">
             <p className="text-2xl font-bold text-red-700">{criticalAlerts.length}</p>
             <p className="text-xs text-red-600">Critical</p>

@@ -63,16 +63,16 @@ export function ManagementHeader({ userName }: ManagementHeaderProps) {
   };
 
   return (
-    <div className="flex items-center justify-between">
+    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">
+        <h1 className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight">
           Welcome back, <span className="text-[#224794]">{userName}</span>.
         </h1>
-        <p className="text-muted-foreground mt-1">
+        <p className="text-muted-foreground mt-1 text-sm sm:text-base">
           Complete oversight of content production pipeline
         </p>
       </div>
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2 sm:gap-3 flex-wrap sm:flex-nowrap">
         <DateRangeSelector onChange={handleDateRangeChange} />
         <Button
           onClick={handlePrintDashboard}
@@ -80,7 +80,7 @@ export function ManagementHeader({ userName }: ManagementHeaderProps) {
           className="hidden md:flex items-center gap-2 no-print"
         >
           <Printer className="h-4 w-4" />
-          Print
+          <span className="hidden lg:inline">Print</span>
         </Button>
         <Button
           onClick={handleExportDashboard}
@@ -88,7 +88,7 @@ export function ManagementHeader({ userName }: ManagementHeaderProps) {
           className="hidden md:flex items-center gap-2 no-print"
         >
           <Download className="h-4 w-4" />
-          Export Report
+          <span className="hidden lg:inline">Export Report</span>
         </Button>
       </div>
     </div>

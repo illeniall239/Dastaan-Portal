@@ -83,55 +83,57 @@ export function EvaluatorLeaderboard({ evaluators }: EvaluatorLeaderboardProps) 
           </div>
         ) : (
           <div className="bg-white rounded-lg border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Evaluator</TableHead>
-                  <TableHead className="text-center">Total One-Liners</TableHead>
-                  <TableHead className="text-center">Episodic Evaluations</TableHead>
-                  <TableHead className="text-center">Writer Engagement Reports</TableHead>
-                  <TableHead className="text-center">Total Activities</TableHead>
-                  <TableHead className="text-center">Avg Time Spent</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {sortedEvaluators.length === 0 ? (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
-                      No activity in this time period
-                    </TableCell>
+                    <TableHead>Evaluator</TableHead>
+                    <TableHead className="text-center">Total One-Liners</TableHead>
+                    <TableHead className="text-center">Episodic Evaluations</TableHead>
+                    <TableHead className="text-center">Writer Engagement Reports</TableHead>
+                    <TableHead className="text-center">Total Activities</TableHead>
+                    <TableHead className="text-center">Avg Time Spent</TableHead>
                   </TableRow>
-                ) : (
-                  sortedEvaluators.map((evaluator) => (
-                    <TableRow key={evaluator.id}>
-                      <TableCell>
-                        <div>
-                          <p className="font-medium">{evaluator.name}</p>
-                          <p className="text-xs text-muted-foreground">{evaluator.email}</p>
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-center text-sm">
-                        {evaluator.oneLinerCount}
-                      </TableCell>
-                      <TableCell className="text-center text-sm">
-                        {evaluator.episodicEvals}
-                      </TableCell>
-                      <TableCell className="text-center text-sm">
-                        {evaluator.callReportEvals}
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <Badge variant="outline" className="font-bold">
-                          {evaluator.totalEvaluations}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-center text-sm">
-                        {evaluator.avgTimeSpent.toFixed(1)} hrs
+                </TableHeader>
+                <TableBody>
+                  {sortedEvaluators.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                        No activity in this time period
                       </TableCell>
                     </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
+                  ) : (
+                    sortedEvaluators.map((evaluator) => (
+                      <TableRow key={evaluator.id}>
+                        <TableCell>
+                          <div>
+                            <p className="font-medium">{evaluator.name}</p>
+                            <p className="text-xs text-muted-foreground">{evaluator.email}</p>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-center text-sm">
+                          {evaluator.oneLinerCount}
+                        </TableCell>
+                        <TableCell className="text-center text-sm">
+                          {evaluator.episodicEvals}
+                        </TableCell>
+                        <TableCell className="text-center text-sm">
+                          {evaluator.callReportEvals}
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <Badge variant="outline" className="font-bold">
+                            {evaluator.totalEvaluations}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-center text-sm">
+                          {evaluator.avgTimeSpent.toFixed(1)} hrs
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
           </div>
         )}
       </CardContent>

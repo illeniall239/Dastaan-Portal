@@ -44,10 +44,10 @@ export function ContractTermsOverview({ contractTerms }: ContractTermsOverviewPr
   return (
     <div id="contract-terms-overview" className="space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold">Contract Terms Overview</h2>
+        <h2 className="text-lg sm:text-xl md:text-2xl font-bold">Contract Terms Overview</h2>
         <Link
           href="/management/contract-terms"
-          className="text-sm text-blue-600 hover:underline"
+          className="text-xs sm:text-sm text-blue-600 hover:underline whitespace-nowrap"
         >
           View All →
         </Link>
@@ -63,7 +63,7 @@ export function ContractTermsOverview({ contractTerms }: ContractTermsOverviewPr
             <Handshake className="h-5 w-5 text-purple-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-purple-900">{stats.total}</div>
+            <div className="text-xl sm:text-2xl md:text-3xl font-bold text-purple-900">{stats.total}</div>
             <p className="text-xs text-purple-700 mt-1">Active term sheets</p>
           </CardContent>
         </Card>
@@ -76,7 +76,7 @@ export function ContractTermsOverview({ contractTerms }: ContractTermsOverviewPr
             <Clock className="h-5 w-5 text-blue-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-blue-900">{stats.in_progress}</div>
+            <div className="text-xl sm:text-2xl md:text-3xl font-bold text-blue-900">{stats.in_progress}</div>
             <p className="text-xs text-blue-700 mt-1">Under negotiation</p>
           </CardContent>
         </Card>
@@ -89,7 +89,7 @@ export function ContractTermsOverview({ contractTerms }: ContractTermsOverviewPr
             <TrendingUp className="h-5 w-5 text-green-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-green-900">{stats.agreed}</div>
+            <div className="text-xl sm:text-2xl md:text-3xl font-bold text-green-900">{stats.agreed}</div>
             <p className="text-xs text-green-700 mt-1">Successfully closed</p>
           </CardContent>
         </Card>
@@ -102,7 +102,7 @@ export function ContractTermsOverview({ contractTerms }: ContractTermsOverviewPr
             <XCircle className="h-5 w-5 text-red-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-red-900">{stats.failed}</div>
+            <div className="text-xl sm:text-2xl md:text-3xl font-bold text-red-900">{stats.failed}</div>
             <p className="text-xs text-red-700 mt-1">Did not proceed</p>
           </CardContent>
         </Card>
@@ -115,7 +115,7 @@ export function ContractTermsOverview({ contractTerms }: ContractTermsOverviewPr
             <CardTitle className="text-white">Total Agreed Value</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-4xl font-bold">{formatCurrency(stats.total_agreed_value)}</div>
+            <div className="text-2xl sm:text-3xl md:text-4xl font-bold">{formatCurrency(stats.total_agreed_value)}</div>
             <p className="text-green-100 mt-2">
               From {stats.agreed} successfully negotiated project{stats.agreed !== 1 ? "s" : ""}
             </p>
