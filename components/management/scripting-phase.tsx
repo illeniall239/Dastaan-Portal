@@ -11,11 +11,11 @@ export function ScriptingPhase({ data }: ScriptingPhaseProps) {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'on_schedule':
-        return <Badge className="bg-green-500 text-white">On Schedule</Badge>;
+        return <Badge className="bg-green-500 text-white text-[10px] sm:text-xs">On Schedule</Badge>;
       case 'on_hold':
-        return <Badge className="bg-yellow-500 text-white">On Hold</Badge>;
+        return <Badge className="bg-yellow-500 text-white text-[10px] sm:text-xs">On Hold</Badge>;
       case 'behind_schedule':
-        return <Badge className="bg-red-500 text-white">Behind Schedule</Badge>;
+        return <Badge className="bg-red-500 text-white text-[10px] sm:text-xs">Behind Schedule</Badge>;
       default:
         return null;
     }
@@ -37,17 +37,17 @@ export function ScriptingPhase({ data }: ScriptingPhaseProps) {
   if (data.length === 0) {
     return (
       <Card>
-        <CardHeader>
+        <CardHeader className="p-3 sm:p-4 lg:p-6">
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle className="text-xl">Scripting Phase</CardTitle>
-              <CardDescription>Dramas in active scripting phase</CardDescription>
+              <CardTitle className="text-sm sm:text-base lg:text-lg">Scripting Phase</CardTitle>
+              <CardDescription className="text-xs sm:text-sm">Dramas in active scripting phase</CardDescription>
             </div>
-            <FileText className="h-6 w-6 text-muted-foreground" />
+            <FileText className="h-5 w-5 sm:h-6 sm:w-6 text-muted-foreground" />
           </div>
         </CardHeader>
-        <CardContent>
-          <p className="text-center text-muted-foreground py-8">
+        <CardContent className="p-4 sm:p-6">
+          <p className="text-center text-muted-foreground py-6 sm:py-8 text-sm">
             No dramas currently in scripting phase
           </p>
         </CardContent>
@@ -57,30 +57,30 @@ export function ScriptingPhase({ data }: ScriptingPhaseProps) {
 
   return (
     <Card>
-      <CardHeader>
+      <CardHeader className="p-3 sm:p-4 lg:p-6">
         <div className="flex items-center justify-between">
           <div>
-            <CardTitle className="text-xl">Scripting Phase</CardTitle>
-            <CardDescription>Dramas in active scripting phase</CardDescription>
+            <CardTitle className="text-sm sm:text-base lg:text-lg">Scripting Phase</CardTitle>
+            <CardDescription className="text-xs sm:text-sm">Dramas in active scripting phase</CardDescription>
           </div>
-          <FileText className="h-6 w-6 text-muted-foreground" />
+          <FileText className="h-5 w-5 sm:h-6 sm:w-6 text-muted-foreground" />
         </div>
       </CardHeader>
-      <CardContent>
-        <div className="space-y-6">
+      <CardContent className="p-3 sm:p-4 lg:p-6">
+        <div className="space-y-4 sm:space-y-6">
           {data.map((drama) => (
             <div key={drama.id} className="space-y-2">
               {/* Drama Title and Badge */}
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <h4 className="font-semibold text-slate-900">{drama.workingTitle}</h4>
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                  <h4 className="font-semibold text-sm sm:text-base text-slate-900 truncate">{drama.workingTitle}</h4>
                   {getStatusBadge(drama.status)}
                 </div>
-                <span className="text-sm font-bold text-slate-700">{drama.scriptProgress}%</span>
+                <span className="text-xs sm:text-sm font-bold text-slate-700 flex-shrink-0">{drama.scriptProgress}%</span>
               </div>
 
               {/* Progress Bar */}
-              <div className="relative w-full h-2 bg-gray-200 rounded-full overflow-hidden">
+              <div className="relative w-full h-1.5 sm:h-2 bg-gray-200 rounded-full overflow-hidden">
                 <div
                   className={`absolute inset-y-0 left-0 ${getProgressBarColor(drama.status)} transition-all duration-500`}
                   style={{ width: `${drama.scriptProgress}%` }}
@@ -88,7 +88,7 @@ export function ScriptingPhase({ data }: ScriptingPhaseProps) {
               </div>
 
               {/* Script Progress Label */}
-              <p className="text-xs text-muted-foreground">Script Progress</p>
+              <p className="text-[10px] sm:text-xs text-muted-foreground">Script Progress</p>
             </div>
           ))}
         </div>

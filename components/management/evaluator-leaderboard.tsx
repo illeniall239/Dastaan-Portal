@@ -56,18 +56,18 @@ export function EvaluatorLeaderboard({ evaluators }: EvaluatorLeaderboardProps) 
 
   return (
     <Card>
-      <CardHeader>
-        <div className="flex items-start justify-between gap-4">
-          <div className="flex-1">
+      <CardHeader className="p-3 sm:p-4 lg:p-6">
+        <div className="flex flex-col sm:flex-row items-start justify-between gap-3 sm:gap-4">
+          <div className="flex-1 w-full sm:w-auto">
             <div className="flex items-center gap-2 mb-2">
-              <CardTitle className="text-xl">Evaluator Activity Overview</CardTitle>
-              <Users className="h-6 w-6 text-blue-500" />
+              <CardTitle className="text-sm sm:text-base lg:text-lg">Evaluator Activity Overview</CardTitle>
+              <Users className="h-4 w-4 md:h-5 md:w-5 lg:h-6 lg:w-6 text-blue-500" />
             </div>
-            <CardDescription>
+            <CardDescription className="text-xs sm:text-sm">
               Activity and performance metrics for all evaluators - {selectedLabel}
             </CardDescription>
           </div>
-          <div className="flex-shrink-0">
+          <div className="flex-shrink-0 w-full sm:w-auto">
             <EvaluatorTimeFilter
               selectedPreset={selectedPreset}
               onChange={handleTimeRangeChange}
@@ -75,11 +75,11 @@ export function EvaluatorLeaderboard({ evaluators }: EvaluatorLeaderboardProps) 
           </div>
         </div>
       </CardHeader>
-      <CardContent>
+      <CardContent className="p-3 sm:p-4 lg:p-6">
         {isLoading ? (
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
-            <span className="ml-3 text-muted-foreground">Loading data...</span>
+          <div className="flex items-center justify-center py-8 sm:py-12">
+            <Loader2 className="h-6 w-6 sm:h-8 sm:w-8 animate-spin text-blue-500" />
+            <span className="ml-2 sm:ml-3 text-sm text-muted-foreground">Loading data...</span>
           </div>
         ) : (
           <div className="bg-white rounded-lg border">
@@ -87,45 +87,45 @@ export function EvaluatorLeaderboard({ evaluators }: EvaluatorLeaderboardProps) 
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Evaluator</TableHead>
-                    <TableHead className="text-center">Total One-Liners</TableHead>
-                    <TableHead className="text-center">Episodic Evaluations</TableHead>
-                    <TableHead className="text-center">Writer Engagement Reports</TableHead>
-                    <TableHead className="text-center">Total Activities</TableHead>
-                    <TableHead className="text-center">Avg Time Spent</TableHead>
+                    <TableHead className="text-xs sm:text-sm">Evaluator</TableHead>
+                    <TableHead className="text-center text-xs sm:text-sm">Total One-Liners</TableHead>
+                    <TableHead className="text-center text-xs sm:text-sm">Episodic Evaluations</TableHead>
+                    <TableHead className="text-center text-xs sm:text-sm">Writer Engagement Reports</TableHead>
+                    <TableHead className="text-center text-xs sm:text-sm">Total Activities</TableHead>
+                    <TableHead className="text-center text-xs sm:text-sm">Avg Time Spent</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {sortedEvaluators.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                      <TableCell colSpan={6} className="text-center text-muted-foreground py-6 sm:py-8 text-sm">
                         No activity in this time period
                       </TableCell>
                     </TableRow>
                   ) : (
                     sortedEvaluators.map((evaluator) => (
                       <TableRow key={evaluator.id}>
-                        <TableCell>
+                        <TableCell className="p-2 sm:p-4">
                           <div>
-                            <p className="font-medium">{evaluator.name}</p>
-                            <p className="text-xs text-muted-foreground">{evaluator.email}</p>
+                            <p className="font-medium text-xs sm:text-sm">{evaluator.name}</p>
+                            <p className="text-[10px] sm:text-xs text-muted-foreground">{evaluator.email}</p>
                           </div>
                         </TableCell>
-                        <TableCell className="text-center text-sm">
+                        <TableCell className="text-center text-xs sm:text-sm p-2 sm:p-4">
                           {evaluator.oneLinerCount}
                         </TableCell>
-                        <TableCell className="text-center text-sm">
+                        <TableCell className="text-center text-xs sm:text-sm p-2 sm:p-4">
                           {evaluator.episodicEvals}
                         </TableCell>
-                        <TableCell className="text-center text-sm">
+                        <TableCell className="text-center text-xs sm:text-sm p-2 sm:p-4">
                           {evaluator.callReportEvals}
                         </TableCell>
-                        <TableCell className="text-center">
-                          <Badge variant="outline" className="font-bold">
+                        <TableCell className="text-center p-2 sm:p-4">
+                          <Badge variant="outline" className="font-bold text-[10px] sm:text-xs">
                             {evaluator.totalEvaluations}
                           </Badge>
                         </TableCell>
-                        <TableCell className="text-center text-sm">
+                        <TableCell className="text-center text-xs sm:text-sm p-2 sm:p-4">
                           {evaluator.avgTimeSpent.toFixed(1)} hrs
                         </TableCell>
                       </TableRow>

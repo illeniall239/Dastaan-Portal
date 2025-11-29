@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { ChevronDown, ChevronRight, FileText, PenLine, Edit3, Clapperboard, CheckCircle, Play } from "lucide-react";
 import Link from "next/link";
+import { DrillDownModal, DrillDownData } from "@/components/management/drill-down-modal";
 import type { ActiveIdeaDetail } from "@/lib/management/active-ideas-details";
 import { getStatusLabel } from "@/lib/management/color-palettes";
 
@@ -59,10 +60,12 @@ const STAGE_GROUPS = [
 
 export function StageSummary({ ideas }: StageSummaryProps) {
   const [expandedStage, setExpandedStage] = useState<string | null>(null);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [modalData, setModalData] = useState<DrillDownData | null>(null);
 
   // Group ideas by stage
   const stageData = STAGE_GROUPS.map(stage => {
-    const stageIdeas = ideas.filter(idea => 
+    const stageIdeas = ideas.filter(idea =>
       stage.statuses.some(s => idea.status?.toLowerCase().includes(s.toLowerCase()) || s.toLowerCase().includes(idea.status?.toLowerCase() || ''))
     );
     return {
@@ -75,6 +78,41 @@ export function StageSummary({ ideas }: StageSummaryProps) {
   // Count ideas that don't fit any category
   const categorizedIds = new Set(stageData.flatMap(s => s.ideas.map(i => i.id)));
   const otherIdeas = ideas.filter(idea => !categorizedIds.has(idea.id));
+
+  const handleViewAllStage = (stage: typeof stageData[0]) => {
+    setModalData({
+      title: `${stage.label} - Stage Details`,
+      subtitle: `${stage.count} active ${stage.count === 1 ? 'idea' : 'ideas'}`,
+      type: "table",
+      data: stage.ideas,
+      columns: [
+        { key: "working_title", label: "Title" },
+        {
+          key: "genre",
+          label: "Genre",
+          format: (value: string[]) => value ? value.join(", ") : "N/A"
+        },
+        { key: "category", label: "Category" },
+        {
+          key: "overall_rating",
+          label: "Rating",
+          format: (value: number | null) => value !== null ? value.toFixed(1) : "Unrated"
+        },
+        {
+          key: "average_score",
+          label: "Score",
+          format: (value: number) => value ? value.toFixed(2) : "N/A"
+        },
+        { key: "slot", label: "Slot" },
+        {
+          key: "status",
+          label: "Status",
+          format: (value: string) => value?.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) || 'N/A'
+        }
+      ]
+    });
+    setModalOpen(true);
+  };
 
   return (
     <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
@@ -134,8 +172,16 @@ export function StageSummary({ ideas }: StageSummaryProps) {
                       </li>
                     ))}
                     {stage.count > 5 && (
-                      <li className="text-xs text-gray-400 pt-1">
-                        +{stage.count - 5} more
+                      <li className="pt-1">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleViewAllStage(stage);
+                          }}
+                          className="text-xs text-blue-600 hover:text-blue-800 hover:underline font-medium"
+                        >
+                          View all {stage.count} ideas →
+                        </button>
                       </li>
                     )}
                   </ul>
@@ -154,6 +200,12 @@ export function StageSummary({ ideas }: StageSummaryProps) {
           </div>
         </div>
       )}
+
+      <DrillDownModal
+        isOpen={modalOpen}
+        onClose={() => setModalOpen(false)}
+        data={modalData}
+      />
     </div>
   );
 }

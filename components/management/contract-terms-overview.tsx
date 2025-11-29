@@ -44,7 +44,7 @@ export function ContractTermsOverview({ contractTerms }: ContractTermsOverviewPr
   return (
     <div id="contract-terms-overview" className="space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-lg sm:text-xl md:text-2xl font-bold">Contract Terms Overview</h2>
+        <h2 className="text-base sm:text-lg lg:text-xl font-bold">Contract Terms Overview</h2>
         <Link
           href="/management/contract-terms"
           className="text-xs sm:text-sm text-blue-600 hover:underline whitespace-nowrap"
@@ -54,56 +54,56 @@ export function ContractTermsOverview({ contractTerms }: ContractTermsOverviewPr
       </div>
 
       {/* Summary Cards */}
-      <div className="grid gap-4 md:grid-cols-4">
+      <div className="grid gap-2 sm:gap-3 lg:gap-4 grid-cols-2 md:grid-cols-4">
         <Card className="bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-purple-900">
+          <CardHeader className="flex flex-row items-center justify-between pb-2 p-2 sm:p-3 lg:p-6">
+            <CardTitle className="text-xs sm:text-sm font-medium text-purple-900">
               Total Contract Terms
             </CardTitle>
-            <Handshake className="h-5 w-5 text-purple-600" />
+            <Handshake className="h-4 w-4 md:h-5 md:w-5 text-purple-600" />
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-2 sm:p-3 lg:p-6 pt-0">
             <div className="text-xl sm:text-2xl md:text-3xl font-bold text-purple-900">{stats.total}</div>
-            <p className="text-xs text-purple-700 mt-1">Active term sheets</p>
+            <p className="text-[10px] sm:text-xs text-purple-700 mt-1">Active term sheets</p>
           </CardContent>
         </Card>
 
         <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-blue-900">
+          <CardHeader className="flex flex-row items-center justify-between pb-2 p-3 sm:p-4 md:p-6">
+            <CardTitle className="text-xs sm:text-sm font-medium text-blue-900">
               In Progress
             </CardTitle>
-            <Clock className="h-5 w-5 text-blue-600" />
+            <Clock className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600" />
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-3 sm:p-4 md:p-6 pt-0">
             <div className="text-xl sm:text-2xl md:text-3xl font-bold text-blue-900">{stats.in_progress}</div>
-            <p className="text-xs text-blue-700 mt-1">Under negotiation</p>
+            <p className="text-[10px] sm:text-xs text-blue-700 mt-1">Under negotiation</p>
           </CardContent>
         </Card>
 
         <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-green-900">
+          <CardHeader className="flex flex-row items-center justify-between pb-2 p-3 sm:p-4 md:p-6">
+            <CardTitle className="text-xs sm:text-sm font-medium text-green-900">
               Agreed
             </CardTitle>
-            <TrendingUp className="h-5 w-5 text-green-600" />
+            <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5 text-green-600" />
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-3 sm:p-4 md:p-6 pt-0">
             <div className="text-xl sm:text-2xl md:text-3xl font-bold text-green-900">{stats.agreed}</div>
-            <p className="text-xs text-green-700 mt-1">Successfully closed</p>
+            <p className="text-[10px] sm:text-xs text-green-700 mt-1">Successfully closed</p>
           </CardContent>
         </Card>
 
         <Card className="bg-gradient-to-br from-red-50 to-red-100 border-red-200">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-red-900">
+          <CardHeader className="flex flex-row items-center justify-between pb-2 p-3 sm:p-4 md:p-6">
+            <CardTitle className="text-xs sm:text-sm font-medium text-red-900">
               Failed
             </CardTitle>
-            <XCircle className="h-5 w-5 text-red-600" />
+            <XCircle className="h-4 w-4 sm:h-5 sm:w-5 text-red-600" />
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-3 sm:p-4 md:p-6 pt-0">
             <div className="text-xl sm:text-2xl md:text-3xl font-bold text-red-900">{stats.failed}</div>
-            <p className="text-xs text-red-700 mt-1">Did not proceed</p>
+            <p className="text-[10px] sm:text-xs text-red-700 mt-1">Did not proceed</p>
           </CardContent>
         </Card>
       </div>
@@ -111,12 +111,12 @@ export function ContractTermsOverview({ contractTerms }: ContractTermsOverviewPr
       {/* Total Agreed Value */}
       {stats.total_agreed_value > 0 && (
         <Card className="bg-gradient-to-r from-green-600 to-green-500 text-white">
-          <CardHeader>
-            <CardTitle className="text-white">Total Agreed Value</CardTitle>
+          <CardHeader className="p-4 sm:p-6">
+            <CardTitle className="text-white text-base sm:text-lg md:text-xl">Total Agreed Value</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-4 sm:p-6 pt-0">
             <div className="text-2xl sm:text-3xl md:text-4xl font-bold">{formatCurrency(stats.total_agreed_value)}</div>
-            <p className="text-green-100 mt-2">
+            <p className="text-green-100 mt-2 text-xs sm:text-sm">
               From {stats.agreed} successfully negotiated project{stats.agreed !== 1 ? "s" : ""}
             </p>
           </CardContent>
@@ -125,40 +125,40 @@ export function ContractTermsOverview({ contractTerms }: ContractTermsOverviewPr
 
       {/* Recent Contract Terms */}
       <Card>
-        <CardHeader>
-          <CardTitle>Recent Contract Terms</CardTitle>
+        <CardHeader className="p-4 sm:p-6">
+          <CardTitle className="text-base sm:text-lg md:text-xl">Recent Contract Terms</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-4 sm:p-6">
           {contractTerms.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              <Handshake className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <p>No contract terms found</p>
+            <div className="text-center py-6 sm:py-8 text-muted-foreground">
+              <Handshake className="h-10 w-10 sm:h-12 sm:w-12 mx-auto mb-3 sm:mb-4 opacity-50" />
+              <p className="text-sm">No contract terms found</p>
             </div>
           ) : (
-            <div className="space-y-4">
+            <div className="space-y-3 sm:space-y-4">
               {contractTerms.slice(0, 5).map((negotiation) => (
                 <div
                   key={negotiation.id}
-                  className="flex items-start justify-between border-b pb-4 last:border-0"
+                  className="flex items-start justify-between border-b pb-3 sm:pb-4 last:border-0 gap-3"
                 >
-                  <div className="flex-1">
-                    <p className="font-medium">
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-sm sm:text-base">
                       {negotiation.stories?.title || "Unknown Project"}
                     </p>
-                    <div className="flex items-center gap-2 mt-1 text-sm text-muted-foreground">
-                      <span>{negotiation.negotiation_id}</span>
+                    <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mt-1 text-xs sm:text-sm text-muted-foreground">
+                      <span className="truncate">{negotiation.negotiation_id}</span>
                       <span>•</span>
-                      <span>{negotiation.writer_producer_name}</span>
+                      <span className="truncate">{negotiation.writer_producer_name}</span>
                       <span>•</span>
-                      <span>{negotiation.estimated_episodes || 0} episodes</span>
+                      <span className="whitespace-nowrap">{negotiation.estimated_episodes || 0} episodes</span>
                     </div>
                     {negotiation.status === "agreed" && negotiation.agreed_price && (
-                      <p className="text-sm font-semibold text-green-600 mt-1">
+                      <p className="text-xs sm:text-sm font-semibold text-green-600 mt-1">
                         Agreed: {formatCurrency(negotiation.agreed_price)}
                       </p>
                     )}
                   </div>
-                  <div className="ml-4">{getStatusBadge(negotiation.status)}</div>
+                  <div className="ml-2 sm:ml-4 flex-shrink-0">{getStatusBadge(negotiation.status)}</div>
                 </div>
               ))}
             </div>

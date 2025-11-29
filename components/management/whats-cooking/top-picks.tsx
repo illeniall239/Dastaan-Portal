@@ -1,9 +1,12 @@
 "use client";
 
+import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Star, TrendingUp } from "lucide-react";
 import Link from "next/link";
+import { DrillDownModal, DrillDownData } from "@/components/management/drill-down-modal";
 import type { ActiveIdeaDetail } from "@/lib/management/active-ideas-details";
 import { getThemeColor, getStatusLabel } from "@/lib/management/color-palettes";
 
@@ -12,11 +15,55 @@ interface TopPicksProps {
 }
 
 export function TopPicks({ ideas }: TopPicksProps) {
-  // Get top rated ideas (8+), sorted by rating descending
-  const topIdeas = ideas
+  const [modalOpen, setModalOpen] = useState(false);
+  const [modalData, setModalData] = useState<DrillDownData | null>(null);
+
+  // Get top rated ideas (7+), sorted by rating descending
+  const allTopIdeas = ideas
     .filter(idea => idea.overall_rating !== null && idea.overall_rating >= 7)
-    .sort((a, b) => (b.overall_rating || 0) - (a.overall_rating || 0))
-    .slice(0, 6);
+    .sort((a, b) => (b.overall_rating || 0) - (a.overall_rating || 0));
+
+  const topIdeas = allTopIdeas.slice(0, 6);
+
+  const handleViewAll = () => {
+    setModalData({
+      title: "Top Picks - All High-Rated Ideas",
+      subtitle: `${allTopIdeas.length} ideas rated 7.0 or higher`,
+      type: "table",
+      data: allTopIdeas,
+      columns: [
+        { key: "working_title", label: "Title" },
+        {
+          key: "overall_rating",
+          label: "Rating",
+          format: (value: number | null) => value !== null ? value.toFixed(1) : "N/A"
+        },
+        {
+          key: "genre",
+          label: "Genre",
+          format: (value: string[]) => value ? value.join(", ") : "N/A"
+        },
+        { key: "category", label: "Category" },
+        {
+          key: "average_score",
+          label: "Avg Score",
+          format: (value: number) => value ? value.toFixed(2) : "N/A"
+        },
+        {
+          key: "evaluator_count",
+          label: "Evaluators",
+          format: (value: number) => `${value || 0}`
+        },
+        { key: "slot", label: "Slot" },
+        {
+          key: "status",
+          label: "Status",
+          format: (value: string) => value?.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) || 'N/A'
+        }
+      ]
+    });
+    setModalOpen(true);
+  };
 
   if (topIdeas.length === 0) {
     return (
@@ -37,7 +84,19 @@ export function TopPicks({ ideas }: TopPicksProps) {
           <TrendingUp className="h-5 w-5 text-[#224794]" />
           <h2 className="text-lg font-semibold text-gray-900">Top Picks</h2>
         </div>
-        <span className="text-sm text-gray-500">{topIdeas.length} high-rated projects</span>
+        <div className="flex items-center gap-3">
+          <span className="text-sm text-gray-500">{allTopIdeas.length} high-rated projects</span>
+          {allTopIdeas.length > 6 && (
+            <Button
+              onClick={handleViewAll}
+              variant="ghost"
+              size="sm"
+              className="text-blue-600 hover:text-blue-800 text-sm"
+            >
+              View All →
+            </Button>
+          )}
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -97,6 +156,12 @@ export function TopPicks({ ideas }: TopPicksProps) {
           );
         })}
       </div>
+
+      <DrillDownModal
+        isOpen={modalOpen}
+        onClose={() => setModalOpen(false)}
+        data={modalData}
+      />
     </div>
   );
 }

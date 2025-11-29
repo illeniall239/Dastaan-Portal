@@ -92,19 +92,19 @@ export function ArchiveGenreChart({ data }: ArchiveGenreChartProps) {
   return (
     <>
       <Card>
-        <CardHeader>
+        <CardHeader className="p-3 sm:p-4 lg:p-6">
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle className="text-base sm:text-lg md:text-xl">Rejected Ideas Archive</CardTitle>
+              <CardTitle className="text-sm sm:text-base lg:text-lg">Rejected Ideas Archive</CardTitle>
               <CardDescription className="text-xs sm:text-sm">
                 Distribution of {totalArchived} rejected ideas across genres
               </CardDescription>
             </div>
-            <Archive className="h-6 w-6 text-muted-foreground" />
+            <Archive className="h-4 w-4 md:h-5 md:w-5 lg:h-6 lg:w-6 text-muted-foreground" />
           </div>
         </CardHeader>
-        <CardContent>
-          <ResponsiveContainer width="100%" height={350}>
+        <CardContent className="p-3 sm:p-4 lg:p-6">
+          <ResponsiveContainer width="100%" height={280} className="sm:!h-[350px]">
             <BarChart data={data} margin={{ top: 20, right: 30, left: 20, bottom: 60 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
               <XAxis
@@ -145,15 +145,15 @@ export function ArchiveGenreChart({ data }: ArchiveGenreChartProps) {
               </Bar>
             </BarChart>
           </ResponsiveContainer>
-          <div className="mt-6 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 text-sm">
+          <div className="mt-4 sm:mt-6 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-3 text-xs sm:text-sm">
             {data.map((item, index) => (
               <div
                 key={index}
-                className="flex items-center justify-between p-2 bg-slate-50 rounded"
+                className="flex items-center justify-between p-1.5 sm:p-2 bg-slate-50 rounded"
               >
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5 sm:gap-2">
                   <div
-                    className="w-3 h-3 rounded"
+                    className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded flex-shrink-0"
                     style={{ backgroundColor: GENRE_COLORS[item.genre] || '#6b7280' }}
                   ></div>
                   <span className="text-muted-foreground">{item.genre}:</span>
@@ -163,7 +163,7 @@ export function ArchiveGenreChart({ data }: ArchiveGenreChartProps) {
             ))}
           </div>
           {loading && (
-            <div className="mt-4 text-center text-sm text-muted-foreground">
+            <div className="mt-3 sm:mt-4 text-center text-xs sm:text-sm text-muted-foreground">
               Loading archive details...
             </div>
           )}

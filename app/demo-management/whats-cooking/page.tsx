@@ -1,249 +1,233 @@
-'use client';
+import { WhatsCookingDashboard } from "@/components/management/whats-cooking-dashboard";
+import { calculateEpisodeMetrics } from "@/lib/management/active-ideas-details";
+import { FileVideo, CheckCircle2, FolderOpen, TrendingUp } from "lucide-react";
+import { TopPicks } from "@/components/management/whats-cooking/top-picks";
+import { StageSummary } from "@/components/management/whats-cooking/stage-summary";
+import { ThemeGroups } from "@/components/management/whats-cooking/theme-groups";
+import { RatingTiers } from "@/components/management/whats-cooking/rating-tiers";
+import { GenreDonut } from "@/components/management/whats-cooking/charts/genre-donut";
+import { SlotBars } from "@/components/management/whats-cooking/charts/slot-bars";
+import { RatingBars } from "@/components/management/whats-cooking/charts/rating-bars";
+import { EpisodeProgress } from "@/components/management/whats-cooking/charts/episode-progress";
+import { TimelineChart } from "@/components/management/whats-cooking/charts/timeline-chart";
 
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
-import { Flame, Clock, Users, TrendingUp } from 'lucide-react';
-import { dummyStories, dummyEpisodes } from '../lib/dummy-data';
+// Add Next.js caching
+export const revalidate = 300; // 5 minutes
 
-export default function WhatsCookingPage() {
-  // Get stories that are in active development (in_production or contracted)
-  const activeStories = dummyStories.filter((s) =>
-    ['in_production', 'contracted'].includes(s.status)
-  );
+// Function to generate dummy data that matches the real schema
+function generateDummyActiveIdeas() {
+  // Sample genres
+  const genres = [
+    'Romance', 'Action', 'Comedy', 'Drama', 'Thriller',
+    'Horror', 'Sci-Fi', 'Fantasy', 'Mystery', 'Historical'
+  ];
 
-  // Calculate production progress for each story
-  const storiesWithProgress = activeStories.map((story) => {
-    const episodes = dummyEpisodes.filter((e) => e.story_id === story.id);
-    const completedEpisodes = episodes.filter(
-      (e) => e.status === 'completed' || e.status === 'aired'
-    ).length;
-    const progress = episodes.length > 0 ? (completedEpisodes / episodes.length) * 100 : 0;
+  // Sample themes
+  const themes = [
+    'Family', 'Love', 'Betrayal', 'Revenge', 'Justice',
+    'Power', 'Tradition', 'Change', 'Hope', 'Courage'
+  ];
+
+  // Sample slots
+  const slots = ['7 PM', '8 PM', '9 PM'];
+
+  // Sample statuses
+  const statuses = [
+    'Script completed', 'Script Final', 'Pre-Production', 'In Pre-Production',
+    'Production Planning', 'In Writing', 'Pre-Production - In Writing',
+    'Story Under Discussion/Development', 'Contract done - Story Under Discussion/Development',
+    'Production Planning - In Writing', 'Pre Production - In Editing',
+    'In Pre-Production - Outsource', 'In Writing & Editing',
+    'Story Discussed & Approved', 'Need to be Re-Edit', 'Revised script is awaited',
+    'Script is in Editing Process', 'Script Received/Not Final',
+    'Production Planning - In Editing', 'Production Planning - In Writing - Feedback need to discuss',
+    'Pre Production', 'On-air Drama', 'Project on Shoot', 'Script completed not on shoot'
+  ];
+
+  // Pakistani drama names in Roman Urdu
+  const dramaNames = [
+    'Humsafar', 'Mere Paas Tum Ho', 'Diyar-e-Dil', 'Zindagi Gulzar Hai', 'Ishq Zahe Naseeb',
+    'Aik Thi Raniya', 'Ishq Khuda Ke Naam', 'Tumhari Natasha', 'Bunty I Love You', 'Lahore Se Aagey',
+    'Ishq Zahe Naseeb', 'Jaan Nisaar', 'Pyarey Afzal', 'Ishq Bazaar', 'Aik Thi Meree Qismat',
+    'Ishq Hai', 'Sinf-e-Aahan', 'Aik Thi Rania', 'Diyar-e-Dil', 'Alif Allah Aur Insaan',
+    'Zindagi Kitni Haseen Hay', 'Mah-e-Tamaam', 'Sanam', 'Ishq Zahe Naseeb', 'Mere Paas Tum Na Aa',
+    'Ishq Gumshuda', 'Ishq Zahe Naseeb', 'Diyar-e-Dil', 'Ishq Zahe Naseeb', 'Zindagi Gulzar Hai',
+    'Mere Paas Tum Ho', 'Humsafar', 'Diyar-e-Dil', 'Zindagi Gulzar Hai', 'Ishq Zahe Naseeb',
+    'Pyarey Afzal', 'Ishq Bazaar', 'Aik Thi Meree Qismat', 'Ishq Hai', 'Sinf-e-Aahan',
+    'Aik Thi Rania', 'Diyar-e-Dil', 'Alif Allah Aur Insaan', 'Zindagi Kitni Haseen Hay',
+    'Mah-e-Tamaam', 'Sanam', 'Ishq Zahe Naseeb', 'Mere Paas Tum Na Aa', 'Ishq Gumshuda'
+  ];
+
+  // Pakistani writer names in Roman Urdu
+  const writerNamesList = [
+    'Umera Ahmad', 'Hassan Imam', 'Ali Moeen', 'Irfan Khan', 'Saima Akram',
+    'Hina Altaf', 'Mehmood Shah', 'Rida Bilgrami', 'Farhat Ishtiaq', 'Bushra Ansari',
+    'Saife Hassan', 'Hira Shahab', 'Khalil Ullah', 'Rabia Azfar', 'Ahmed Ali',
+    'Fatima Suria', 'Asad Bashir', 'Nida Mumtaz', 'Taimoor Ahmed', 'Nigar Sultana',
+    'Faisal Malik', 'Ayesha Iqbal', 'Imran Ashraf', 'Hina Qadir', 'Bilal Ahmad',
+    'Zara Javed', 'Sohaib Khan', 'Hareem Shah', 'Arsalan Memon', 'Alishba Shabbir',
+    'Talha Shehzad', 'Zainab Ali', 'Waqar Ali', 'Areeba Abbas', 'Osama Tariq',
+    'Hafsa Zia', 'Hamza Ali Abbasi', 'Saba Hameed', 'Ali Madeeh', 'Rida Hasan',
+    'Noman Javaid', 'Ayesha Khan', 'Arsalan Ahmed', 'Sehar Khan', 'Fahad Mustafa',
+    'Zara Babar', 'Fahim Anwar', 'Sonia Bashir', 'Rashid Ali', 'Uroosa Siddiqui'
+  ];
+
+  // Create 20 dummy active ideas following the schema
+  const ideas = Array.from({ length: 20 }, (_, i) => {
+    const numGenres = Math.floor(Math.random() * 3) + 1; // 1-3 genres
+    const ideaGenres = Array.from({ length: numGenres }, () =>
+      genres[Math.floor(Math.random() * genres.length)]
+    );
+
+    const writerCount = Math.floor(Math.random() * 3) + 1; // 1-3 writers
+    const selectedWriterNames = Array.from({ length: writerCount }, () =>
+      writerNamesList[Math.floor(Math.random() * writerNamesList.length)]
+    );
 
     return {
-      ...story,
-      episodes,
-      completedEpisodes,
-      progress,
-      episodesInProduction: episodes.filter((e) =>
-        ['shooting', 'post_production', 'pre_production'].includes(e.status)
-      ).length,
+      id: `idea_${i + 1}`,
+      call_report_id: `cr_${i + 1}`,
+      working_title: dramaNames[Math.floor(Math.random() * dramaNames.length)],
+      writer_name: writerNamesList[Math.floor(Math.random() * writerNamesList.length)],
+      writer_names: selectedWriterNames,
+      director: Math.random() > 0.3 ? writerNamesList[Math.floor(Math.random() * writerNamesList.length)] : null,
+      genre: ideaGenres,
+      category: ['Drama', 'Series', 'Movie', 'Web Series'][Math.floor(Math.random() * 4)],
+      theme: themes[Math.floor(Math.random() * themes.length)],
+      slot: Math.random() > 0.2 ? slots[Math.floor(Math.random() * slots.length)] : null,
+      status: statuses[Math.floor(Math.random() * statuses.length)],
+      meeting_date: new Date(Date.now() - Math.floor(Math.random() * 30) * 24 * 60 * 60 * 1000).toISOString(),
+      days_active: Math.floor(Math.random() * 90) + 1,
+      logline: `A compelling story about ${themes[Math.floor(Math.random() * themes.length)].toLowerCase()}`,
+      created_at: new Date(Date.now() - Math.floor(Math.random() * 60) * 24 * 60 * 60 * 1000).toISOString(),
+      overall_rating: Math.random() > 0.2 ? parseFloat((Math.random() * 10).toFixed(1)) : null,
+      content_type: ['Original', 'Adaptation', 'Format'][Math.floor(Math.random() * 3)],
+      average_score: Math.random() > 0.2 ? parseFloat((Math.random() * 10).toFixed(2)) : null,
+      evaluation_deadline: new Date(Date.now() + Math.floor(Math.random() * 30) * 24 * 60 * 60 * 1000).toISOString(),
+      received_episodes: Math.floor(Math.random() * 20),
+      total_episodes: Math.floor(Math.random() * 20) + 5,
+      completion_percentage: Math.random() * 100,
+      evaluator_scores: {
+        nadeem: Math.random() > 0.3 ? parseFloat((Math.random() * 10).toFixed(1)) : null,
+        salman: Math.random() > 0.3 ? parseFloat((Math.random() * 10).toFixed(1)) : null,
+        imran: Math.random() > 0.3 ? parseFloat((Math.random() * 10).toFixed(1)) : null,
+      },
+      management_member_name: writerNamesList[Math.floor(Math.random() * writerNamesList.length)],
+      idea_by: writerNamesList[Math.floor(Math.random() * writerNamesList.length)],
+      developed_by: writerNamesList[Math.floor(Math.random() * writerNamesList.length)]
     };
-  }).sort((a, b) => b.progress - a.progress);
+  });
 
-  const totalEpisodesInProduction = storiesWithProgress.reduce(
-    (sum, s) => sum + s.episodes.length,
-    0
-  );
-  const totalCompletedEpisodes = storiesWithProgress.reduce(
-    (sum, s) => sum + s.completedEpisodes,
-    0
-  );
+  return {
+    details: ideas,
+    total: ideas.length
+  };
+}
+
+export default function WhatsCookingPage() {
+  // Generate dummy active ideas details
+  const activeIdeasDetails = generateDummyActiveIdeas();
+
+  // Calculate episode metrics
+  const episodeMetrics = calculateEpisodeMetrics(activeIdeasDetails.details);
 
   return (
     <div className="p-6 space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">
-          What&apos;s Cooking
-        </h1>
-        <p className="text-muted-foreground mt-1">
-          Active drama productions and their current status
-        </p>
+      {/* Page Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-900">
+            What's Cooking
+          </h1>
+          <p className="text-gray-500 mt-1">
+            Active ideas, preliminary scripts, and projects under consideration
+          </p>
+        </div>
+        <div className="text-sm text-gray-500">
+          {activeIdeasDetails.total} active projects
+        </div>
       </div>
 
-      {/* Summary Cards */}
-      <div className="grid gap-4 md:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active Productions</CardTitle>
-            <Flame className="h-4 w-4 text-orange-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-orange-600">
-              {activeStories.length}
+      {/* Summary Stats - Clean minimal design */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-gray-100 rounded-lg">
+              <FolderOpen className="h-5 w-5 text-gray-600" />
             </div>
-            <p className="text-xs text-muted-foreground">Dramas in production</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Episodes</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{totalEpisodesInProduction}</div>
-            <p className="text-xs text-muted-foreground">In production pipeline</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Stories Approved</CardTitle>
-            <TrendingUp className="h-4 w-4 text-green-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600">
-              {totalCompletedEpisodes}
+            <div>
+              <p className="text-xs text-gray-500 font-medium">Active Projects</p>
+              <p className="text-2xl font-bold text-gray-900">{episodeMetrics.totalProjects}</p>
             </div>
-            <p className="text-xs text-muted-foreground">Approved for production</p>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Overall Progress</CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {totalEpisodesInProduction > 0
-                ? ((totalCompletedEpisodes / totalEpisodesInProduction) * 100).toFixed(0)
-                : 0}
-              %
+        <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-gray-100 rounded-lg">
+              <FileVideo className="h-5 w-5 text-gray-600" />
             </div>
-            <p className="text-xs text-muted-foreground">Average completion</p>
-          </CardContent>
-        </Card>
+            <div>
+              <p className="text-xs text-gray-500 font-medium">Episodes Planned</p>
+              <p className="text-2xl font-bold text-gray-900">{episodeMetrics.totalEpisodesPlanned}</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-gray-100 rounded-lg">
+              <CheckCircle2 className="h-5 w-5 text-gray-600" />
+            </div>
+            <div>
+              <p className="text-xs text-gray-500 font-medium">Episodes Received</p>
+              <p className="text-2xl font-bold text-gray-900">{episodeMetrics.totalEpisodesReceived}</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-[#224794] rounded-xl p-4 shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-white/20 rounded-lg">
+              <TrendingUp className="h-5 w-5 text-white" />
+            </div>
+            <div>
+              <p className="text-xs text-white/70 font-medium">Completion Rate</p>
+              <p className="text-2xl font-bold text-white">{episodeMetrics.overallCompletionPercentage}%</p>
+            </div>
+          </div>
+        </div>
       </div>
 
-      {/* Active Productions */}
-      <div className="grid gap-6">
-        {storiesWithProgress.map((story) => {
-          const statusPhases = {
-            completed: story.episodes.filter((e) => e.status === 'completed').length,
-            post_production: story.episodes.filter((e) => e.status === 'post_production')
-              .length,
-            shooting: story.episodes.filter((e) => e.status === 'shooting').length,
-            pre_production: story.episodes.filter((e) => e.status === 'pre_production')
-              .length,
-            script_writing: story.episodes.filter((e) => e.status === 'script_writing')
-              .length,
-          };
-
-          return (
-            <Card key={story.id}>
-              <CardHeader>
-                <div className="flex items-start justify-between">
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-3">
-                      <Flame className="h-5 w-5 text-orange-600" />
-                      <CardTitle className="text-xl">
-                        {story.title}
-                      </CardTitle>
-                    </div>
-                    <p className="text-sm text-muted-foreground">{story.id}</p>
-                  </div>
-                  <Badge
-                    variant={story.status === 'in_production' ? 'default' : 'secondary'}
-                    className="text-sm px-3 py-1"
-                  >
-                    {story.status === 'in_production' ? 'In Production' : 'Contracted'}
-                  </Badge>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {/* Project Info */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pb-4 border-b">
-                  <div className="space-y-1">
-                    <p className="text-xs text-muted-foreground">Writer</p>
-                    <p className="font-medium text-sm">
-                      {story.writer}
-                    </p>
-                  </div>
-                  <div className="space-y-1">
-                    <p className="text-xs text-muted-foreground">Director</p>
-                    <p className="font-medium text-sm">
-                      {story.director}
-                    </p>
-                  </div>
-                  <div className="space-y-1">
-                    <p className="text-xs text-muted-foreground">Team</p>
-                    <p className="font-medium text-sm">{story.team}</p>
-                  </div>
-                  <div className="space-y-1">
-                    <p className="text-xs text-muted-foreground">Rating</p>
-                    <p className="font-medium text-sm">
-                      {story.overall_rating ? `${story.overall_rating}/10` : 'N/A'}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Production Progress */}
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">Production Progress</span>
-                    <span className="font-medium">
-                      {story.completedEpisodes}/{story.episodes.length} episodes completed
-                    </span>
-                  </div>
-                  <Progress value={story.progress} className="h-2" />
-                  <div className="flex items-center justify-between text-xs text-muted-foreground">
-                    <span>{story.progress.toFixed(0)}% complete</span>
-                    <span>{story.episodesInProduction} in active production</span>
-                  </div>
-                </div>
-
-                {/* Episode Status Breakdown */}
-                <div className="space-y-2 pt-2 border-t">
-                  <h3 className="font-semibold text-sm">Episode Status Breakdown</h3>
-                  <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-                    <div className="text-center p-2 bg-green-50 dark:bg-green-950/20 rounded-lg">
-                      <p className="text-xs text-muted-foreground">Completed</p>
-                      <p className="text-lg font-bold text-green-600">
-                        {statusPhases.completed}
-                      </p>
-                    </div>
-                    <div className="text-center p-2 bg-blue-50 dark:bg-blue-950/20 rounded-lg">
-                      <p className="text-xs text-muted-foreground">Post Production</p>
-                      <p className="text-lg font-bold text-blue-600">
-                        {statusPhases.post_production}
-                      </p>
-                    </div>
-                    <div className="text-center p-2 bg-orange-50 dark:bg-orange-950/20 rounded-lg">
-                      <p className="text-xs text-muted-foreground">Shooting</p>
-                      <p className="text-lg font-bold text-orange-600">
-                        {statusPhases.shooting}
-                      </p>
-                    </div>
-                    <div className="text-center p-2 bg-purple-50 dark:bg-purple-950/20 rounded-lg">
-                      <p className="text-xs text-muted-foreground">Pre Production</p>
-                      <p className="text-lg font-bold text-purple-600">
-                        {statusPhases.pre_production}
-                      </p>
-                    </div>
-                    <div className="text-center p-2 bg-slate-50 dark:bg-slate-950/20 rounded-lg">
-                      <p className="text-xs text-muted-foreground">Script Writing</p>
-                      <p className="text-lg font-bold text-slate-600">
-                        {statusPhases.script_writing}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Additional Info */}
-                <div className="grid grid-cols-1 gap-4 pt-2 border-t">
-                  <div className="space-y-1">
-                    <p className="text-xs text-muted-foreground">Days in Production</p>
-                    <p className="text-sm font-medium">{story.days_active} days</p>
-                  </div>
-                </div>
-
-                {story.production_start && (
-                  <p className="text-xs text-muted-foreground pt-2 border-t">
-                    Production started:{' '}
-                    {new Date(story.production_start).toLocaleDateString('en-US', {
-                      month: 'long',
-                      day: 'numeric',
-                      year: 'numeric',
-                    })}
-                  </p>
-                )}
-              </CardContent>
-            </Card>
-          );
-        })}
+      {/* Charts Section */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <GenreDonut ideas={activeIdeasDetails.details} />
+        <SlotBars ideas={activeIdeasDetails.details} />
+        <RatingBars ideas={activeIdeasDetails.details} />
       </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <EpisodeProgress ideas={activeIdeasDetails.details} />
+        <TimelineChart ideas={activeIdeasDetails.details} />
+      </div>
+
+      {/* Top Picks - What's Hot */}
+      <TopPicks ideas={activeIdeasDetails.details} />
+
+      {/* Pipeline by Stage */}
+      <StageSummary ideas={activeIdeasDetails.details} />
+
+      {/* Two column layout for Theme and Rating */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* By Theme */}
+        <ThemeGroups ideas={activeIdeasDetails.details} />
+
+        {/* By Rating */}
+        <RatingTiers ideas={activeIdeasDetails.details} />
+      </div>
+
+      {/* Detailed Project Table */}
+      <WhatsCookingDashboard ideas={activeIdeasDetails.details} />
     </div>
   );
 }

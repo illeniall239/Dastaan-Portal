@@ -1,8 +1,9 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, Cell } from "recharts";
 import { Card } from "@/components/ui/card";
+import { DrillDownModal, DrillDownData } from "@/components/management/drill-down-modal";
 import type { ActiveIdeaDetail } from "@/lib/management/active-ideas-details";
 
 interface RatingBarsProps {
@@ -10,6 +11,9 @@ interface RatingBarsProps {
 }
 
 export function RatingBars({ ideas }: RatingBarsProps) {
+  const [modalOpen, setModalOpen] = useState(false);
+  const [modalData, setModalData] = useState<DrillDownData | null>(null);
+
   const data = useMemo(() => {
     const high = ideas.filter(i => i.overall_rating !== null && i.overall_rating >= 8).length;
     const medium = ideas.filter(i => i.overall_rating !== null && i.overall_rating >= 5 && i.overall_rating < 8).length;
@@ -25,6 +29,68 @@ export function RatingBars({ ideas }: RatingBarsProps) {
   }, [ideas]);
 
   const maxValue = Math.max(...data.map(d => d.value), 1);
+
+  const handleBarClick = (barData: any) => {
+    const ratingCategory = barData.name;
+
+    // Filter ideas based on rating category
+    let filteredIdeas: ActiveIdeaDetail[];
+    switch (ratingCategory) {
+      case "High":
+        filteredIdeas = ideas.filter(i => i.overall_rating !== null && i.overall_rating >= 8);
+        break;
+      case "Medium":
+        filteredIdeas = ideas.filter(i => i.overall_rating !== null && i.overall_rating >= 5 && i.overall_rating < 8);
+        break;
+      case "Low":
+        filteredIdeas = ideas.filter(i => i.overall_rating !== null && i.overall_rating < 5);
+        break;
+      case "Unrated":
+        filteredIdeas = ideas.filter(i => i.overall_rating === null);
+        break;
+      default:
+        filteredIdeas = [];
+    }
+
+    // Prepare modal data
+    setModalData({
+      title: `${ratingCategory} Rating - ${barData.label}`,
+      subtitle: `${filteredIdeas.length} active ${filteredIdeas.length === 1 ? 'idea' : 'ideas'}`,
+      type: "table",
+      data: filteredIdeas,
+      columns: [
+        { key: "working_title", label: "Title" },
+        {
+          key: "genre",
+          label: "Genre",
+          format: (value: string[]) => value ? value.join(", ") : "N/A"
+        },
+        { key: "category", label: "Category" },
+        {
+          key: "overall_rating",
+          label: "Rating",
+          format: (value: number | null) => value !== null ? value.toFixed(1) : "Unrated"
+        },
+        {
+          key: "average_score",
+          label: "Avg Score",
+          format: (value: number) => value ? value.toFixed(2) : "N/A"
+        },
+        {
+          key: "evaluator_count",
+          label: "Evaluators",
+          format: (value: number) => `${value || 0}`
+        },
+        { key: "slot", label: "Slot" },
+        {
+          key: "status",
+          label: "Status",
+          format: (value: string) => value?.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) || 'N/A'
+        }
+      ]
+    });
+    setModalOpen(true);
+  };
 
   return (
     <Card className="p-4 border border-gray-200 shadow-sm">
@@ -52,13 +118,15 @@ export function RatingBars({ ideas }: RatingBarsProps) {
                 fontSize: "12px"
               }}
             />
-            <Bar 
-              dataKey="value" 
+            <Bar
+              dataKey="value"
               radius={[4, 4, 0, 0]}
               maxBarSize={40}
-              label={{ 
-                position: 'top', 
-                fontSize: 11, 
+              onClick={handleBarClick}
+              cursor="pointer"
+              label={{
+                position: 'top',
+                fontSize: 11,
                 fill: '#374151',
                 fontWeight: 600
               }}
@@ -83,6 +151,12 @@ export function RatingBars({ ideas }: RatingBarsProps) {
           </div>
         ))}
       </div>
+
+      <DrillDownModal
+        isOpen={modalOpen}
+        onClose={() => setModalOpen(false)}
+        data={modalData}
+      />
     </Card>
   );
 }

@@ -123,7 +123,7 @@ export function WriterFinancialSummaryWidget() {
           <>
             {/* Financial Summary Stats */}
             {totals && (
-              <div className="grid grid-cols-3 gap-2 sm:gap-3 mb-4 pb-4 border-b border-emerald-100">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3 mb-4 pb-4 border-b border-emerald-100">
                 <div className="bg-white rounded-lg p-2 sm:p-3 border border-emerald-100">
                   <p className="text-[10px] sm:text-xs text-muted-foreground mb-1">Total Committed</p>
                   <p className="text-xs sm:text-sm md:text-base font-bold text-emerald-700">

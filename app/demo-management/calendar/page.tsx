@@ -1,245 +1,276 @@
-'use client';
+"use client";
 
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Calendar, Clock, Users, MapPin } from 'lucide-react';
+import { useState, useEffect, useCallback } from "react";
+import { format, addDays, subDays, addWeeks, subWeeks, addMonths, subMonths, startOfWeek } from "date-fns";
+import { ChevronLeft, ChevronRight, RefreshCw } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { ViewSwitcher } from "@/components/calendar/view-switcher";
+import { CalendarGrid } from "@/components/calendar/calendar-grid";
+import { MonthView } from "@/components/calendar/month-view";
+import { TeamsMobileCalendar } from "@/components/calendar/teams-mobile-calendar";
+import { MeetingPeekPanel } from "@/components/calendar/meeting-peek-panel";
+import { CalendarSkeleton } from "@/components/skeletons/calendar-skeleton";
+
+interface Meeting {
+  id: string;
+  writer_name: string;
+  organizer_name?: string;
+  meeting_date: string;
+  duration_minutes?: number;
+  meeting_attendees?: string[];
+  status?: string;
+  working_title: string;
+  logline?: string;
+  meeting_notes?: string;
+  contact_email?: string;
+  contact_phone?: string;
+}
 
 export default function DemoCalendarPage() {
-  // Dummy calendar events
-  const dummyEvents = [
-    {
-      id: 1,
-      title: 'Writer Meeting - Mere Paas Tum Ho',
-      date: '2025-02-20',
-      time: '10:00 AM',
-      duration: '2 hours',
-      attendees: ['Khalil-ur-Rehman Qamar', 'Ahmad Ali', 'Nadeem Siddiqui'],
-      location: 'Conference Room A',
-      type: 'meeting',
-    },
-    {
-      id: 2,
-      title: 'Script Review - Suno Chanda',
-      date: '2025-02-21',
-      time: '2:00 PM',
-      duration: '1.5 hours',
-      attendees: ['Fatima Surayya Bajia', 'Sarah Khan', 'Imran Iqbal'],
-      location: 'Meeting Room 3',
-      type: 'review',
-    },
-    {
-      id: 3,
-      title: 'Production Planning - Yeh Dil Mera',
-      date: '2025-02-22',
-      time: '11:00 AM',
-      duration: '3 hours',
-      attendees: ['Sajal Ali', 'Imran Hussain', 'Haissam Hussain'],
-      location: 'Production Studio',
-      type: 'planning',
-    },
-    {
-      id: 4,
-      title: 'Contract Discussion - Khud Parast',
-      date: '2025-02-23',
-      time: '3:00 PM',
-      duration: '1 hour',
-      attendees: ['Umera Ahmad', 'Fatima Noor', 'Legal Team'],
-      location: 'Virtual Meeting',
-      type: 'contract',
-    },
-    {
-      id: 5,
-      title: 'Evaluation Committee Meeting',
-      date: '2025-02-24',
-      time: '9:00 AM',
-      duration: '4 hours',
-      attendees: ['All Evaluators', 'Management Team'],
-      location: 'Main Conference Hall',
-      type: 'committee',
-    },
-    {
-      id: 6,
-      title: 'Budget Review - Mohabbat Ki Rahein',
-      date: '2025-02-25',
-      time: '1:00 PM',
-      duration: '2 hours',
-      attendees: ['Shazia Rehan', 'Finance Team', 'Ali Hassan'],
-      location: 'Finance Department',
-      type: 'budget',
-    },
+  const [currentView, setCurrentView] = useState<"day" | "week" | "month">("week");
+  const [currentDate, setCurrentDate] = useState(new Date());
+  const [selectedMeeting, setSelectedMeeting] = useState<Meeting | null>(null);
+  const [meetings, setMeetings] = useState<Meeting[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [animationDirection, setAnimationDirection] = useState<"forward" | "backward" | null>(null);
+
+  // Create Pakistani writer names in Roman Urdu for dummy data
+  const getPakistaniWriterNames = () => [
+    'Umera Ahmad', 'Hassan Imam', 'Ali Moeen', 'Irfan Khan', 'Saima Akram',
+    'Hina Altaf', 'Mehmood Shah', 'Rida Bilgrami', 'Farhat Ishtiaq', 'Bushra Ansari',
+    'Saife Hassan', 'Hira Shahab', 'Khalil Ullah', 'Rabia Azfar', 'Ahmed Ali',
+    'Fatima Suria', 'Asad Bashir', 'Nida Mumtaz', 'Taimoor Ahmed', 'Nigar Sultana',
+    'Faisal Malik', 'Ayesha Iqbal', 'Imran Ashraf', 'Hina Qadir', 'Bilal Ahmad',
+    'Zara Javed', 'Sohaib Khan', 'Hareem Shah', 'Arsalan Memon', 'Alishba Shabbir'
   ];
 
-  const getEventColor = (type: string) => {
-    switch (type) {
-      case 'meeting':
-        return 'bg-blue-50 border-blue-200';
-      case 'review':
-        return 'bg-green-50 border-green-200';
-      case 'planning':
-        return 'bg-purple-50 border-purple-200';
-      case 'contract':
-        return 'bg-orange-50 border-orange-200';
-      case 'committee':
-        return 'bg-red-50 border-red-200';
-      case 'budget':
-        return 'bg-yellow-50 border-yellow-200';
-      default:
-        return 'bg-gray-50 border-gray-200';
+  // Create Pakistani drama names in Roman Urdu for dummy data
+  const getPakistaniDramaNames = () => [
+    'Humsafar', 'Mere Paas Tum Ho', 'Diyar-e-Dil', 'Zindagi Gulzar Hai', 'Ishq Zahe Naseeb',
+    'Aik Thi Raniya', 'Ishq Khuda Ke Naam', 'Tumhari Natasha', 'Bunty I Love You', 'Lahore Se Aagey',
+    'Jaan Nisaar', 'Pyarey Afzal', 'Ishq Bazaar', 'Aik Thi Meree Qismat', 'Ishq Hai',
+    'Sinf-e-Aahan', 'Aik Thi Rania', 'Alif Allah Aur Insaan', 'Zindagi Kitni Haseen Hay',
+    'Mah-e-Tamaam', 'Sanam', 'Mere Paas Tum Na Aa', 'Ishq Gumshuda'
+  ];
+
+  // Create dummy meetings that match the real schema
+  const generateDummyMeetings = (): Meeting[] => {
+    const writerNames = getPakistaniWriterNames();
+    const dramaNames = getPakistaniDramaNames();
+    const statuses = ['scheduled', 'completed', 'cancelled', 'rescheduled'];
+
+    // Generate meetings for the next 30 days
+    const meetings: Meeting[] = [];
+    const today = new Date();
+
+    for (let i = 0; i < 30; i++) {
+      const date = new Date();
+      date.setDate(today.getDate() + i);
+
+      // Randomly decide if we add a meeting on this day (about 60% chance)
+      if (Math.random() > 0.4) {
+        const writerName = writerNames[Math.floor(Math.random() * writerNames.length)];
+        const dramaName = dramaNames[Math.floor(Math.random() * dramaNames.length)];
+        const status = statuses[Math.floor(Math.random() * statuses.length)];
+
+        // Random number of attendees (1-4)
+        const attendeesCount = Math.floor(Math.random() * 4) + 1;
+        const attendees = Array.from({ length: attendeesCount }, () =>
+          writerNames[Math.floor(Math.random() * writerNames.length)]
+        );
+
+        meetings.push({
+          id: `meeting_${i}_${Date.now()}`,
+          writer_name: writerName,
+          organizer_name: writerNames[Math.floor(Math.random() * writerNames.length)],
+          meeting_date: new Date(date).toISOString(),
+          duration_minutes: Math.floor(Math.random() * 180) + 30, // 30 min to 3 hours
+          meeting_attendees: attendees,
+          status: status,
+          working_title: dramaName,
+          logline: `Discussion about ${dramaName} plot development and character arcs`,
+          meeting_notes: `Discussed progress on ${dramaName} and next steps for production`,
+          contact_email: `${writerName.replace(/\s+/g, '.').toLowerCase()}@drama.com`,
+          contact_phone: `+92-${Math.floor(100000000 + Math.random() * 900000000)}`,
+        });
+      }
+    }
+
+    return meetings;
+  };
+
+  // Mock fetch function (since this is a demo)
+  const fetchMeetings = useCallback(async () => {
+    setLoading(true);
+    // Simulate network delay
+    await new Promise(resolve => setTimeout(resolve, 500));
+
+    const dummyMeetings = generateDummyMeetings();
+    setMeetings(dummyMeetings);
+    setLoading(false);
+  }, []);
+
+  useEffect(() => {
+    fetchMeetings();
+  }, [fetchMeetings]);
+
+  // Navigation handlers
+  const handlePrevious = () => {
+    if (!currentDate) return;
+    setAnimationDirection("backward");
+    if (currentView === "day") {
+      setCurrentDate(subDays(currentDate, 1));
+    } else if (currentView === "week") {
+      setCurrentDate(subWeeks(currentDate, 1));
+    } else if (currentView === "month") {
+      setCurrentDate(subMonths(currentDate, 1));
     }
   };
 
-  const getEventBadgeColor = (type: string) => {
-    switch (type) {
-      case 'meeting':
-        return 'bg-blue-100 text-blue-700';
-      case 'review':
-        return 'bg-green-100 text-green-700';
-      case 'planning':
-        return 'bg-purple-100 text-purple-700';
-      case 'contract':
-        return 'bg-orange-100 text-orange-700';
-      case 'committee':
-        return 'bg-red-100 text-red-700';
-      case 'budget':
-        return 'bg-yellow-100 text-yellow-700';
-      default:
-        return 'bg-gray-100 text-gray-700';
+  const handleNext = () => {
+    if (!currentDate) return;
+    setAnimationDirection("forward");
+    if (currentView === "day") {
+      setCurrentDate(addDays(currentDate, 1));
+    } else if (currentView === "week") {
+      setCurrentDate(addWeeks(currentDate, 1));
+    } else if (currentView === "month") {
+      setCurrentDate(addMonths(currentDate, 1));
+    }
+  };
+
+  const handleToday = () => {
+    setCurrentDate(new Date());
+  };
+
+  const handleDateSelect = (date: Date) => {
+    setCurrentDate(date);
+    if (currentView === "month") {
+      setCurrentView("day");
+    }
+  };
+
+  const handleMeetingClick = (meeting: Meeting) => {
+    setSelectedMeeting(meeting);
+  };
+
+  // Get date range text
+  const getDateRangeText = () => {
+    if (currentView === "day") {
+      return currentDate ? format(currentDate, "EEEE, MMMM d, yyyy") : "Select Date";
+    } else if (currentView === "week") {
+      if (!currentDate) return "Select Date";
+      const weekStart = startOfWeek(currentDate, { weekStartsOn: 0 });
+      const weekEnd = addDays(weekStart, 6);
+      return `${format(weekStart, "MMM d")} - ${format(weekEnd, "MMM d, yyyy")}`;
+    } else if (currentView === "month") {
+      return currentDate ? format(currentDate, "MMMM yyyy") : "Select Date";
     }
   };
 
   return (
-    <div className="p-6 space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Calendar</h1>
-        <p className="text-muted-foreground mt-1">
-          Upcoming meetings and scheduled events
-        </p>
-      </div>
-
-      {/* Summary Cards */}
-      <div className="grid gap-4 md:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Total Events</CardTitle>
-            <Calendar className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{dummyEvents.length}</div>
-            <p className="text-xs text-muted-foreground">This week</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Meetings</CardTitle>
-            <Users className="h-4 w-4 text-blue-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-blue-600">
-              {dummyEvents.filter((e) => e.type === 'meeting').length}
+    <div className="flex h-screen bg-muted/10">
+      {/* Main Content Area */}
+      <div className="flex-1 flex flex-col overflow-hidden">
+        {/* Top Navigation Bar */}
+        <div className="bg-white border-b p-3 sm:p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
+          <div className="flex items-center gap-2 sm:gap-4 w-full sm:w-auto">
+            {/* Navigation Controls */}
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="icon" onClick={handlePrevious} disabled={loading} className="touch-target">
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <Button variant="outline" size="icon" onClick={handleNext} disabled={loading} className="touch-target">
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+              <Button variant="outline" size="sm" onClick={handleToday} disabled={loading} className="touch-target">
+                Today
+              </Button>
             </div>
-            <p className="text-xs text-muted-foreground">Writer meetings</p>
-          </CardContent>
-        </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Reviews</CardTitle>
-            <Clock className="h-4 w-4 text-green-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600">
-              {dummyEvents.filter((e) => e.type === 'review').length}
+            {/* Date Range Display */}
+            <h1 className="text-base sm:text-xl font-semibold truncate">{getDateRangeText()}</h1>
+          </div>
+
+          {/* Refresh button and View Switcher */}
+          <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-end">
+            <Button
+              size="sm"
+              variant="default"
+              onClick={fetchMeetings}
+              title="Refresh meetings"
+              disabled={loading}
+              className="touch-target"
+            >
+              <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+            </Button>
+            <div className="hidden md:block">
+              <ViewSwitcher currentView={currentView} onViewChange={setCurrentView} />
             </div>
-            <p className="text-xs text-muted-foreground">Script reviews</p>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Committee</CardTitle>
-            <Users className="h-4 w-4 text-red-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-red-600">
-              {dummyEvents.filter((e) => e.type === 'committee').length}
+        {/* Calendar View Area */}
+        <div className="flex-1 flex overflow-hidden">
+          {loading ? (
+            <div className="flex-1 p-4 overflow-auto">
+              <CalendarSkeleton view={currentView} />
             </div>
-            <p className="text-xs text-muted-foreground">Committee meetings</p>
-          </CardContent>
-        </Card>
-      </div>
+          ) : (
+            <>
+              {/* Mobile: Teams-Style Calendar */}
+              <div className="md:hidden flex-1 overflow-hidden">
+                <TeamsMobileCalendar
+                  meetings={meetings}
+                  currentDate={currentDate}
+                  onMeetingClick={handleMeetingClick}
+                  onTimeSlotClick={() => {}}
+                />
+              </div>
 
-      {/* Events List */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Upcoming Events</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {dummyEvents.map((event) => (
-              <div
-                key={event.id}
-                className={`p-4 border-2 rounded-lg ${getEventColor(event.type)} transition-all hover:shadow-md`}
-              >
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1 space-y-3">
-                    <div className="flex items-center gap-3">
-                      <h3 className="font-semibold text-lg">
-                        {event.title}
-                      </h3>
-                      <Badge className={getEventBadgeColor(event.type)}>
-                        {event.type.charAt(0).toUpperCase() + event.type.slice(1)}
-                      </Badge>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
-                      <div className="flex items-center gap-2">
-                        <Calendar className="h-4 w-4 text-muted-foreground" />
-                        <span className="font-medium">
-                          {new Date(event.date).toLocaleDateString('en-US', {
-                            weekday: 'long',
-                            month: 'long',
-                            day: 'numeric',
-                            year: 'numeric',
-                          })}
-                        </span>
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        <Clock className="h-4 w-4 text-muted-foreground" />
-                        <span>
-                          {event.time} • {event.duration}
-                        </span>
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        <MapPin className="h-4 w-4 text-muted-foreground" />
-                        <span>{event.location}</span>
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        <Users className="h-4 w-4 text-muted-foreground" />
-                        <span>{event.attendees.length} attendees</span>
-                      </div>
-                    </div>
-
-                    <div className="pt-2 border-t">
-                      <p className="text-xs text-muted-foreground mb-2">Attendees:</p>
-                      <div className="flex flex-wrap gap-2">
-                        {event.attendees.map((attendee, idx) => (
-                          <Badge key={idx} variant="outline">
-                            {attendee}
-                          </Badge>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
+              {/* Desktop: Calendar Grid/Month View */}
+              <div className="hidden md:block flex-1 p-4 overflow-auto">
+                <div
+                  key={`${currentDate ? format(currentDate, 'yyyy-MM-dd') : 'unknown'}-${currentView}`}
+                  className={`transition-all duration-200 ease-in-out ${
+                    animationDirection === "forward"
+                      ? "animate-slide-in-right"
+                      : animationDirection === "backward"
+                        ? "animate-slide-in-left"
+                        : ""
+                  }`}
+                  onAnimationEnd={() => setAnimationDirection(null)}
+                >
+                  {currentView === "month" ? (
+                    <MonthView
+                      currentDate={currentDate}
+                      meetings={meetings}
+                      onDateClick={handleDateSelect}
+                      onMeetingClick={handleMeetingClick}
+                    />
+                  ) : (
+                    <CalendarGrid
+                      view={currentView}
+                      currentDate={currentDate}
+                      meetings={meetings}
+                      onMeetingClick={handleMeetingClick}
+                      readOnly={true}
+                    />
+                  )}
                 </div>
               </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+
+              {/* Meeting Peek Panel */}
+              {selectedMeeting && (
+                <MeetingPeekPanel
+                  meeting={selectedMeeting}
+                  onClose={() => setSelectedMeeting(null)}
+                />
+              )}
+            </>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

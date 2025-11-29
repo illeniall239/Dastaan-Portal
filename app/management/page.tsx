@@ -116,7 +116,7 @@ export default async function ManagementDashboard({
       {/* Executive Summary Stats */}
       <div id="executive-summary" className="mb-6 sm:mb-8">
         <div className="flex items-center justify-between mb-3 sm:mb-4">
-          <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900">Executive Summary</h2>
+          <h2 className="text-base sm:text-lg lg:text-xl font-bold text-gray-900">Executive Summary</h2>
           <div className="no-print">
             <ExportButton
               elementId="executive-summary"
@@ -126,16 +126,16 @@ export default async function ManagementDashboard({
             />
           </div>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 lg:gap-6 lg:grid-cols-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 lg:gap-6 lg:grid-cols-3">
           <Link href="/management/active-projects" className="transition-transform hover:scale-105">
             <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200 cursor-pointer hover:shadow-lg transition-shadow">
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardHeader className="flex flex-row items-center justify-between pb-2 p-3 sm:p-4 lg:p-6">
                 <CardTitle className="text-sm font-medium text-blue-900">
                   Active Projects
                 </CardTitle>
-                <FileText className="h-5 w-5 text-blue-600" />
+                <FileText className="h-4 w-4 md:h-5 md:w-5 text-blue-600" />
               </CardHeader>
-              <CardContent>
+              <CardContent className="p-3 sm:p-4 lg:p-6 pt-0">
                 <div className="text-xl sm:text-2xl md:text-3xl font-bold text-blue-900">{summary.totalActiveProjects}</div>
                 <p className="text-xs text-blue-700 mt-1">
                   Stories in development pipeline
@@ -146,13 +146,13 @@ export default async function ManagementDashboard({
 
           <Link href="/management/pipeline-value" className="transition-transform hover:scale-105">
             <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200 cursor-pointer hover:shadow-lg transition-shadow">
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardHeader className="flex flex-row items-center justify-between pb-2 p-3 sm:p-4 lg:p-6">
                 <CardTitle className="text-sm font-medium text-green-900">
                   Pipeline Value
                 </CardTitle>
-                <DollarSign className="h-5 w-5 text-green-600" />
+                <DollarSign className="h-4 w-4 md:h-5 md:w-5 text-green-600" />
               </CardHeader>
-              <CardContent>
+              <CardContent className="p-3 sm:p-4 lg:p-6 pt-0">
                 <div className="text-xl sm:text-2xl md:text-3xl font-bold text-green-900">
                   {formatCurrency(summary.pipelineValue)}
                 </div>
@@ -165,13 +165,13 @@ export default async function ManagementDashboard({
 
           <Link href="/management/contracts" className="transition-transform hover:scale-105">
             <Card className="bg-gradient-to-br from-orange-50 to-orange-100 border-orange-200 cursor-pointer hover:shadow-lg transition-shadow">
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardHeader className="flex flex-row items-center justify-between pb-2 p-3 sm:p-4 lg:p-6">
                 <CardTitle className="text-sm font-medium text-orange-900">
                   Active Contracts
                 </CardTitle>
-                <Briefcase className="h-5 w-5 text-orange-600" />
+                <Briefcase className="h-4 w-4 md:h-5 md:w-5 text-orange-600" />
               </CardHeader>
-              <CardContent>
+              <CardContent className="p-3 sm:p-4 lg:p-6 pt-0">
                 <div className="text-xl sm:text-2xl md:text-3xl font-bold text-orange-900">{summary.activeContracts}</div>
                 <p className="text-xs text-orange-700 mt-1">
                   Contracts currently in effect
@@ -182,13 +182,13 @@ export default async function ManagementDashboard({
 
           <Link href="/management/payments/overdue" className="transition-transform hover:scale-105">
             <Card className="bg-gradient-to-br from-red-50 to-red-100 border-red-200 cursor-pointer hover:shadow-lg transition-shadow">
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardHeader className="flex flex-row items-center justify-between pb-2 p-3 sm:p-4 lg:p-6">
                 <CardTitle className="text-sm font-medium text-red-900">
                   Overdue Payments
                 </CardTitle>
-                <AlertTriangle className="h-5 w-5 text-red-600" />
+                <AlertTriangle className="h-4 w-4 md:h-5 md:w-5 text-red-600" />
               </CardHeader>
-              <CardContent>
+              <CardContent className="p-3 sm:p-4 lg:p-6 pt-0">
                 <div className="text-xl sm:text-2xl md:text-3xl font-bold text-red-900">{summary.overduePayments}</div>
                 <p className="text-xs text-red-700 mt-1">
                   Payments requiring attention
@@ -199,13 +199,13 @@ export default async function ManagementDashboard({
 
           <Link href="/management/weekly-activities" className="transition-transform hover:scale-105">
             <Card className="bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200 cursor-pointer hover:shadow-lg transition-shadow">
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardHeader className="flex flex-row items-center justify-between pb-2 p-3 sm:p-4 lg:p-6">
                 <CardTitle className="text-sm font-medium text-purple-900">
                   Weekly Activities
                 </CardTitle>
-                <Activity className="h-5 w-5 text-purple-600" />
+                <Activity className="h-4 w-4 md:h-5 md:w-5 text-purple-600" />
               </CardHeader>
-              <CardContent>
+              <CardContent className="p-3 sm:p-4 lg:p-6 pt-0">
                 <div className="text-xl sm:text-2xl md:text-3xl font-bold text-purple-900">{summary.weeklyActivities}</div>
                 <p className="text-xs text-purple-700 mt-1">
                   Actions taken this week
@@ -216,13 +216,13 @@ export default async function ManagementDashboard({
 
           <Link href="/management/approvals" className="transition-transform hover:scale-105">
             <Card className="bg-gradient-to-br from-indigo-50 to-indigo-100 border-indigo-200 cursor-pointer hover:shadow-lg transition-shadow">
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardHeader className="flex flex-row items-center justify-between pb-2 p-3 sm:p-4 lg:p-6">
                 <CardTitle className="text-sm font-medium text-indigo-900">
                   Pending Approvals
                 </CardTitle>
-                <Clock className="h-5 w-5 text-indigo-600" />
+                <Clock className="h-4 w-4 md:h-5 md:w-5 text-indigo-600" />
               </CardHeader>
-              <CardContent>
+              <CardContent className="p-3 sm:p-4 lg:p-6 pt-0">
                 <div className="text-xl sm:text-2xl md:text-3xl font-bold text-indigo-900">{workload.executives.pendingApprovals}</div>
                 <p className="text-xs text-indigo-700 mt-1">
                   Awaiting committee decision
@@ -236,7 +236,7 @@ export default async function ManagementDashboard({
       {/* Critical Alerts */}
       <div id="critical-alerts-section" className="mb-6 sm:mb-8">
         <div className="flex items-center justify-between mb-3 sm:mb-4">
-          <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900">Critical Alerts</h2>
+          <h2 className="text-base sm:text-lg lg:text-xl font-bold text-gray-900">Critical Alerts</h2>
           <div className="no-print">
             <ExportButton
               elementId="critical-alerts-section"
@@ -252,7 +252,7 @@ export default async function ManagementDashboard({
       {/* Team Performance */}
       <div id="teams-section" className="mb-6 sm:mb-8">
         <div className="flex items-center justify-between mb-3 sm:mb-4">
-          <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900">Team Performance</h2>
+          <h2 className="text-base sm:text-lg lg:text-xl font-bold text-gray-900">Team Performance</h2>
           <div className="no-print">
             <ExportButton
               elementId="teams-section"
@@ -269,7 +269,7 @@ export default async function ManagementDashboard({
       <div id="scripting-episode-section" className="mb-6 sm:mb-8">
         <div className="flex items-center justify-between mb-4 sm:mb-6">
           <div>
-            <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900">Scripting Phase & Episode Evaluation Pipeline</h2>
+            <h2 className="text-base sm:text-lg lg:text-xl font-bold text-gray-900">Scripting Phase & Episode Evaluation Pipeline</h2>
             <p className="text-muted-foreground mt-1">
               Track episodic evaluation progress by drama
             </p>
@@ -299,7 +299,7 @@ export default async function ManagementDashboard({
       <div id="pipeline-section" className="mb-6 sm:mb-8">
         <div className="flex items-center justify-between mb-4 sm:mb-6">
           <div>
-            <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900">Content Pipeline Flow</h2>
+            <h2 className="text-base sm:text-lg lg:text-xl font-bold text-gray-900">Content Pipeline Flow</h2>
             <p className="text-muted-foreground mt-1">
               Story workflow from submission to completion
             </p>
@@ -331,7 +331,7 @@ export default async function ManagementDashboard({
       <div id="evaluator-performance" className="mb-6 sm:mb-8">
         <div className="flex items-center justify-between mb-4 sm:mb-6">
           <div>
-            <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900">Evaluator Activity Tracking</h2>
+            <h2 className="text-base sm:text-lg lg:text-xl font-bold text-gray-900">Evaluator Activity Tracking</h2>
             <p className="text-muted-foreground mt-1">
               Monitor evaluator workload and activity across all evaluation tasks
             </p>
@@ -363,7 +363,7 @@ export default async function ManagementDashboard({
       <div id="writer-financial-section" className="mb-6 sm:mb-8">
         <div className="flex items-center justify-between mb-4 sm:mb-6">
           <div>
-            <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900">Writer Payments & Financial Overview</h2>
+            <h2 className="text-base sm:text-lg lg:text-xl font-bold text-gray-900">Writer Payments & Financial Overview</h2>
             <p className="text-muted-foreground mt-1">
               Track negotiated amounts, contracts, and payments to writers and producers
             </p>
