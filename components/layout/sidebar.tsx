@@ -69,21 +69,23 @@ export const Sidebar = memo(function Sidebar({
   return (
     <>
       {/* Backdrop for mobile */}
-      {isMobileOpen && (
-        <div
-          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
-          onClick={closeMobile}
-        />
-      )}
+      <div
+        className={cn(
+          "fixed inset-0 bg-black/50 z-40 lg:hidden transition-opacity duration-300",
+          isMobileOpen ? "opacity-100" : "opacity-0 pointer-events-none"
+        )}
+        onClick={closeMobile}
+      />
 
       {/* Sidebar */}
       <aside
         className={cn(
-          "fixed top-0 left-0 h-full bg-white border-r border-gray-200 z-50 transition-all duration-150 flex-col",
-          // Desktop - always visible as flex
-          "hidden lg:flex lg:w-70",
-          // Mobile - only visible when open
-          isMobileOpen ? "flex w-[calc(100vw-3rem)] max-w-[280px]" : "hidden lg:flex"
+          "fixed top-0 left-0 h-full bg-white border-r border-gray-200 z-50 flex flex-col transition-transform duration-300 ease-in-out",
+          // Desktop - always visible
+          "lg:w-70 lg:translate-x-0",
+          // Mobile - slide in/out
+          "w-[calc(100vw-3rem)] max-w-[280px]",
+          isMobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
         )}
       >
         {/* Header Section */}
