@@ -47,7 +47,6 @@ interface StatusUpdaterTableProps {
 export function StatusUpdaterTable({ ideas }: StatusUpdaterTableProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [genreFilter, setGenreFilter] = useState<string>("all");
-  const [themeFilter, setThemeFilter] = useState<string>("all");
   const [slotFilter, setSlotFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [sortBy, setSortBy] = useState<string>("date");
@@ -63,13 +62,7 @@ export function StatusUpdaterTable({ ideas }: StatusUpdaterTableProps) {
     return Array.from(genreSet).sort();
   }, [ideas]);
 
-  const allThemes = useMemo(() => {
-    const themeSet = new Set<string>();
-    ideas.forEach(idea => {
-      if (idea.theme) themeSet.add(idea.theme);
-    });
-    return Array.from(themeSet).sort();
-  }, [ideas]);
+
 
   const allSlots = useMemo(() => {
     const slotSet = new Set<string>();
@@ -148,11 +141,10 @@ export function StatusUpdaterTable({ ideas }: StatusUpdaterTableProps) {
         (idea.director && idea.director.toLowerCase().includes(searchTerm.toLowerCase()));
 
       const matchesGenre = genreFilter === "all" || idea.genre.includes(genreFilter);
-      const matchesTheme = themeFilter === "all" || idea.theme === themeFilter;
       const matchesSlot = slotFilter === "all" || idea.slot === slotFilter;
       const matchesStatus = statusFilter === "all" || idea.status === statusFilter;
 
-      return matchesSearch && matchesGenre && matchesTheme && matchesSlot && matchesStatus;
+      return matchesSearch && matchesGenre && matchesSlot && matchesStatus;
     });
 
     // Sort
@@ -203,7 +195,7 @@ export function StatusUpdaterTable({ ideas }: StatusUpdaterTableProps) {
     });
 
     return filtered;
-  }, [ideas, searchTerm, genreFilter, themeFilter, slotFilter, statusFilter, sortBy, sortOrder]);
+  }, [ideas, searchTerm, genreFilter, slotFilter, statusFilter, sortBy, sortOrder]);
 
   const handleSort = (field: string) => {
     if (sortBy === field) {
@@ -217,20 +209,20 @@ export function StatusUpdaterTable({ ideas }: StatusUpdaterTableProps) {
   return (
     <Card className="border-slate-200 shadow-lg">
       <CardHeader className="border-b border-slate-100 bg-gradient-to-r from-slate-50 to-blue-50/30">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
           <div>
-            <CardTitle className="text-2xl font-bold text-slate-900">Status Report</CardTitle>
+            <CardTitle className="text-xl sm:text-2xl font-bold text-slate-900">Status Report</CardTitle>
             <CardDescription className="text-slate-600 mt-1">
               Update project status for all logged stories
             </CardDescription>
           </div>
-          <Badge variant="outline" className="text-base px-4 py-2 bg-white">
+          <Badge variant="outline" className="text-sm sm:text-base px-3 sm:px-4 py-1.5 sm:py-2 bg-white w-fit">
             {filteredAndSortedIdeas.length} {filteredAndSortedIdeas.length === 1 ? 'Project' : 'Projects'}
           </Badge>
         </div>
       </CardHeader>
 
-      <CardContent className="p-6">
+      <CardContent className="p-4 sm:p-6">
         {/* Search and Filters */}
         <div className="space-y-4 mb-6">
           {/* Search */}
@@ -245,7 +237,7 @@ export function StatusUpdaterTable({ ideas }: StatusUpdaterTableProps) {
           </div>
 
           {/* Filters */}
-          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
             <Select value={genreFilter} onValueChange={setGenreFilter}>
               <SelectTrigger>
                 <SelectValue placeholder="All Genres" />
@@ -254,18 +246,6 @@ export function StatusUpdaterTable({ ideas }: StatusUpdaterTableProps) {
                 <SelectItem value="all">All Genres</SelectItem>
                 {allGenres.map(genre => (
                   <SelectItem key={genre} value={genre}>{genre}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            <Select value={themeFilter} onValueChange={setThemeFilter}>
-              <SelectTrigger>
-                <SelectValue placeholder="All Themes" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Themes</SelectItem>
-                {allThemes.map(theme => (
-                  <SelectItem key={theme} value={theme}>{theme}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -313,6 +293,9 @@ export function StatusUpdaterTable({ ideas }: StatusUpdaterTableProps) {
         </div>
 
         {/* Table */}
+        <div className="block sm:hidden text-xs text-slate-500 mb-2 px-1">
+          ← Scroll horizontally to view all columns →
+        </div>
         <div className="rounded-lg border border-slate-200 overflow-hidden">
           <div className="overflow-x-auto">
             <Table>
@@ -325,9 +308,8 @@ export function StatusUpdaterTable({ ideas }: StatusUpdaterTableProps) {
                   <TableHead className="font-bold text-slate-700 w-[120px] cursor-pointer" onClick={() => handleSort("director")}>Director</TableHead>
                   <TableHead className="font-bold text-slate-700 w-[120px] cursor-pointer" onClick={() => handleSort("episodes")}>Episodes</TableHead>
                   <TableHead className="font-bold text-slate-700 w-[120px]">Genre</TableHead>
-                  <TableHead className="font-bold text-slate-700 w-[100px]">Theme</TableHead>
                   <TableHead className="font-bold text-slate-700 w-[90px]">Slot</TableHead>
-                  <TableHead className="font-bold text-slate-700 w-[220px] cursor-pointer" onClick={() => handleSort("status")}>Status</TableHead>
+                  <TableHead className="font-bold text-slate-700 w-[180px] cursor-pointer" onClick={() => handleSort("status")}>Status</TableHead>
                   <TableHead className="font-bold text-slate-700 w-[110px] text-center cursor-pointer" onClick={() => handleSort("date")}>Date Logged</TableHead>
                 </TableRow>
               </TableHeader>
@@ -407,11 +389,6 @@ export function StatusUpdaterTable({ ideas }: StatusUpdaterTableProps) {
                       {/* Genre */}
                       <TableCell className="text-sm text-slate-700">
                         {idea.genre.join(', ') || <span className="text-slate-400">N/A</span>}
-                      </TableCell>
-
-                      {/* Theme */}
-                      <TableCell className="text-sm text-slate-700">
-                        {idea.theme || <span className="text-slate-400">N/A</span>}
                       </TableCell>
 
                       {/* Slot */}

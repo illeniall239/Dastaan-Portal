@@ -1,19 +1,13 @@
 import { getCurrentUser } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import Link from "next/link";
-import { CalendarIcon, PlusIcon, FileTextIcon, CheckCircle2, Calendar, FileText, RefreshCw, Film } from "lucide-react";
+import { CalendarIcon, PlusIcon, FileTextIcon, Calendar, FileText, Film } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { Suspense } from "react";
-import { StatsGridSkeleton } from "@/components/skeletons/stats-grid-skeleton";
-import { ActivityCardSkeleton } from "@/components/skeletons/activity-card-skeleton";
 import { logger } from "@/lib/logger";
-import { getRecentActivity } from "@/lib/dashboard/server";
-import { BentoGrid } from "@/components/dashboard/bento-grid";
-import { BentoCard } from "@/components/dashboard/bento-card";
-import { EnhancedStatCard } from "@/components/dashboard/enhanced-stat-card";
-import { EnhancedQuickActions } from "@/components/dashboard/enhanced-quick-actions";
+import { ModernStatCard } from "@/components/dashboard/modern-stat-card";
+import { ModernContentCard } from "@/components/dashboard/modern-content-card";
 
 // Add Next.js caching - revalidate every 30 seconds
 export const revalidate = 300; // 5 minutes for better performance
@@ -53,16 +47,16 @@ export default async function ContentDepartmentDashboard() {
         </div>
       </div>
 
-      {/* Bento Grid Dashboard */}
-      <Suspense fallback={<StatsGridSkeleton />}>
-        <BentoDashboard />
+      {/* Dashboard Content */}
+      <Suspense fallback={<DashboardContentSkeleton />}>
+        <DashboardContent />
       </Suspense>
     </div>
   );
 }
 
-// Bento Dashboard Component - Fetches data and displays bento grid
-async function BentoDashboard() {
+// Dashboard Content Component - Fetches data and displays modern grid layout
+async function DashboardContent() {
   const supabase = await createClient();
 
   // STEP 1: Get current user's team context for team isolation
@@ -82,7 +76,7 @@ async function BentoDashboard() {
   let meetingsCount = 0;
   let callReportsCount = 0;
   let episodesCount = 0;
-  let recentActivity: any[] = [];
+  let upcomingMeetings: any[] = [];
 
   try {
     // STEP 2: Build queries with team filters
@@ -100,243 +94,234 @@ async function BentoDashboard() {
       .from("episodes")
       .select("id", { count: "exact", head: true });
 
+    let upcomingMeetingsQuery = supabase
+      .from("call_reports")
+      .select("id, working_title, meeting_date, writer_name")
+      .eq("meeting_type", "scheduled_meeting")
+      .gte("meeting_date", new Date().toISOString())
+      .order("meeting_date", { ascending: true })
+      .limit(5);
+
     // TEAM ISOLATION: Apply filters unless admin/management
     if (!hasGlobalAccess && currentUser?.team_id) {
       meetingsQuery = meetingsQuery.eq("team_id", currentUser.team_id);
       callReportsQuery = callReportsQuery.eq("team_id", currentUser.team_id);
       episodesQuery = episodesQuery.eq("team_id", currentUser.team_id);
+      upcomingMeetingsQuery = upcomingMeetingsQuery.eq("team_id", currentUser.team_id);
     }
 
-    const [meetingsRes, callReportsRes, episodesRes] = await Promise.all([
+    const [meetingsRes, callReportsRes, episodesRes, upcomingMeetingsRes] = await Promise.all([
       meetingsQuery,
       callReportsQuery,
-      episodesQuery
+      episodesQuery,
+      upcomingMeetingsQuery
     ]);
 
     meetingsCount = meetingsRes.count || 0;
     callReportsCount = callReportsRes.count || 0;
     episodesCount = episodesRes.count || 0;
-
-    // Fetch recent activity
-    recentActivity = await getRecentActivity(
-      5,
-      currentUser?.team_id,
-      currentUser?.role
-    );
+    upcomingMeetings = upcomingMeetingsRes.data || [];
   } catch (error) {
     logger.error("❌ [Stats] Error fetching dashboard data:", error);
   }
 
   const quickActions = [
     {
-      icon: "Calendar",
-      label: "View Calendar",
-      description: "See all scheduled meetings",
+      icon: Calendar,
+      label: "Schedule Meeting",
+      description: "Book meetings on calendar",
       href: "/content-department/calendar",
-      color: "blue" as const,
     },
     {
-      icon: "CheckCircle2",
-      label: "Writer Engagement Reports",
-      description: "View all reports",
+      icon: FileText,
+      label: "Log Writer Engagement Report",
+      description: "Document writer meetings",
+      href: "/content-department/log-call-report",
+    },
+    {
+      icon: FileText,
+      label: "View Call Reports",
+      description: "All engagement reports",
       href: "/content-department/call-reports",
-      color: "green" as const,
     },
     {
-      icon: "Film",
-      label: "Episodes",
-      description: "View all episodes",
+      icon: Film,
+      label: "View Episodes",
+      description: "Manage episodes",
       href: "/content-department/episodes",
-      color: "orange" as const,
     },
   ];
 
   return (
-    <BentoGrid>
-      {/* Hero Card - Scheduled Meetings (2x2) - LUXURY MINIMAL */}
-      <EnhancedStatCard
-        title="Scheduled Meetings"
-        value={meetingsCount}
-        icon="Calendar"
-        size="2x2"
-        variant="hero"
-        gradient="blue"
-        borderAccent="left"
-        accentColor="blue"
-        href="/content-department/calendar"
-        luxuryMinimal
-      />
+    <>
+      {/* Stats Grid - 4 columns */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <ModernStatCard
+          title="Scheduled Meetings"
+          value={meetingsCount}
+          icon={Calendar}
+          href="/content-department/calendar"
+          accent={true}
+        />
 
-      {/* Writer Engagement Reports (1x1) - LUXURY MINIMAL */}
-      <EnhancedStatCard
-        title="Writer Engagement Reports"
-        value={callReportsCount}
-        icon="FileText"
-        size="1x1"
-        variant="metric"
-        gradient="green"
-        borderAccent="top"
-        accentColor="green"
-        href="/content-department/call-reports"
-        luxuryMinimal
-      />
+        <ModernStatCard
+          title="Writer Engagement Reports"
+          value={callReportsCount}
+          icon={FileText}
+          href="/content-department/call-reports"
+        />
 
-      {/* Episodes Logged (1x1) - LUXURY MINIMAL */}
-      <EnhancedStatCard
-        title="Episodes Logged"
-        value={episodesCount}
-        icon="Film"
-        size="1x1"
-        variant="metric"
-        gradient="orange"
-        borderAccent="top"
-        accentColor="orange"
-        href="/content-department/episodes"
-        luxuryMinimal
-      />
+        <ModernStatCard
+          title="Episodes Logged"
+          value={episodesCount}
+          icon={Film}
+          href="/content-department/episodes"
+        />
 
-      {/* Quick Actions (1x2) - LUXURY MINIMAL */}
-      <BentoCard
-        size="1x2"
-        variant="content"
-        gradient="none"
-        minimalist
-      >
-        <div className="h-full flex flex-col">
-          <div className="mb-4">
-            <h3 className="luxury-text-label text-neutral-700">Quick Actions</h3>
-            <p className="luxury-text-micro text-neutral-500 mt-1">Common tasks and shortcuts</p>
+        <ModernStatCard
+          title="Total Stories"
+          value={0}
+          icon={FileText}
+          href="/content-department/stories"
+        />
+      </div>
+
+      {/* Content Grid - 3 columns */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {/* Quick Actions */}
+        <ModernContentCard
+          title="Quick Actions"
+          subtitle="Frequently accessed pages"
+        >
+          <div className="space-y-2">
+            {quickActions.map((action, index) => {
+              const Icon = action.icon;
+              return (
+                <Link
+                  key={index}
+                  href={action.href}
+                  className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors border border-transparent hover:border-gray-200"
+                >
+                  <Icon className="h-5 w-5 text-gray-600 flex-shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-900">
+                      {action.label}
+                    </p>
+                    <p className="text-xs text-gray-500">{action.description}</p>
+                  </div>
+                </Link>
+              );
+            })}
           </div>
-          <EnhancedQuickActions actions={quickActions} luxuryMinimal />
-        </div>
-      </BentoCard>
+        </ModernContentCard>
 
-      {/* Recent Activity (2x2) - LUXURY MINIMAL */}
-      <BentoCard
-        size="2x2"
-        variant="content"
-        gradient="none"
-        minimalist
-      >
-        <div className="h-full flex flex-col">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h3 className="luxury-text-label text-neutral-700">Recent Activity</h3>
-              <p className="luxury-text-micro text-neutral-500 mt-1">Latest updates in the content pipeline</p>
-            </div>
-            <Button variant="ghost" size="sm" className="text-[#224794] hover:text-[#2b5baf] hover:bg-blue-50" asChild>
-              <Link href="/content-department/call-reports">View All</Link>
-            </Button>
+        {/* Recent Call Reports */}
+        <ModernContentCard
+          title="Recent Call Reports"
+          subtitle="Last 5 writer engagement reports"
+        >
+          <p className="text-sm text-gray-500 text-center py-8">
+            View all call reports to see recent activity
+          </p>
+          <div className="pt-2 text-center">
+            <Link
+              href="/content-department/call-reports"
+              className="text-sm text-[#224794] hover:underline font-medium"
+            >
+              View all reports →
+            </Link>
           </div>
-          {recentActivity.length > 0 ? (
-            <div className="space-y-2 overflow-auto flex-1">
-              {recentActivity.map((activity, index) => {
-                const activityDate = new Date(activity.timestamp);
-                const formattedTime = activityDate.toLocaleTimeString("en-US", {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                  hour12: true
-                });
-                const formattedDate = activityDate.toLocaleDateString("en-US", {
-                  month: "short",
-                  day: "numeric"
-                });
+        </ModernContentCard>
 
-                let activityDescription = "";
-                let ActivityIcon: React.ElementType;
-                let activityLink = "";
-
-                switch (activity.action) {
-                  case "created_call_report":
-                    activityDescription = `Created call report: ${activity.details?.title || 'Untitled'}`;
-                    ActivityIcon = FileText;
-                    activityLink = `/content-department/call-reports/${activity.entityId}`;
-                    break;
-                  case "submitted_evaluation":
-                    activityDescription = `Evaluation submitted for: ${activity.details?.project_title || 'Untitled Project'}`;
-                    ActivityIcon = CheckCircle2;
-                    activityLink = `/content-department/call-reports`;
-                    break;
-                  case "created_meeting":
-                    activityDescription = `Scheduled meeting: ${activity.details?.title || 'Untitled Meeting'}`;
-                    ActivityIcon = Calendar;
-                    activityLink = `/content-department/calendar`;
-                    break;
-                  default:
-                    activityDescription = `${activity.action.replace(/_/g, ' ').toUpperCase()}: ${activity.entityType} ${activity.entityId}`;
-                    ActivityIcon = RefreshCw;
-                    activityLink = `/${activity.entityType}s/${activity.entityId}`;
-                }
-
-                return (
-                  <Link
-                    key={activity.id}
-                    href={activityLink}
-                    className="group block p-3 rounded-lg hover:bg-slate-50 transition-all duration-200 border border-transparent hover:border-slate-200"
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex items-start space-x-3 flex-1 min-w-0">
-                        <div className="flex-shrink-0 p-2 rounded-lg bg-slate-100 group-hover:bg-slate-200 transition-colors">
-                          <ActivityIcon className="h-4 w-4 text-slate-700" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-slate-900 group-hover:text-[#224794] transition-colors line-clamp-1">
-                            {activityDescription}
-                          </p>
-                          <p className="text-xs text-slate-500 mt-0.5">
-                            By {activity.performedBy}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="text-right flex-shrink-0">
-                        <p className="text-xs font-medium text-slate-700">{formattedTime}</p>
-                        <p className="text-xs text-slate-500 mt-0.5">{formattedDate}</p>
-                      </div>
-                    </div>
-                  </Link>
-                );
-              })}
+        {/* Upcoming Meetings */}
+        <ModernContentCard
+          title="Upcoming Meetings"
+          subtitle="Next 5 scheduled meetings"
+        >
+          {upcomingMeetings.length > 0 ? (
+            <div className="space-y-2">
+              {upcomingMeetings.map((meeting) => (
+                <Link
+                  key={meeting.id}
+                  href="/content-department/calendar"
+                  className="block p-3 rounded-lg hover:bg-gray-50 transition-colors border border-transparent hover:border-gray-200"
+                >
+                  <p className="text-sm font-medium text-gray-900 line-clamp-1">
+                    {meeting.working_title || "Untitled Meeting"}
+                  </p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    {meeting.writer_name ? `With: ${meeting.writer_name}` : "No writer specified"}
+                  </p>
+                  <p className="text-xs text-gray-400 mt-0.5">
+                    {new Date(meeting.meeting_date).toLocaleDateString("en-US", {
+                      month: "short",
+                      day: "numeric",
+                      year: "numeric",
+                      hour: "numeric",
+                      minute: "2-digit",
+                      hour12: true,
+                    })}
+                  </p>
+                </Link>
+              ))}
             </div>
           ) : (
-            <p className="text-sm text-slate-500 text-center py-8">
-              No recent activity to display
+            <p className="text-sm text-gray-500 text-center py-8">
+              No upcoming meetings scheduled
             </p>
           )}
-        </div>
-      </BentoCard>
+          <div className="pt-2 text-center">
+            <Link
+              href="/content-department/calendar"
+              className="text-sm text-[#224794] hover:underline font-medium"
+            >
+              View calendar →
+            </Link>
+          </div>
+        </ModernContentCard>
+      </div>
+    </>
+  );
+}
 
-      {/* Upcoming Meetings (2x1) - LUXURY MINIMAL */}
-      <BentoCard
-        size="2x1"
-        variant="content"
-        gradient="none"
-        minimalist
-      >
-        <div>
-          <h3 className="luxury-text-label text-neutral-700 mb-1">Upcoming Meetings</h3>
-          <p className="luxury-text-micro text-neutral-500 mb-4">Scheduled meetings for this week</p>
-          {meetingsCount > 0 ? (
-            <div className="p-4 rounded-lg bg-blue-50 border border-blue-200">
-              <p className="text-sm text-slate-700 font-medium">
-                <span className="text-2xl font-bold text-[#224794]">{meetingsCount}</span> meeting{meetingsCount !== 1 ? 's' : ''} scheduled this week.{' '}
-                <Link href="/content-department/calendar" className="text-[#224794] hover:text-[#1a3670] underline font-semibold">
-                  View calendar
-                </Link>
-              </p>
+// Skeleton for Dashboard Content
+function DashboardContentSkeleton() {
+  return (
+    <>
+      {/* Stats Grid Skeleton */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        {[1, 2, 3, 4].map((i) => (
+          <div
+            key={i}
+            className="rounded-2xl border border-gray-200 bg-white p-6 shadow-md"
+          >
+            <div className="h-4 w-24 bg-gray-200 rounded animate-pulse mb-4"></div>
+            <div className="h-12 w-16 bg-gray-200 rounded animate-pulse"></div>
+          </div>
+        ))}
+      </div>
+
+      {/* Content Grid Skeleton */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {[1, 2, 3].map((i) => (
+          <div
+            key={i}
+            className="rounded-2xl border border-gray-200 bg-white p-6 shadow-md"
+          >
+            <div className="h-6 w-32 bg-gray-200 rounded animate-pulse mb-2"></div>
+            <div className="h-4 w-48 bg-gray-200 rounded animate-pulse mb-4"></div>
+            <div className="space-y-3">
+              {[1, 2, 3].map((j) => (
+                <div
+                  key={j}
+                  className="h-20 bg-gray-100 rounded-lg animate-pulse"
+                ></div>
+              ))}
             </div>
-          ) : (
-            <div className="p-4 rounded-lg bg-slate-50 border border-slate-200">
-              <p className="text-sm text-slate-600 font-medium">
-                No upcoming meetings scheduled.{' '}
-                <Link href="/content-department/calendar" className="text-[#224794] hover:text-[#1a3670] underline font-semibold">
-                  Schedule a meeting
-                </Link>
-              </p>
-            </div>
-          )}
-        </div>
-      </BentoCard>
-    </BentoGrid>
+          </div>
+        ))}
+      </div>
+    </>
   );
 }
 

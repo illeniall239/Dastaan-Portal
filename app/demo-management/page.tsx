@@ -84,7 +84,7 @@ export default function DemoManagementDashboard() {
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-2xl font-bold text-gray-900">Executive Summary</h2>
         </div>
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-2 gap-4 lg:gap-6 lg:grid-cols-3">
           <Link href="/demo-management/active-projects" className="transition-transform hover:scale-105">
             <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200 cursor-pointer hover:shadow-lg transition-shadow">
               <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -94,8 +94,8 @@ export default function DemoManagementDashboard() {
                 <FileText className="h-5 w-5 text-blue-600" />
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold text-blue-900">{totalActiveProjects}</div>
-                <p className="text-xs text-blue-700 mt-1">
+                <div className="text-2xl sm:text-3xl font-bold text-blue-900">{totalActiveProjects}</div>
+                <p className="text-[10px] sm:text-xs text-blue-700 mt-1">
                   Stories in development pipeline
                 </p>
               </CardContent>
@@ -111,10 +111,10 @@ export default function DemoManagementDashboard() {
                 <DollarSign className="h-5 w-5 text-green-600" />
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold text-green-900">
+                <div className="text-xl sm:text-2xl md:text-3xl font-bold text-green-900">
                   {formatCurrency(pipelineValue)}
                 </div>
-                <p className="text-xs text-green-700 mt-1">
+                <p className="text-[10px] sm:text-xs text-green-700 mt-1">
                   Total contracts + negotiations
                 </p>
               </CardContent>
@@ -130,8 +130,8 @@ export default function DemoManagementDashboard() {
                 <Briefcase className="h-5 w-5 text-orange-600" />
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold text-orange-900">{activeContracts}</div>
-                <p className="text-xs text-orange-700 mt-1">
+                <div className="text-2xl sm:text-3xl font-bold text-orange-900">{activeContracts}</div>
+                <p className="text-[10px] sm:text-xs text-orange-700 mt-1">
                   Contracts currently in effect
                 </p>
               </CardContent>
@@ -147,8 +147,8 @@ export default function DemoManagementDashboard() {
                 <AlertTriangle className="h-5 w-5 text-red-600" />
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold text-red-900">{overduePayments}</div>
-                <p className="text-xs text-red-700 mt-1">
+                <div className="text-2xl sm:text-3xl font-bold text-red-900">{overduePayments}</div>
+                <p className="text-[10px] sm:text-xs text-red-700 mt-1">
                   Payments requiring attention
                 </p>
               </CardContent>
@@ -164,8 +164,8 @@ export default function DemoManagementDashboard() {
                 <Activity className="h-5 w-5 text-purple-600" />
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold text-purple-900">{weeklyActivities}</div>
-                <p className="text-xs text-purple-700 mt-1">
+                <div className="text-2xl sm:text-3xl font-bold text-purple-900">{weeklyActivities}</div>
+                <p className="text-[10px] sm:text-xs text-purple-700 mt-1">
                   Actions taken this week
                 </p>
               </CardContent>
@@ -181,8 +181,8 @@ export default function DemoManagementDashboard() {
                 <Clock className="h-5 w-5 text-indigo-600" />
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold text-indigo-900">{pendingApprovals}</div>
-                <p className="text-xs text-indigo-700 mt-1">
+                <div className="text-2xl sm:text-3xl font-bold text-indigo-900">{pendingApprovals}</div>
+                <p className="text-[10px] sm:text-xs text-indigo-700 mt-1">
                   Awaiting committee decision
                 </p>
               </CardContent>
@@ -222,20 +222,19 @@ export default function DemoManagementDashboard() {
                         <AlertTriangle className="h-5 w-5 text-yellow-600" />
                       )}
                     </div>
-                    <div className="flex-1">
+                    <div className="flex-1 min-w-0">
                       <div className="flex items-start justify-between gap-2">
-                        <h3 className="font-semibold">
+                        <h3 className="font-semibold text-sm sm:text-base flex-1">
                           {alert.title}
                         </h3>
-                        <span className={`text-xs font-medium px-2 py-1 rounded ${
-                          alert.severity === 'critical' ? 'bg-red-100 text-red-700' :
+                        <span className={`text-[10px] sm:text-xs font-medium px-2 py-1 rounded whitespace-nowrap flex-shrink-0 ${alert.severity === 'critical' ? 'bg-red-100 text-red-700' :
                           alert.severity === 'high' ? 'bg-orange-100 text-orange-700' :
-                          'bg-yellow-100 text-yellow-700'
-                        }`}>
+                            'bg-yellow-100 text-yellow-700'
+                          }`}>
                           {alert.severity.toUpperCase()}
                         </span>
                       </div>
-                      <p className="text-sm text-muted-foreground mt-1">
+                      <p className="text-xs sm:text-sm text-muted-foreground mt-1">
                         {alert.description}
                       </p>
                       <p className="text-xs text-muted-foreground mt-2">

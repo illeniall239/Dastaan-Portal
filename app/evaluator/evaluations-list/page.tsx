@@ -108,11 +108,10 @@ export default async function EvaluatorEvaluationsListPage({ searchParams }: { s
 
   return (
     <div className="mobile-container mobile-section space-y-4 sm:space-y-6">
-      <BackButton fallbackHref="/evaluator" variant="outline" size="sm" />
-
       {/* Page Header */}
-      <div className="flex items-center justify-between">
-        <div>
+      <div className="flex items-start gap-3 sm:gap-4">
+        <BackButton fallbackHref="/evaluator" variant="outline" size="sm" className="flex-shrink-0" />
+        <div className="min-w-0">
           <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Evaluation List</h1>
           <p className="text-muted-foreground mt-1 text-sm sm:text-base">
             Select a One-Liner to evaluate and score
@@ -121,10 +120,10 @@ export default async function EvaluatorEvaluationsListPage({ searchParams }: { s
       </div>
 
       {/* View Toggle */}
-      <div className="flex gap-2 justify-end">
+      <div className="flex flex-col sm:flex-row gap-2 sm:justify-end">
         <Link
           href="/evaluator/evaluations-list?view=pending"
-          className={`py-2 px-4 rounded-md text-sm font-medium border ${
+          className={`w-full sm:w-auto py-2 px-4 rounded-md text-sm font-medium text-center border ${
             currentView === "pending"
               ? "bg-[#224794] text-white border-[#224794]"
               : "bg-slate-100 text-slate-700 hover:bg-slate-200 border-slate-300"
@@ -134,7 +133,7 @@ export default async function EvaluatorEvaluationsListPage({ searchParams }: { s
         </Link>
         <Link
           href="/evaluator/evaluations-list?view=completed"
-          className={`py-2 px-4 rounded-md text-sm font-medium border ${
+          className={`w-full sm:w-auto py-2 px-4 rounded-md text-sm font-medium text-center border ${
             currentView === "completed"
               ? "bg-[#224794] text-white border-[#224794]"
               : "bg-slate-100 text-slate-700 hover:bg-slate-200 border-slate-300"
@@ -155,14 +154,14 @@ export default async function EvaluatorEvaluationsListPage({ searchParams }: { s
       <div className="grid gap-4">
         {filteredReports.length === 0 ? (
           <Card>
-            <CardContent className="flex flex-col items-center justify-center py-12">
+            <CardContent className="flex flex-col items-center justify-center py-8 sm:py-12 px-4">
               <FileTextIcon className="h-12 w-12 text-muted-foreground mb-4" />
               <h3 className="text-lg font-semibold mb-2">
                 {currentView === "pending" ? "No pending evaluations" : "No completed evaluations"}
               </h3>
               <p className="text-sm text-muted-foreground mb-4 text-center max-w-md">
-                {currentView === "pending" 
-                  ? "You have no pending evaluations at the moment." 
+                {currentView === "pending"
+                  ? "You have no pending evaluations at the moment."
                   : "You haven't completed any evaluations yet."}
               </p>
             </CardContent>

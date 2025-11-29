@@ -31,8 +31,8 @@ export default async function StatusUpdaterPage() {
   const activeIdeasDetails = await getActiveIdeasDetails();
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50/30 p-6">
-      <div className="max-w-[1600px] mx-auto space-y-4">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50/30 p-4 sm:p-6">
+      <div className="max-w-[1600px] w-full mx-auto space-y-4 px-4 2xl:px-0">
         <BackButton fallbackHref="/evaluator" variant="outline" size="sm" />
         <StatusUpdaterTable ideas={activeIdeasDetails.details} />
       </div>

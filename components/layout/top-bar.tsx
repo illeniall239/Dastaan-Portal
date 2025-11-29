@@ -95,9 +95,9 @@ export const TopBar = memo(function TopBar({
       {isLoggingOut && <LoadingSpinner text="Logging out..." />}
       
       {/* Fixed top bar spanning the content area */}
-      <div className="fixed top-0 right-0 left-0 lg:left-70 h-16 bg-white border-b border-gray-200 z-40 flex items-center justify-between px-4 lg:px-8">
+      <div className="fixed top-0 right-0 left-16 lg:left-70 h-16 bg-white border-b border-gray-200 z-40 flex items-center justify-between px-4 lg:px-8">
         {/* Search Bar */}
-        <form onSubmit={handleSearch} className="flex-1 max-w-md">
+        <form onSubmit={handleSearch} className="flex-1 max-w-[180px] sm:max-w-xs lg:max-w-md">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
             <Input

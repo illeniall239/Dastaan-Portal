@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { Plus } from "lucide-react";
 import { ContractTermList } from "@/components/contract-terms/contract-term-list";
+import { BackButton } from "@/components/ui/back-button";
 
 export const dynamic = "force-dynamic";
 
@@ -69,11 +70,14 @@ export default async function ContentDepartmentContractTermsPage() {
   return (
     <div className="mobile-container mobile-section">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0 mobile-header-spacing">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-bold">Contract Terms</h1>
-          <p className="text-muted-foreground mt-2 text-sm sm:text-base">
-            Manage project contract terms and term sheets
-          </p>
+        <div className="flex items-center gap-4">
+          <BackButton fallbackHref="/content-department" variant="outline" size="sm" />
+          <div>
+            <h1 className="text-xl sm:text-2xl font-bold">Contract Terms</h1>
+            <p className="text-muted-foreground mt-2 text-sm sm:text-base">
+              Manage project contract terms and term sheets
+            </p>
+          </div>
         </div>
         {canCreate && (
           <Button asChild>

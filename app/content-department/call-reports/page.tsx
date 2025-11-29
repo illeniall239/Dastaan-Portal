@@ -15,6 +15,7 @@ import { getAllCallReports } from "@/lib/meetings/server";
 import { EvaluationProgressBar } from "@/components/evaluations/evaluation-progress-bar";
 import { Suspense } from "react";
 import { CallReportCardsGridSkeleton } from "@/components/skeletons/call-report-card-skeleton";
+import { BackButton } from "@/components/ui/back-button";
 
 // Add Next.js caching - revalidate every 30 seconds
 export const revalidate = 300; // 5 minutes for better performance
@@ -35,18 +36,24 @@ export default async function CallReportsPage() {
   return (
     <div className="mobile-container mobile-section space-y-4 sm:space-y-6">
       {/* Page Header - Static, shows immediately */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-bold tracking-tight whitespace-nowrap">Writer Engagement Reports</h1>
-          <p className="text-muted-foreground mt-1 text-sm sm:text-base">
-            View all logged writer engagement reports
-          </p>
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        {/* Left side: Back button + Heading */}
+        <div className="flex items-start gap-3 sm:gap-4">
+          <BackButton fallbackHref="/content-department" variant="outline" size="sm" className="flex-shrink-0" />
+          <div className="min-w-0">
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Writer Engagement Reports</h1>
+            <p className="text-muted-foreground mt-1 text-sm sm:text-base">
+              View all logged writer engagement reports
+            </p>
+          </div>
         </div>
-        <Button asChild className="bg-[#224794] hover:bg-[#1a3670] touch-target w-full sm:w-auto">
+
+        {/* Right side: Action button */}
+        <Button asChild className="bg-[#224794] hover:bg-[#1a3670] touch-target w-full sm:w-auto lg:flex-shrink-0">
           <Link href="/content-department/log-call-report">
             <PlusIcon className="h-4 w-4 mr-2" />
-            <span className="hidden sm:inline">Log New Writer Engagement Report</span>
-            <span className="sm:hidden">Log New Report</span>
+            <span className="hidden md:inline">Log New Writer Engagement Report</span>
+            <span className="md:hidden">Log New Report</span>
           </Link>
         </Button>
       </div>
@@ -73,7 +80,7 @@ async function CallReportsList() {
     <div className="grid gap-4">
       {callReports.length === 0 ? (
         <Card>
-          <CardContent className="flex flex-col items-center justify-center py-12">
+          <CardContent className="flex flex-col items-center justify-center py-8 sm:py-12 px-4">
             <FileTextIcon className="h-12 w-12 text-muted-foreground mb-4" />
             <h3 className="text-lg font-semibold mb-2">No writer engagement reports yet</h3>
             <p className="text-sm text-muted-foreground mb-4 text-center max-w-md">

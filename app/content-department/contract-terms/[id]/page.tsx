@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect, notFound } from "next/navigation";
 import { ContractTermDetails } from "@/components/contract-terms/contract-term-details";
+import { BackButton } from "@/components/ui/back-button";
 
 export const dynamic = "force-dynamic";
 
@@ -72,6 +73,7 @@ export default async function ContentDepartmentContractTermDetailsPage({
 
   return (
     <div className="container mx-auto py-8 px-4">
+      <BackButton fallbackHref="/content-department/contract-terms" variant="outline" size="sm" className="mb-4" />
       <ContractTermDetails
         contractTerm={contractTerm}
         basePath="/content-department/contract-terms"

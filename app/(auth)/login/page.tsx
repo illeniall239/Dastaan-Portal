@@ -129,7 +129,7 @@ export default function LoginPage() {
 
       <main className="flex min-h-screen w-full font-body">
         {/* Left Panel - Branding */}
-        <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-[#1a3a6b] via-[#224794] to-[#2a5cb8] p-12 xl:p-16 flex-col justify-between">
+        <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-[#1a3a6b] via-[#224794] to-[#2a5cb8] p-8 lg:p-10 xl:p-12 2xl:p-16 flex-col justify-between">
           {/* Logo at top */}
           <div>
             <Image
@@ -145,9 +145,9 @@ export default function LoginPage() {
           {/* Centered branding content */}
           <div className="space-y-6 max-w-xl">
             <div className="space-y-2">
-              <h1 className="font-heading text-3xl lg:text-4xl xl:text-6xl font-bold text-white leading-tight flex items-baseline gap-2 xl:gap-3 whitespace-nowrap">
+              <h1 className="font-heading text-3xl lg:text-3xl xl:text-4xl 2xl:text-6xl font-bold text-white leading-tight flex flex-wrap items-baseline gap-2 xl:gap-3">
                 <span>Welcome to</span>
-                <span lang="ur" className="font-urdu text-orange-300 text-4xl lg:text-5xl xl:text-7xl">
+                <span lang="ur" className="font-urdu text-orange-300 text-4xl lg:text-4xl xl:text-5xl 2xl:text-7xl">
                   داستان
                 </span>
               </h1>
@@ -174,16 +174,12 @@ export default function LoginPage() {
                 priority
                 className="w-auto h-14 object-contain mx-auto mb-3"
               />
-              <h1 className="font-heading text-2xl font-bold text-gray-900">
-                Dastaan Portal
+              <h1 className="font-heading text-2xl font-bold text-gray-900 flex flex-wrap items-baseline justify-center gap-2">
+                <span>Welcome to</span>
+                <span lang="ur" className="font-urdu text-orange-500 text-2xl">
+                  داستان
+                </span>
               </h1>
-              <p
-                dir="rtl"
-                lang="ur"
-                className="text-xl font-bold font-urdu text-orange-500 mt-1"
-              >
-                داستان
-              </p>
             </div>
 
             {/* Form header */}
