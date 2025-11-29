@@ -58,8 +58,8 @@ export function DemoScriptingPhase({ data }: DemoScriptingPhaseProps) {
             <CardDescription>Current script development stage distribution</CardDescription>
           </div>
           <div className="text-right">
-            <p className="text-3xl font-bold">{total}</p>
-            <p className="text-xs text-muted-foreground">Total scripts</p>
+            <p className="text-xl sm:text-2xl md:text-3xl font-bold">{total}</p>
+            <p className="text-[10px] sm:text-xs text-muted-foreground">Total scripts</p>
           </div>
         </div>
       </CardHeader>

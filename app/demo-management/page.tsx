@@ -68,21 +68,21 @@ export default function DemoManagementDashboard() {
   const criticalAlerts = dummyAlerts.filter(a => !a.resolved).slice(0, 5);
 
   return (
-    <div className="p-6 space-y-6 animate-fade-in">
+    <div className="p-4 sm:p-6 space-y-4 sm:space-y-6 animate-fade-in">
       {/* Page Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-4 sm:mb-6">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Management Dashboard</h1>
-          <p className="text-muted-foreground mt-1">
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight">Management Dashboard</h1>
+          <p className="text-muted-foreground mt-1 text-sm sm:text-base">
             Overview of content development and production
           </p>
         </div>
       </div>
 
       {/* Executive Summary Stats */}
-      <div id="executive-summary" className="mb-8">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-2xl font-bold text-gray-900">Executive Summary</h2>
+      <div id="executive-summary" className="mb-6 sm:mb-8">
+        <div className="flex items-center justify-between mb-3 sm:mb-4">
+          <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900">Executive Summary</h2>
         </div>
         <div className="grid grid-cols-2 gap-4 lg:gap-6 lg:grid-cols-3">
           <Link href="/demo-management/active-projects" className="transition-transform hover:scale-105">
@@ -192,9 +192,9 @@ export default function DemoManagementDashboard() {
       </div>
 
       {/* Critical Alerts */}
-      <div id="critical-alerts-section" className="mb-8">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-2xl font-bold text-gray-900">Critical Alerts</h2>
+      <div id="critical-alerts-section" className="mb-6 sm:mb-8">
+        <div className="flex items-center justify-between mb-3 sm:mb-4">
+          <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900">Critical Alerts</h2>
         </div>
         <Card>
           <CardHeader>
@@ -209,7 +209,7 @@ export default function DemoManagementDashboard() {
                 {criticalAlerts.map((alert) => (
                   <div
                     key={alert.id}
-                    className="flex items-start gap-3 p-4 border rounded-lg hover:bg-gray-50 transition-colors"
+                    className="flex items-start gap-2 sm:gap-3 p-3 sm:p-4 border rounded-lg hover:bg-gray-50 transition-colors"
                   >
                     <div className="mt-1">
                       {alert.severity === 'critical' && (
@@ -259,9 +259,9 @@ export default function DemoManagementDashboard() {
       </div>
 
       {/* Team Performance */}
-      <div id="teams-section" className="mb-8">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-2xl font-bold text-gray-900">Team Performance</h2>
+      <div id="teams-section" className="mb-6 sm:mb-8">
+        <div className="flex items-center justify-between mb-3 sm:mb-4">
+          <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900">Team Performance</h2>
         </div>
         <Card>
           <CardHeader>
@@ -328,19 +328,19 @@ export default function DemoManagementDashboard() {
       </div>
 
       {/* Scripting Phase & Episode Evaluation Pipeline */}
-      <div id="scripting-episode-section" className="mb-8">
-        <div className="flex items-center justify-between mb-6">
+      <div id="scripting-episode-section" className="mb-6 sm:mb-8">
+        <div className="flex items-center justify-between mb-4 sm:mb-6">
           <div>
-            <h2 className="text-2xl font-bold text-gray-900">
+            <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900">
               Scripting Phase & Episode Evaluation Pipeline
             </h2>
-            <p className="text-muted-foreground mt-1">
+            <p className="text-muted-foreground mt-1 text-sm sm:text-base">
               Track episodic evaluation progress by drama
             </p>
           </div>
         </div>
 
-        <div className="space-y-6">
+        <div className="space-y-4 sm:space-y-6">
           <DemoScriptingPhase data={dummyScriptingPhase} />
           <DemoEvaluatorPipelineEpisodes
             dramas={dummyDramasWithEpisodes}
@@ -353,11 +353,11 @@ export default function DemoManagementDashboard() {
       </div>
 
       {/* Content Pipeline Flow */}
-      <div id="pipeline-section" className="mb-8">
-        <div className="flex items-center justify-between mb-6">
+      <div id="pipeline-section" className="mb-6 sm:mb-8">
+        <div className="flex items-center justify-between mb-4 sm:mb-6">
           <div>
-            <h2 className="text-2xl font-bold text-gray-900">Content Pipeline Flow</h2>
-            <p className="text-muted-foreground mt-1">
+            <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900">Content Pipeline Flow</h2>
+            <p className="text-muted-foreground mt-1 text-sm sm:text-base">
               Story workflow from submission to completion
             </p>
           </div>
@@ -377,11 +377,11 @@ export default function DemoManagementDashboard() {
       </div>
 
       {/* Evaluator Activity Tracking */}
-      <div id="evaluator-performance" className="mb-8">
-        <div className="flex items-center justify-between mb-6">
+      <div id="evaluator-performance" className="mb-6 sm:mb-8">
+        <div className="flex items-center justify-between mb-4 sm:mb-6">
           <div>
-            <h2 className="text-2xl font-bold text-gray-900">Evaluator Activity Tracking</h2>
-            <p className="text-muted-foreground mt-1">
+            <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900">Evaluator Activity Tracking</h2>
+            <p className="text-muted-foreground mt-1 text-sm sm:text-base">
               Monitor evaluator workload and activity across all evaluation tasks
             </p>
           </div>
@@ -423,18 +423,18 @@ export default function DemoManagementDashboard() {
       </div>
 
       {/* Contract Terms Overview Section */}
-      <div id="contract-terms-section" className="mb-8">
+      <div id="contract-terms-section" className="mb-6 sm:mb-8">
         <DemoContractTermsOverview contractTerms={dummyContractTerms} />
       </div>
 
       {/* Writer Financial Summary Section */}
-      <div id="writer-financial-section" className="mb-8">
-        <div className="flex items-center justify-between mb-6">
+      <div id="writer-financial-section" className="mb-6 sm:mb-8">
+        <div className="flex items-center justify-between mb-4 sm:mb-6">
           <div>
-            <h2 className="text-2xl font-bold text-gray-900">
+            <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900">
               Writer Payments & Financial Overview
             </h2>
-            <p className="text-muted-foreground mt-1">
+            <p className="text-muted-foreground mt-1 text-sm sm:text-base">
               Track negotiated amounts, contracts, and payments to writers and producers
             </p>
           </div>

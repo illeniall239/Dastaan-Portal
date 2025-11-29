@@ -24,7 +24,7 @@ export function DemoPipelineOverviewCards({
           <FileText className="h-5 w-5 text-blue-600" />
         </CardHeader>
         <CardContent>
-          <div className="text-3xl font-bold text-blue-900">{totalStories}</div>
+          <div className="text-xl sm:text-2xl md:text-3xl font-bold text-blue-900">{totalStories}</div>
           <p className="text-xs text-blue-700 mt-1">
             All submissions in system
           </p>
@@ -39,7 +39,7 @@ export function DemoPipelineOverviewCards({
           <TrendingUp className="h-5 w-5 text-green-600" />
         </CardHeader>
         <CardContent>
-          <div className="text-3xl font-bold text-green-900">{activePipeline}</div>
+          <div className="text-xl sm:text-2xl md:text-3xl font-bold text-green-900">{activePipeline}</div>
           <p className="text-xs text-green-700 mt-1">
             {totalStories > 0 ? ((activePipeline / totalStories) * 100).toFixed(0) : 0}% of total stories
           </p>
@@ -54,7 +54,7 @@ export function DemoPipelineOverviewCards({
           <Clock className="h-5 w-5 text-orange-600" />
         </CardHeader>
         <CardContent>
-          <div className="text-3xl font-bold text-orange-900">{avgTimeToCompletion}</div>
+          <div className="text-xl sm:text-2xl md:text-3xl font-bold text-orange-900">{avgTimeToCompletion}</div>
           <p className="text-xs text-orange-700 mt-1">
             Days from submission
           </p>

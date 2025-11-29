@@ -27,14 +27,14 @@ export function DemoContractTermsOverview({ contractTerms }: DemoContractTermsOv
       <CardHeader>
         <div className="flex items-center justify-between">
           <div>
-            <CardTitle className="text-2xl font-bold">Contract Terms Overview</CardTitle>
+            <CardTitle className="text-lg sm:text-xl md:text-2xl font-bold">Contract Terms Overview</CardTitle>
             <p className="text-sm text-muted-foreground mt-1">
               Active negotiations and finalized terms
             </p>
           </div>
           <div className="text-right">
             <p className="text-xs text-muted-foreground">Total Negotiated Value</p>
-            <p className="text-2xl font-bold text-green-600">{formatCurrency(totalNegotiated)}</p>
+            <p className="text-sm sm:text-xl md:text-2xl font-bold text-green-600">{formatCurrency(totalNegotiated)}</p>
           </div>
         </div>
       </CardHeader>
@@ -45,14 +45,14 @@ export function DemoContractTermsOverview({ contractTerms }: DemoContractTermsOv
               <FileText className="h-4 w-4 text-orange-600" />
               <span className="text-sm font-medium text-orange-900">In Negotiation</span>
             </div>
-            <p className="text-3xl font-bold text-orange-600">{activeNegotiations}</p>
+            <p className="text-lg sm:text-2xl md:text-3xl font-bold text-orange-600">{activeNegotiations}</p>
           </div>
           <div className="p-4 border rounded-lg bg-green-50">
             <div className="flex items-center gap-2 mb-2">
               <FileText className="h-4 w-4 text-green-600" />
               <span className="text-sm font-medium text-green-900">Finalized</span>
             </div>
-            <p className="text-3xl font-bold text-green-600">
+            <p className="text-lg sm:text-2xl md:text-3xl font-bold text-green-600">
               {contractTerms.filter((ct) => ct.status === 'finalized').length}
             </p>
           </div>
@@ -72,22 +72,22 @@ export function DemoContractTermsOverview({ contractTerms }: DemoContractTermsOv
                       term.status === 'finalized'
                         ? 'default'
                         : term.status === 'in_negotiation'
-                        ? 'secondary'
-                        : 'destructive'
+                          ? 'secondary'
+                          : 'destructive'
                     }
                     className={
                       term.status === 'finalized'
                         ? 'bg-green-100 text-green-700'
                         : term.status === 'in_negotiation'
-                        ? 'bg-orange-100 text-orange-700'
-                        : ''
+                          ? 'bg-orange-100 text-orange-700'
+                          : ''
                     }
                   >
                     {term.status === 'finalized'
                       ? 'Finalized'
                       : term.status === 'in_negotiation'
-                      ? 'In Negotiation'
-                      : 'Rejected'}
+                        ? 'In Negotiation'
+                        : 'Rejected'}
                   </Badge>
                 </div>
                 <p className="text-sm text-muted-foreground">Writer: {term.writer_name}</p>
@@ -100,7 +100,7 @@ export function DemoContractTermsOverview({ contractTerms }: DemoContractTermsOv
                 </p>
               </div>
               <div className="text-right ml-4">
-                <p className="text-2xl font-bold">{formatCurrency(term.negotiated_amount)}</p>
+                <p className="text-sm sm:text-lg md:text-2xl font-bold">{formatCurrency(term.negotiated_amount)}</p>
                 <p className="text-xs text-muted-foreground">{term.id}</p>
               </div>
             </div>

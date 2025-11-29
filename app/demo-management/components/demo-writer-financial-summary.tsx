@@ -60,15 +60,15 @@ export function DemoWriterFinancialSummary() {
         <div className="grid gap-4 md:grid-cols-3 mb-6">
           <div className="p-4 border rounded-lg bg-blue-50">
             <p className="text-sm font-medium text-blue-900 mb-1">Total Contracted</p>
-            <p className="text-2xl font-bold text-blue-600">{formatCurrency(totalContracted)}</p>
+            <p className="text-base sm:text-xl md:text-2xl font-bold text-blue-600">{formatCurrency(totalContracted)}</p>
           </div>
           <div className="p-4 border rounded-lg bg-green-50">
             <p className="text-sm font-medium text-green-900 mb-1">Total Paid</p>
-            <p className="text-2xl font-bold text-green-600">{formatCurrency(totalPaid)}</p>
+            <p className="text-base sm:text-xl md:text-2xl font-bold text-green-600">{formatCurrency(totalPaid)}</p>
           </div>
           <div className="p-4 border rounded-lg bg-orange-50">
             <p className="text-sm font-medium text-orange-900 mb-1">Outstanding Balance</p>
-            <p className="text-2xl font-bold text-orange-600">{formatCurrency(totalOutstanding)}</p>
+            <p className="text-base sm:text-xl md:text-2xl font-bold text-orange-600">{formatCurrency(totalOutstanding)}</p>
           </div>
         </div>
 
@@ -85,7 +85,7 @@ export function DemoWriterFinancialSummary() {
                   </p>
                 </div>
                 <div className="text-right">
-                  <p className="text-xl font-bold">{formatCurrency(writer.totalContracted)}</p>
+                  <p className="text-base sm:text-lg md:text-xl font-bold">{formatCurrency(writer.totalContracted)}</p>
                   <p className="text-xs text-muted-foreground">Total contracted</p>
                 </div>
               </div>
@@ -93,11 +93,11 @@ export function DemoWriterFinancialSummary() {
               <div className="grid grid-cols-2 gap-3 mb-3">
                 <div className="text-sm">
                   <p className="text-muted-foreground">Paid</p>
-                  <p className="font-semibold text-green-600">{formatCurrency(writer.totalPaid)}</p>
+                  <p className="text-sm sm:text-base font-semibold text-green-600">{formatCurrency(writer.totalPaid)}</p>
                 </div>
                 <div className="text-sm">
                   <p className="text-muted-foreground">Outstanding</p>
-                  <p className="font-semibold text-orange-600">{formatCurrency(writer.outstanding)}</p>
+                  <p className="text-sm sm:text-base font-semibold text-orange-600">{formatCurrency(writer.outstanding)}</p>
                 </div>
               </div>
 

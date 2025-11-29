@@ -36,8 +36,8 @@ export function DemoArchiveGenreChart({ data }: DemoArchiveGenreChartProps) {
             <CardDescription>Analysis of archived submissions</CardDescription>
           </div>
           <div className="text-right">
-            <p className="text-3xl font-bold text-red-600">{totalRejected}</p>
-            <p className="text-xs text-muted-foreground">Total rejected</p>
+            <p className="text-xl sm:text-2xl md:text-3xl font-bold text-red-600">{totalRejected}</p>
+            <p className="text-[10px] sm:text-xs text-muted-foreground">Total rejected</p>
           </div>
         </div>
       </CardHeader>
