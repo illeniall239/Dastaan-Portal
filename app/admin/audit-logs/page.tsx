@@ -78,8 +78,8 @@ export default function AuditLogsPage() {
         offset: offset.toString(),
       });
 
-      if (entityType) params.append("entityType", entityType);
-      if (action) params.append("action", action);
+      if (entityType && entityType !== "all") params.append("entityType", entityType);
+      if (action && action !== "all") params.append("action", action);
       if (performedBy) params.append("performedBy", performedBy);
       if (startDate) params.append("startDate", new Date(startDate).toISOString());
       if (endDate) params.append("endDate", new Date(endDate).toISOString());
@@ -113,8 +113,8 @@ export default function AuditLogsPage() {
   };
 
   const handleReset = () => {
-    setEntityType("");
-    setAction("");
+    setEntityType("all");
+    setAction("all");
     setPerformedBy("");
     setStartDate("");
     setEndDate("");
@@ -178,7 +178,7 @@ export default function AuditLogsPage() {
   };
 
   return (
-    <div className="container mx-auto py-8 space-y-6">
+    <div className="mobile-container mobile-section space-y-6 animate-fade-in">
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-xl sm:text-2xl font-bold">Audit Logs</h1>
@@ -207,7 +207,7 @@ export default function AuditLogsPage() {
                   <SelectValue placeholder="All types" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All types</SelectItem>
+                  <SelectItem value="all">All types</SelectItem>
                   <SelectItem value="user">User</SelectItem>
                   <SelectItem value="external_evaluation">External Evaluation</SelectItem>
                   <SelectItem value="story">Story</SelectItem>
@@ -224,7 +224,7 @@ export default function AuditLogsPage() {
                   <SelectValue placeholder="All actions" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All actions</SelectItem>
+                  <SelectItem value="all">All actions</SelectItem>
                   <SelectItem value="created">Created</SelectItem>
                   <SelectItem value="updated">Updated</SelectItem>
                   <SelectItem value="deleted">Deleted</SelectItem>

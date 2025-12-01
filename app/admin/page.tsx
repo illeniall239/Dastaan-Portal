@@ -1,15 +1,12 @@
 import { getCurrentUser } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import Link from "next/link";
-import { Users, UserPlus, Shield, Settings, Database, Activity } from "lucide-react";
+import { Users, UserPlus, Shield, Database, Activity, CheckCircle2 } from "lucide-react";
 import { Suspense } from "react";
 import { createClient } from "@/lib/supabase/server";
-import { BentoGrid } from "@/components/dashboard/bento-grid";
-import { BentoCard } from "@/components/dashboard/bento-card";
-import { EnhancedStatCard } from "@/components/dashboard/enhanced-stat-card";
-import { EnhancedQuickActions } from "@/components/dashboard/enhanced-quick-actions";
+import { ModernStatCard } from "@/components/dashboard/modern-stat-card";
+import { ModernContentCard } from "@/components/dashboard/modern-content-card";
 
 // Add Next.js caching
 export const revalidate = 300; // 5 minutes for better performance
@@ -27,7 +24,7 @@ export default async function AdminDashboardPage() {
   }
 
   return (
-    <div className="mobile-container mobile-section space-y-4 sm:space-y-6 animate-fade-in">
+    <div className="mobile-container mobile-section space-y-6 animate-fade-in">
       {/* Page Header with Actions */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
         <div>
@@ -46,16 +43,16 @@ export default async function AdminDashboardPage() {
         </Button>
       </div>
 
-      {/* Bento Grid Dashboard */}
-      <Suspense fallback={<div className="h-96 bg-slate-200 animate-pulse rounded-lg" />}>
-        <AdminBentoDashboard />
+      {/* Dashboard Content */}
+      <Suspense fallback={<DashboardContentSkeleton />}>
+        <AdminDashboardContent />
       </Suspense>
     </div>
   );
 }
 
-// Admin Bento Dashboard Component
-async function AdminBentoDashboard() {
+// Admin Dashboard Content Component
+async function AdminDashboardContent() {
   const supabase = await createClient();
 
   // Fetch stats
@@ -70,159 +67,175 @@ async function AdminBentoDashboard() {
 
   const quickActions = [
     {
-      icon: "Users",
+      icon: Users,
       label: "User Management",
       description: "View and manage users",
       href: "/admin/users",
-      color: "blue" as const,
     },
     {
-      icon: "UserPlus",
+      icon: UserPlus,
       label: "Create New User",
       description: "Add user to system",
       href: "/admin/users/new",
-      color: "green" as const,
     },
   ];
 
   return (
-    <BentoGrid>
-      {/* Hero Card - Total Users (2x2) - LUXURY MINIMAL */}
-      <EnhancedStatCard
-        title="Total Users"
-        value={totalUsers}
-        icon="Users"
-        size="2x2"
-        variant="hero"
-        gradient="blue"
-        borderAccent="left"
-        accentColor="blue"
-        href="/admin/users"
-        luxuryMinimal
-      />
+    <>
+      {/* Stat Cards Row */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <ModernStatCard
+          title="Total Users"
+          value={totalUsers}
+          icon={Users}
+          href="/admin/users"
+          accent={true}
+        />
 
-      {/* Active Users (1x1) - LUXURY MINIMAL */}
-      <EnhancedStatCard
-        title="Active Users"
-        value={activeUsers}
-        icon="Activity"
-        size="1x1"
-        variant="metric"
-        gradient="green"
-        borderAccent="top"
-        accentColor="green"
-        href="/admin/users"
-        luxuryMinimal
-      />
+        <ModernStatCard
+          title="Active Users"
+          value={activeUsers}
+          icon={Activity}
+          href="/admin/users"
+        />
 
-      {/* Administrators (1x1) - LUXURY MINIMAL */}
-      <EnhancedStatCard
-        title="Administrators"
-        value={adminUsers}
-        icon="Shield"
-        size="1x1"
-        variant="metric"
-        gradient="purple"
-        borderAccent="top"
-        accentColor="red"
-        href="/admin/users"
-        luxuryMinimal
-      />
+        <ModernStatCard
+          title="Administrators"
+          value={adminUsers}
+          icon={Shield}
+          href="/admin/users"
+        />
 
-      {/* Quick Actions (1x2) - LUXURY MINIMAL */}
-      <BentoCard
-        size="1x2"
-        variant="content"
-        gradient="none"
-        minimalist
-      >
-        <div className="h-full flex flex-col">
-          <div className="mb-4">
-            <h3 className="luxury-text-label text-neutral-700">Quick Actions</h3>
-            <p className="luxury-text-micro text-neutral-500 mt-1">Common administrative tasks</p>
+        <ModernStatCard
+          title="Evaluators"
+          value={evaluatorUsers}
+          icon={Users}
+          href="/admin/users"
+        />
+      </div>
+
+      {/* Content Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Quick Actions */}
+        <ModernContentCard
+          title="Quick Actions"
+          subtitle="Common administrative tasks"
+        >
+          <div className="space-y-2">
+            {quickActions.map((action, index) => {
+              const Icon = action.icon;
+              return (
+                <Link
+                  key={index}
+                  href={action.href}
+                  className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors border border-transparent hover:border-gray-200"
+                >
+                  <Icon className="h-5 w-5 text-gray-600 flex-shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-900">
+                      {action.label}
+                    </p>
+                    <p className="text-xs text-gray-500">{action.description}</p>
+                  </div>
+                </Link>
+              );
+            })}
           </div>
-          <EnhancedQuickActions actions={quickActions} luxuryMinimal />
-        </div>
-      </BentoCard>
+        </ModernContentCard>
 
-      {/* System Status (2x1) - LUXURY MINIMAL */}
-      <BentoCard
-        size="2x1"
-        variant="content"
-        gradient="none"
-        minimalist
-      >
-        <div>
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h3 className="luxury-text-label text-neutral-700">System Status</h3>
-              <p className="luxury-text-micro text-neutral-500 mt-1">Platform health and activity</p>
-            </div>
-            <div className="flex items-center gap-2 px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-semibold">
-              <div className="h-2 w-2 bg-green-500 rounded-full animate-pulse" />
-              Operational
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
-              <div className="flex items-center gap-2 mb-1">
-                <Database className="h-4 w-4 text-[#224794]" />
-                <p className="text-xs font-medium text-slate-600">Database</p>
+        {/* System Status */}
+        <ModernContentCard
+          title="System Status"
+          subtitle="Platform health and activity"
+        >
+          <div className="space-y-4">
+            <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg border border-green-100">
+              <div className="flex items-center gap-3">
+                <div className="h-2 w-2 bg-green-500 rounded-full animate-pulse" />
+                <span className="text-sm font-medium text-green-900">Operational Status</span>
               </div>
-              <p className="text-sm font-bold text-slate-900">Online</p>
+              <span className="text-xs font-bold text-green-700 bg-green-200 px-2 py-1 rounded-full">
+                Normal
+              </span>
             </div>
-            <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
-              <div className="flex items-center gap-2 mb-1">
-                <Activity className="h-4 w-4 text-green-600" />
-                <p className="text-xs font-medium text-slate-600">System Load</p>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
+                <div className="flex items-center gap-2 mb-1">
+                  <Database className="h-4 w-4 text-[#224794]" />
+                  <p className="text-xs font-medium text-slate-600">Database</p>
+                </div>
+                <p className="text-sm font-bold text-slate-900">Online</p>
               </div>
-              <p className="text-sm font-bold text-slate-900">Normal</p>
+              <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
+                <div className="flex items-center gap-2 mb-1">
+                  <Activity className="h-4 w-4 text-green-600" />
+                  <p className="text-xs font-medium text-slate-600">System Load</p>
+                </div>
+                <p className="text-sm font-bold text-slate-900">Normal</p>
+              </div>
             </div>
           </div>
-        </div>
-      </BentoCard>
+        </ModernContentCard>
 
-      {/* Security Notice (2x2) - LUXURY MINIMAL */}
-      <BentoCard
-        size="2x2"
-        variant="content"
-        gradient="none"
-        minimalist
-      >
-        <div>
+        {/* Security Notice */}
+        <ModernContentCard
+          title="Security Notice"
+          subtitle="Important information about admin access"
+        >
           <div className="flex items-start gap-3 mb-4">
-            <div className="luxury-icon-outline w-12 h-12">
+            <div className="p-2 bg-blue-50 rounded-lg">
               <Shield className="h-6 w-6 text-[#224794]" />
             </div>
-            <div>
-              <h3 className="luxury-text-label text-neutral-700">Security Notice</h3>
-              <p className="luxury-text-micro text-neutral-500 mt-1">
-                Important information about admin access
-              </p>
+            <div className="text-sm text-gray-600 space-y-2">
+              <p>• All administrative actions are logged for audit purposes</p>
+              <p>• Only create users with appropriate roles and permissions</p>
+              <p>• Regularly review user access and permissions</p>
             </div>
           </div>
-          <div className="space-y-2 text-sm text-neutral-700">
-            <p>• All administrative actions are logged for audit purposes</p>
-            <p>• Only create users with appropriate roles and permissions</p>
-            <p>• Regularly review user access and permissions</p>
-            <p>• Report any suspicious activity immediately</p>
-          </div>
-        </div>
-      </BentoCard>
+        </ModernContentCard>
+      </div>
+    </>
+  );
+}
 
-      {/* Evaluators (1x1) - LUXURY MINIMAL */}
-      <EnhancedStatCard
-        title="Evaluators"
-        value={evaluatorUsers}
-        icon="Users"
-        size="1x1"
-        variant="metric"
-        gradient="orange"
-        borderAccent="top"
-        accentColor="orange"
-        href="/admin/users"
-        luxuryMinimal
-      />
-    </BentoGrid>
+// Skeleton for Dashboard Content
+function DashboardContentSkeleton() {
+  return (
+    <>
+      {/* Stats Grid Skeleton */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        {[1, 2, 3, 4].map((i) => (
+          <div
+            key={i}
+            className="rounded-2xl border border-gray-200 bg-white p-6 shadow-md"
+          >
+            <div className="h-4 w-24 bg-gray-200 rounded animate-pulse mb-4"></div>
+            <div className="h-12 w-16 bg-gray-200 rounded animate-pulse"></div>
+          </div>
+        ))}
+      </div>
+
+      {/* Content Grid Skeleton */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {[1, 2, 3].map((i) => (
+          <div
+            key={i}
+            className="rounded-2xl border border-gray-200 bg-white p-6 shadow-md"
+          >
+            <div className="h-6 w-32 bg-gray-200 rounded animate-pulse mb-2"></div>
+            <div className="h-4 w-48 bg-gray-200 rounded animate-pulse mb-4"></div>
+            <div className="space-y-3">
+              {[1, 2, 3].map((j) => (
+                <div
+                  key={j}
+                  className="h-20 bg-gray-100 rounded-lg animate-pulse"
+                ></div>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    </>
   );
 }
