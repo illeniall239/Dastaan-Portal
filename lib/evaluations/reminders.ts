@@ -1,5 +1,8 @@
 import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { sendEvaluationReminderEmail } from '@/lib/email/send-email';
+import { createNotifications, createNotification } from '@/lib/notifications/server';
+import { logger } from '@/lib/logger';
 
 /**
  * Run daily evaluation reminders
@@ -166,6 +169,95 @@ export async function checkOverdueEvaluations() {
  * Notify stakeholders when an evaluation proceeds after deadline
  */
 async function notifyStakeholdersOfDeadline(callReport: any) {
-  // Implementation would notify content managers, executives, etc.
-  
+  try {
+    const supabase = createAdminClient();
+
+    // Get content managers, management, and executives
+    const { data: stakeholders } = await supabase
+      .from('users')
+      .select('id')
+      .in('role', ['content_manager', 'management', 'executive'])
+      .eq('status', 'active');
+
+    if (!stakeholders || stakeholders.length === 0) {
+      logger.warn('No stakeholders found to notify about evaluation deadline');
+      return;
+    }
+
+    const stakeholderIds = stakeholders.map(s => s.id);
+
+    // Create in-app notifications
+    await createNotifications(
+      stakeholderIds,
+      'info',
+      'Evaluation Period Completed',
+      `Call report "${callReport.title || 'Untitled'}" has completed its evaluation period with ${callReport.completed_evaluations || 0} evaluations. Decision has been made automatically.`,
+      'call_report',
+      callReport.id
+    );
+
+    logger.info(`Notified ${stakeholderIds.length} stakeholders about evaluation deadline completion for call report ${callReport.id}`);
+  } catch (error) {
+    logger.error('Failed to notify stakeholders of deadline:', error);
+  }
+}
+
+/**
+ * Notify content_heads about their pending evaluations
+ */
+export async function notifyContentHeadsOfPendingEvaluations() {
+  try {
+    const supabase = createAdminClient();
+
+    // Get all pending evaluator assignments for content_heads
+    const { data: pendingAssignments } = await supabase
+      .from('evaluator_assignments')
+      .select(`
+        id,
+        call_report_id,
+        evaluator_id,
+        team_id,
+        call_reports!inner(id, working_title, created_at, team_id)
+      `)
+      .eq('status', 'pending');
+
+    if (!pendingAssignments || pendingAssignments.length === 0) {
+      logger.info('No pending evaluations for content heads');
+      return { success: true, notified: 0 };
+    }
+
+    // Group assignments by content_head (evaluator_id)
+    const groupedByContentHead = pendingAssignments.reduce((acc, assignment) => {
+      const contentHeadId = assignment.evaluator_id;
+      if (!acc[contentHeadId]) {
+        acc[contentHeadId] = [];
+      }
+      acc[contentHeadId].push(assignment);
+      return acc;
+    }, {} as Record<string, typeof pendingAssignments>);
+
+    // Create notifications for each content_head
+    let notifiedCount = 0;
+    for (const [contentHeadId, assignments] of Object.entries(groupedByContentHead)) {
+      try {
+        await createNotification({
+          userId: contentHeadId,
+          type: 'info',
+          title: `${assignments.length} Pending Evaluation${assignments.length > 1 ? 's' : ''}`,
+          message: `You have ${assignments.length} call report${assignments.length > 1 ? 's' : ''} from your team waiting for your evaluation.`,
+          entityType: 'evaluator_assignment',
+          entityId: assignments[0].id
+        });
+        notifiedCount++;
+      } catch (error) {
+        logger.error(`Failed to notify content_head ${contentHeadId}:`, error);
+      }
+    }
+
+    logger.info(`Notified ${notifiedCount} content heads about ${pendingAssignments.length} pending evaluations`);
+    return { success: true, notified: notifiedCount };
+  } catch (error) {
+    logger.error('Failed to notify content heads:', error);
+    return { success: false, error };
+  }
 }

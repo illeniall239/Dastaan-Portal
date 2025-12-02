@@ -2,19 +2,19 @@ import { createClient } from "@/lib/supabase/server";
 import { EvaluatorAssignment, EvaluationProgress } from "@/types";
 
 /**
- * Assign evaluators to a call report
- * Automatically assigns 10 internal + 10 external evaluators
+ * Assign content_head to a call report
+ * Automatically assigns the team's content_head as the sole evaluator
  */
 export async function assignEvaluatorsToCallReport(callReportId: string) {
   const supabase = await createClient();
 
-  // Call the database function to auto-assign evaluators
-  const { error } = await supabase.rpc("auto_assign_evaluators", {
+  // Call the database function to auto-assign content_head
+  const { error } = await supabase.rpc("auto_assign_content_head", {
     p_call_report_id: callReportId,
   });
 
   if (error) {
-    throw new Error(`Failed to assign evaluators: ${error.message}`);
+    throw new Error(`Failed to assign content_head: ${error.message}`);
   }
 
   return { success: true };
@@ -133,13 +133,13 @@ export async function getEvaluationProgress(
   }
 
   if (!data || data.length === 0) {
-    // Return default progress if no data
+    // Return default progress if no data (content_head-only system)
     return {
-      total_required: 20,
+      total_required: 1,
       total_completed: 0,
-      internal_required: 10,
+      internal_required: 1,
       internal_completed: 0,
-      external_required: 10,
+      external_required: 0,
       external_completed: 0,
       progress_percentage: 0,
       current_average: null,

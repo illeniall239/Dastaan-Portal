@@ -42,7 +42,10 @@
       "Bash(npx supabase:*)",
       "Skill(frontend-design)",
       "Skill(frontend-design:frontend-design)",
-      "Bash(findstr:*)"
+      "Bash(findstr:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(git add:*)"
     ],
     "deny": [],
     "ask": []

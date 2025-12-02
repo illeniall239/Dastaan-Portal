@@ -118,11 +118,11 @@ export class CallReportService {
   private readonly context: RepositoryContextType;
 
   // Configuration constants
-  private readonly DEFAULT_REQUIRED_EVALUATIONS = 20;
-  private readonly DEFAULT_REQUIRED_INTERNAL = 10;
-  private readonly DEFAULT_REQUIRED_EXTERNAL = 10;
+  private readonly DEFAULT_REQUIRED_EVALUATIONS = 1;
+  private readonly DEFAULT_REQUIRED_INTERNAL = 1;
+  private readonly DEFAULT_REQUIRED_EXTERNAL = 0;
   private readonly EVALUATION_DEADLINE_DAYS = 5;
-  private readonly MINIMUM_EVALUATIONS_FOR_DEADLINE = 3;
+  private readonly MINIMUM_EVALUATIONS_FOR_DEADLINE = 1;
 
   constructor(context: RepositoryContextType = 'server') {
     this.context = context;
