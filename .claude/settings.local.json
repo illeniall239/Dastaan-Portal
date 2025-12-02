@@ -41,7 +41,8 @@
       "Bash(if not exist \"C:\\Users\\Hamza\\Downloads\\Content-Portal\\Content-Portal\\app\\content-department\\schedule-meeting\" mkdir \"C:\\Users\\Hamza\\Downloads\\Content-Portal\\Content-Portal\\app\\content-department\\schedule-meeting\")",
       "Bash(npx supabase:*)",
       "Skill(frontend-design)",
-      "Skill(frontend-design:frontend-design)"
+      "Skill(frontend-design:frontend-design)",
+      "Bash(findstr:*)"
     ],
     "deny": [],
     "ask": []
