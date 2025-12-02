@@ -28,6 +28,7 @@
 
 import { CallReportRepository, type CallReportSearchFilters } from '@/lib/repositories/call-report-repository';
 import { UserRepository } from '@/lib/repositories/user-repository';
+import { StoryRepository } from '@/lib/repositories/story-repository';
 import { executeTransaction, type RepositoryContextType } from '@/lib/repositories/base';
 import { logger } from '@/lib/logger';
 import type { CallReport, EvaluationStatus } from '@/types';
@@ -635,6 +636,9 @@ export class CallReportService {
         );
       }
 
+      // Store story_id BEFORE deletion so we can revert its status
+      const storyId = existing.story_id;
+
       // Only allow creator or admin to delete
       const user = await this.userRepo.findById(performedBy);
       if (!user) {
@@ -655,6 +659,13 @@ export class CallReportService {
 
       // Delete call report
       await this.callReportRepo.delete(callReportId);
+
+      // Revert story status to 'submitted' if it has a linked story
+      if (storyId) {
+        const storyRepo = new StoryRepository(this.context);
+        await storyRepo.updateStatus(storyId, 'submitted');
+        logger.info(`Story ${storyId} status reverted to 'submitted' after call report deletion`);
+      }
 
       logger.info(`Call report deleted: ${callReportId}`);
     } catch (error) {
