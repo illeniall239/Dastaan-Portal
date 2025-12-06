@@ -18,6 +18,15 @@ const nextConfig: NextConfig = {
     } : false,
   },
 
+  // Turbopack configuration
+  turbopack: {
+    // Empty config to acknowledge we're using Turbopack
+    // This silences the warning about webpack config
+  },
+
+  // Exclude problematic test files from thread-stream package
+  serverExternalPackages: ['pino', 'thread-stream'],
+
   // Experimental features for performance
   experimental: {
     // Enable server actions optimization
