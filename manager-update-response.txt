@@ -1,0 +1,19 @@
+Content Portal - Status Update
+
+Hi Faizan,
+
+Quick update on the features you asked about.
+
+The system is already set up for you to upload scripts and assign them to specific evaluators. When you upload a script, it goes to your team's Content Head who can then evaluate it. The evaluators receive notifications and can complete their assessments through the portal. All of this is currently working and ready to use.
+
+For viewing overall evaluations, you can already see how people have evaluated scripts and one-liners through the Management Dashboard. The system shows you average scores, individual ratings, and recommendations across all eight evaluation criteria. Each script gets rated on a scale from one to ten across different categories, and you can see the complete breakdown of how each evaluator scored it.
+
+Regarding external link sharing, we have this feature working for episodic content and one-liners, but not yet for writer engagement reports. The system can generate secure time-limited links for episodes and one-liners that you can share with external evaluators who don't have portal accounts. However, this same functionality hasn't been extended to writer engagement reports yet. This is something we need to add because the infrastructure is already there, it just needs to be connected to writer engagement reports as well.
+
+We recently made some important updates to align the system with your team structure. Each team's Content Head now evaluates their own team's submissions, which makes the workflow cleaner and more efficient. We also fixed some data tracking issues to ensure everything stays accurate even when evaluations are modified or removed.
+
+You can access evaluation information right now by logging into the portal and going to the Management Dashboard. From there you'll see evaluation statistics, pending approvals, and overall performance metrics for all the scripts and one-liners in the system, including both internal and external evaluations for episodes and one-liners.
+
+The core system is live and operational. You can start uploading scripts and reviewing evaluations today. The one missing piece is the ability to share writer engagement reports externally with people outside the portal, which we can implement since the framework for external sharing already exists for other content types.
+
+Let me know if you'd like a walkthrough of the current features or if you'd like us to prioritize adding external sharing for writer engagement reports.

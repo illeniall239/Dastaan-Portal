@@ -7,6 +7,7 @@ export const dynamic = "force-dynamic";
 
 interface SubmitEvaluationRequest {
   token: string;
+  evaluator_id: string;
   evaluator_name?: string;
   evaluator_email?: string;
   evaluator_organization?: string;
@@ -18,9 +19,9 @@ export async function POST(request: NextRequest) {
     const body: SubmitEvaluationRequest = await request.json();
 
     // Validate required fields
-    if (!body.token || !body.evaluation_data) {
+    if (!body.token || !body.evaluation_data || !body.evaluator_id) {
       return NextResponse.json(
-        { error: "token and evaluation_data are required" },
+        { error: "token, evaluator_id, and evaluation_data are required" },
         { status: 400 }
       );
     }
@@ -60,14 +61,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if max submissions reached
-    if (link.max_submissions !== null && link.current_submissions >= link.max_submissions) {
-      return NextResponse.json(
-        { error: "Maximum number of submissions reached for this link" },
-        { status: 403 }
-      );
-    }
-
     // Check if email is allowed (if restrictions exist)
     if (link.allowed_emails && link.allowed_emails.length > 0) {
       if (!body.evaluator_email) {
@@ -85,28 +78,44 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Check for duplicate submission from same email
-    if (body.evaluator_email) {
-      const { data: existingEval } = await supabase
-        .from("external_evaluations")
-        .select("id")
-        .eq("link_id", link.id)
-        .eq("evaluator_email", body.evaluator_email)
-        .single();
-
-      if (existingEval) {
-        return NextResponse.json(
-          { error: "You have already submitted an evaluation using this link" },
-          { status: 409 }
-        );
-      }
-    }
-
     // Get client IP and user agent for audit trail
     const ip_address = request.headers.get("x-forwarded-for") ||
                       request.headers.get("x-real-ip") ||
                       "unknown";
     const user_agent = request.headers.get("user-agent") || "unknown";
+
+    // Multi-layer duplicate submission check
+    // Layer 1: Check for duplicate submission from same evaluator_id (localStorage)
+    const { data: existingByEvaluatorId } = await supabase
+      .from("external_evaluations")
+      .select("id")
+      .eq("link_id", link.id)
+      .eq("evaluator_id", body.evaluator_id)
+      .single();
+
+    if (existingByEvaluatorId) {
+      return NextResponse.json(
+        { error: "You have already submitted an evaluation using this link" },
+        { status: 409 }
+      );
+    }
+
+    // Layer 2: Check for duplicate submission from same IP address (bypass detection)
+    if (ip_address && ip_address !== "unknown") {
+      const { data: existingByIp } = await supabase
+        .from("external_evaluations")
+        .select("id")
+        .eq("link_id", link.id)
+        .eq("ip_address", ip_address)
+        .single();
+
+      if (existingByIp) {
+        return NextResponse.json(
+          { error: "A submission has already been received from your network. If you believe this is an error, please contact support." },
+          { status: 409 }
+        );
+      }
+    }
 
     // Validate evaluation data based on content type
     if (link.content_type === "episode") {
@@ -142,6 +151,51 @@ export async function POST(request: NextRequest) {
           );
         }
       }
+    } else if (link.content_type === "call_report") {
+      // Validate call_report evaluation data structure
+      if (!body.evaluation_data.decision ||
+          !body.evaluation_data.overall_rating ||
+          !body.evaluation_data.feedback) {
+        return NextResponse.json(
+          {
+            error: "Missing required fields for call report evaluation: decision, overall_rating, feedback"
+          },
+          { status: 400 }
+        );
+      }
+
+      // Validate rating is 1-10
+      const rating = parseInt(body.evaluation_data.overall_rating);
+      if (isNaN(rating) || rating < 1 || rating > 10) {
+        return NextResponse.json(
+          { error: "overall_rating must be between 1 and 10" },
+          { status: 400 }
+        );
+      }
+
+      // Validate decision
+      if (!["approved", "rejected"].includes(body.evaluation_data.decision)) {
+        return NextResponse.json(
+          { error: "decision must be 'approved' or 'rejected'" },
+          { status: 400 }
+        );
+      }
+    } else if (link.content_type === "one_liner") {
+      // Validate one_liner evaluation
+      if (!body.evaluation_data.decision) {
+        return NextResponse.json(
+          { error: "Missing required field: decision" },
+          { status: 400 }
+        );
+      }
+
+      // Validate decision
+      if (!["approved", "rejected"].includes(body.evaluation_data.decision)) {
+        return NextResponse.json(
+          { error: "decision must be 'approved' or 'rejected'" },
+          { status: 400 }
+        );
+      }
     }
 
     // Insert external evaluation
@@ -151,6 +205,7 @@ export async function POST(request: NextRequest) {
         link_id: link.id,
         content_type: link.content_type,
         content_id: link.content_id,
+        evaluator_id: body.evaluator_id,
         evaluator_name: body.evaluator_name || null,
         evaluator_email: body.evaluator_email || null,
         evaluator_organization: body.evaluator_organization || null,

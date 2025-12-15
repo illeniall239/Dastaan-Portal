@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { logger } from "@/lib/logger";
 import { NextRequest, NextResponse } from "next/server";
 import { randomBytes } from "crypto";
@@ -6,7 +7,7 @@ import { randomBytes } from "crypto";
 export const dynamic = "force-dynamic";
 
 interface GenerateLinkRequest {
-  content_type: "one_liner" | "episode";
+  content_type: "one_liner" | "episode" | "call_report";
   content_id: string;
   expires_in_days?: number;
   max_submissions?: number | null;
@@ -17,6 +18,7 @@ interface GenerateLinkRequest {
 export async function POST(request: NextRequest) {
   try {
     const supabase = await createClient();
+    const adminSupabase = createAdminClient();
 
     // Check authentication
     const {
@@ -34,9 +36,9 @@ export async function POST(request: NextRequest) {
       .eq("id", user.id)
       .single();
 
-    if (userError || !userData || !["admin", "management", "executive"].includes(userData.role)) {
+    if (userError || !userData || !["admin", "management", "executive", "evaluator"].includes(userData.role)) {
       return NextResponse.json(
-        { error: "Forbidden: Only management can generate external evaluation links" },
+        { error: "Forbidden: Only management and evaluators can generate external evaluation links" },
         { status: 403 }
       );
     }
@@ -52,16 +54,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!["one_liner", "episode"].includes(body.content_type)) {
+    if (!["one_liner", "episode", "call_report"].includes(body.content_type)) {
       return NextResponse.json(
-        { error: "content_type must be 'one_liner' or 'episode'" },
+        { error: "content_type must be 'one_liner', 'episode', or 'call_report'" },
         { status: 400 }
       );
     }
 
-    // Verify content exists
+    // Verify content exists (using admin client to bypass RLS for content verification)
     if (body.content_type === "episode") {
-      const { data: episode, error: episodeError } = await supabase
+      const { data: episode, error: episodeError } = await adminSupabase
         .from("episodes")
         .select("id")
         .eq("id", body.content_id)
@@ -74,7 +76,7 @@ export async function POST(request: NextRequest) {
         );
       }
     } else if (body.content_type === "one_liner") {
-      const { data: oneLiner, error: oneLinerError } = await supabase
+      const { data: oneLiner, error: oneLinerError } = await adminSupabase
         .from("one_liners")
         .select("id")
         .eq("id", body.content_id)
@@ -83,6 +85,19 @@ export async function POST(request: NextRequest) {
       if (oneLinerError || !oneLiner) {
         return NextResponse.json(
           { error: "One-liner not found" },
+          { status: 404 }
+        );
+      }
+    } else if (body.content_type === "call_report") {
+      const { data: callReport, error: callReportError } = await adminSupabase
+        .from("call_reports")
+        .select("id")
+        .eq("id", body.content_id)
+        .single();
+
+      if (callReportError || !callReport) {
+        return NextResponse.json(
+          { error: "Call report not found" },
           { status: 404 }
         );
       }
@@ -115,9 +130,10 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (linkError) {
-      logger.error(`Error creating external evaluation link:: ${linkError instanceof Error ? linkError.message : String(linkError)}`);
+      logger.error(`Error creating external evaluation link:`, linkError);
+      console.error("Full linkError details:", JSON.stringify(linkError, null, 2));
       return NextResponse.json(
-        { error: "Failed to create external evaluation link" },
+        { error: "Failed to create external evaluation link", details: linkError.message || linkError.hint || "Unknown error" },
         { status: 500 }
       );
     }

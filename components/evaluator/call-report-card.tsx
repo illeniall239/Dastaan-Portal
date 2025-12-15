@@ -1,0 +1,192 @@
+"use client";
+
+import { useState } from "react";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { EyeIcon, FilePenLine, Share2, TrendingUp, TrendingDown, Minus } from "lucide-react";
+import Link from "next/link";
+import { ShareLinkDialog } from "@/components/management/share-link-dialog";
+import { EvaluationProgressBar } from "@/components/evaluations/evaluation-progress-bar";
+
+interface CallReportCardProps {
+  report: any;
+}
+
+export function CallReportCard({ report }: CallReportCardProps) {
+  const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
+
+  // Format timestamp
+  const loggedTimestamp =
+    report.logged_at ||
+    report.created_at ||
+    report.meeting_date ||
+    report.updated_at ||
+    report.inserted_at;
+  const loggedDate = loggedTimestamp ? new Date(loggedTimestamp) : new Date();
+  const formattedDate = loggedDate.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+  const formattedTime = loggedDate.toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  });
+  const formattedDateTime = `${formattedDate} at ${formattedTime}`;
+
+  const writerDisplayName =
+    report.writer_names && report.writer_names.length > 0
+      ? report.writer_names.join(", ")
+      : report.writer_name || "Unknown writer";
+
+  // Get evaluation progress data
+  const completed = report.completed_evaluations || 0;
+  const total = report.required_evaluators || 5;
+  const internalCompleted = report.completed_internal_evaluations || 0;
+  const externalCompleted = report.completed_external_evaluations || 0;
+  const internalRequired = report.required_internal_evaluators || 5;
+  const externalRequired = report.required_external_evaluators || 0;
+  const currentAvg = report.current_average_score;
+  const evalStatus = report.evaluation_status;
+
+  // Score color helper
+  const getScoreColor = (score: number | null) => {
+    if (score === null) return "text-gray-600";
+    if (score >= 7.0) return "text-green-600";
+    if (score >= 5.0) return "text-yellow-600";
+    return "text-red-600";
+  };
+
+  const getScoreIcon = (score: number | null) => {
+    if (score === null) return <Minus className="h-4 w-4" />;
+    if (score >= 7.0) return <TrendingUp className="h-4 w-4 text-green-600" />;
+    if (score >= 5.0) return <Minus className="h-4 w-4 text-yellow-600" />;
+    return <TrendingDown className="h-4 w-4 text-red-600" />;
+  };
+
+  return (
+    <>
+      <Card className="hover:shadow-md transition-shadow">
+        <CardHeader>
+          <div className="flex items-start justify-between">
+            <div className="flex-1">
+              <div className="flex items-center gap-2 mb-1">
+                <CardTitle className="text-xl">{report.title}</CardTitle>
+                {evalStatus && (
+                  <Badge
+                    variant={
+                      evalStatus === "accepted"
+                        ? "default"
+                        : evalStatus === "rejected"
+                        ? "destructive"
+                        : evalStatus === "needs_improvement"
+                        ? "secondary"
+                        : evalStatus === "completed_after_deadline"
+                        ? "secondary"
+                        : "outline"
+                    }
+                    className="text-xs"
+                  >
+                    {evalStatus.replace(/_/g, " ")}
+                  </Badge>
+                )}
+              </div>
+              <CardDescription className="mt-1">
+                Writers: {writerDisplayName}
+              </CardDescription>
+            </div>
+            <div className="text-right text-sm text-muted-foreground">
+              <div>Logged: {formattedDateTime}</div>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {/* Evaluation Progress - Show if in evaluation */}
+            {evalStatus && ["pending", "in_progress", "completed", "completed_after_deadline"].includes(evalStatus) && (
+              <div className="bg-slate-50 rounded-lg p-4 border">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-semibold">Evaluation Progress</p>
+                    <Badge variant="outline" className="text-xs">
+                      {internalCompleted}/{internalRequired} Required
+                    </Badge>
+                    {externalRequired > 0 && (
+                      <Badge variant="secondary" className="text-xs">
+                        +{externalCompleted}/{externalRequired} Optional
+                      </Badge>
+                    )}
+                  </div>
+                  {currentAvg !== null && currentAvg !== undefined && (
+                    <div className={`flex items-center gap-1.5 text-sm font-semibold ${getScoreColor(currentAvg)}`}>
+                      {getScoreIcon(currentAvg)}
+                      <span>{currentAvg.toFixed(1)}</span>
+                      <span className="text-xs text-muted-foreground font-normal">avg</span>
+                    </div>
+                  )}
+                </div>
+                <EvaluationProgressBar
+                  completed={completed}
+                  total={total}
+                  internalCompleted={internalCompleted}
+                  externalCompleted={externalCompleted}
+                  internalRequired={internalRequired}
+                  externalRequired={externalRequired}
+                />
+              </div>
+            )}
+
+            <div className="space-y-2">
+              {report.logline && (
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Logline:</p>
+                  <p className="text-sm line-clamp-2">{report.logline}</p>
+                </div>
+              )}
+              {report.attendees && report.attendees.length > 0 && (
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Attendees:</p>
+                  <p className="text-sm">{report.attendees.join(", ")}</p>
+                </div>
+              )}
+            </div>
+          </div>
+          <div className="mt-4 pt-4 border-t flex justify-end gap-2">
+            <Button variant="outline" size="sm" asChild>
+              <Link href={`/evaluator/call-reports/${report.id}`}>
+                <EyeIcon className="h-4 w-4 mr-2" />
+                View Details
+              </Link>
+            </Button>
+            <Button variant="default" size="sm" asChild>
+              <Link href={`/evaluator/call-reports/${report.id}/detailed-one-liner`}>
+                <FilePenLine className="h-4 w-4 mr-2" />
+                Detailed One-Liner
+              </Link>
+            </Button>
+            {/* NEW: Share Externally Button */}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsShareDialogOpen(true)}
+            >
+              <Share2 className="h-4 w-4 mr-2" />
+              Share Externally
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Share Dialog */}
+      <ShareLinkDialog
+        isOpen={isShareDialogOpen}
+        onClose={() => setIsShareDialogOpen(false)}
+        contentType="call_report"
+        contentId={report.id}
+        contentTitle={report.working_title || report.title}
+      />
+    </>
+  );
+}

@@ -48,6 +48,7 @@ interface ExternalEvaluationsManagerProps {
   links: any[];
   episodes: any[];
   oneLiners: any[];
+  callReports: any[];
   evaluations: any[];
 }
 
@@ -55,6 +56,7 @@ export function ExternalEvaluationsManager({
   links,
   episodes,
   oneLiners,
+  callReports,
   evaluations,
 }: ExternalEvaluationsManagerProps) {
   const router = useRouter();
@@ -62,10 +64,9 @@ export function ExternalEvaluationsManager({
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Form state
-  const [contentType, setContentType] = useState<"episode" | "one_liner">("episode");
+  const [contentType, setContentType] = useState<"episode" | "one_liner" | "call_report">("episode");
   const [selectedContentId, setSelectedContentId] = useState("");
   const [expiresInDays, setExpiresInDays] = useState(30);
-  const [maxSubmissions, setMaxSubmissions] = useState<number | null>(null);
   const [notes, setNotes] = useState("");
 
   const [generatedLink, setGeneratedLink] = useState<string | null>(null);
@@ -86,7 +87,6 @@ export function ExternalEvaluationsManager({
           content_type: contentType,
           content_id: selectedContentId,
           expires_in_days: expiresInDays,
-          max_submissions: maxSubmissions,
           notes: notes || undefined,
         }),
       });
@@ -139,10 +139,6 @@ export function ExternalEvaluationsManager({
 
     if (expiresAt < now) {
       return { label: "Expired", icon: Clock, color: "text-orange-500" };
-    }
-
-    if (link.max_submissions !== null && link.current_submissions >= link.max_submissions) {
-      return { label: "Full", icon: AlertCircle, color: "text-yellow-500" };
     }
 
     return { label: "Active", icon: CheckCircle, color: "text-green-500" };
@@ -215,7 +211,7 @@ export function ExternalEvaluationsManager({
                     <Select
                       value={contentType}
                       onValueChange={(value) => {
-                        setContentType(value as "episode" | "one_liner");
+                        setContentType(value as "episode" | "one_liner" | "call_report");
                         setSelectedContentId("");
                       }}
                     >
@@ -225,6 +221,7 @@ export function ExternalEvaluationsManager({
                       <SelectContent>
                         <SelectItem value="episode">Episode</SelectItem>
                         <SelectItem value="one_liner">One-Liner</SelectItem>
+                        <SelectItem value="call_report">Call Report</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -242,38 +239,30 @@ export function ExternalEvaluationsManager({
                                 Episode {episode.episode_number} - {(episode as any).stories?.title}
                               </SelectItem>
                             ))
-                          : oneLiners.map((oneLiner) => (
+                          : contentType === "one_liner"
+                          ? oneLiners.map((oneLiner) => (
                               <SelectItem key={oneLiner.id} value={oneLiner.id}>
                                 {(oneLiner as any).stories?.title} ({oneLiner.writer_name})
+                              </SelectItem>
+                            ))
+                          : callReports.map((report) => (
+                              <SelectItem key={report.id} value={report.id}>
+                                {report.call_report_id} - {report.working_title}
                               </SelectItem>
                             ))}
                       </SelectContent>
                     </Select>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label>Expires In (Days)</Label>
-                      <Input
-                        type="number"
-                        value={expiresInDays}
-                        onChange={(e) => setExpiresInDays(parseInt(e.target.value) || 30)}
-                        min={1}
-                        max={365}
-                      />
-                    </div>
-                    <div>
-                      <Label>Max Submissions</Label>
-                      <Input
-                        type="number"
-                        value={maxSubmissions || ""}
-                        onChange={(e) =>
-                          setMaxSubmissions(e.target.value ? parseInt(e.target.value) : null)
-                        }
-                        placeholder="Unlimited"
-                        min={1}
-                      />
-                    </div>
+                  <div>
+                    <Label>Expires In (Days)</Label>
+                    <Input
+                      type="number"
+                      value={expiresInDays}
+                      onChange={(e) => setExpiresInDays(parseInt(e.target.value) || 30)}
+                      min={1}
+                      max={365}
+                    />
                   </div>
 
                   <div>
@@ -362,7 +351,6 @@ export function ExternalEvaluationsManager({
                             </TableCell>
                             <TableCell>
                               {link.current_submissions}
-                              {link.max_submissions && ` / ${link.max_submissions}`}
                             </TableCell>
                             <TableCell className="text-sm">{formatDate(link.created_at)}</TableCell>
                             <TableCell className="text-sm">{formatDate(link.expires_at)}</TableCell>

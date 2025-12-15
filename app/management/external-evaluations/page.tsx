@@ -84,6 +84,22 @@ export default async function ManagementExternalEvaluationsPage() {
     console.error("Error fetching one-liners:", oneLinersError);
   }
 
+  // Fetch all call reports (for link generation)
+  const { data: callReports, error: callReportsError } = await supabase
+    .from("call_reports")
+    .select(`
+      id,
+      call_report_id,
+      working_title,
+      status
+    `)
+    .order("created_at", { ascending: false })
+    .limit(100);
+
+  if (callReportsError) {
+    console.error("Error fetching call reports:", callReportsError);
+  }
+
   // Fetch all external evaluations
   const { data: evaluations, error: evaluationsError } = await supabase
     .from("external_evaluations")
@@ -113,6 +129,7 @@ export default async function ManagementExternalEvaluationsPage() {
         links={links || []}
         episodes={episodes || []}
         oneLiners={oneLiners || []}
+        callReports={callReports || []}
         evaluations={evaluations || []}
       />
     </div>

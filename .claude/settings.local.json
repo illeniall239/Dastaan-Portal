@@ -45,9 +45,16 @@
       "Bash(findstr:*)",
       "Bash(git commit:*)",
       "Bash(git push:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(cmd /c \"rmdir /s /q \"\"C:\\Users\\Hamza\\Downloads\\Content-Portal\\Content-Portal\\app\\evaluator\\external-evaluations\"\"\")",
+      "Bash(powershell -Command \"Remove-Item -Path ''C:\\Users\\Hamza\\Downloads\\Content-Portal\\Content-Portal\\app\\evaluator\\external-evaluations'' -Recurse -Force\")",
+      "Bash(grep:*)"
     ],
     "deny": [],
     "ask": []
-  }
+  },
+  "enableAllProjectMcpServers": true,
+  "enabledMcpjsonServers": [
+    "shadcn"
+  ]
 }

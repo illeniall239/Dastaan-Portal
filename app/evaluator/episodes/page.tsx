@@ -46,6 +46,7 @@ import {
   ChevronDown,
   Pencil,
   Info,
+  Share2,
 } from "lucide-react";
 import { formatFileSize } from "@/lib/validations/episodes";
 import { EpisodeUploadForm, type EpisodeFormEntry } from "@/components/episodes/episode-upload-form";
@@ -53,6 +54,7 @@ import { EpisodeFileUpload } from "@/components/episodes/episode-file-upload";
 import { getGradeColorClasses } from "@/lib/validations/episodic-evaluations";
 import type { EpisodeWithDetails, EpisodicEvaluationWithDetails } from "@/types";
 import { BackButton } from "@/components/ui/back-button";
+import { ShareLinkDialog } from "@/components/management/share-link-dialog";
 
 interface CallReportWriter {
   id?: string;
@@ -138,6 +140,10 @@ export default function EvaluatorEpisodesPage() {
   const [currentUserRole, setCurrentUserRole] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("list");
   const logSectionRef = useRef<HTMLDivElement | null>(null);
+
+  // Share dialog state
+  const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
+  const [shareEpisode, setShareEpisode] = useState<EpisodeWithDetails | null>(null);
 
   // Log episodes state
   const [logLoading, setLogLoading] = useState(false);
@@ -437,6 +443,11 @@ const fetchMyEvaluations = async () => {
       console.error("Download error:", error);
       toast.error("Failed to download file");
     }
+  };
+
+  const handleShareEpisode = (episode: EpisodeWithDetails) => {
+    setShareEpisode(episode);
+    setIsShareDialogOpen(true);
   };
 
   const handleLogEpisodes = async (e: React.FormEvent) => {
@@ -1053,6 +1064,10 @@ const handleSaveExistingEpisode = async (episodeId: string) => {
                                               Download
                                             </DropdownMenuItem>
                                           )}
+                                          <DropdownMenuItem onClick={() => handleShareEpisode(episode)}>
+                                            <Share2 className="mr-2 h-4 w-4" />
+                                            Share Externally
+                                          </DropdownMenuItem>
                                         </DropdownMenuContent>
                                       </DropdownMenu>
                                     </div>
@@ -1189,6 +1204,15 @@ const handleSaveExistingEpisode = async (episodeId: string) => {
                                         <Download className="h-4 w-4" />
                                       </Button>
                                     )}
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => handleShareEpisode(episode)}
+                                      className="touch-target"
+                                    >
+                                      <Share2 className="h-4 w-4 mr-2" />
+                                      <span className="hidden sm:inline">Share</span>
+                                    </Button>
                                   </div>
                                 </div>
                               </div>
@@ -1610,6 +1634,20 @@ const handleSaveExistingEpisode = async (episodeId: string) => {
           )}
         </TabsContent>
       </Tabs>
+
+      {/* Share Dialog */}
+      {shareEpisode && (
+        <ShareLinkDialog
+          isOpen={isShareDialogOpen}
+          onClose={() => {
+            setIsShareDialogOpen(false);
+            setShareEpisode(null);
+          }}
+          contentType="episode"
+          contentId={shareEpisode.id}
+          contentTitle={`Episode ${shareEpisode.episode_number}${shareEpisode.title ? ` - ${shareEpisode.title}` : ''}`}
+        />
+      )}
     </div>
   );
 }

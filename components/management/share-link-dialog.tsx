@@ -18,7 +18,7 @@ import { useRouter } from "next/navigation";
 interface ShareLinkDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  contentType: "episode" | "one_liner";
+  contentType: "episode" | "one_liner" | "call_report";
   contentId: string;
   contentTitle: string;
 }
@@ -34,7 +34,6 @@ export function ShareLinkDialog({
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedLink, setGeneratedLink] = useState<string | null>(null);
   const [expiresInDays, setExpiresInDays] = useState(30);
-  const [maxSubmissions, setMaxSubmissions] = useState<number | null>(null);
 
   const handleGenerate = async () => {
     setIsGenerating(true);
@@ -47,7 +46,6 @@ export function ShareLinkDialog({
           content_type: contentType,
           content_id: contentId,
           expires_in_days: expiresInDays,
-          max_submissions: maxSubmissions,
           notes: `Link for ${contentTitle}`,
         }),
       });
@@ -79,7 +77,6 @@ export function ShareLinkDialog({
   const handleClose = () => {
     setGeneratedLink(null);
     setExpiresInDays(30);
-    setMaxSubmissions(null);
     onClose();
   };
 
@@ -144,36 +141,21 @@ export function ShareLinkDialog({
           </div>
         ) : (
           <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="expires">Expires In (Days)</Label>
-                <Input
-                  id="expires"
-                  type="number"
-                  value={expiresInDays}
-                  onChange={(e) => setExpiresInDays(parseInt(e.target.value) || 30)}
-                  min={1}
-                  max={365}
-                />
-              </div>
-              <div>
-                <Label htmlFor="max">Max Submissions</Label>
-                <Input
-                  id="max"
-                  type="number"
-                  value={maxSubmissions || ""}
-                  onChange={(e) =>
-                    setMaxSubmissions(e.target.value ? parseInt(e.target.value) : null)
-                  }
-                  placeholder="Unlimited"
-                  min={1}
-                />
-              </div>
+            <div>
+              <Label htmlFor="expires">Expires In (Days)</Label>
+              <Input
+                id="expires"
+                type="number"
+                value={expiresInDays}
+                onChange={(e) => setExpiresInDays(parseInt(e.target.value) || 30)}
+                min={1}
+                max={365}
+              />
             </div>
 
             <div className="bg-blue-50 border border-blue-200 rounded p-3">
               <p className="text-sm text-blue-900">
-                External evaluators will be able to access and evaluate this {contentType === "episode" ? "episode" : "one-liner"} through the generated link without requiring a system account.
+                External evaluators will be able to access and evaluate this content through the generated link without requiring a system account.
               </p>
             </div>
 
