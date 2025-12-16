@@ -27,6 +27,9 @@ export default function ExternalEvaluatePage({ params }: ExternalEvaluatePagePro
   const [submitted, setSubmitted] = useState(false);
   const [linkData, setLinkData] = useState<any>(null);
   const [content, setContent] = useState<any>(null);
+  const [contents, setContents] = useState<any[]>([]);  // NEW: Multi-content support
+  const [currentStep, setCurrentStep] = useState(0);     // NEW: Current step in wizard
+  const [evaluations, setEvaluations] = useState<Record<string, any>>({}); // NEW: Store all evaluations by content_id
   const [error, setError] = useState<string | null>(null);
 
   // Evaluator ID tracking (browser-based)
@@ -40,9 +43,6 @@ export default function ExternalEvaluatePage({ params }: ExternalEvaluatePagePro
   const [evaluatorOrg, setEvaluatorOrg] = useState("");
 
   // --- Episode Evaluation State ---
-  const [events, setEvents] = useState<{ title: string; description: string }[]>([]);
-  const [newEventTitle, setNewEventTitle] = useState("");
-  const [newEventDescription, setNewEventDescription] = useState("");
   // Episode Scores
   const [conflictScore, setConflictScore] = useState<number>(5);
   const [characterizationScore, setCharacterizationScore] = useState<number>(5);
@@ -52,12 +52,9 @@ export default function ExternalEvaluatePage({ params }: ExternalEvaluatePagePro
   const [epOverallAssessmentScore, setEpOverallAssessmentScore] = useState<number>(5);
   const [summaryAnalysis, setSummaryAnalysis] = useState("");
 
-  // --- Call Report Evaluation State ---
-  const [targetWriterId, setTargetWriterId] = useState("");
-  const [perEpPriceRange, setPerEpPriceRange] = useState("");
+  // --- One-Liner Evaluation State ---
   const [slot, setSlot] = useState("");
-  const [first2EpsRequired, setFirst2EpsRequired] = useState(false);
-  // Call Report Scores
+  // One-Liner Scores
   const [premiseConflictScore, setPremiseConflictScore] = useState<number>(5);
   const [storylinePlotScore, setStorylinePlotScore] = useState<number>(5);
   const [episodicProgressionScore, setEpisodicProgressionScore] = useState<number>(5);
@@ -65,12 +62,9 @@ export default function ExternalEvaluatePage({ params }: ExternalEvaluatePagePro
   const [crOverallAssessmentScore, setCrOverallAssessmentScore] = useState<number>(5);
 
   const [comments, setComments] = useState("");
-  const [decision, setDecision] = useState<"approved" | "rejected" | null>(null);
-  const [decisionNotes, setDecisionNotes] = useState("");
 
   // --- One-Liner Evaluation State ---
-  const [olDecision, setOlDecision] = useState<"approved" | "rejected" | null>(null);
-  const [olDecisionNotes, setOlDecisionNotes] = useState("");
+  const [olComments, setOlComments] = useState("");
 
   // Utility function: Generate or retrieve evaluator ID from localStorage
   const getOrCreateEvaluatorId = (tokenParam: string): string => {
@@ -84,6 +78,85 @@ export default function ExternalEvaluatePage({ params }: ExternalEvaluatePagePro
     }
 
     return evId;
+  };
+
+  // Save current step's evaluation data
+  const saveCurrentEvaluation = () => {
+    if (!content || !content.content_id) return;
+
+    const evaluationData: any = {
+      content_type: content.type,
+      content_id: content.content_id,
+    };
+
+    if (content.type === "episode") {
+      evaluationData.evaluation_data = {
+        scores: {
+          conflict: conflictScore,
+          characterization: characterizationScore,
+          story_progression: storyProgressionScore,
+          freezes: freezesScore,
+          whats_next: whatsNextScore,
+          overall_assessment: epOverallAssessmentScore,
+        },
+        average_score: parseFloat(episodeAverageScore),
+        grade: episodeGrade,
+        summary_analysis: summaryAnalysis,
+      };
+    } else if (content.type === "call_report") {
+      evaluationData.evaluation_data = {
+        slot,
+        scores: {
+          premise_conflict: premiseConflictScore,
+          storyline_plot: storylinePlotScore,
+          episodic_progression: episodicProgressionScore,
+          characters: charactersScore,
+          overall_assessment: crOverallAssessmentScore,
+        },
+        average_score: parseFloat(callReportAverageScore),
+        comments,
+      };
+    } else if (content.type === "one_liner") {
+      evaluationData.evaluation_data = {
+        comments: olComments,
+      };
+    }
+
+    setEvaluations(prev => ({
+      ...prev,
+      [content.content_id]: evaluationData
+    }));
+  };
+
+  // Load evaluation data for a content item
+  const loadEvaluation = (contentItem: any) => {
+    if (!contentItem || !contentItem.content_id) return;
+
+    const saved = evaluations[contentItem.content_id];
+    if (!saved) return;
+
+    const data = saved.evaluation_data;
+    if (!data) return;
+
+    if (contentItem.type === "episode") {
+      setConflictScore(data.scores?.conflict || 5);
+      setCharacterizationScore(data.scores?.characterization || 5);
+      setStoryProgressionScore(data.scores?.story_progression || 5);
+      setFreezesScore(data.scores?.freezes || 5);
+      setWhatsNextScore(data.scores?.whats_next || 5);
+      setEpOverallAssessmentScore(data.scores?.overall_assessment || 5);
+      setSummaryAnalysis(data.summary_analysis || "");
+    } else if (contentItem.type === "call_report") {
+      setSlot(data.slot || "");
+      setPremiseConflictScore(data.scores?.premise_conflict || 5);
+      setStorylinePlotScore(data.scores?.storyline_plot || 5);
+      setEpisodicProgressionScore(data.scores?.episodic_progression || 5);
+      setCharactersScore(data.scores?.characters || 5);
+      setCrOverallAssessmentScore(data.scores?.overall_assessment || 5);
+      setComments(data.comments || "");
+    } else if (contentItem.type === "one_liner") {
+      setOlComments(data.comments || "");
+    }
   };
 
   // Calculate average scores
@@ -164,7 +237,19 @@ export default function ExternalEvaluatePage({ params }: ExternalEvaluatePagePro
       }
 
       setLinkData(data.link);
-      setContent(data.content);
+
+      // Check if API returned multiple contents or single content
+      if (data.contents && Array.isArray(data.contents)) {
+        // Multi-content link
+        setContents(data.contents);
+        setContent(data.contents[0]); // Set first content as active
+        setCurrentStep(0);
+      } else if (data.content) {
+        // Single content link (backwards compatibility)
+        setContent(data.content);
+        setContents([data.content]); // Wrap in array for consistency
+      }
+
       setLoading(false);
     } catch (err: any) {
       console.error("Error validating token:", err);
@@ -173,38 +258,63 @@ export default function ExternalEvaluatePage({ params }: ExternalEvaluatePagePro
     }
   };
 
-  const handleAddEvent = () => {
-    if (!newEventTitle.trim()) {
-      toast.error("Event title is required");
-      return;
-    }
-    setEvents([...events, { title: newEventTitle, description: newEventDescription }]);
-    setNewEventTitle("");
-    setNewEventDescription("");
-  };
-
-  const handleRemoveEvent = (index: number) => {
-    const newEvents = [...events];
-    newEvents.splice(index, 1);
-    setEvents(newEvents);
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
 
     try {
-      let evaluationData: any = {};
+      // Validate evaluator name (required for all content types)
+      if (!evaluatorName.trim()) {
+        toast.error("Please enter your name");
+        setSubmitting(false);
+        return;
+      }
 
-      if (linkData.content_type === "episode") {
-        if (events.length === 0) {
-          toast.error("Please add at least one event from the episode");
+      // Save current step's evaluation before submitting
+      saveCurrentEvaluation();
+
+      // Check if multi-content evaluation
+      if (contents.length > 1) {
+        // Multi-content submission
+        // Ensure all contents have been evaluated
+        const allEvaluated = contents.every(c => evaluations[c.content_id]);
+
+        if (!allEvaluated) {
+          toast.error("Please complete evaluations for all content items");
           setSubmitting(false);
           return;
         }
 
+        // Submit all evaluations
+        const response = await fetch("/api/public/external/submit", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            token,
+            evaluator_id: evaluatorId,
+            evaluator_name: evaluatorName || undefined,
+            evaluator_email: evaluatorEmail || undefined,
+            evaluator_organization: evaluatorOrg || undefined,
+            evaluations: Object.values(evaluations), // Array of all evaluations
+          }),
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error || "Failed to submit evaluations");
+        }
+
+        toast.success("All evaluations submitted successfully!");
+        setSubmitted(true);
+        return;
+      }
+
+      // Single-content submission (backwards compatible)
+      let evaluationData: any = {};
+
+      if (linkData.content_type === "episode") {
         evaluationData = {
-          events,
           summary_analysis: summaryAnalysis,
           conflict_of_content_score: conflictScore,
           characterization_score: characterizationScore,
@@ -214,53 +324,26 @@ export default function ExternalEvaluatePage({ params }: ExternalEvaluatePagePro
           overall_assessment_score: epOverallAssessmentScore,
         };
       } else if (linkData.content_type === "one_liner") {
-        // Validate one_liner evaluation
-        if (!olDecision) {
-          toast.error("Please select a decision (Approve or Reject)");
-          setSubmitting(false);
-          return;
-        }
-
+        // One-liner evaluation - just comments
         evaluationData = {
-          decision: olDecision,
-          decision_notes: olDecisionNotes,
+          comments: olComments || null,
         };
       } else if (linkData.content_type === "call_report") {
         // Validate call_report evaluation
-        if (!perEpPriceRange) {
-          toast.error("Please select a price range");
-          setSubmitting(false);
-          return;
-        }
         if (!slot) {
-          toast.error("Please select a slot");
-          setSubmitting(false);
-          return;
-        }
-        if (!decision) {
-          toast.error("Please select a decision");
-          setSubmitting(false);
-          return;
-        }
-        if (decision === 'rejected' && !decisionNotes.trim()) {
-          toast.error("Please provide justification for rejection");
+          toast.error("Please select a suggested slot");
           setSubmitting(false);
           return;
         }
 
         evaluationData = {
-          target_writer_id: targetWriterId || null, // Optional
-          per_ep_price_range: perEpPriceRange,
           slot: slot,
-          first_2_eps_required: first2EpsRequired,
           premise_conflict_score: premiseConflictScore,
           storyline_plot_score: storylinePlotScore,
           episodic_progression_score: episodicProgressionScore,
           characters_score: charactersScore,
           overall_assessment_score: crOverallAssessmentScore,
           comments: comments || null,
-          decision: decision,
-          decision_notes: decisionNotes,
         };
       }
 
@@ -361,9 +444,63 @@ export default function ExternalEvaluatePage({ params }: ExternalEvaluatePagePro
         <div className="mb-6 text-center">
           <h1 className="text-xl sm:text-2xl font-bold mb-2">External Evaluation</h1>
           <p className="text-muted-foreground">
-            You've been invited to provide feedback on this {linkData.content_type === "episode" ? "episode" : linkData.content_type === "call_report" ? "writer engagement report" : "concept"}
+            You've been invited to provide feedback on this {linkData.content_type === "episode" ? "episode" : linkData.content_type === "call_report" ? "One-Liner" : "One-Liner"}
           </p>
         </div>
+
+        {/* Multi-Step Progress Indicator */}
+        {contents.length > 1 && (
+          <Card className="mb-6">
+            <CardContent className="pt-6">
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="font-semibold">
+                      Step {currentStep + 1} of {contents.length}
+                    </h3>
+                    <p className="text-sm text-muted-foreground">
+                      {content.type === "call_report" ? "Evaluating One-Liner" : `Evaluating Episode ${content.episode_number}`}
+                    </p>
+                  </div>
+                  <div className="text-sm text-muted-foreground">
+                    {currentStep + 1} / {contents.length} completed
+                  </div>
+                </div>
+
+                {/* Progress bar */}
+                <div className="w-full bg-gray-200 rounded-full h-2">
+                  <div
+                    className="bg-primary h-2 rounded-full transition-all duration-300"
+                    style={{ width: `${((currentStep + 1) / contents.length) * 100}%` }}
+                  />
+                </div>
+
+                {/* Step indicators */}
+                <div className="flex items-center justify-between gap-2">
+                  {contents.map((item, index) => (
+                    <div
+                      key={index}
+                      className={`flex-1 text-center p-2 rounded border ${
+                        index === currentStep
+                          ? "border-primary bg-primary/5"
+                          : index < currentStep
+                          ? "border-green-500 bg-green-50"
+                          : "border-gray-200"
+                      }`}
+                    >
+                      <div className="text-xs font-medium">
+                        {item.type === "call_report" ? "One-Liner" : `Ep ${item.episode_number}`}
+                      </div>
+                      {index < currentStep && (
+                        <CheckCircle className="h-4 w-4 text-green-600 mx-auto mt-1" />
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Content Information */}
         <Card className="mb-6">
@@ -381,9 +518,6 @@ export default function ExternalEvaluatePage({ params }: ExternalEvaluatePagePro
                 <Badge>{Array.isArray(content.genre) ? content.genre.join(", ") : content.genre}</Badge>
               )}
             </div>
-            {(content.writer || content.writer_name) && (
-              <CardDescription>Writer: {content.writer || content.writer_name}</CardDescription>
-            )}
           </CardHeader>
           <CardContent>
             {content.type === "episode" && (
@@ -426,35 +560,46 @@ export default function ExternalEvaluatePage({ params }: ExternalEvaluatePagePro
                     <p className="text-sm">{content.summary}</p>
                   </div>
                 )}
+                {content.attachments && content.attachments.length > 0 && (
+                  <div>
+                    <Label>Attachments</Label>
+                    <div className="mt-2 space-y-2">
+                      {content.attachments.map((attachment: any) => (
+                        <a
+                          key={attachment.id}
+                          href={`/api/attachments/download?path=${encodeURIComponent(attachment.file_path)}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-2 text-primary hover:underline text-sm"
+                        >
+                          <svg
+                            className="h-4 w-4"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"
+                            />
+                          </svg>
+                          {attachment.file_name}
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
             {content.type === "call_report" && (
               <div className="space-y-4">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <Badge variant="outline" className="text-xs">
-                    {content.call_report_id}
-                  </Badge>
-                  {content.category && (
-                    <Badge variant="secondary" className="text-xs capitalize">
-                      {content.category.replace(/_/g, " ")}
-                    </Badge>
-                  )}
                   {content.content_type && (
                     <Badge variant="outline" className="text-xs">{content.content_type}</Badge>
                   )}
                 </div>
-
-                {/* Writers List */}
-                {content.writers && content.writers.length > 0 && (
-                  <div>
-                    <Label>Writers</Label>
-                    <div className="text-sm text-muted-foreground">
-                      {content.writers.map((w: any, i: number) => (
-                        <span key={i}>{w.name}{i < content.writers.length - 1 ? ", " : ""}</span>
-                      ))}
-                    </div>
-                  </div>
-                )}
 
                 {content.logline && (
                   <div>
@@ -494,6 +639,38 @@ export default function ExternalEvaluatePage({ params }: ExternalEvaluatePagePro
                     />
                   </div>
                 )}
+
+                {content.attachments && content.attachments.length > 0 && (
+                  <div>
+                    <Label>Attachments</Label>
+                    <div className="mt-2 space-y-2">
+                      {content.attachments.map((attachment: any) => (
+                        <a
+                          key={attachment.id}
+                          href={`/api/attachments/download?path=${encodeURIComponent(attachment.file_path)}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-2 text-primary hover:underline text-sm"
+                        >
+                          <svg
+                            className="h-4 w-4"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"
+                            />
+                          </svg>
+                          {attachment.file_name}
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </CardContent>
@@ -501,108 +678,39 @@ export default function ExternalEvaluatePage({ params }: ExternalEvaluatePagePro
 
         {/* Evaluation Form */}
         <form onSubmit={handleSubmit}>
-          {/* Evaluator Information - Only for one-liner evaluations */}
-          {linkData.content_type === "one_liner" && (
-            <Card className="mb-6">
-              <CardHeader>
-                <CardTitle>Your Information (Optional)</CardTitle>
-                <CardDescription>Help us understand who is providing this feedback</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <Label htmlFor="name">Name</Label>
-                  <Input
-                    id="name"
-                    value={evaluatorName}
-                    onChange={(e) => setEvaluatorName(e.target.value)}
-                    placeholder="Your name"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="email">
-                    Email {linkData.allowed_emails && linkData.allowed_emails.length > 0 && "*"}
-                  </Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    value={evaluatorEmail}
-                    onChange={(e) => setEvaluatorEmail(e.target.value)}
-                    placeholder="your.email@example.com"
-                    required={linkData.allowed_emails && linkData.allowed_emails.length > 0}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="org">Organization</Label>
-                  <Input
-                    id="org"
-                    value={evaluatorOrg}
-                    onChange={(e) => setEvaluatorOrg(e.target.value)}
-                    placeholder="Your organization"
-                  />
-                </div>
-              </CardContent>
-            </Card>
-          )}
+          {/* Evaluator Information - For all evaluations */}
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle>Your Information</CardTitle>
+              <CardDescription>Please provide your details</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <Label htmlFor="name">Name *</Label>
+                <Input
+                  id="name"
+                  value={evaluatorName}
+                  onChange={(e) => setEvaluatorName(e.target.value)}
+                  placeholder="Your name"
+                  required
+                />
+              </div>
+              <div>
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={evaluatorEmail}
+                  onChange={(e) => setEvaluatorEmail(e.target.value)}
+                  placeholder="your.email@example.com (optional)"
+                />
+              </div>
+            </CardContent>
+          </Card>
 
           {/* Episode Evaluation Form */}
           {linkData.content_type === "episode" && (
             <>
-              {/* Events Section */}
-              <Card className="mb-6">
-                <CardHeader>
-                  <CardTitle>Events</CardTitle>
-                  <CardDescription>Add key events from the episode</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="flex gap-2 items-end">
-                    <div className="flex-1 space-y-2">
-                      <Label>Event Title</Label>
-                      <Input
-                        value={newEventTitle}
-                        onChange={(e) => setNewEventTitle(e.target.value)}
-                        placeholder="Brief title of the event"
-                      />
-                    </div>
-                    <Button type="button" onClick={handleAddEvent} variant="secondary">
-                      <Plus className="h-4 w-4 mr-1" /> Add
-                    </Button>
-                  </div>
-                  <div className="space-y-2">
-                    {events.map((event, idx) => (
-                      <div key={idx} className="flex justify-between items-center p-3 border rounded bg-slate-50">
-                        <div>
-                          <p className="font-medium text-sm">{event.title}</p>
-                          {event.description && <p className="text-xs text-muted-foreground">{event.description}</p>}
-                        </div>
-                        <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive" onClick={() => handleRemoveEvent(idx)}>
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    ))}
-                    {events.length === 0 && (
-                      <p className="text-sm text-muted-foreground text-center py-4 italic">No events added yet.</p>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Summary Analysis */}
-              <Card className="mb-6">
-                <CardHeader>
-                  <CardTitle>Summary & Analysis</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <Label htmlFor="summary">Your Analysis</Label>
-                  <Textarea
-                    id="summary"
-                    value={summaryAnalysis}
-                    onChange={(e) => setSummaryAnalysis(e.target.value)}
-                    placeholder="Write your summary and analysis of this episode..."
-                    rows={6}
-                  />
-                </CardContent>
-              </Card>
-
               {/* Rating Scale Guide */}
               <Card className="p-4 border-2 border-blue-100 bg-blue-50/30 mb-6">
                 <h3 className="text-base font-semibold mb-3">Rating Scale</h3>
@@ -635,7 +743,7 @@ export default function ExternalEvaluatePage({ params }: ExternalEvaluatePagePro
                 <CardContent className="space-y-6">
                   <ScoreCard
                     label="Conflict of Content"
-                    description="Evaluate the central conflict and tension in the episode"
+                    description="How engaging and well-developed is the central conflict?"
                     score={conflictScore}
                     onChange={setConflictScore}
                     disabled={submitting}
@@ -643,7 +751,7 @@ export default function ExternalEvaluatePage({ params }: ExternalEvaluatePagePro
 
                   <ScoreCard
                     label="Characterization"
-                    description="Assess character development and authenticity"
+                    description="How compelling and relatable are the characters?"
                     score={characterizationScore}
                     onChange={setCharacterizationScore}
                     disabled={submitting}
@@ -651,7 +759,7 @@ export default function ExternalEvaluatePage({ params }: ExternalEvaluatePagePro
 
                   <ScoreCard
                     label="Story Progression"
-                    description="Rate how well the story moves forward"
+                    description="How effectively does the narrative move the story forward?"
                     score={storyProgressionScore}
                     onChange={setStoryProgressionScore}
                     disabled={submitting}
@@ -659,7 +767,7 @@ export default function ExternalEvaluatePage({ params }: ExternalEvaluatePagePro
 
                   <ScoreCard
                     label="Freezes (Cliffhangers)"
-                    description="Evaluate the effectiveness of cliffhangers and hooks"
+                    description="How effective are the cliffhangers in creating suspense?"
                     score={freezesScore}
                     onChange={setFreezesScore}
                     disabled={submitting}
@@ -667,15 +775,15 @@ export default function ExternalEvaluatePage({ params }: ExternalEvaluatePagePro
 
                   <ScoreCard
                     label="What's Next Element"
-                    description="Rate the anticipation created for the next episode"
+                    description="How strong is the anticipation for the next episode?"
                     score={whatsNextScore}
                     onChange={setWhatsNextScore}
                     disabled={submitting}
                   />
 
                   <ScoreCard
-                    label="Overall Assessment"
-                    description="Your overall evaluation of the episode"
+                    label="Final Impression"
+                    description="What is your overall impression of this episode?"
                     score={epOverallAssessmentScore}
                     onChange={setEpOverallAssessmentScore}
                     disabled={submitting}
@@ -685,6 +793,23 @@ export default function ExternalEvaluatePage({ params }: ExternalEvaluatePagePro
 
               {/* Overall Assessment Display */}
               <OverallAssessment average={parseFloat(episodeAverageScore)} grade={episodeGrade} />
+
+              {/* Summary and Feedback */}
+              <Card className="mt-8 mb-6">
+                <CardHeader>
+                  <CardTitle>Summary and Feedback</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <Label htmlFor="summary">Your Feedback</Label>
+                  <Textarea
+                    id="summary"
+                    value={summaryAnalysis}
+                    onChange={(e) => setSummaryAnalysis(e.target.value)}
+                    placeholder="Write your summary and feedback for this episode..."
+                    rows={6}
+                  />
+                </CardContent>
+              </Card>
             </>
           )}
 
@@ -693,39 +818,16 @@ export default function ExternalEvaluatePage({ params }: ExternalEvaluatePagePro
             <>
               <Card className="mb-6">
                 <CardHeader>
-                  <CardTitle>Your Decision</CardTitle>
+                  <CardTitle>Additional Comments</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div>
-                    <Label>Recommendation *</Label>
-                    <div className="grid grid-cols-2 gap-4 mt-2">
-                      {[
-                        { value: "approved", label: "Approved", color: "bg-green-100 border-green-300" },
-                        { value: "rejected", label: "Rejected", color: "bg-red-100 border-red-300" },
-                      ].map((option) => (
-                        <button
-                          key={option.value}
-                          type="button"
-                          onClick={() => setOlDecision(option.value as any)}
-                          className={`p-4 border-2 rounded-lg text-center font-medium transition-all ${olDecision === option.value
-                            ? `${option.color} scale-105`
-                            : "bg-white border-gray-200 hover:border-gray-300"
-                            }`}
-                        >
-                          {option.label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                  <div>
-                    <Label htmlFor="notes">Notes & Feedback *</Label>
+                  <div className="space-y-2">
+                    <Label>Additional Comments</Label>
                     <Textarea
-                      id="notes"
-                      value={olDecisionNotes}
-                      onChange={(e) => setOlDecisionNotes(e.target.value)}
-                      placeholder="Explain your decision and provide constructive feedback..."
+                      value={olComments}
+                      onChange={(e) => setOlComments(e.target.value)}
+                      placeholder="Provide your feedback and comments..."
                       rows={6}
-                      required
                     />
                   </div>
                 </CardContent>
@@ -733,7 +835,7 @@ export default function ExternalEvaluatePage({ params }: ExternalEvaluatePagePro
             </>
           )}
 
-          {/* Call Report Evaluation Form */}
+          {/* One-Liner Evaluation Form */}
           {linkData.content_type === "call_report" && (
             <>
               {/* Rating Scale Guide */}
@@ -767,7 +869,7 @@ export default function ExternalEvaluatePage({ params }: ExternalEvaluatePagePro
                 <CardContent className="space-y-6">
                   <ScoreCard
                     label="Premise / Conflict"
-                    description="Evaluate the strength of the premise and central conflict"
+                    description="How interesting and engaging is the core premise and conflict?"
                     score={premiseConflictScore}
                     onChange={setPremiseConflictScore}
                     disabled={submitting}
@@ -775,7 +877,7 @@ export default function ExternalEvaluatePage({ params }: ExternalEvaluatePagePro
 
                   <ScoreCard
                     label="Storyline / Plot"
-                    description="Assess the coherence and engagement of the plot"
+                    description="How compelling and coherent is the overall plot structure?"
                     score={storylinePlotScore}
                     onChange={setStorylinePlotScore}
                     disabled={submitting}
@@ -783,7 +885,7 @@ export default function ExternalEvaluatePage({ params }: ExternalEvaluatePagePro
 
                   <ScoreCard
                     label="Episodic Progression"
-                    description="Rate the episode-to-episode development and pacing"
+                    description="How well does the story flow across multiple episodes?"
                     score={episodicProgressionScore}
                     onChange={setEpisodicProgressionScore}
                     disabled={submitting}
@@ -791,15 +893,15 @@ export default function ExternalEvaluatePage({ params }: ExternalEvaluatePagePro
 
                   <ScoreCard
                     label="Characters"
-                    description="Evaluate character development and depth"
+                    description="How well-developed and relatable are the main characters?"
                     score={charactersScore}
                     onChange={setCharactersScore}
                     disabled={submitting}
                   />
 
                   <ScoreCard
-                    label="Overall Assessment"
-                    description="Your overall evaluation of the project"
+                    label="Final Impression"
+                    description="What is your overall impression of this project's potential?"
                     score={crOverallAssessmentScore}
                     onChange={setCrOverallAssessmentScore}
                     disabled={submitting}
@@ -810,61 +912,14 @@ export default function ExternalEvaluatePage({ params }: ExternalEvaluatePagePro
               {/* Overall Assessment Display */}
               <CallReportOverallAssessment average={parseFloat(callReportAverageScore)} />
 
-              <Card className="mb-6">
+              <Card className="mt-8 mb-6">
                 <CardHeader>
                   <CardTitle>Additional Details</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  {/* First 2 Eps Required */}
-                  <div className="flex items-center space-x-2 border p-3 rounded">
-                    <input
-                      type="checkbox"
-                      id="first2Eps"
-                      checked={first2EpsRequired}
-                      onChange={(e) => setFirst2EpsRequired(e.target.checked)}
-                      className="h-4 w-4"
-                    />
-                    <Label htmlFor="first2Eps" className="cursor-pointer">First 2 episodes required</Label>
-                  </div>
-
-                  {/* Target Writer Input */}
+                  {/* Suggested Slot */}
                   <div className="space-y-2">
-                    <Label>Target Writer</Label>
-                    <Input
-                      value={targetWriterId}
-                      onChange={(e) => setTargetWriterId(e.target.value)}
-                      placeholder="Enter target writer name (optional)"
-                    />
-                  </div>
-
-                  {/* Price Range */}
-                  <div className="space-y-2">
-                    <Label>Per Ep Price Range (Rs) *</Label>
-                    <select
-                      value={perEpPriceRange}
-                      onChange={(e) => setPerEpPriceRange(e.target.value)}
-                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                      required
-                    >
-                      <option value="">Select price range</option>
-                      <option value="25000-50000">Rs 25,000 - 50,000</option>
-                      <option value="50000-75000">Rs 50,000 - 75,000</option>
-                      <option value="75000-100000">Rs 75,000 - 100,000</option>
-                      <option value="100000-125000">Rs 100,000 - 125,000</option>
-                      <option value="125000-150000">Rs 125,000 - 150,000</option>
-                      <option value="150000-175000">Rs 150,000 - 175,000</option>
-                      <option value="175000-200000">Rs 175,000 - 200,000</option>
-                      <option value="200000-225000">Rs 200,000 - 225,000</option>
-                      <option value="225000-250000">Rs 225,000 - 250,000</option>
-                      <option value="250000-275000">Rs 250,000 - 275,000</option>
-                      <option value="275000-300000">Rs 275,000 - 300,000</option>
-                      <option value="300000+">Rs 300,000+</option>
-                    </select>
-                  </div>
-
-                  {/* Slot */}
-                  <div className="space-y-2">
-                    <Label>Slot *</Label>
+                    <Label>Suggested Slot *</Label>
                     <select
                       value={slot}
                       onChange={(e) => setSlot(e.target.value)}
@@ -890,53 +945,11 @@ export default function ExternalEvaluatePage({ params }: ExternalEvaluatePagePro
                   </div>
                 </CardContent>
               </Card>
-
-              <Card className="mb-6">
-                <CardHeader>
-                  <CardTitle>Your Decision</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div>
-                    <Label>Recommendation *</Label>
-                    <div className="grid grid-cols-3 gap-4 mt-2">
-                      <Button
-                        type="button"
-                        variant={decision === "approved" ? "default" : "outline"}
-                        onClick={() => setDecision("approved")}
-                        className="h-auto py-4"
-                      >
-                        <CheckCircle className="h-4 w-4 mr-2" />
-                        Approve
-                      </Button>
-                      <Button
-                        type="button"
-                        variant={decision === "rejected" ? "destructive" : "outline"}
-                        onClick={() => setDecision("rejected")}
-                        className="h-auto py-4"
-                      >
-                        <XCircle className="h-4 w-4 mr-2" />
-                        Reject
-                      </Button>
-                    </div>
-                  </div>
-                  {decision === "rejected" && (
-                    <div>
-                      <Label>Reason for Rejection *</Label>
-                      <Textarea
-                        value={decisionNotes}
-                        onChange={(e) => setDecisionNotes(e.target.value)}
-                        className="mt-2"
-                        required
-                      />
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
             </>
           )}
 
           {/* Submit Button */}
-          <Card>
+          <Card className="mt-6">
             <CardContent className="pt-6">
               <div className="flex items-start gap-3 mb-4">
                 <AlertCircle className="h-5 w-5 text-muted-foreground flex-shrink-0 mt-0.5" />
@@ -947,16 +960,86 @@ export default function ExternalEvaluatePage({ params }: ExternalEvaluatePagePro
                   )}
                 </p>
               </div>
-              <Button type="submit" disabled={submitting} className="w-full" size="lg">
-                {submitting ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Submitting...
-                  </>
-                ) : (
-                  "Submit Evaluation"
-                )}
-              </Button>
+              {/* Multi-step navigation or single submit */}
+              {contents.length > 1 ? (
+                <div className="flex gap-3">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      if (currentStep > 0) {
+                        // Save current evaluation before going back
+                        saveCurrentEvaluation();
+
+                        const prevStep = currentStep - 1;
+                        const prevContent = contents[prevStep];
+
+                        setCurrentStep(prevStep);
+                        setContent(prevContent);
+
+                        // Load saved data for previous content
+                        loadEvaluation(prevContent);
+
+                        window.scrollTo({ top: 0, behavior: "smooth" });
+                      }
+                    }}
+                    disabled={currentStep === 0}
+                    className="flex-1"
+                  >
+                    Previous
+                  </Button>
+
+                  {currentStep < contents.length - 1 ? (
+                    <Button
+                      type="button"
+                      onClick={() => {
+                        // Save current evaluation before moving to next
+                        saveCurrentEvaluation();
+
+                        const nextStep = currentStep + 1;
+                        const nextContent = contents[nextStep];
+
+                        setCurrentStep(nextStep);
+                        setContent(nextContent);
+
+                        // Load saved data for next content if exists
+                        loadEvaluation(nextContent);
+
+                        window.scrollTo({ top: 0, behavior: "smooth" });
+                      }}
+                      className="flex-1"
+                    >
+                      Next: {contents[currentStep + 1].type === "call_report" ? "One-Liner" : `Episode ${contents[currentStep + 1].episode_number}`}
+                    </Button>
+                  ) : (
+                    <Button
+                      type="submit"
+                      disabled={submitting}
+                      className="flex-1"
+                    >
+                      {submitting ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Submitting...
+                        </>
+                      ) : (
+                        "Submit All Evaluations"
+                      )}
+                    </Button>
+                  )}
+                </div>
+              ) : (
+                <Button type="submit" disabled={submitting} className="w-full" size="lg">
+                  {submitting ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Submitting...
+                    </>
+                  ) : (
+                    "Submit Evaluation"
+                  )}
+                </Button>
+              )}
             </CardContent>
           </Card>
         </form>

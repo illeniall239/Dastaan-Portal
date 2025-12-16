@@ -546,35 +546,35 @@ export function EvaluatorEvaluationForm({
           <div className="space-y-4">
             <ScoreCard
               label="Premise / Conflict"
-              description="How well is the premise established and conflict developed?"
+              description="How interesting and engaging is the core premise and conflict?"
               score={formData.premiseConflictScore}
               onChange={(value) => setFormData((prev) => ({ ...prev, premiseConflictScore: value }))}
             />
 
             <ScoreCard
               label="Storyline / Plot"
-              description="How well-structured and engaging is the storyline?"
+              description="How compelling and coherent is the overall plot structure?"
               score={formData.storylinePlotScore}
               onChange={(value) => setFormData((prev) => ({ ...prev, storylinePlotScore: value }))}
             />
 
             <ScoreCard
               label="Episodic Progression"
-              description="How well does the story progress episodically?"
+              description="How well does the story flow across multiple episodes?"
               score={formData.episodicProgressionScore}
               onChange={(value) => setFormData((prev) => ({ ...prev, episodicProgressionScore: value }))}
             />
 
             <ScoreCard
               label="Characters"
-              description="How well-developed and compelling are the characters?"
+              description="How well-developed and relatable are the main characters?"
               score={formData.charactersScore}
               onChange={(value) => setFormData((prev) => ({ ...prev, charactersScore: value }))}
             />
 
             <ScoreCard
-              label="Overall Assessment"
-              description="What is your overall assessment of this project?"
+              label="Final Impression"
+              description="What is your overall impression of this project's potential?"
               score={formData.overallAssessmentScore}
               onChange={(value) => setFormData((prev) => ({ ...prev, overallAssessmentScore: value }))}
             />

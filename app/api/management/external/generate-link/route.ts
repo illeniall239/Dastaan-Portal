@@ -8,7 +8,8 @@ export const dynamic = "force-dynamic";
 
 interface GenerateLinkRequest {
   content_type: "one_liner" | "episode" | "call_report";
-  content_id: string;
+  content_id: string | null; // Allow null for episode-only links
+  episode_ids?: string[]; // Array of episode UUIDs to include
   expires_in_days?: number;
   max_submissions?: number | null;
   allowed_emails?: string[];
@@ -46,10 +47,17 @@ export async function POST(request: NextRequest) {
     // Parse request body
     const body: GenerateLinkRequest = await request.json();
 
-    // Validate required fields
-    if (!body.content_type || !body.content_id) {
+    // Validate: Must have either content_id OR episode_ids
+    if (!body.content_id && (!body.episode_ids || body.episode_ids.length === 0)) {
       return NextResponse.json(
-        { error: "content_type and content_id are required" },
+        { error: "Either content_id or episode_ids must be provided" },
+        { status: 400 }
+      );
+    }
+
+    if (!body.content_type) {
+      return NextResponse.json(
+        { error: "content_type is required" },
         { status: 400 }
       );
     }
@@ -61,44 +69,61 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Verify content exists (using admin client to bypass RLS for content verification)
-    if (body.content_type === "episode") {
-      const { data: episode, error: episodeError } = await adminSupabase
+    // Verify content exists only if content_id is provided
+    if (body.content_id) {
+      if (body.content_type === "episode") {
+        const { data: episode, error: episodeError } = await adminSupabase
+          .from("episodes")
+          .select("id")
+          .eq("id", body.content_id)
+          .single();
+
+        if (episodeError || !episode) {
+          return NextResponse.json(
+            { error: "Episode not found" },
+            { status: 404 }
+          );
+        }
+      } else if (body.content_type === "one_liner") {
+        const { data: oneLiner, error: oneLinerError } = await adminSupabase
+          .from("one_liners")
+          .select("id")
+          .eq("id", body.content_id)
+          .single();
+
+        if (oneLinerError || !oneLiner) {
+          return NextResponse.json(
+            { error: "One-liner not found" },
+            { status: 404 }
+          );
+        }
+      } else if (body.content_type === "call_report") {
+        const { data: callReport, error: callReportError } = await adminSupabase
+          .from("call_reports")
+          .select("id")
+          .eq("id", body.content_id)
+          .single();
+
+        if (callReportError || !callReport) {
+          return NextResponse.json(
+            { error: "Call report not found" },
+            { status: 404 }
+          );
+        }
+      }
+    }
+
+    // If episode-only link, verify episodes exist
+    if (!body.content_id && body.episode_ids && body.episode_ids.length > 0) {
+      const { data: episodes, error: episodesError } = await adminSupabase
         .from("episodes")
         .select("id")
-        .eq("id", body.content_id)
-        .single();
+        .in("id", body.episode_ids);
 
-      if (episodeError || !episode) {
+      if (episodesError || !episodes || episodes.length !== body.episode_ids.length) {
         return NextResponse.json(
-          { error: "Episode not found" },
-          { status: 404 }
-        );
-      }
-    } else if (body.content_type === "one_liner") {
-      const { data: oneLiner, error: oneLinerError } = await adminSupabase
-        .from("one_liners")
-        .select("id")
-        .eq("id", body.content_id)
-        .single();
-
-      if (oneLinerError || !oneLiner) {
-        return NextResponse.json(
-          { error: "One-liner not found" },
-          { status: 404 }
-        );
-      }
-    } else if (body.content_type === "call_report") {
-      const { data: callReport, error: callReportError } = await adminSupabase
-        .from("call_reports")
-        .select("id")
-        .eq("id", body.content_id)
-        .single();
-
-      if (callReportError || !callReport) {
-        return NextResponse.json(
-          { error: "Call report not found" },
-          { status: 404 }
+          { error: "Some episodes not found" },
+          { status: 400 }
         );
       }
     }
@@ -111,13 +136,17 @@ export async function POST(request: NextRequest) {
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + expiresInDays);
 
+    // For episode-only links, use first episode as placeholder for backwards compatibility
+    const linkContentType = body.content_type;
+    const linkContentId = body.content_id || (body.episode_ids && body.episode_ids.length > 0 ? body.episode_ids[0] : null);
+
     // Create external evaluation link
     const { data: link, error: linkError } = await supabase
       .from("external_evaluation_links")
       .insert({
         token,
-        content_type: body.content_type,
-        content_id: body.content_id,
+        content_type: linkContentType,
+        content_id: linkContentId,
         created_by: user.id,
         expires_at: expiresAt.toISOString(),
         max_submissions: body.max_submissions ?? null,
@@ -134,6 +163,93 @@ export async function POST(request: NextRequest) {
       console.error("Full linkError details:", JSON.stringify(linkError, null, 2));
       return NextResponse.json(
         { error: "Failed to create external evaluation link", details: linkError.message || linkError.hint || "Unknown error" },
+        { status: 500 }
+      );
+    }
+
+    // Insert content items into external_link_contents junction table
+    const contentItems = [];
+
+    // Add primary content if provided (call_report or single episode/one_liner)
+    if (body.content_id) {
+      contentItems.push({
+        link_id: link.id,
+        content_type: body.content_type,
+        content_id: body.content_id,
+        display_order: 0,
+        is_required: true,
+      });
+    }
+
+    // Add additional episodes if provided
+    if (body.episode_ids && body.episode_ids.length > 0) {
+      // If call_report is included, verify episodes belong to it
+      if (body.content_type === "call_report" && body.content_id) {
+        const { data: episodes, error: episodesError } = await adminSupabase
+          .from("episodes")
+          .select("id")
+          .eq("call_report_id", body.content_id)
+          .in("id", body.episode_ids);
+
+        if (episodesError || !episodes || episodes.length !== body.episode_ids.length) {
+          logger.error("Some episodes not found or not linked to this call_report");
+          // Cleanup: delete the link we just created
+          await supabase
+            .from("external_evaluation_links")
+            .delete()
+            .eq("id", link.id);
+
+          return NextResponse.json(
+            { error: "Invalid episode selection: episodes must belong to the call report" },
+            { status: 400 }
+          );
+        }
+      }
+
+      // Add episodes to content items
+      const startOrder = contentItems.length; // 0 if episode-only, 1 if call_report included
+      body.episode_ids.forEach((episodeId, index) => {
+        contentItems.push({
+          link_id: link.id,
+          content_type: "episode",
+          content_id: episodeId,
+          display_order: startOrder + index,
+          is_required: true,
+        });
+      });
+    }
+
+    // Validate: must have at least one content item
+    if (contentItems.length === 0) {
+      logger.error("No content items to include in link");
+      // Cleanup
+      await supabase
+        .from("external_evaluation_links")
+        .delete()
+        .eq("id", link.id);
+
+      return NextResponse.json(
+        { error: "No content items to include in link" },
+        { status: 400 }
+      );
+    }
+
+    // Insert all content items
+    const { error: contentsError } = await supabase
+      .from("external_link_contents")
+      .insert(contentItems);
+
+    if (contentsError) {
+      logger.error(`Error inserting link contents:`, contentsError);
+      console.error("Full contentsError details:", JSON.stringify(contentsError, null, 2));
+      // Delete the link if content insertion fails (cleanup)
+      await supabase
+        .from("external_evaluation_links")
+        .delete()
+        .eq("id", link.id);
+
+      return NextResponse.json(
+        { error: "Failed to create link contents", details: contentsError.message || contentsError.hint || "Unknown error" },
         { status: 500 }
       );
     }

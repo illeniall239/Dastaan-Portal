@@ -50,6 +50,7 @@ interface ExternalEvaluationsManagerProps {
   oneLiners: any[];
   callReports: any[];
   evaluations: any[];
+  contentCountsMap: Record<string, { total: number; call_report: number; episode: number }>;
 }
 
 export function ExternalEvaluationsManager({
@@ -58,6 +59,7 @@ export function ExternalEvaluationsManager({
   oneLiners,
   callReports,
   evaluations,
+  contentCountsMap,
 }: ExternalEvaluationsManagerProps) {
   const router = useRouter();
   const [isGenerateDialogOpen, setIsGenerateDialogOpen] = useState(false);
@@ -336,9 +338,22 @@ export function ExternalEvaluationsManager({
                         return (
                           <TableRow key={link.id}>
                             <TableCell>
-                              <Badge variant="outline">
-                                {link.content_type === "episode" ? "Episode" : "One-Liner"}
-                              </Badge>
+                              {contentCountsMap[link.id] ? (
+                                // Multi-content link
+                                <div className="flex flex-col gap-1">
+                                  <Badge variant="outline">
+                                    One-Liner + {contentCountsMap[link.id].episode} Episode{contentCountsMap[link.id].episode !== 1 ? 's' : ''}
+                                  </Badge>
+                                  <span className="text-xs text-muted-foreground">
+                                    {contentCountsMap[link.id].total} item{contentCountsMap[link.id].total !== 1 ? 's' : ''}
+                                  </span>
+                                </div>
+                              ) : (
+                                // Single content link (backwards compatibility)
+                                <Badge variant="outline">
+                                  {link.content_type === "episode" ? "Episode" : "One-Liner"}
+                                </Badge>
+                              )}
                             </TableCell>
                             <TableCell className="max-w-[200px] truncate">
                               {link.notes || link.content_id}

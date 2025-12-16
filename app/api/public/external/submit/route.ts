@@ -11,7 +11,8 @@ interface SubmitEvaluationRequest {
   evaluator_name?: string;
   evaluator_email?: string;
   evaluator_organization?: string;
-  evaluation_data: any;
+  evaluation_data?: any;  // Single evaluation (backwards compatible)
+  evaluations?: any[];    // NEW: Multiple evaluations
 }
 
 export async function POST(request: NextRequest) {
@@ -19,9 +20,19 @@ export async function POST(request: NextRequest) {
     const body: SubmitEvaluationRequest = await request.json();
 
     // Validate required fields
-    if (!body.token || !body.evaluation_data || !body.evaluator_id) {
+    if (!body.token || !body.evaluator_id) {
       return NextResponse.json(
-        { error: "token, evaluator_id, and evaluation_data are required" },
+        { error: "token and evaluator_id are required" },
+        { status: 400 }
+      );
+    }
+
+    // Check if single or multiple evaluations
+    const isMultiEvaluation = body.evaluations && Array.isArray(body.evaluations);
+
+    if (!isMultiEvaluation && !body.evaluation_data) {
+      return NextResponse.json(
+        { error: "evaluation_data or evaluations array is required" },
         { status: 400 }
       );
     }
@@ -84,6 +95,100 @@ export async function POST(request: NextRequest) {
                       "unknown";
     const user_agent = request.headers.get("user-agent") || "unknown";
 
+    // Handle multi-content evaluation submission
+    if (isMultiEvaluation) {
+      // Multi-layer duplicate submission check (same as single evaluation)
+      const { data: existingByEvaluatorId } = await supabase
+        .from("external_evaluations")
+        .select("id")
+        .eq("link_id", link.id)
+        .eq("evaluator_id", body.evaluator_id)
+        .single();
+
+      if (existingByEvaluatorId) {
+        return NextResponse.json(
+          { error: "You have already submitted an evaluation using this link" },
+          { status: 409 }
+        );
+      }
+
+      if (ip_address && ip_address !== "unknown") {
+        const { data: existingByIp } = await supabase
+          .from("external_evaluations")
+          .select("id")
+          .eq("link_id", link.id)
+          .eq("ip_address", ip_address)
+          .single();
+
+        if (existingByIp) {
+          return NextResponse.json(
+            { error: "A submission has already been received from your network. If you believe this is an error, please contact support." },
+            { status: 409 }
+          );
+        }
+      }
+
+      // Insert all evaluations
+      const evaluationRecords = body.evaluations!.map(evalItem => ({
+        link_id: link.id,
+        content_type: evalItem.content_type,
+        content_id: evalItem.content_id,
+        evaluator_id: body.evaluator_id,
+        evaluator_name: body.evaluator_name || null,
+        evaluator_email: body.evaluator_email || null,
+        evaluator_organization: body.evaluator_organization || null,
+        evaluation_data: evalItem.evaluation_data,
+        ip_address,
+        user_agent,
+      }));
+
+      const { data: evaluations, error: evalsError } = await supabase
+        .from("external_evaluations")
+        .insert(evaluationRecords)
+        .select();
+
+      if (evalsError) {
+        logger.error(`Error creating external evaluations: ${evalsError.message}`);
+        return NextResponse.json(
+          { error: "Failed to submit evaluations" },
+          { status: 500 }
+        );
+      }
+
+      // Log audit action for each evaluation
+      for (const evaluation of evaluations!) {
+        await logAdminAction({
+          entityType: "external_evaluation",
+          entityId: evaluation.id,
+          action: "created",
+          performedBy: link.created_by,
+          details: {
+            ipAddress: ip_address,
+            userAgent: user_agent,
+            linkId: link.id,
+            contentType: evaluation.content_type,
+            contentId: evaluation.content_id,
+            externalEvaluator: {
+              name: body.evaluator_name || null,
+              email: body.evaluator_email || null,
+              organization: body.evaluator_organization || null,
+            },
+            evaluationData: evaluation.evaluation_data,
+          },
+        });
+      }
+
+      return NextResponse.json({
+        message: "All evaluations submitted successfully",
+        evaluations: evaluations.map(e => ({
+          id: e.id,
+          submitted_at: e.submitted_at,
+          content_type: e.content_type,
+        })),
+      });
+    }
+
+    // Single evaluation submission (backwards compatible below)
     // Multi-layer duplicate submission check
     // Layer 1: Check for duplicate submission from same evaluator_id (localStorage)
     const { data: existingByEvaluatorId } = await supabase
@@ -153,49 +258,34 @@ export async function POST(request: NextRequest) {
       }
     } else if (link.content_type === "call_report") {
       // Validate call_report evaluation data structure
-      if (!body.evaluation_data.decision ||
-          !body.evaluation_data.overall_rating ||
-          !body.evaluation_data.feedback) {
+      if (!body.evaluation_data.slot) {
         return NextResponse.json(
-          {
-            error: "Missing required fields for call report evaluation: decision, overall_rating, feedback"
-          },
+          { error: "Missing required field: suggested slot" },
           { status: 400 }
         );
       }
 
-      // Validate rating is 1-10
-      const rating = parseInt(body.evaluation_data.overall_rating);
-      if (isNaN(rating) || rating < 1 || rating > 10) {
-        return NextResponse.json(
-          { error: "overall_rating must be between 1 and 10" },
-          { status: 400 }
-        );
-      }
+      // Validate evaluation scores (1-10)
+      const requiredScores = [
+        'premise_conflict_score',
+        'storyline_plot_score',
+        'episodic_progression_score',
+        'characters_score',
+        'overall_assessment_score'
+      ];
 
-      // Validate decision
-      if (!["approved", "rejected"].includes(body.evaluation_data.decision)) {
-        return NextResponse.json(
-          { error: "decision must be 'approved' or 'rejected'" },
-          { status: 400 }
-        );
+      for (const scoreField of requiredScores) {
+        const score = body.evaluation_data[scoreField];
+        if (!score || score < 1 || score > 10) {
+          return NextResponse.json(
+            { error: `${scoreField} must be between 1 and 10` },
+            { status: 400 }
+          );
+        }
       }
     } else if (link.content_type === "one_liner") {
-      // Validate one_liner evaluation
-      if (!body.evaluation_data.decision) {
-        return NextResponse.json(
-          { error: "Missing required field: decision" },
-          { status: 400 }
-        );
-      }
-
-      // Validate decision
-      if (!["approved", "rejected"].includes(body.evaluation_data.decision)) {
-        return NextResponse.json(
-          { error: "decision must be 'approved' or 'rejected'" },
-          { status: 400 }
-        );
-      }
+      // Validate one_liner evaluation - only comments field is optional
+      // No required fields for one_liner
     }
 
     // Insert external evaluation

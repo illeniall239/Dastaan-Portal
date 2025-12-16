@@ -71,7 +71,7 @@ export function TeamVsAverageRadar({
           </div>
         ) : (
           <>
-            <ResponsiveContainer width="100%" height={400}>
+            <ResponsiveContainer width="100%" height={320}>
               <RadarChart data={data}>
                 <PolarGrid stroke="#e5e7eb" />
                 <PolarAngleAxis

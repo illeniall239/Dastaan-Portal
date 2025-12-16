@@ -1,8 +1,46 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 export async function GET(request: NextRequest) {
   try {
+    const { searchParams } = new URL(request.url);
+    const filePath = searchParams.get("path");
+
+    if (!filePath) {
+      return NextResponse.json(
+        { error: "File path is required" },
+        { status: 400 }
+      );
+    }
+
+    // Path-based download (public access for external evaluators)
+    // Validate path is within allowed folders for security
+    if (filePath.startsWith("call_reports/") ||
+        filePath.startsWith("one_liners/") ||
+        filePath.startsWith("episodes/")) {
+
+      // Use admin client for public access
+      const adminSupabase = createAdminClient();
+
+      // Generate signed URL (1 hour expiry)
+      const { data: signedUrlData, error: signedUrlError } = await adminSupabase.storage
+        .from("attachments")
+        .createSignedUrl(filePath, 3600);
+
+      if (signedUrlError || !signedUrlData?.signedUrl) {
+        console.error("Error creating signed URL:", signedUrlError);
+        return NextResponse.json(
+          { error: "Failed to generate download URL" },
+          { status: 500 }
+        );
+      }
+
+      // Redirect to signed URL
+      return NextResponse.redirect(signedUrlData.signedUrl);
+    }
+
+    // For other paths, require authentication
     const supabase = await createClient();
 
     // Verify user is authenticated
@@ -15,17 +53,6 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(
         { error: "Unauthorized" },
         { status: 401 }
-      );
-    }
-
-    // Get file path from query parameter
-    const { searchParams } = new URL(request.url);
-    const filePath = searchParams.get("path");
-
-    if (!filePath) {
-      return NextResponse.json(
-        { error: "File path is required" },
-        { status: 400 }
       );
     }
 

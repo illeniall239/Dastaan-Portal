@@ -87,7 +87,6 @@ export function CallReportForm({
     contactPhone: "",
     contactAddress: "",
     workingTitle: "",
-    director: "",
     totalEpisodes: "",
     receivedEpisodes: "",
     logline: "",
@@ -150,7 +149,6 @@ export function CallReportForm({
         contactPhone: initialData.contact_phone || "",
         contactAddress: initialData.contact_address || "",
         workingTitle: initialData.working_title || "",
-        director: initialData.director || "",
         totalEpisodes: initialData.total_episodes?.toString() || "",
         receivedEpisodes: initialData.received_episodes?.toString() || "",
         logline: initialData.logline || "",
@@ -234,7 +232,6 @@ export function CallReportForm({
           contact_phone: formData.contactPhone || undefined,
           contact_address: formData.contactAddress || undefined,
           working_title: formData.workingTitle || undefined,
-          director: formData.director || undefined,
           total_episodes: formData.totalEpisodes ? parseInt(formData.totalEpisodes) : undefined,
           received_episodes: formData.receivedEpisodes ? parseInt(formData.receivedEpisodes) : undefined,
           logline: formData.logline || undefined,
@@ -336,7 +333,6 @@ export function CallReportForm({
           contact_phone: formData.contactPhone,
           contact_address: formData.contactAddress,
           working_title: formData.workingTitle,
-          director: formData.director || undefined,
           total_episodes: formData.totalEpisodes ? parseInt(formData.totalEpisodes) : undefined,
           received_episodes: formData.receivedEpisodes ? parseInt(formData.receivedEpisodes) : undefined,
           logline: formData.logline,
@@ -404,7 +400,6 @@ export function CallReportForm({
           contactPhone: "",
           contactAddress: "",
           workingTitle: "",
-          director: "",
           totalEpisodes: "",
           receivedEpisodes: "",
           logline: "",
@@ -580,16 +575,6 @@ export function CallReportForm({
                 id="workingTitle"
                 placeholder="Story working title"
                 value={formData.workingTitle}
-                onChange={handleInputChange}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="director">Director</Label>
-              <Input
-                id="director"
-                placeholder="Director name"
-                value={formData.director}
                 onChange={handleInputChange}
               />
             </div>

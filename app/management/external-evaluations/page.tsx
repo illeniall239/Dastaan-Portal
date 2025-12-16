@@ -116,6 +116,31 @@ export default async function ManagementExternalEvaluationsPage() {
     console.error("Error fetching external evaluations:", evaluationsError);
   }
 
+  // Fetch content counts for each link from junction table
+  const { data: linkContents, error: linkContentsError } = await supabase
+    .from("external_link_contents")
+    .select("link_id, content_type, content_id");
+
+  if (linkContentsError) {
+    console.error("Error fetching link contents:", linkContentsError);
+  }
+
+  // Create a map of link_id to content count
+  const contentCountsMap: Record<string, { total: number; call_report: number; episode: number }> = {};
+  if (linkContents) {
+    linkContents.forEach((item) => {
+      if (!contentCountsMap[item.link_id]) {
+        contentCountsMap[item.link_id] = { total: 0, call_report: 0, episode: 0 };
+      }
+      contentCountsMap[item.link_id].total++;
+      if (item.content_type === "call_report") {
+        contentCountsMap[item.link_id].call_report++;
+      } else if (item.content_type === "episode") {
+        contentCountsMap[item.link_id].episode++;
+      }
+    });
+  }
+
   return (
     <div className="mobile-container mobile-section">
       <div className="mobile-header-spacing">
@@ -131,6 +156,7 @@ export default async function ManagementExternalEvaluationsPage() {
         oneLiners={oneLiners || []}
         callReports={callReports || []}
         evaluations={evaluations || []}
+        contentCountsMap={contentCountsMap}
       />
     </div>
   );

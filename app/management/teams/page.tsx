@@ -117,7 +117,7 @@ export default async function TeamAnalyticsPage() {
             />
           </div>
         </div>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <TeamComparisonBarChart
             data={comparison}
             metric="call_reports"
@@ -131,7 +131,7 @@ export default async function TeamAnalyticsPage() {
           />
         </div>
 
-        <div className="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="mt-4 grid grid-cols-1 lg:grid-cols-2 gap-4">
           <TeamComparisonBarChart
             data={comparison}
             metric="evaluations"

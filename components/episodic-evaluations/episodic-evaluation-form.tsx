@@ -431,7 +431,7 @@ export function EpisodicEvaluationForm({
         <div className="space-y-4">
           <ScoreCard
             label="Conflict of Content"
-            description="How well does the episode establish and maintain conflict?"
+            description="How engaging and well-developed is the central conflict?"
             score={conflictScore}
             onChange={setConflictScore}
             disabled={isReadOnly}
@@ -439,7 +439,7 @@ export function EpisodicEvaluationForm({
 
           <ScoreCard
             label="Characterization"
-            description="How well are the characters developed and portrayed?"
+            description="How compelling and relatable are the characters?"
             score={characterizationScore}
             onChange={setCharacterizationScore}
             disabled={isReadOnly}
@@ -447,7 +447,7 @@ export function EpisodicEvaluationForm({
 
           <ScoreCard
             label="Story Progression"
-            description="How effectively does the story move forward?"
+            description="How effectively does the narrative move the story forward?"
             score={progressionScore}
             onChange={setProgressionScore}
             disabled={isReadOnly}
@@ -455,7 +455,7 @@ export function EpisodicEvaluationForm({
 
           <ScoreCard
             label="Freezes"
-            description="How well are the freeze moments/cliffhangers executed?"
+            description="How effective are the cliffhangers in creating suspense?"
             score={freezesScore}
             onChange={setFreezesScore}
             disabled={isReadOnly}
@@ -463,15 +463,15 @@ export function EpisodicEvaluationForm({
 
           <ScoreCard
             label="What's Next Element"
-            description="How effective is the episode in creating anticipation for the next episode?"
+            description="How strong is the anticipation for the next episode?"
             score={whatsNextScore}
             onChange={setWhatsNextScore}
             disabled={isReadOnly}
           />
 
           <ScoreCard
-            label="Overall Assessment"
-            description="What is your overall assessment of this episode?"
+            label="Final Impression"
+            description="What is your overall impression of this episode?"
             score={overallAssessmentScore}
             onChange={setOverallAssessmentScore}
             disabled={isReadOnly}

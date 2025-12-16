@@ -94,12 +94,12 @@ export function TeamComparisonTable({ teams, filteredType }: TeamComparisonTable
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="rounded-md border">
-          <div className="overflow-x-auto">
-            <Table>
+        <div className="rounded-md border overflow-hidden">
+          <div className="overflow-x-auto max-w-full">
+            <Table className="text-sm">
               <TableHeader>
                 <TableRow>
-                  <TableHead>
+                  <TableHead className="text-xs">
                     <Button
                       variant="ghost"
                       size="sm"
@@ -110,8 +110,8 @@ export function TeamComparisonTable({ teams, filteredType }: TeamComparisonTable
                       <SortIcon field="team_name" />
                     </Button>
                   </TableHead>
-                  <TableHead className="text-center">Type</TableHead>
-                  <TableHead className="text-center">
+                  <TableHead className="text-center text-xs">Type</TableHead>
+                  <TableHead className="text-center text-xs">
                     <Button
                       variant="ghost"
                       size="sm"
@@ -122,7 +122,7 @@ export function TeamComparisonTable({ teams, filteredType }: TeamComparisonTable
                       <SortIcon field="team_member_count" />
                     </Button>
                   </TableHead>
-                  <TableHead className="text-center">
+                  <TableHead className="text-center text-xs">
                     <Button
                       variant="ghost"
                       size="sm"
@@ -133,7 +133,7 @@ export function TeamComparisonTable({ teams, filteredType }: TeamComparisonTable
                       <SortIcon field="call_reports_created" />
                     </Button>
                   </TableHead>
-                  <TableHead className="text-center">
+                  <TableHead className="text-center text-xs">
                     <Button
                       variant="ghost"
                       size="sm"
@@ -144,7 +144,7 @@ export function TeamComparisonTable({ teams, filteredType }: TeamComparisonTable
                       <SortIcon field="evaluations_completed" />
                     </Button>
                   </TableHead>
-                  <TableHead className="text-center">
+                  <TableHead className="text-center text-xs">
                     <Button
                       variant="ghost"
                       size="sm"
@@ -155,7 +155,7 @@ export function TeamComparisonTable({ teams, filteredType }: TeamComparisonTable
                       <SortIcon field="one_liners_logged" />
                     </Button>
                   </TableHead>
-                  <TableHead className="text-center">
+                  <TableHead className="text-center text-xs">
                     <Button
                       variant="ghost"
                       size="sm"
@@ -166,7 +166,7 @@ export function TeamComparisonTable({ teams, filteredType }: TeamComparisonTable
                       <SortIcon field="stories_approved" />
                     </Button>
                   </TableHead>
-                  <TableHead className="text-center">
+                  <TableHead className="text-center text-xs">
                     <Button
                       variant="ghost"
                       size="sm"
@@ -177,7 +177,7 @@ export function TeamComparisonTable({ teams, filteredType }: TeamComparisonTable
                       <SortIcon field="avg_evaluation_score" />
                     </Button>
                   </TableHead>
-                  <TableHead className="text-center">Actions</TableHead>
+                  <TableHead className="text-center text-xs">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
