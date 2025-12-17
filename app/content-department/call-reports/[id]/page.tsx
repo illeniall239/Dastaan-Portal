@@ -15,6 +15,7 @@ import { getAttachmentsForEntityServer } from "@/lib/attachments/server";
 import { BackButton } from "@/components/ui/back-button";
 import { canViewPrivateFields } from "@/lib/call-reports/privacy";
 import type { User } from "@/types";
+import { formatDateTimeLong } from "@/lib/utils/format-date";
 
 // Helper to convert stored image path to secure proxy URL
 function getSecureImageUrl(value: string | null | undefined): string | null {
@@ -127,18 +128,6 @@ export default async function CallReportDetailPage({ params }: { params: Promise
     report.meeting_date ||
     report.updated_at ||
     report.inserted_at;
-  const loggedDate = loggedTimestamp ? new Date(loggedTimestamp) : new Date();
-  const formattedDate = loggedDate.toLocaleDateString("en-US", {
-    month: "long",
-    day: "numeric",
-    year: "numeric",
-  });
-  const formattedTime = loggedDate.toLocaleTimeString("en-US", {
-    hour: "numeric",
-    minute: "2-digit",
-    hour12: true,
-  });
-  const formattedDateTime = `${formattedDate} at ${formattedTime}`;
 
   // Check if user can edit (owner or manager/admin)
   const canEdit =
@@ -180,7 +169,7 @@ export default async function CallReportDetailPage({ params }: { params: Promise
             <div className="grid grid-cols-2 gap-x-8 gap-y-3 text-sm">
               <div>
                 <p className="text-slate-500 font-medium">Logged On</p>
-                <p className="text-slate-900 mt-0.5">{formattedDateTime}</p>
+                <p className="text-slate-900 mt-0.5">{formatDateTimeLong(loggedTimestamp)}</p>
               </div>
               <div>
                 <p className="text-slate-500 font-medium">Category</p>

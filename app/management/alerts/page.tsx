@@ -1,5 +1,6 @@
 "use client";
 
+import { formatDate, formatDateTime } from "@/lib/utils/format-date";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -145,7 +146,7 @@ export default function AlertsPage() {
       id: "created",
       header: "Created",
       accessorKey: "createdAt",
-      cell: (row) => new Date(row.createdAt).toLocaleDateString(),
+      cell: (row) => formatDate(row.createdAt),
     },
   ];
 
@@ -176,7 +177,7 @@ export default function AlertsPage() {
     "Description": a.description,
     "Affected Entity": a.affectedEntity,
     "Days Delayed": a.daysDelayed || "N/A",
-    "Created": new Date(a.createdAt).toLocaleDateString(),
+    "Created": formatDate(a.createdAt),
   }));
 
   // Calculate stats

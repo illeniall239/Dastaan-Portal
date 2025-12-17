@@ -1,5 +1,6 @@
 "use client";
 
+import { formatDate, formatDateTime } from "@/lib/utils/format-date";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -129,7 +130,7 @@ export default function ActiveProjectsPage() {
       id: "last_update",
       header: "Last Update",
       accessorKey: "last_update",
-      cell: (row) => new Date(row.last_update).toLocaleDateString(),
+      cell: (row) => formatDate(row.last_update),
     },
   ];
 
@@ -154,7 +155,7 @@ export default function ActiveProjectsPage() {
     "Genre": p.genre,
     "Creator": p.creator_name,
     "Days Active": p.days_active,
-    "Last Update": new Date(p.last_update).toLocaleDateString(),
+    "Last Update": formatDate(p.last_update),
   }));
 
   if (loading) {

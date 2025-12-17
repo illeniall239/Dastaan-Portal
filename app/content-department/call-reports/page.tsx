@@ -16,6 +16,7 @@ import { EvaluationProgressBar } from "@/components/evaluations/evaluation-progr
 import { Suspense } from "react";
 import { CallReportCardsGridSkeleton } from "@/components/skeletons/call-report-card-skeleton";
 import { BackButton } from "@/components/ui/back-button";
+import { formatDateTime } from "@/lib/utils/format-date";
 
 // Add Next.js caching - revalidate every 30 seconds
 export const revalidate = 300; // 5 minutes for better performance
@@ -102,18 +103,6 @@ async function CallReportsList() {
               report.meeting_date ||
               report.updated_at ||
               report.inserted_at;
-            const loggedDate = loggedTimestamp ? new Date(loggedTimestamp) : new Date();
-            const formattedDate = loggedDate.toLocaleDateString("en-US", {
-              month: "short",
-              day: "numeric",
-              year: "numeric",
-            });
-            const formattedTime = loggedDate.toLocaleTimeString("en-US", {
-              hour: "numeric",
-              minute: "2-digit",
-              hour12: true,
-            });
-            const formattedDateTime = `${formattedDate} at ${formattedTime}`;
             const writerDisplayName =
               report.writer_names && report.writer_names.length > 0
                 ? report.writer_names.join(", ")
@@ -175,7 +164,7 @@ async function CallReportsList() {
                       </CardDescription>
                     </div>
                     <div className="text-right text-sm text-muted-foreground">
-                      <div>Logged: {formattedDateTime}</div>
+                      <div>Logged: {formatDateTime(loggedTimestamp)}</div>
                     </div>
                   </div>
                 </CardHeader>

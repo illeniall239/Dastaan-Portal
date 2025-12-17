@@ -34,6 +34,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { formatDate } from "@/lib/utils/format-date";
 
 interface CallReportWriter {
   writer_id: string;
@@ -486,7 +487,7 @@ export function EvaluatorEvaluationForm({
                       <div>
                         <p className="font-medium text-sm">{attachment.file_name}</p>
                         <p className="text-xs text-muted-foreground">
-                          {(attachment.file_size / 1024 / 1024).toFixed(2)} MB uploaded by {attachment.users?.name || 'Unknown'} on {new Date(attachment.uploaded_at).toLocaleDateString()}
+                          {(attachment.file_size / 1024 / 1024).toFixed(2)} MB uploaded by {attachment.users?.name || 'Unknown'} on {formatDate(attachment.uploaded_at)}
                         </p>
                       </div>
                     </div>

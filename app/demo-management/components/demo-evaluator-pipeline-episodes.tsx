@@ -13,6 +13,7 @@ import {
 } from '../lib/dummy-data';
 import { DemoDrillDownModal, DrillDownData } from './demo-drill-down-modal';
 import { DemoEventAnalysisModal } from './demo-event-analysis-modal';
+import { formatDate } from "@/lib/utils/format-date";
 
 interface DemoEvaluatorPipelineEpisodesProps {
   dramas: DummyDramaWithEpisodes[];
@@ -67,7 +68,7 @@ export function DemoEvaluatorPipelineEpisodes({
         status: 'Completed',
         score: ev.overallScore?.toString() || '-',
         grade: ev.grade || '-',
-        date: ev.evaluatedAt ? new Date(ev.evaluatedAt).toLocaleDateString() : '-',
+        date: ev.evaluatedAt ? formatDate(ev.evaluatedAt) : '-',
       })),
       ...evaluators.pending.map((ev) => ({
         evaluator: ev.evaluatorName,

@@ -8,6 +8,7 @@ import { Suspense } from "react";
 import { logger } from "@/lib/logger";
 import { ModernStatCard } from "@/components/dashboard/modern-stat-card";
 import { ModernContentCard } from "@/components/dashboard/modern-content-card";
+import { formatDateTime } from "@/lib/utils/format-date";
 
 // Add Next.js caching - revalidate every 30 seconds
 export const revalidate = 300; // 5 minutes for better performance
@@ -253,14 +254,7 @@ async function DashboardContent() {
                     {meeting.writer_name ? `With: ${meeting.writer_name}` : "No writer specified"}
                   </p>
                   <p className="text-xs text-gray-400 mt-0.5">
-                    {new Date(meeting.meeting_date).toLocaleDateString("en-US", {
-                      month: "short",
-                      day: "numeric",
-                      year: "numeric",
-                      hour: "numeric",
-                      minute: "2-digit",
-                      hour12: true,
-                    })}
+                    {formatDateTime(meeting.meeting_date)}
                   </p>
                 </Link>
               ))}

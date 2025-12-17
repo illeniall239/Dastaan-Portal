@@ -13,6 +13,7 @@ import Link from "next/link";
 import { AdminPanelLink } from "@/components/auth/AdminPanelLink";
 import { SignOutButton } from "@/components/auth/SignOutButton";
 import { Calendar, FileText, CheckCircle2, RefreshCw } from "lucide-react";
+import { formatDateTime } from "@/lib/utils/format-date";
 
 // Add Next.js caching - revalidate every 30 seconds
 export const revalidate = 300; // 5 minutes for better performance
@@ -299,16 +300,7 @@ export default async function DashboardPage() {
             {recentActivity.length > 0 ? (
               <div className="space-y-4">
                 {recentActivity.map((activity) => {
-                  const activityDate = new Date(activity.timestamp);
-                  const formattedTime = activityDate.toLocaleTimeString("en-US", {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                    hour12: true
-                  });
-                  const formattedDate = activityDate.toLocaleDateString("en-US", {
-                    month: "short",
-                    day: "numeric"
-                  });
+                  const formattedTimestamp = formatDateTime(activity.timestamp);
 
                   // Format activity description based on action type
                   let activityDescription = "";
@@ -358,8 +350,7 @@ export default async function DashboardPage() {
                           </div>
                         </div>
                         <div className="text-right">
-                          <p className="text-xs text-muted-foreground">{formattedTime}</p>
-                          <p className="text-xs text-muted-foreground">{formattedDate}</p>
+                          <p className="text-xs text-muted-foreground">{formattedTimestamp}</p>
                         </div>
                       </div>
                     </Link>

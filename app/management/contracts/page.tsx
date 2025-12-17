@@ -1,5 +1,6 @@
 "use client";
 
+import { formatDate, formatDateTime } from "@/lib/utils/format-date";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -144,7 +145,7 @@ export default function ActiveContractsPage() {
       id: "signed_date",
       header: "Signed Date",
       accessorKey: "signed_date",
-      cell: (row) => new Date(row.signed_date).toLocaleDateString(),
+      cell: (row) => formatDate(row.signed_date),
     },
     {
       id: "status",
@@ -178,7 +179,7 @@ export default function ActiveContractsPage() {
     "Milestones Completed": c.milestones_completed,
     "Total Milestones": c.milestones_total,
     "Progress %": c.milestone_progress,
-    "Signed Date": new Date(c.signed_date).toLocaleDateString(),
+    "Signed Date": formatDate(c.signed_date),
   }));
 
   if (loading) {

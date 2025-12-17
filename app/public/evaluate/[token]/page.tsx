@@ -14,6 +14,7 @@ import { ScoreCard } from "@/components/episodic-evaluations/score-card";
 import { CallReportOverallAssessment } from "@/components/evaluations/call-report-overall-assessment";
 import { OverallAssessment } from "@/components/episodic-evaluations/overall-assessment";
 import { calculateGrade } from "@/lib/validations/episodic-evaluations";
+import { formatDate } from "@/lib/utils/format-date";
 
 interface ExternalEvaluatePageProps {
   params: Promise<{ token: string }>;
@@ -411,7 +412,7 @@ export default function ExternalEvaluatePage({ params }: ExternalEvaluatePagePro
             <CheckCircle className="h-16 w-16 text-green-600 mb-4" />
             <h2 className="text-2xl font-bold mb-2">Evaluation Already Submitted</h2>
             <p className="text-muted-foreground text-center mb-4">
-              You submitted your evaluation on {submittedAt ? new Date(submittedAt).toLocaleDateString() : "a previous date"}.
+              You submitted your evaluation on {submittedAt ? formatDate(submittedAt) : "a previous date"}.
             </p>
             <p className="text-sm text-muted-foreground text-center">
               Thank you for your feedback. Your evaluation has been recorded and cannot be modified.

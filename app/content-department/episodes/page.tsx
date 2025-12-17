@@ -49,6 +49,7 @@ import { EpisodeUploadForm, type EpisodeFormEntry } from "@/components/episodes/
 import { EpisodeFileUpload } from "@/components/episodes/episode-file-upload";
 import type { EpisodeWithDetails } from "@/types";
 import { BackButton } from "@/components/ui/back-button";
+import { formatDate } from "@/lib/utils/format-date";
 
 interface CallReportWriter {
   id?: string;
@@ -894,7 +895,7 @@ export default function ContentDepartmentEpisodesPage() {
                                   {episode.logged_by_user?.name || "Unknown"}
                                 </TableCell>
                                 <TableCell>
-                                  {new Date(episode.created_at).toLocaleDateString()}
+                                  {formatDate(episode.created_at)}
                                 </TableCell>
                                 <TableCell className="text-right">
                                   <DropdownMenu>
@@ -985,7 +986,7 @@ export default function ContentDepartmentEpisodesPage() {
                                   <div className="flex items-center gap-2 flex-1 min-w-0">
                                     <Badge variant="outline" className="flex-shrink-0">EP {episode.episode_number}</Badge>
                                   </div>
-                                  <span className="text-xs text-muted-foreground flex-shrink-0">{new Date(episode.created_at).toLocaleDateString()}</span>
+                                  <span className="text-xs text-muted-foreground flex-shrink-0">{formatDate(episode.created_at)}</span>
                                 </div>
                               </div>
                               <div className="flex flex-col gap-3">

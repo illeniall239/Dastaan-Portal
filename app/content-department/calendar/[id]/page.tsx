@@ -12,6 +12,7 @@ import { CalendarIcon, UserIcon, MapPinIcon, FileTextIcon, ClipboardListIcon, Cl
 import { createClient } from "@/lib/supabase/server";
 import { format, parseISO } from "date-fns";
 import { BackButton } from "@/components/ui/back-button";
+import { formatDateWithWeekday, formatTime } from "@/lib/utils/format-date";
 
 export default async function MeetingDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = await params;
@@ -57,19 +58,6 @@ export default async function MeetingDetailPage({ params }: { params: Promise<{ 
     redirect("/content-department/calendar");
   }
 
-  const meetingDate = new Date(meeting.meeting_date);
-  const formattedDate = meetingDate.toLocaleDateString("en-US", {
-    weekday: "long",
-    month: "long",
-    day: "numeric",
-    year: "numeric",
-  });
-  const formattedTime = meetingDate.toLocaleTimeString("en-US", {
-    hour: "numeric",
-    minute: "2-digit",
-    hour12: true,
-  });
-
   return (
     <div className="p-6 space-y-6">
       {/* Page Header */}
@@ -104,7 +92,7 @@ export default async function MeetingDetailPage({ params }: { params: Promise<{ 
                 <CalendarIcon className="h-5 w-5 text-muted-foreground mt-0.5" />
                 <div>
                   <p className="text-sm font-medium">Date</p>
-                  <p className="text-sm text-muted-foreground">{formattedDate}</p>
+                  <p className="text-sm text-muted-foreground">{formatDateWithWeekday(meeting.meeting_date)}</p>
                 </div>
               </div>
 
@@ -112,7 +100,7 @@ export default async function MeetingDetailPage({ params }: { params: Promise<{ 
                 <ClockIcon className="h-5 w-5 text-muted-foreground mt-0.5" />
                 <div>
                   <p className="text-sm font-medium">Time</p>
-                  <p className="text-sm text-muted-foreground">{formattedTime}</p>
+                  <p className="text-sm text-muted-foreground">{formatTime(meeting.meeting_date)}</p>
                 </div>
               </div>
 

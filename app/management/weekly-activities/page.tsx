@@ -1,5 +1,6 @@
 "use client";
 
+import { formatDate, formatDateTime } from "@/lib/utils/format-date";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -252,7 +253,7 @@ export default function WeeklyActivitiesPage() {
 
   // Prepare export data
   const exportData = filteredActivities.map(a => ({
-    "Timestamp": new Date(a.timestamp).toLocaleString(),
+    "Timestamp": formatDateTime(a.timestamp),
     "Type": a.entityType,
     "Action": a.action.replace(/_/g, ' '),
     "Entity": a.entityName,

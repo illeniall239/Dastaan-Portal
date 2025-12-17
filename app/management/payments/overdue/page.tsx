@@ -1,5 +1,6 @@
 "use client";
 
+import { formatDate, formatDateTime } from "@/lib/utils/format-date";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -136,7 +137,7 @@ export default function OverduePaymentsPage() {
       id: "due_date",
       header: "Due Date",
       accessorKey: "due_date",
-      cell: (row) => new Date(row.due_date).toLocaleDateString(),
+      cell: (row) => formatDate(row.due_date),
     },
     {
       id: "days_overdue",
@@ -179,7 +180,7 @@ export default function OverduePaymentsPage() {
     "Story ID": p.story_id,
     "Amount (PKR)": p.amount,
     "Milestone": p.milestone,
-    "Due Date": new Date(p.due_date).toLocaleDateString(),
+    "Due Date": formatDate(p.due_date),
     "Days Overdue": p.days_overdue,
   }));
 

@@ -55,6 +55,7 @@ import { getGradeColorClasses } from "@/lib/validations/episodic-evaluations";
 import type { EpisodeWithDetails, EpisodicEvaluationWithDetails } from "@/types";
 import { BackButton } from "@/components/ui/back-button";
 import { ShareLinkDialog } from "@/components/management/share-link-dialog";
+import { formatDate } from "@/lib/utils/format-date";
 
 interface CallReportWriter {
   id?: string;
@@ -1547,7 +1548,7 @@ const handleSaveExistingEpisode = async (episodeId: string) => {
                                 </Badge>
                               </TableCell>
                               <TableCell className="text-sm text-muted-foreground">
-                                {new Date(evaluation.submitted_at).toLocaleDateString()}
+                                {formatDate(evaluation.submitted_at)}
                               </TableCell>
                               <TableCell className="text-right">
                                 <Button

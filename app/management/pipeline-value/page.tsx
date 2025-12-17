@@ -1,5 +1,6 @@
 "use client";
 
+import { formatDate, formatDateTime } from "@/lib/utils/format-date";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -168,7 +169,7 @@ export default function PipelineValuePage() {
       id: "last_update",
       header: "Last Update",
       accessorKey: "last_update",
-      cell: (row) => new Date(row.last_update).toLocaleDateString(),
+      cell: (row) => formatDate(row.last_update),
     },
   ];
 
@@ -196,7 +197,7 @@ export default function PipelineValuePage() {
     "Value (PKR)": i.value,
     "Stage": i.stage,
     "Status": i.status,
-    "Last Update": new Date(i.last_update).toLocaleDateString(),
+    "Last Update": formatDate(i.last_update),
   }));
 
   if (loading) {

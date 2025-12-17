@@ -17,6 +17,7 @@ import { NotificationSkeleton } from "@/components/skeletons/notification-skelet
 import { getEvaluatorTeam, getTeamMembers } from "@/lib/evaluations/team";
 import { ModernStatCard } from "@/components/dashboard/modern-stat-card";
 import { ModernContentCard } from "@/components/dashboard/modern-content-card";
+import { formatDateTime, formatDate } from "@/lib/utils/format-date";
 
 // Add Next.js caching - revalidate every 5 minutes (300 seconds)
 // This significantly improves navigation speed by caching dashboard data
@@ -318,30 +319,15 @@ async function DashboardContent({ userId }: { userId: string }) {
                       ? `Writers: ${report.writer_names.join(", ")}`
                       : `Writer: ${report.writer_name || "Unknown"}`}
                   </p>
-                  {(() => {
-                    const loggedTimestamp =
+                  <p className="text-xs text-gray-400 mt-0.5">
+                    Logged: {formatDateTime(
                       report.logged_at ||
                       report.created_at ||
                       report.meeting_date ||
                       report.updated_at ||
-                      report.inserted_at;
-                    const loggedDate = loggedTimestamp ? new Date(loggedTimestamp) : new Date();
-                    const loggedDateStr = loggedDate.toLocaleDateString("en-US", {
-                      month: "short",
-                      day: "numeric",
-                      year: "numeric",
-                    });
-                    const loggedTimeStr = loggedDate.toLocaleTimeString("en-US", {
-                      hour: "numeric",
-                      minute: "2-digit",
-                      hour12: true,
-                    });
-                    return (
-                      <p className="text-xs text-gray-400 mt-0.5">
-                        Logged: {loggedDateStr} at {loggedTimeStr}
-                      </p>
-                    );
-                  })()}
+                      report.inserted_at
+                    )}
+                  </p>
                 </Link>
               ))}
             </div>
@@ -372,8 +358,7 @@ async function DashboardContent({ userId }: { userId: string }) {
                       Writer: {evaluation.call_report?.writer_name}
                     </p>
                     <p className="text-xs text-gray-400 mt-0.5">
-                      Evaluated:{" "}
-                      {new Date(evaluation.created_at).toLocaleDateString()}
+                      Evaluated: {formatDate(evaluation.created_at)}
                     </p>
                   </div>
                   <div className="ml-4 flex-shrink-0">

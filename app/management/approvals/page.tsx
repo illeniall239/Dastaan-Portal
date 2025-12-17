@@ -13,6 +13,7 @@ import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbP
 import { Clock, Star, AlertTriangle } from "lucide-react";
 import { BackButton } from "@/components/ui/back-button";
 import type { PendingApproval } from "@/lib/management/pending-approvals";
+import { formatDate, formatDateTime } from "@/lib/utils/format-date";
 
 export default function ApprovalsPage() {
   const router = useRouter();
@@ -196,7 +197,7 @@ export default function ApprovalsPage() {
     "Evaluations": a.evaluation_count,
     "Recommendation": a.recommendation,
     "Days Pending": a.days_pending,
-    "Submitted": new Date(a.submitted_date).toLocaleDateString(),
+    "Submitted": formatDate(a.submitted_date),
   }));
 
   if (loading) {
