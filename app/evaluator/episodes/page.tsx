@@ -154,7 +154,7 @@ export default function EvaluatorEpisodesPage() {
   const [existingEpisodesForSource, setExistingEpisodesForSource] = useState<ExistingEpisodeEdit[]>([]);
   const [existingEpisodeNumbers, setExistingEpisodeNumbers] = useState<number[]>([]);
   const [existingEpisodesLoading, setExistingEpisodesLoading] = useState(false);
-  
+
   const [newEpisodes, setNewEpisodes] = useState<EpisodeFormEntry[]>([
     {
       episode_number: 1,
@@ -324,23 +324,45 @@ export default function EvaluatorEpisodesPage() {
     return () => clearTimeout(timer);
   }, [searchTerm]);
 
-useEffect(() => {
-  const numbers = existingEpisodesForSource
-    .map((ep) => ep.episode_number)
-    .filter((num): num is number => typeof num === "number");
+  useEffect(() => {
+    const numbers = existingEpisodesForSource
+      .map((ep) => ep.episode_number)
+      .filter((num): num is number => typeof num === "number");
 
-  // Only update if numbers actually changed to prevent unnecessary re-renders
-  setExistingEpisodeNumbers((prev) => {
-    if (prev.length !== numbers.length) return numbers;
-    if (prev.every((num, idx) => num === numbers[idx])) return prev;
-    return numbers;
-  });
-}, [existingEpisodesForSource]);
+    // Only update if numbers actually changed to prevent unnecessary re-renders
+    setExistingEpisodeNumbers((prev) => {
+      if (prev.length !== numbers.length) return numbers;
+      if (prev.every((num, idx) => num === numbers[idx])) return prev;
+      return numbers;
+    });
+
+    // Calculate next episode number for new episodes
+    const nextEpisodeNumber = numbers.length > 0
+      ? Math.max(...numbers) + 1
+      : 1;
+
+    // Update initial episode state with calculated number
+    setNewEpisodes([
+      {
+        episode_number: nextEpisodeNumber,
+        file: null,
+        additional_info: "",
+      },
+    ]);
+  }, [existingEpisodesForSource]);
 
   const loadExistingEpisodes = useCallback(async () => {
     if (!selectedSource) {
       setExistingEpisodesForSource([]);
       setExistingEpisodeNumbers([]);
+      // Reset to episode 1 when no source selected
+      setNewEpisodes([
+        {
+          episode_number: 1,
+          file: null,
+          additional_info: "",
+        },
+      ]);
       return;
     }
 
@@ -378,6 +400,14 @@ useEffect(() => {
       toast.error("Failed to fetch existing episodes");
       setExistingEpisodesForSource([]);
       setExistingEpisodeNumbers([]);
+      // Reset to episode 1 on error
+      setNewEpisodes([
+        {
+          episode_number: 1,
+          file: null,
+          additional_info: "",
+        },
+      ]);
     } finally {
       setExistingEpisodesLoading(false);
     }
@@ -387,7 +417,7 @@ useEffect(() => {
     loadExistingEpisodes();
   }, [loadExistingEpisodes]);
 
-const fetchMyEvaluations = async () => {
+  const fetchMyEvaluations = async () => {
     setEvaluationsLoading(true);
     try {
       const response = await fetch("/api/episodic-evaluations");
@@ -420,8 +450,8 @@ const fetchMyEvaluations = async () => {
 
   const focusEpisodeInput = (episodeNumber: number) => {
     setTimeout(() => {
-    const input = document.querySelector<HTMLInputElement>(
-      `[data-episode-number="${episodeNumber}"]`
+      const input = document.querySelector<HTMLInputElement>(
+        `[data-episode-number="${episodeNumber}"]`
       );
       if (input) {
         input.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -732,131 +762,130 @@ const fetchMyEvaluations = async () => {
     focusEpisodeInput(nextNumber);
   };
 
-const updateExistingEpisode = (episodeId: string, updates: Partial<ExistingEpisodeEdit>) => {
-  setExistingEpisodesForSource((prev) =>
-    prev.map((episode) => (episode.id === episodeId ? { ...episode, ...updates } : episode))
-  );
-};
+  const updateExistingEpisode = (episodeId: string, updates: Partial<ExistingEpisodeEdit>) => {
+    setExistingEpisodesForSource((prev) =>
+      prev.map((episode) => (episode.id === episodeId ? { ...episode, ...updates } : episode))
+    );
+  };
 
-const hasEpisodeChanges = (episode: ExistingEpisodeEdit) => {
-  return (
-    episode._newFile ||
-    (episode.episode_number ?? null) !== (episode._originalEpisodeNumber ?? null) ||
-    (episode.additional_info ?? "") !== (episode._originalAdditionalInfo ?? "") ||
-    (episode.attachment_url ?? null) !== (episode._originalAttachmentUrl ?? null) ||
-    (episode.attachment_name ?? null) !== (episode._originalAttachmentName ?? null)
-  );
-};
+  const hasEpisodeChanges = (episode: ExistingEpisodeEdit) => {
+    return (
+      episode._newFile ||
+      (episode.episode_number ?? null) !== (episode._originalEpisodeNumber ?? null) ||
+      (episode.additional_info ?? "") !== (episode._originalAdditionalInfo ?? "") ||
+      (episode.attachment_url ?? null) !== (episode._originalAttachmentUrl ?? null) ||
+      (episode.attachment_name ?? null) !== (episode._originalAttachmentName ?? null)
+    );
+  };
 
-const handleSaveExistingEpisode = async (episodeId: string) => {
-  const episode = existingEpisodesForSource.find((ep) => ep.id === episodeId);
-  if (!episode) {
-    return;
-  }
-
-  if (!hasEpisodeChanges(episode)) {
-    toast.info("No changes to save for this episode.");
-    return;
-  }
-
-  updateExistingEpisode(episodeId, { _isSaving: true, _error: null });
-
-  try {
-    const payload: Record<string, any> = {};
-    let attachmentUpdated = false;
-
-    if (
-      (episode.episode_number ?? null) !== (episode._originalEpisodeNumber ?? null)
-    ) {
-      payload.episode_number = episode.episode_number ?? 1;
+  const handleSaveExistingEpisode = async (episodeId: string) => {
+    const episode = existingEpisodesForSource.find((ep) => ep.id === episodeId);
+    if (!episode) {
+      return;
     }
 
-    if (
-      (episode.additional_info ?? "") !== (episode._originalAdditionalInfo ?? "")
-    ) {
-      payload.additional_info = episode.additional_info ?? null;
-    }
-
-    if (episode._newFile) {
-      const fileExt = episode._newFile.name.split(".").pop();
-      const safeExt = fileExt ? `.${fileExt}` : "";
-      const storagePath = `${
-        episode.call_report_id || episode.story_id || "episode"
-      }/${episode.id}-${Date.now()}${safeExt}`;
-
-      const { error: uploadError } = await supabase.storage
-        .from("episodes")
-        .upload(storagePath, episode._newFile, {
-          upsert: true,
-        });
-
-      if (uploadError) {
-        throw new Error(uploadError.message || "Failed to upload file");
-      }
-
-      const { data: publicUrlData } = supabase.storage
-        .from("episodes")
-        .getPublicUrl(storagePath);
-
-      payload.attachment_url = publicUrlData.publicUrl;
-      payload.attachment_name = episode._newFile.name;
-      payload.attachment_type =
-        episode._newFile.type || safeExt || "application/octet-stream";
-      attachmentUpdated = true;
-    } else if (
-      (episode.attachment_url ?? null) !== (episode._originalAttachmentUrl ?? null)
-    ) {
-      payload.attachment_url = episode.attachment_url ?? null;
-      payload.attachment_name = episode.attachment_name ?? null;
-      payload.attachment_type = episode.attachment_type ?? null;
-      attachmentUpdated = true;
-    }
-
-    if (Object.keys(payload).length === 0 && !attachmentUpdated) {
-      updateExistingEpisode(episodeId, { _isSaving: false });
+    if (!hasEpisodeChanges(episode)) {
       toast.info("No changes to save for this episode.");
       return;
     }
 
-    const response = await fetch(`/api/episodes/${episodeId}`, {
-      method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(payload),
-    });
+    updateExistingEpisode(episodeId, { _isSaving: true, _error: null });
 
-    const result = await response.json();
+    try {
+      const payload: Record<string, any> = {};
+      let attachmentUpdated = false;
 
-    if (!response.ok) {
-      throw new Error(result.error || result.details || "Failed to update episode");
+      if (
+        (episode.episode_number ?? null) !== (episode._originalEpisodeNumber ?? null)
+      ) {
+        payload.episode_number = episode.episode_number ?? 1;
+      }
+
+      if (
+        (episode.additional_info ?? "") !== (episode._originalAdditionalInfo ?? "")
+      ) {
+        payload.additional_info = episode.additional_info ?? null;
+      }
+
+      if (episode._newFile) {
+        const fileExt = episode._newFile.name.split(".").pop();
+        const safeExt = fileExt ? `.${fileExt}` : "";
+        const storagePath = `${episode.call_report_id || episode.story_id || "episode"
+          }/${episode.id}-${Date.now()}${safeExt}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from("episodes")
+          .upload(storagePath, episode._newFile, {
+            upsert: true,
+          });
+
+        if (uploadError) {
+          throw new Error(uploadError.message || "Failed to upload file");
+        }
+
+        const { data: publicUrlData } = supabase.storage
+          .from("episodes")
+          .getPublicUrl(storagePath);
+
+        payload.attachment_url = publicUrlData.publicUrl;
+        payload.attachment_name = episode._newFile.name;
+        payload.attachment_type =
+          episode._newFile.type || safeExt || "application/octet-stream";
+        attachmentUpdated = true;
+      } else if (
+        (episode.attachment_url ?? null) !== (episode._originalAttachmentUrl ?? null)
+      ) {
+        payload.attachment_url = episode.attachment_url ?? null;
+        payload.attachment_name = episode.attachment_name ?? null;
+        payload.attachment_type = episode.attachment_type ?? null;
+        attachmentUpdated = true;
+      }
+
+      if (Object.keys(payload).length === 0 && !attachmentUpdated) {
+        updateExistingEpisode(episodeId, { _isSaving: false });
+        toast.info("No changes to save for this episode.");
+        return;
+      }
+
+      const response = await fetch(`/api/episodes/${episodeId}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || result.details || "Failed to update episode");
+      }
+
+      const updatedEpisode: EpisodeWithDetails = result.episode;
+      updateExistingEpisode(episodeId, {
+        ...updatedEpisode,
+        _newFile: null,
+        _isSaving: false,
+        _error: null,
+        _originalEpisodeNumber: updatedEpisode.episode_number ?? null,
+        _originalAttachmentName: updatedEpisode.attachment_name ?? null,
+        _originalAttachmentUrl: updatedEpisode.attachment_url ?? null,
+        _originalAttachmentType: updatedEpisode.attachment_type ?? null,
+        _originalAdditionalInfo: updatedEpisode.additional_info ?? null,
+      });
+
+      toast.success(`Episode ${updatedEpisode.episode_number ?? ""} updated.`);
+      // Fetch updates - only call fetchEpisodesAndStatus to avoid cascading updates
+      fetchEpisodesAndStatus();
+    } catch (error: any) {
+      console.error("Error updating episode:", error);
+      updateExistingEpisode(episodeId, {
+        _isSaving: false,
+        _error: error.message || "Failed to save episode changes",
+      });
+      toast.error(error.message || "Failed to save episode changes");
     }
-
-    const updatedEpisode: EpisodeWithDetails = result.episode;
-    updateExistingEpisode(episodeId, {
-      ...updatedEpisode,
-      _newFile: null,
-      _isSaving: false,
-      _error: null,
-      _originalEpisodeNumber: updatedEpisode.episode_number ?? null,
-      _originalAttachmentName: updatedEpisode.attachment_name ?? null,
-      _originalAttachmentUrl: updatedEpisode.attachment_url ?? null,
-      _originalAttachmentType: updatedEpisode.attachment_type ?? null,
-      _originalAdditionalInfo: updatedEpisode.additional_info ?? null,
-    });
-
-    toast.success(`Episode ${updatedEpisode.episode_number ?? ""} updated.`);
-    // Fetch updates - only call fetchEpisodesAndStatus to avoid cascading updates
-    fetchEpisodesAndStatus();
-  } catch (error: any) {
-    console.error("Error updating episode:", error);
-    updateExistingEpisode(episodeId, {
-      _isSaving: false,
-      _error: error.message || "Failed to save episode changes",
-    });
-    toast.error(error.message || "Failed to save episode changes");
-  }
-};
+  };
 
   const canEditEpisode = (episode: EpisodeWithDetails): boolean => {
     if (!currentUserId || !currentUserRole) return false;
@@ -1017,7 +1046,7 @@ const handleSaveExistingEpisode = async (episodeId: string) => {
                                   <TableCell>
                                     {isEvaluated ? (
                                       <Badge className="bg-green-100 text-green-800 border-green-300">
-                                       <CheckCircle2 className="h-3 w-3 mr-1" />
+                                        <CheckCircle2 className="h-3 w-3 mr-1" />
                                         Evaluated
                                       </Badge>
                                     ) : (
@@ -1029,19 +1058,19 @@ const handleSaveExistingEpisode = async (episodeId: string) => {
                                   <TableCell className="text-right">
                                     <div className="flex items-center justify-end gap-2">
                                       {isEvaluated ? (
-                                      <Button
-                                        size="sm"
-                                        variant="outline"
-                                        onClick={() => router.push(`/evaluator/episodes/${episode.id}`)}
-                                      >
+                                        <Button
+                                          size="sm"
+                                          variant="outline"
+                                          onClick={() => router.push(`/evaluator/episodes/${episode.id}`)}
+                                        >
                                           <Eye className="h-4 w-4 mr-1" />
                                           View
                                         </Button>
                                       ) : (
-                                      <Button
-                                        size="sm"
-                                        onClick={() => router.push(`/evaluator/episodes/${episode.id}`)}
-                                      >
+                                        <Button
+                                          size="sm"
+                                          onClick={() => router.push(`/evaluator/episodes/${episode.id}`)}
+                                        >
                                           <ClipboardCheck className="h-4 w-4 mr-1" />
                                           Evaluate
                                         </Button>
@@ -1167,7 +1196,7 @@ const handleSaveExistingEpisode = async (episodeId: string) => {
                                         onClick={() => handleDownload(episode)}
                                         className="text-blue-600 hover:text-blue-800 hover:underline flex items-center gap-1 w-full"
                                       >
-                                        <FileText className="h-4 w-4 flex-shrink-0" /> 
+                                        <FileText className="h-4 w-4 flex-shrink-0" />
                                         <span className="truncate">{episode.attachment_name}</span>
                                       </button>
                                     ) : (
@@ -1262,209 +1291,219 @@ const handleSaveExistingEpisode = async (episodeId: string) => {
         {/* Log Episodes Tab */}
         <TabsContent value="log">
           <div ref={logSectionRef}>
-          <form onSubmit={handleLogEpisodes} className="space-y-8">
-            {/* Select a story (backed by logged call reports) */}
-            <div className="space-y-6 bg-white p-6 rounded-lg border shadow-sm">
-              <div className="space-y-2">
-                <Label htmlFor="source-select">
-                  Select a story <span className="text-red-500">*</span>
-                </Label>
-                <Select
-                  value={selectedSource}
-                  onValueChange={setSelectedSource}
-                  disabled={logLoading}
-                >
-                  <SelectTrigger id="source-select">
-                    <SelectValue placeholder="Select a story" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {callReports.map((cr) => {
-                      const writerDisplay =
-                        cr.writer_names && cr.writer_names.length > 0
-                          ? cr.writer_names.join(", ")
-                          : cr.writer_name;
-                      return (
-                        <SelectItem key={cr.id} value={cr.id}>
-                          {cr.working_title} - {writerDisplay}
-                        </SelectItem>
-                      );
-                    })}
-                  </SelectContent>
-                </Select>
+            <form onSubmit={handleLogEpisodes} className="space-y-8">
+              {/* Select a story (backed by logged call reports) */}
+              <div className="space-y-6 bg-white p-6 rounded-lg border shadow-sm">
+                <div className="space-y-2">
+                  <Label htmlFor="source-select">
+                    Select a story <span className="text-red-500">*</span>
+                  </Label>
+                  <Select
+                    value={selectedSource}
+                    onValueChange={setSelectedSource}
+                    disabled={logLoading}
+                  >
+                    <SelectTrigger id="source-select">
+                      <SelectValue placeholder="Select a story" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {callReports.map((cr) => {
+                        const writerDisplay =
+                          cr.writer_names && cr.writer_names.length > 0
+                            ? cr.writer_names.join(", ")
+                            : cr.writer_name;
+                        return (
+                          <SelectItem key={cr.id} value={cr.id}>
+                            {cr.working_title} - {writerDisplay}
+                          </SelectItem>
+                        );
+                      })}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
-            </div>
 
-{selectedSource && (
-  <Card>
-    <CardHeader>
-      <CardTitle className="text-base">
-        Existing Episodes ({existingEpisodesForSource.length})
-      </CardTitle>
-    </CardHeader>
-    <CardContent>
-      {existingEpisodesLoading ? (
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Loader2 className="h-4 w-4 animate-spin" />
-          Loading existing episodes...
-        </div>
-      ) : existingEpisodesForSource.length === 0 ? (
-        <p className="text-sm text-muted-foreground">
-          No episodes logged yet for this story.
-        </p>
-      ) : (
-        <div className="space-y-4">
-          <Card className="bg-slate-50 border-dashed">
-            <CardHeader className="flex flex-row items-center justify-between py-3">
-              <div>
-                <CardTitle className="text-sm font-semibold">
-                  Info & edit existing episodes
-                </CardTitle>
-                <p className="text-xs text-muted-foreground">
-                  Update numbers or re-upload files below. Add-ons appear at the bottom.
-                </p>
-              </div>
-              <Info className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-          </Card>
-
-          <div className="space-y-3 max-h-[420px] overflow-y-auto pr-1">
-            {existingEpisodesForSource.map((episode, idx) => (
-              <Card key={episode.id}>
-                <CardHeader className="pb-2">
-                  <div className="flex items-center justify-between flex-wrap gap-2">
-                    <CardTitle className="text-base font-semibold">
-                      Episode {episode.episode_number ?? "—"}
+              {selectedSource && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base">
+                      Existing Episodes ({existingEpisodesForSource.length})
                     </CardTitle>
-                    <Badge variant="secondary">
-                      Logged by {episode.logged_by_user?.name || "Unknown"}
-                    </Badge>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <div className="space-y-2">
-                    <Label htmlFor={`existing-episode-${episode.id}-number`}>
-                      Episode Number
-                    </Label>
-                    <Input
-                      id={`existing-episode-${episode.id}-number`}
-                      type="number"
-                      value={episode.episode_number ?? idx + 1}
-                      onChange={(e) =>
-                        updateExistingEpisode(episode.id, {
-                          episode_number: parseInt(e.target.value) || 1,
-                        })
-                      }
-                      data-episode-number={episode.episode_number ?? idx + 1}
-                    />
-                  </div>
+                  </CardHeader>
+                  <CardContent>
+                    {existingEpisodesLoading ? (
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Loading existing episodes...
+                      </div>
+                    ) : existingEpisodesForSource.length === 0 ? (
+                      <p className="text-sm text-muted-foreground">
+                        No episodes logged yet for this story.
+                      </p>
+                    ) : (
+                      <div className="space-y-4">
+                        <Card className="bg-slate-50 border-dashed">
+                          <CardHeader className="flex flex-row items-center justify-between py-3">
+                            <div>
+                              <CardTitle className="text-sm font-semibold">
+                                Info & edit existing episodes
+                              </CardTitle>
+                              <p className="text-xs text-muted-foreground">
+                                Update numbers or re-upload files below. Add-ons appear at the bottom.
+                              </p>
+                            </div>
+                            <Info className="h-4 w-4 text-muted-foreground" />
+                          </CardHeader>
+                        </Card>
 
-                  <div className="space-y-2">
-                    <Label>Attachment</Label>
-                    <EpisodeFileUpload
-                      file={episode._newFile || null}
-                      existingFileName={episode.attachment_name || undefined}
-                      existingFileUrl={episode.attachment_url || undefined}
-                      onExistingFileDownload={() => handleDownload(episode)}
-                      onFileSelect={(file) =>
-                        updateExistingEpisode(episode.id, { _newFile: file })
-                      }
-                      onFileRemove={() =>
-                        updateExistingEpisode(episode.id, {
-                          _newFile: null,
-                          attachment_url: null,
-                          attachment_name: null,
-                          attachment_type: null,
-                        })
-                      }
-                      disabled={episode._isSaving}
-                    />
-                  </div>
+                        <div className="space-y-3 max-h-[420px] overflow-y-auto pr-1">
+                          {existingEpisodesForSource.map((episode, idx) => (
+                            <Card key={episode.id}>
+                              <CardHeader className="pb-2">
+                                <div className="flex items-center justify-between flex-wrap gap-2">
+                                  <CardTitle className="text-base font-semibold">
+                                    Episode {episode.episode_number ?? "—"}
+                                  </CardTitle>
+                                  <Badge variant="secondary">
+                                    Logged by {episode.logged_by_user?.name || "Unknown"}
+                                  </Badge>
+                                </div>
+                              </CardHeader>
+                              <CardContent className="space-y-3">
+                                <div className="space-y-2">
+                                  <Label htmlFor={`existing-episode-${episode.id}-number`}>
+                                    Episode Number
+                                  </Label>
+                                  <Input
+                                    id={`existing-episode-${episode.id}-number`}
+                                    type="number"
+                                    value={episode.episode_number ?? idx + 1}
+                                    onChange={(e) => {
+                                      const value = e.target.value;
+                                      const numValue = parseInt(value);
+                                      updateExistingEpisode(episode.id, {
+                                        episode_number: value === "" ? undefined : (isNaN(numValue) ? undefined : numValue),
+                                      });
+                                    }}
+                                    onBlur={(e) => {
+                                      const value = parseInt(e.target.value);
+                                      if (!value || value < 1) {
+                                        updateExistingEpisode(episode.id, {
+                                          episode_number: episode._originalEpisodeNumber ?? 1,
+                                        });
+                                      }
+                                    }}
+                                    data-episode-number={episode.episode_number ?? idx + 1}
+                                  />
+                                </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor={`existing-episode-${episode.id}-info`}>
-                      Additional Information
-                    </Label>
-                    <Textarea
-                      id={`existing-episode-${episode.id}-info`}
-                      rows={3}
-                      value={episode.additional_info || ""}
-                      onChange={(e) =>
-                        updateExistingEpisode(episode.id, {
-                          additional_info: e.target.value,
-                        })
-                      }
-                    />
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      {episode.additional_info?.length || 0}/5000 characters
-                    </div>
-                  </div>
+                                <div className="space-y-2">
+                                  <Label>Attachment</Label>
+                                  <EpisodeFileUpload
+                                    file={episode._newFile || null}
+                                    existingFileName={episode.attachment_name || undefined}
+                                    existingFileUrl={episode.attachment_url || undefined}
+                                    onExistingFileDownload={() => handleDownload(episode)}
+                                    onFileSelect={(file) =>
+                                      updateExistingEpisode(episode.id, { _newFile: file })
+                                    }
+                                    onFileRemove={() =>
+                                      updateExistingEpisode(episode.id, {
+                                        _newFile: null,
+                                        attachment_url: null,
+                                        attachment_name: null,
+                                        attachment_type: null,
+                                      })
+                                    }
+                                    disabled={episode._isSaving}
+                                  />
+                                </div>
 
-                  <div className="flex items-center justify-between gap-3 pt-2 border-t border-slate-100 flex-wrap">
-                    {episode._error && (
-                      <p className="text-xs text-destructive">{episode._error}</p>
+                                <div className="space-y-2">
+                                  <Label htmlFor={`existing-episode-${episode.id}-info`}>
+                                    Additional Information
+                                  </Label>
+                                  <Textarea
+                                    id={`existing-episode-${episode.id}-info`}
+                                    rows={3}
+                                    value={episode.additional_info || ""}
+                                    onChange={(e) =>
+                                      updateExistingEpisode(episode.id, {
+                                        additional_info: e.target.value,
+                                      })
+                                    }
+                                  />
+                                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                    {episode.additional_info?.length || 0}/5000 characters
+                                  </div>
+                                </div>
+
+                                <div className="flex items-center justify-between gap-3 pt-2 border-t border-slate-100 flex-wrap">
+                                  {episode._error && (
+                                    <p className="text-xs text-destructive">{episode._error}</p>
+                                  )}
+                                  <div className="ml-auto">
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      disabled={!hasEpisodeChanges(episode) || episode._isSaving}
+                                      onClick={() => handleSaveExistingEpisode(episode.id)}
+                                    >
+                                      {episode._isSaving ? (
+                                        <>
+                                          <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                          Saving...
+                                        </>
+                                      ) : (
+                                        "Save Changes"
+                                      )}
+                                    </Button>
+                                  </div>
+                                </div>
+                              </CardContent>
+                            </Card>
+                          ))}
+                        </div>
+                      </div>
                     )}
-                    <div className="ml-auto">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        disabled={!hasEpisodeChanges(episode) || episode._isSaving}
-                        onClick={() => handleSaveExistingEpisode(episode.id)}
-                      >
-                        {episode._isSaving ? (
-                          <>
-                            <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                            Saving...
-                          </>
-                        ) : (
-                          "Save Changes"
-                        )}
-                      </Button>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </div>
-      )}
-    </CardContent>
-  </Card>
-)}
+                  </CardContent>
+                </Card>
+              )}
 
-            {/* Episodes Form */}
-            {selectedSource && (
-              <div className="space-y-6">
-                <h2 className="text-xl font-semibold">Episodes</h2>
-                <EpisodeUploadForm
-                  episodes={newEpisodes}
-                  onEpisodesChange={setNewEpisodes}
-                  disabled={logLoading}
-                  existingEpisodeNumbers={existingEpisodeNumbers}
-                />
+              {/* Episodes Form */}
+              {selectedSource && (
+                <div className="space-y-6">
+                  <h2 className="text-xl font-semibold">Episodes</h2>
+                  <EpisodeUploadForm
+                    episodes={newEpisodes}
+                    onEpisodesChange={setNewEpisodes}
+                    disabled={logLoading}
+                    existingEpisodeNumbers={existingEpisodeNumbers}
+                  />
+                </div>
+              )}
+
+              {/* Submit Button */}
+              <div className="flex gap-4">
+                <Button
+                  type="submit"
+                  disabled={logLoading || !selectedSource || newEpisodes.length === 0}
+                  className="flex-1"
+                >
+                  {logLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Logging Episodes...
+                    </>
+                  ) : (
+                    <>
+                      <Plus className="mr-2 h-4 w-4" />
+                      {newEpisodes.length === 1 ? "Log Episode" : `Log ${newEpisodes.length} Episodes`}
+                    </>
+                  )}
+                </Button>
               </div>
-            )}
-
-            {/* Submit Button */}
-            <div className="flex gap-4">
-              <Button
-                type="submit"
-                disabled={logLoading || !selectedSource || newEpisodes.length === 0}
-                className="flex-1"
-              >
-                {logLoading ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Logging Episodes...
-                  </>
-                ) : (
-                  <>
-                    <Plus className="mr-2 h-4 w-4" />
-                    {newEpisodes.length === 1 ? "Log Episode" : `Log ${newEpisodes.length} Episodes`}
-                  </>
-                )}
-              </Button>
-            </div>
-          </form>
+            </form>
           </div>
         </TabsContent>
 

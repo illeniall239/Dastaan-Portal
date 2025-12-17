@@ -101,11 +101,20 @@ export function EpisodeUploadForm({
                 id={`episode-${episode.episode_number}-number`}
                 type="number"
                 min="1"
-                value={episode.episode_number}
+                value={episode.episode_number || ""}
                 data-episode-number={episode.episode_number}
-                onChange={(e) =>
-                  updateEpisode(index, "episode_number", parseInt(e.target.value) || 1)
-                }
+                onChange={(e) => {
+                  const value = e.target.value;
+                  // Allow empty string or valid number during typing
+                  updateEpisode(index, "episode_number", value === "" ? "" : parseInt(value) || "");
+                }}
+                onBlur={(e) => {
+                  // Validate on blur - ensure minimum value of 1
+                  const value = parseInt(e.target.value);
+                  if (!value || value < 1) {
+                    updateEpisode(index, "episode_number", 1);
+                  }
+                }}
                 disabled={disabled}
                 required
                 className={existingEpisodeNumbers.includes(episode.episode_number) ? "border-destructive focus-visible:ring-destructive" : ""}

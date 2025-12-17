@@ -132,6 +132,14 @@ export default function LogEpisodesPage() {
     async function fetchExistingEpisodes() {
       if (!selectedSource) {
         setExistingEpisodeNumbers([]);
+        // Reset to episode 1 when no source selected
+        setEpisodes([
+          {
+            episode_number: 1,
+            file: null,
+            additional_info: "",
+          },
+        ]);
         return;
       }
 
@@ -142,10 +150,32 @@ export default function LogEpisodesPage() {
         if (response.ok && data.data) {
           const numbers = data.data.map((ep: any) => ep.episode_number);
           setExistingEpisodeNumbers(numbers);
+
+          // Calculate next episode number
+          const nextEpisodeNumber = numbers.length > 0
+            ? Math.max(...numbers) + 1
+            : 1;
+
+          // Update initial episode state with calculated number
+          setEpisodes([
+            {
+              episode_number: nextEpisodeNumber,
+              file: null,
+              additional_info: "",
+            },
+          ]);
         }
       } catch (error) {
         console.error("Error fetching existing episodes:", error);
         setExistingEpisodeNumbers([]);
+        // Reset to episode 1 on error
+        setEpisodes([
+          {
+            episode_number: 1,
+            file: null,
+            additional_info: "",
+          },
+        ]);
       }
     }
 

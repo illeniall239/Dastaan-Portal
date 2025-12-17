@@ -25,7 +25,7 @@ export function EpisodeEditForm({ episode, onSuccess }: EpisodeEditFormProps) {
   const supabase = createClient();
 
   const [loading, setLoading] = useState(false);
-  const [episodeNumber, setEpisodeNumber] = useState(episode.episode_number);
+  const [episodeNumber, setEpisodeNumber] = useState<number | string>(episode.episode_number);
   const [additionalInfo, setAdditionalInfo] = useState(episode.additional_info || "");
   const [file, setFile] = useState<File | null>(null);
   const [existingAttachment, setExistingAttachment] = useState({
@@ -83,7 +83,7 @@ export function EpisodeEditForm({ episode, onSuccess }: EpisodeEditFormProps) {
       }
 
       const updateData = {
-        episode_number: episodeNumber,
+        episode_number: typeof episodeNumber === "string" ? parseInt(episodeNumber) || 1 : episodeNumber,
         additional_info: additionalInfo.trim() || null,
         attachment_url,
         attachment_name,
@@ -125,8 +125,19 @@ export function EpisodeEditForm({ episode, onSuccess }: EpisodeEditFormProps) {
               id="episode-number"
               type="number"
               min="1"
-              value={episodeNumber}
-              onChange={(e) => setEpisodeNumber(parseInt(e.target.value) || 1)}
+              value={episodeNumber || ""}
+              onChange={(e) => {
+                const value = e.target.value;
+                // Allow empty string or valid number during typing
+                setEpisodeNumber(value === "" ? "" : parseInt(value) || "");
+              }}
+              onBlur={(e) => {
+                // Validate on blur - ensure minimum value of 1
+                const value = parseInt(e.target.value);
+                if (!value || value < 1) {
+                  setEpisodeNumber(1);
+                }
+              }}
               disabled={loading}
               required
             />

@@ -307,12 +307,34 @@ export default function ContentDepartmentEpisodesPage() {
       if (prev.every((num, idx) => num === numbers[idx])) return prev;
       return numbers;
     });
+
+    // Calculate next episode number for new episodes
+    const nextEpisodeNumber = numbers.length > 0
+      ? Math.max(...numbers) + 1
+      : 1;
+
+    // Update initial episode state with calculated number
+    setNewEpisodes([
+      {
+        episode_number: nextEpisodeNumber,
+        file: null,
+        additional_info: "",
+      },
+    ]);
   }, [existingEpisodesForSource]);
 
   const loadExistingEpisodes = useCallback(async () => {
     if (!selectedSource) {
       setExistingEpisodesForSource([]);
       setExistingEpisodeNumbers([]);
+      // Reset to episode 1 when no source selected
+      setNewEpisodes([
+        {
+          episode_number: 1,
+          file: null,
+          additional_info: "",
+        },
+      ]);
       return;
     }
 
@@ -350,6 +372,14 @@ export default function ContentDepartmentEpisodesPage() {
       toast.error("Failed to fetch existing episodes");
       setExistingEpisodesForSource([]);
       setExistingEpisodeNumbers([]);
+      // Reset to episode 1 on error
+      setNewEpisodes([
+        {
+          episode_number: 1,
+          file: null,
+          additional_info: "",
+        },
+      ]);
     } finally {
       setExistingEpisodesLoading(false);
     }
@@ -1152,11 +1182,21 @@ export default function ContentDepartmentEpisodesPage() {
                                     id={`existing-episode-${episode.id}-number`}
                                     type="number"
                                     value={episode.episode_number ?? idx + 1}
-                                    onChange={(e) =>
+                                    onChange={(e) => {
+                                      const value = e.target.value;
+                                      const numValue = parseInt(value);
                                       updateExistingEpisode(episode.id, {
-                                        episode_number: parseInt(e.target.value) || 1,
-                                      })
-                                    }
+                                        episode_number: value === "" ? undefined : (isNaN(numValue) ? undefined : numValue),
+                                      });
+                                    }}
+                                    onBlur={(e) => {
+                                      const value = parseInt(e.target.value);
+                                      if (!value || value < 1) {
+                                        updateExistingEpisode(episode.id, {
+                                          episode_number: episode._originalEpisodeNumber ?? 1,
+                                        });
+                                      }
+                                    }}
                                     data-episode-number={episode.episode_number ?? idx + 1}
                                   />
                                 </div>
