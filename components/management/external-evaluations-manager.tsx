@@ -43,6 +43,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { ExternalEvaluationDetailModal } from "./external-evaluation-detail-modal";
 
 interface ExternalEvaluationsManagerProps {
   links: any[];
@@ -62,59 +63,10 @@ export function ExternalEvaluationsManager({
   contentCountsMap,
 }: ExternalEvaluationsManagerProps) {
   const router = useRouter();
-  const [isGenerateDialogOpen, setIsGenerateDialogOpen] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Form state
-  const [contentType, setContentType] = useState<"episode" | "one_liner" | "call_report">("episode");
-  const [selectedContentId, setSelectedContentId] = useState("");
-  const [expiresInDays, setExpiresInDays] = useState(30);
-  const [notes, setNotes] = useState("");
+  const [selectedEvaluation, setSelectedEvaluation] = useState<any>(null);
 
-  const [generatedLink, setGeneratedLink] = useState<string | null>(null);
 
-  const handleGenerateLink = async () => {
-    if (!selectedContentId) {
-      toast.error("Please select content to evaluate");
-      return;
-    }
-
-    setIsSubmitting(true);
-
-    try {
-      const response = await fetch("/api/management/external/generate-link", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          content_type: contentType,
-          content_id: selectedContentId,
-          expires_in_days: expiresInDays,
-          notes: notes || undefined,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || "Failed to generate link");
-      }
-
-      toast.success("Shareable link generated successfully!");
-      setGeneratedLink(data.link.url);
-
-      // Reset form
-      setSelectedContentId("");
-      setNotes("");
-
-      // Refresh page data
-      router.refresh();
-    } catch (error: any) {
-      console.error("Error generating link:", error);
-      toast.error(error.message || "Failed to generate link");
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
@@ -150,148 +102,7 @@ export function ExternalEvaluationsManager({
 
   return (
     <div className="space-y-6">
-      {/* Generate Link Section */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Generate Shareable Link</CardTitle>
-          <CardDescription>
-            Create a shareable evaluation link for external evaluators
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Dialog open={isGenerateDialogOpen} onOpenChange={setIsGenerateDialogOpen}>
-            <DialogTrigger asChild>
-              <Button>
-                <Plus className="h-4 w-4 mr-2" />
-                Generate New Link
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-[600px]">
-              <DialogHeader>
-                <DialogTitle>Generate External Evaluation Link</DialogTitle>
-                <DialogDescription>
-                  Create a shareable link for external evaluators to provide feedback
-                </DialogDescription>
-              </DialogHeader>
 
-              {generatedLink ? (
-                <div className="space-y-4">
-                  <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                    <div className="flex items-start gap-3">
-                      <CheckCircle className="h-5 w-5 text-green-600 mt-0.5" />
-                      <div className="flex-1">
-                        <h4 className="font-semibold text-green-900 mb-2">Link Generated Successfully!</h4>
-                        <div className="bg-white border rounded p-3 flex items-center justify-between">
-                          <code className="text-sm text-gray-700 flex-1 mr-2 break-all">
-                            {generatedLink}
-                          </code>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => copyToClipboard(generatedLink)}
-                          >
-                            <Copy className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  <Button
-                    onClick={() => {
-                      setGeneratedLink(null);
-                      setIsGenerateDialogOpen(false);
-                    }}
-                    className="w-full"
-                  >
-                    Done
-                  </Button>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  <div>
-                    <Label>Content Type *</Label>
-                    <Select
-                      value={contentType}
-                      onValueChange={(value) => {
-                        setContentType(value as "episode" | "one_liner" | "call_report");
-                        setSelectedContentId("");
-                      }}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="episode">Episode</SelectItem>
-                        <SelectItem value="one_liner">One-Liner</SelectItem>
-                        <SelectItem value="call_report">Call Report</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div>
-                    <Label>Select Content *</Label>
-                    <Select value={selectedContentId} onValueChange={setSelectedContentId}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Choose content to evaluate" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {contentType === "episode"
-                          ? episodes.map((episode) => (
-                              <SelectItem key={episode.id} value={episode.id}>
-                                Episode {episode.episode_number} - {(episode as any).stories?.title}
-                              </SelectItem>
-                            ))
-                          : contentType === "one_liner"
-                          ? oneLiners.map((oneLiner) => (
-                              <SelectItem key={oneLiner.id} value={oneLiner.id}>
-                                {(oneLiner as any).stories?.title} ({oneLiner.writer_name})
-                              </SelectItem>
-                            ))
-                          : callReports.map((report) => (
-                              <SelectItem key={report.id} value={report.id}>
-                                {report.call_report_id} - {report.working_title}
-                              </SelectItem>
-                            ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div>
-                    <Label>Expires In (Days)</Label>
-                    <Input
-                      type="number"
-                      value={expiresInDays}
-                      onChange={(e) => setExpiresInDays(parseInt(e.target.value) || 30)}
-                      min={1}
-                      max={365}
-                    />
-                  </div>
-
-                  <div>
-                    <Label>Notes (Internal)</Label>
-                    <Input
-                      value={notes}
-                      onChange={(e) => setNotes(e.target.value)}
-                      placeholder="Why was this link created?"
-                    />
-                  </div>
-
-                  <Button onClick={handleGenerateLink} disabled={isSubmitting} className="w-full">
-                    {isSubmitting ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Generating...
-                      </>
-                    ) : (
-                      "Generate Link"
-                    )}
-                  </Button>
-                </div>
-              )}
-            </DialogContent>
-          </Dialog>
-        </CardContent>
-      </Card>
 
       {/* Tabs for Links and Evaluations */}
       <Tabs defaultValue="links" className="w-full">
@@ -424,34 +235,43 @@ export function ExternalEvaluationsManager({
                         <TableHead>Type</TableHead>
                         <TableHead>Evaluator</TableHead>
                         <TableHead>Email</TableHead>
-                        <TableHead>Organization</TableHead>
                         <TableHead>Submitted</TableHead>
                         <TableHead>Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {evaluations.map((evaluation) => (
-                        <TableRow key={evaluation.id}>
+                      {evaluations.map((submission) => (
+                        <TableRow key={submission.id}>
                           <TableCell>
-                            <Badge variant="outline">
-                              {evaluation.content_type === "episode" ? "Episode" : "One-Liner"}
-                            </Badge>
+                            {submission.evaluation_count > 1 ? (
+                              // Multi-content submission
+                              <div className="flex flex-col gap-1">
+                                <Badge variant="outline">
+                                  {submission.evaluations.length} Evaluations
+                                </Badge>
+                                <span className="text-xs text-muted-foreground">
+                                  {submission.evaluations.filter((e: any) => e.content_type === 'call_report' || e.content_type === 'one_liner').length > 0 && 'One-Liner + '}
+                                  {submission.evaluations.filter((e: any) => e.content_type === 'episode').length} Episode{submission.evaluations.filter((e: any) => e.content_type === 'episode').length !== 1 ? 's' : ''}
+                                </span>
+                              </div>
+                            ) : (
+                              // Single evaluation (backwards compatible)
+                              <Badge variant="outline">
+                                {submission.evaluations[0].content_type === "episode" ? "Episode" : "One-Liner"}
+                              </Badge>
+                            )}
                           </TableCell>
-                          <TableCell>{evaluation.evaluator_name || "Anonymous"}</TableCell>
-                          <TableCell>{evaluation.evaluator_email || "-"}</TableCell>
-                          <TableCell>{evaluation.evaluator_organization || "-"}</TableCell>
-                          <TableCell className="text-sm">{formatDate(evaluation.submitted_at)}</TableCell>
+                          <TableCell>{submission.evaluator_name || "Anonymous"}</TableCell>
+                          <TableCell>{submission.evaluator_email || "-"}</TableCell>
+                          <TableCell className="text-sm">{formatDate(submission.submitted_at)}</TableCell>
                           <TableCell>
                             <Button
                               size="sm"
                               variant="outline"
-                              onClick={() => {
-                                // TODO: Open detail view modal
-                                toast.info("Detail view coming soon");
-                              }}
+                              onClick={() => setSelectedEvaluation(submission)}
                             >
                               <Eye className="h-3 w-3 mr-1" />
-                              View
+                              View {submission.evaluation_count > 1 && `(${submission.evaluation_count})`}
                             </Button>
                           </TableCell>
                         </TableRow>
@@ -464,6 +284,13 @@ export function ExternalEvaluationsManager({
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* External Evaluation Detail Modal */}
+      <ExternalEvaluationDetailModal
+        evaluation={selectedEvaluation}
+        isOpen={!!selectedEvaluation}
+        onClose={() => setSelectedEvaluation(null)}
+      />
     </div>
   );
 }

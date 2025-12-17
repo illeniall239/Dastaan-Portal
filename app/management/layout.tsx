@@ -16,6 +16,11 @@ const managementNavItems = [
     icon: "chefHat",
   },
   {
+    title: "Evaluations",
+    href: "/management/evaluations",
+    icon: "clipboardCheck",
+  },
+  {
     title: "Calendar",
     href: "/management/calendar",
     icon: "calendar",

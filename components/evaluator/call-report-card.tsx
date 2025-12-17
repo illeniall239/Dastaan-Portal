@@ -1,12 +1,10 @@
 "use client";
 
-import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { EyeIcon, FilePenLine, Share2, TrendingUp, TrendingDown, Minus } from "lucide-react";
+import { EyeIcon, FilePenLine, TrendingUp, TrendingDown, Minus } from "lucide-react";
 import Link from "next/link";
-import { ShareLinkDialog } from "@/components/management/share-link-dialog";
 import { EvaluationProgressBar } from "@/components/evaluations/evaluation-progress-bar";
 
 interface CallReportCardProps {
@@ -14,7 +12,7 @@ interface CallReportCardProps {
 }
 
 export function CallReportCard({ report }: CallReportCardProps) {
-  const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
+  // Format timestamp
 
   // Format timestamp
   const loggedTimestamp =
@@ -80,12 +78,12 @@ export function CallReportCard({ report }: CallReportCardProps) {
                       evalStatus === "accepted"
                         ? "default"
                         : evalStatus === "rejected"
-                        ? "destructive"
-                        : evalStatus === "needs_improvement"
-                        ? "secondary"
-                        : evalStatus === "completed_after_deadline"
-                        ? "secondary"
-                        : "outline"
+                          ? "destructive"
+                          : evalStatus === "needs_improvement"
+                            ? "secondary"
+                            : evalStatus === "completed_after_deadline"
+                              ? "secondary"
+                              : "outline"
                     }
                     className="text-xs"
                   >
@@ -166,27 +164,9 @@ export function CallReportCard({ report }: CallReportCardProps) {
                 Detailed One-Liner
               </Link>
             </Button>
-            {/* NEW: Share Externally Button */}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setIsShareDialogOpen(true)}
-            >
-              <Share2 className="h-4 w-4 mr-2" />
-              Share Externally
-            </Button>
           </div>
         </CardContent>
       </Card>
-
-      {/* Share Dialog */}
-      <ShareLinkDialog
-        isOpen={isShareDialogOpen}
-        onClose={() => setIsShareDialogOpen(false)}
-        contentType="call_report"
-        contentId={report.id}
-        contentTitle={report.working_title || report.title}
-      />
     </>
   );
 }
