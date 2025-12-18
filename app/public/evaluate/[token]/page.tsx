@@ -477,19 +477,18 @@ export default function ExternalEvaluatePage({ params }: ExternalEvaluatePagePro
                 </div>
 
                 {/* Step indicators */}
-                <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 overflow-x-auto pb-2 -mx-2 px-2">
                   {contents.map((item, index) => (
                     <div
                       key={index}
-                      className={`flex-1 text-center p-2 rounded border ${
-                        index === currentStep
+                      className={`flex-shrink-0 min-w-[60px] sm:min-w-[80px] text-center p-2 rounded border ${index === currentStep
                           ? "border-primary bg-primary/5"
                           : index < currentStep
-                          ? "border-green-500 bg-green-50"
-                          : "border-gray-200"
-                      }`}
+                            ? "border-green-500 bg-green-50"
+                            : "border-gray-200"
+                        }`}
                     >
-                      <div className="text-xs font-medium">
+                      <div className="text-xs font-medium truncate">
                         {item.type === "call_report" ? "One-Liner" : `Ep ${item.episode_number}`}
                       </div>
                       {index < currentStep && (
