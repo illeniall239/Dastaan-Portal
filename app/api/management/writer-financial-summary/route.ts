@@ -103,8 +103,8 @@ export async function GET() {
     const paymentScheduleIds = paymentSchedules?.map((ps: any) => ps.id) || [];
     const { data: payments, error: paymentsError } = await adminClient
       .from("payments")
-      .select("id, payment_schedule_id, net_amount, status")
-      .in("payment_schedule_id", paymentScheduleIds)
+      .select("id, schedule_id, net_amount, status")
+      .in("schedule_id", paymentScheduleIds)
       .eq("status", "paid");
 
     if (paymentsError) {
@@ -224,7 +224,7 @@ export async function GET() {
 
     // Process payments
     (payments || []).forEach((payment: any) => {
-      const paymentSchedule = paymentScheduleMap.get(payment.payment_schedule_id);
+      const paymentSchedule = paymentScheduleMap.get(payment.schedule_id);
 
       if (!paymentSchedule) {
         console.warn('Payment without payment schedule:', payment.id);

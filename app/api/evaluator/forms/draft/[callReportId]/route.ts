@@ -29,6 +29,7 @@ const draftDataSchema = z.object({
   comments: z.string().optional(),
   decision: z.enum(["approve", "reject"]).optional(),
   decisionNotes: z.string().optional(),
+  accumulatedTimeMinutes: z.number().min(0).optional(),
 });
 
 export async function GET(

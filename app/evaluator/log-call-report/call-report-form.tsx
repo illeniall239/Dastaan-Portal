@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { useFormTimeTracking } from "@/lib/hooks/useFormTimeTracking";
 import {
   Select,
   SelectContent,
@@ -78,6 +79,11 @@ export function CallReportForm({
     display_order: number;
   }>>([]);
   const [loglineImageUrl, setLoglineImageUrl] = useState<string | null>(null);
+
+  // Track time spent on form (only for new reports)
+  const timeSpentMinutes = useFormTimeTracking({
+    enabled: mode === "create",
+  });
 
   // Form state
   const [formData, setFormData] = useState({
@@ -347,6 +353,8 @@ export function CallReportForm({
           developed_by: formData.developedBy || undefined,
           management_member_name: formData.managementMemberName || undefined,
           meeting_date: new Date().toISOString(),
+          time_spent_minutes: timeSpentMinutes,
+          form_started_at: new Date().toISOString(),
           attendees: writers.map(w => w.writer_email).filter((email): email is string => !!email),
           notes: formData.notes,
           next_steps: formData.nextSteps,

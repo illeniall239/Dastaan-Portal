@@ -14,6 +14,7 @@ const draftDataSchema = z.object({
   progressionScore: z.number(),
   freezesScore: z.number(),
   whatsNextScore: z.number(),
+  accumulatedTimeMinutes: z.number().min(0).optional(),
 });
 
 export async function GET(

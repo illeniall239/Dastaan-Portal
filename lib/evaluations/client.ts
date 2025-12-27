@@ -43,6 +43,8 @@ export interface CreateEvaluationInput {
   comments?: string;
   decision: "approve" | "reject";
   decision_notes?: string;
+  time_spent_minutes?: number;
+  started_at?: string;
 }
 
 export interface UpdateEvaluationInput {
@@ -62,6 +64,8 @@ export interface UpdateEvaluationInput {
   comments?: string | null;
   decision?: "approve" | "reject";
   decision_notes?: string | null;
+  time_spent_minutes?: number;
+  started_at?: string;
 }
 
 /**
@@ -100,6 +104,8 @@ export async function createEvaluationClient(evaluationData: CreateEvaluationInp
       first_2_eps_required: evaluationData.first_2_eps_required || null,
       decision: evaluationData.decision,
       decision_notes: evaluationData.decision_notes || null,
+      time_spent_minutes: evaluationData.time_spent_minutes || null,
+      started_at: evaluationData.started_at || null,
       submitted_at: new Date().toISOString(),
     })
     .select()
@@ -205,6 +211,8 @@ export async function updateEvaluationClient(evaluationData: UpdateEvaluationInp
     overall_assessment_score,
     first_2_eps_required,
     comments,
+    time_spent_minutes,
+    started_at,
   } = evaluationData;
 
   const updatePayload: any = {
@@ -223,6 +231,8 @@ export async function updateEvaluationClient(evaluationData: UpdateEvaluationInp
     comments: comments ?? null,
     decision: evaluationData.decision,
     decision_notes: evaluationData.decision_notes ?? null,
+    time_spent_minutes: time_spent_minutes ?? null,
+    started_at: started_at ?? null,
     updated_at: new Date().toISOString(),
   };
 

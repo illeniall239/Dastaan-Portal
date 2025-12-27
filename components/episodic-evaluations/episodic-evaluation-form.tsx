@@ -12,6 +12,7 @@ import { EventsList } from "./events-list";
 import { ScoreCard } from "./score-card";
 import { AutoCalculatedScore } from "./auto-calculated-score";
 import { OverallAssessment } from "./overall-assessment";
+import { useFormTimeTracking } from "@/lib/hooks/useFormTimeTracking";
 import {
   episodicEvaluationSchema,
   calculatePagesScore,
@@ -65,7 +66,14 @@ export function EpisodicEvaluationForm({
   const [savingDraft, setSavingDraft] = useState(false);
   const [showDraftDialog, setShowDraftDialog] = useState(false);
   const [pendingDraftData, setPendingDraftData] = useState<any>(null);
+  const [initialTimeFromDraft, setInitialTimeFromDraft] = useState(0);
   const isReadOnly = disabled || !!existingEvaluation;
+
+  // Track time spent on form
+  const timeSpentMinutes = useFormTimeTracking({
+    enabled: !isReadOnly,
+    initialTime: initialTimeFromDraft,
+  });
 
   // Form state
   const [noOfPages, setNoOfPages] = useState(existingEvaluation?.no_of_pages || 45);
@@ -149,6 +157,7 @@ export function EpisodicEvaluationForm({
         freezesScore,
         whatsNextScore,
         overallAssessmentScore,
+        accumulatedTimeMinutes: timeSpentMinutes,
       };
 
       const response = await fetch(`/api/episodic-evaluations/draft/${episode.id}`, {
@@ -186,6 +195,10 @@ export function EpisodicEvaluationForm({
       setFreezesScore(pendingDraftData.freezesScore);
       setWhatsNextScore(pendingDraftData.whatsNextScore);
       setOverallAssessmentScore(pendingDraftData.overallAssessmentScore || 5);
+
+      // Load accumulated time from draft
+      setInitialTimeFromDraft(pendingDraftData.accumulatedTimeMinutes || 0);
+
       toast.success("Draft loaded successfully!");
       setShowDraftDialog(false);
       setPendingDraftData(null);
@@ -238,6 +251,8 @@ export function EpisodicEvaluationForm({
       freezes_score: freezesScore,
       whats_next_element_score: whatsNextScore,
       overall_assessment_score: overallAssessmentScore,
+      time_spent_minutes: timeSpentMinutes,
+      started_at: new Date().toISOString(),
     };
 
     const validation = episodicEvaluationSchema.safeParse(formData);

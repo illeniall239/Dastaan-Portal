@@ -73,6 +73,10 @@ export const episodicEvaluationSchema = z.object({
     .int("Score must be an integer")
     .min(1, "Score must be at least 1")
     .max(10, "Score must be at most 10"),
+
+  // Time tracking (optional)
+  time_spent_minutes: z.number().min(0).optional(),
+  started_at: z.string().datetime().optional(),
 });
 
 export type EpisodicEvaluationFormData = z.infer<typeof episodicEvaluationSchema>;

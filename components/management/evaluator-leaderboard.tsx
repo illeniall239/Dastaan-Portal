@@ -88,11 +88,11 @@ export function EvaluatorLeaderboard({ evaluators }: EvaluatorLeaderboardProps) 
                 <TableHeader>
                   <TableRow>
                     <TableHead className="text-xs sm:text-sm">Evaluator</TableHead>
-                    <TableHead className="text-center text-xs sm:text-sm">Total One-Liners</TableHead>
-                    <TableHead className="text-center text-xs sm:text-sm">Episodic Evaluations</TableHead>
                     <TableHead className="text-center text-xs sm:text-sm">Writer Engagement Reports</TableHead>
+                    <TableHead className="text-center text-xs sm:text-sm">Episodic Evaluations</TableHead>
+                    <TableHead className="text-center text-xs sm:text-sm">One-liner Evaluations</TableHead>
                     <TableHead className="text-center text-xs sm:text-sm">Total Activities</TableHead>
-                    <TableHead className="text-center text-xs sm:text-sm">Avg Time Spent</TableHead>
+                    <TableHead className="text-center text-xs sm:text-sm">Time Spent (mins/day)</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -112,13 +112,13 @@ export function EvaluatorLeaderboard({ evaluators }: EvaluatorLeaderboardProps) 
                           </div>
                         </TableCell>
                         <TableCell className="text-center text-xs sm:text-sm p-2 sm:p-4">
-                          {evaluator.oneLinerCount}
+                          {evaluator.writerEngagementReports}
                         </TableCell>
                         <TableCell className="text-center text-xs sm:text-sm p-2 sm:p-4">
                           {evaluator.episodicEvals}
                         </TableCell>
                         <TableCell className="text-center text-xs sm:text-sm p-2 sm:p-4">
-                          {evaluator.callReportEvals}
+                          {evaluator.oneLinerEvaluations}
                         </TableCell>
                         <TableCell className="text-center p-2 sm:p-4">
                           <Badge variant="outline" className="font-bold text-[10px] sm:text-xs">
@@ -126,7 +126,7 @@ export function EvaluatorLeaderboard({ evaluators }: EvaluatorLeaderboardProps) 
                           </Badge>
                         </TableCell>
                         <TableCell className="text-center text-xs sm:text-sm p-2 sm:p-4">
-                          {evaluator.avgTimeSpent.toFixed(1)} hrs
+                          {evaluator.avgTimeSpent.toFixed(1)} mins/day
                         </TableCell>
                       </TableRow>
                     ))

@@ -51,6 +51,8 @@ export interface CreateMeetingInput {
   status: string;
   created_by: string;
   overall_rating?: number; // Initial assessment score (1-10) - only for call reports
+  time_spent_minutes?: number; // Time spent creating this call report (tracked in frontend)
+  form_started_at?: string; // When the form was first opened
 }
 
 /**
@@ -152,6 +154,8 @@ export async function createMeetingClient(meetingData: CreateMeetingInput) {
     required_evaluations: 5,
     minimum_evaluations_for_deadline: 3,
     overall_rating: meetingData.overall_rating || null,
+    time_spent_minutes: meetingData.time_spent_minutes || null,
+    form_started_at: meetingData.form_started_at || null,
   };
 
   // First, create a story record for this call report

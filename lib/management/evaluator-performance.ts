@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 /**
  * Evaluator Performance Analytics for Management Dashboard
@@ -15,11 +16,11 @@ export interface EvaluatorStats {
   id: string;
   name: string;
   email: string;
-  oneLinerCount: number;
+  oneLinerEvaluations: number;      // One-liner evaluations (call report evaluations)
   episodicEvals: number;
-  callReportEvals: number;
+  writerEngagementReports: number;  // Call reports logged by evaluator
   totalEvaluations: number;
-  avgTimeSpent: number; // average hours per evaluation
+  avgTimeSpent: number; // minutes per day (actual time tracking)
 }
 
 export interface EvaluatorWorkload {
@@ -45,6 +46,7 @@ export interface EvaluatorActivity {
  */
 export async function getEvaluatorOverview(): Promise<EvaluatorOverview> {
   const supabase = await createClient();
+  const adminClient = createAdminClient();
 
   try {
     // Get all evaluators
@@ -54,13 +56,14 @@ export async function getEvaluatorOverview(): Promise<EvaluatorOverview> {
       .eq("role", "evaluator")
       .eq("status", "active");
 
+    // Use admin client to bypass RLS
     // Get all call report evaluations
-    const { data: callReportEvals } = await supabase
+    const { data: callReportEvals } = await adminClient
       .from("evaluator_forms")
       .select("evaluator_id, created_at");
 
     // Get all episodic evaluations
-    const { data: episodicEvals } = await supabase
+    const { data: episodicEvals } = await adminClient
       .from("episodic_evaluations")
       .select("evaluator_id, submitted_at");
 
@@ -94,9 +97,10 @@ export async function getEvaluatorOverview(): Promise<EvaluatorOverview> {
  */
 export async function getAllEvaluatorStats(fromDate?: Date, toDate?: Date): Promise<EvaluatorStats[]> {
   const supabase = await createClient();
+  const adminClient = createAdminClient();
 
   try {
-    // Get all evaluators
+    // Get all evaluators (using regular client for auth check)
     const { data: evaluators } = await supabase
       .from("users")
       .select("id, name, email")
@@ -105,10 +109,11 @@ export async function getAllEvaluatorStats(fromDate?: Date, toDate?: Date): Prom
 
     if (!evaluators) return [];
 
+    // Use admin client to bypass RLS for data fetching
     // Get call report evaluations with timestamps (with optional date filtering)
-    let callReportQuery = supabase
+    let callReportQuery = adminClient
       .from("evaluator_forms")
-      .select("evaluator_id, created_at");
+      .select("evaluator_id, created_at, time_spent_minutes");
 
     if (fromDate) {
       callReportQuery = callReportQuery.gte("created_at", fromDate.toISOString());
@@ -117,12 +122,16 @@ export async function getAllEvaluatorStats(fromDate?: Date, toDate?: Date): Prom
       callReportQuery = callReportQuery.lte("created_at", toDate.toISOString());
     }
 
-    const { data: callReportEvals } = await callReportQuery;
+    const { data: callReportEvals, error: crError } = await callReportQuery;
+
+    if (crError) {
+      console.error("Error fetching call report evaluations:", crError);
+    }
 
     // Get episodic evaluations with timestamps (with optional date filtering)
-    let episodicQuery = supabase
+    let episodicQuery = adminClient
       .from("episodic_evaluations")
-      .select("evaluator_id, submitted_at");
+      .select("evaluator_id, submitted_at, time_spent_minutes");
 
     if (fromDate) {
       episodicQuery = episodicQuery.gte("submitted_at", fromDate.toISOString());
@@ -131,56 +140,86 @@ export async function getAllEvaluatorStats(fromDate?: Date, toDate?: Date): Prom
       episodicQuery = episodicQuery.lte("submitted_at", toDate.toISOString());
     }
 
-    const { data: episodicEvals } = await episodicQuery;
+    const { data: episodicEvals, error: epError } = await episodicQuery;
 
-    // Get one-liner decisions (with optional date filtering)
-    let oneLinersQuery = supabase
-      .from("one_liners")
-      .select("decided_by, decided_at");
+    if (epError) {
+      console.error("Error fetching episodic evaluations:", epError);
+    }
+
+    // Get call reports created by evaluators (logged call reports)
+    let callReportsQuery = adminClient
+      .from("call_reports")
+      .select("created_by, created_at, time_spent_minutes");
 
     if (fromDate) {
-      oneLinersQuery = oneLinersQuery.gte("decided_at", fromDate.toISOString());
+      callReportsQuery = callReportsQuery.gte("created_at", fromDate.toISOString());
     }
     if (toDate) {
-      oneLinersQuery = oneLinersQuery.lte("decided_at", toDate.toISOString());
+      callReportsQuery = callReportsQuery.lte("created_at", toDate.toISOString());
     }
 
-    const { data: oneLiners } = await oneLinersQuery;
+    const { data: callReports, error: crLogsError } = await callReportsQuery;
+
+    if (crLogsError) {
+      console.error("Error fetching call reports:", crLogsError);
+    }
+
+    console.log('Evaluator stats data fetched:', {
+      evaluators: evaluators.length,
+      callReportEvals: callReportEvals?.length || 0,
+      episodicEvals: episodicEvals?.length || 0,
+      callReportsLogged: callReports?.length || 0
+    });
 
     return evaluators.map(evaluator => {
       const crEvals = callReportEvals?.filter(e => e.evaluator_id === evaluator.id) || [];
       const epEvals = episodicEvals?.filter(e => e.evaluator_id === evaluator.id) || [];
-      const oneLinerDecisions = oneLiners?.filter(ol => ol.decided_by === evaluator.id) || [];
+      const loggedCallReports = callReports?.filter(cr => cr.created_by === evaluator.id) || [];
 
-      const totalEvaluations = crEvals.length + epEvals.length;
+      // Total Activities = ALL activities (evaluations + logged call reports)
+      const totalActivities = crEvals.length + epEvals.length + loggedCallReports.length;
 
-      // Calculate average time spent (hours per evaluation)
+      // Calculate mins per day from actual time spent
       const allDates = [
         ...crEvals.map(e => new Date(e.created_at)),
         ...epEvals.map(e => new Date(e.submitted_at)),
-        ...oneLinerDecisions.map(ol => new Date(ol.decided_at)).filter(d => !isNaN(d.getTime())),
+        ...loggedCallReports.map(cr => new Date(cr.created_at)).filter(d => !isNaN(d.getTime())),
       ].filter(d => d instanceof Date && !isNaN(d.getTime()));
 
       let avgTimeSpent = 0;
-      if (allDates.length >= 2) {
-        const sortedDates = allDates.sort((a, b) => a.getTime() - b.getTime());
-        const firstDate = sortedDates[0];
-        const lastDate = sortedDates[sortedDates.length - 1];
-        const diffTime = Math.abs(lastDate.getTime() - firstDate.getTime());
-        const totalHoursActive = diffTime / (1000 * 60 * 60); // Convert to hours
-        // Average hours per evaluation
-        avgTimeSpent = totalEvaluations > 0 ? parseFloat((totalHoursActive / totalEvaluations).toFixed(1)) : 0;
+      if (allDates.length >= 1) {
+        // Calculate total minutes spent across all activities
+        const totalMinutes = [
+          ...crEvals.map(e => e.time_spent_minutes || 0),
+          ...epEvals.map(e => e.time_spent_minutes || 0),
+          ...loggedCallReports.map(cr => cr.time_spent_minutes || 0),
+        ].reduce((sum, mins) => sum + mins, 0);
+
+        if (totalMinutes > 0 && allDates.length >= 2) {
+          // Calculate active days range
+          const sortedDates = allDates.sort((a, b) => a.getTime() - b.getTime());
+          const firstDate = sortedDates[0];
+          const lastDate = sortedDates[sortedDates.length - 1];
+          const diffTime = Math.abs(lastDate.getTime() - firstDate.getTime());
+          const totalDaysActive = Math.max(1, diffTime / (1000 * 60 * 60 * 24)); // At least 1 day
+
+          // Minutes per day
+          avgTimeSpent = parseFloat((totalMinutes / totalDaysActive).toFixed(1));
+        } else if (totalMinutes > 0) {
+          // Only one activity - use total minutes as mins/day
+          avgTimeSpent = totalMinutes;
+        }
       }
 
       return {
         id: evaluator.id,
         name: evaluator.name,
         email: evaluator.email,
-        oneLinerCount: oneLinerDecisions.length,
+        oneLinerEvaluations: crEvals.length,           // One-liner evaluations (call report evaluations)
         episodicEvals: epEvals.length,
-        callReportEvals: crEvals.length,
-        totalEvaluations,
-        avgTimeSpent,
+        writerEngagementReports: loggedCallReports.length,  // Call reports logged by evaluator
+        totalEvaluations: totalActivities,  // Changed to totalActivities to count ALL activities
+        avgTimeSpent,  // Now represents activities per day (frequency)
       };
     });
   } catch (error) {
@@ -194,6 +233,7 @@ export async function getAllEvaluatorStats(fromDate?: Date, toDate?: Date): Prom
  */
 export async function getEvaluatorWorkloads(): Promise<EvaluatorWorkload[]> {
   const supabase = await createClient();
+  const adminClient = createAdminClient();
 
   try {
     // Get all evaluators
@@ -205,8 +245,9 @@ export async function getEvaluatorWorkloads(): Promise<EvaluatorWorkload[]> {
 
     if (!evaluators) return [];
 
+    // Use admin client to bypass RLS
     // Get assignments
-    const { data: assignments } = await supabase
+    const { data: assignments } = await adminClient
       .from("evaluator_assignments")
       .select("evaluator_id, status");
 
@@ -236,6 +277,7 @@ export async function getEvaluatorWorkloads(): Promise<EvaluatorWorkload[]> {
  */
 export async function getEvaluatorActivityHeatmap(): Promise<EvaluatorActivity[]> {
   const supabase = await createClient();
+  const adminClient = createAdminClient();
 
   try {
     // Get all evaluators
@@ -251,12 +293,13 @@ export async function getEvaluatorActivityHeatmap(): Promise<EvaluatorActivity[]
     const twelveWeeksAgo = new Date();
     twelveWeeksAgo.setDate(twelveWeeksAgo.getDate() - 84);
 
-    const { data: callReportEvals } = await supabase
+    // Use admin client to bypass RLS
+    const { data: callReportEvals } = await adminClient
       .from("evaluator_forms")
       .select("evaluator_id, created_at")
       .gte("created_at", twelveWeeksAgo.toISOString());
 
-    const { data: episodicEvals } = await supabase
+    const { data: episodicEvals } = await adminClient
       .from("episodic_evaluations")
       .select("evaluator_id, submitted_at")
       .gte("submitted_at", twelveWeeksAgo.toISOString());

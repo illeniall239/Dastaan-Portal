@@ -4,11 +4,11 @@ export interface EvaluatorStats {
   id: string;
   name: string;
   email: string;
-  oneLinerCount: number;
+  oneLinerEvaluations: number;      // One-liner evaluations (call report evaluations)
   episodicEvals: number;
-  callReportEvals: number;
+  writerEngagementReports: number;  // Call reports logged by evaluator
   totalEvaluations: number;
-  avgTimeSpent: number;
+  avgTimeSpent: number; // minutes per day (actual time tracking)
 }
 
 interface UseEvaluatorStatsOptions {

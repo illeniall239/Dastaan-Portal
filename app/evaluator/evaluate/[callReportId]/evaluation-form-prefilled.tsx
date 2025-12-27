@@ -15,6 +15,7 @@ import { ArrowLeftIcon, PaperclipIcon, Loader2, FilePenLine } from "lucide-react
 import { ScoreCard } from "@/components/episodic-evaluations/score-card";
 import { CallReportOverallAssessment } from "@/components/evaluations/call-report-overall-assessment";
 import { DetailedOneLinerDisplay } from "@/components/evaluations/detailed-one-liner-display";
+import { useFormTimeTracking } from "@/lib/hooks/useFormTimeTracking";
 import {
   AlertDialog,
   AlertDialogContent,
@@ -83,6 +84,13 @@ export function EvaluatorEvaluationForm({
   const [pendingDraftData, setPendingDraftData] = useState<any>(null);
   const [existingEvaluation, setExistingEvaluation] = useState<any>(null);
   const [isEditing, setIsEditing] = useState(false);
+  const [initialTimeFromDraft, setInitialTimeFromDraft] = useState(0);
+
+  // Track time spent on form
+  const timeSpentMinutes = useFormTimeTracking({
+    enabled: !existingEvaluation || isEditing,
+    initialTime: initialTimeFromDraft,
+  });
 
   // Enable edit mode when ?edit=1 is present and an existing evaluation exists
   const searchParams = useSearchParams();
@@ -204,6 +212,8 @@ export function EvaluatorEvaluationForm({
           comments: formData.comments || null,
           decision: formData.decision,
           decision_notes: formData.decision === "reject" ? formData.decisionNotes : null,
+          time_spent_minutes: timeSpentMinutes,
+          started_at: new Date().toISOString(),
         });
       } else {
         await createEvaluationClient({
@@ -221,6 +231,8 @@ export function EvaluatorEvaluationForm({
           comments: formData.comments || undefined,
           decision: formData.decision,
           decision_notes: formData.decision === "reject" ? formData.decisionNotes : undefined,
+          time_spent_minutes: timeSpentMinutes,
+          started_at: new Date().toISOString(),
         });
       }
 
@@ -260,6 +272,7 @@ export function EvaluatorEvaluationForm({
         overallAssessmentScore: formData.overallAssessmentScore,
         first2EpsRequired: formData.first2EpsRequired,
         comments: formData.comments,
+        accumulatedTimeMinutes: timeSpentMinutes,
       };
 
       const response = await fetch(`/api/evaluator/forms/draft/${callReport.id}`, {
@@ -319,6 +332,10 @@ export function EvaluatorEvaluationForm({
         decision: "",
         decisionNotes: "",
       });
+
+      // Load accumulated time from draft
+      setInitialTimeFromDraft(pendingDraftData.accumulatedTimeMinutes || 0);
+
       toast.success("Draft loaded successfully!");
       setShowDraftDialog(false);
       setPendingDraftData(null);

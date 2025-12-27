@@ -93,6 +93,8 @@ export async function POST(request: Request) {
         story_progression_score: evaluationData.story_progression_score,
         freezes_score: evaluationData.freezes_score,
         whats_next_element_score: evaluationData.whats_next_element_score,
+        time_spent_minutes: evaluationData.time_spent_minutes || null,
+        started_at: evaluationData.started_at || null,
       })
       .select(`
         *,
