@@ -277,7 +277,7 @@ export default function LoginPage() {
             </form>
 
             {/* Demo Dashboard Link */}
-            <div className="mt-8 pt-6 border-t border-gray-200">
+            <div className="hidden mt-8 pt-6 border-t border-gray-200">
               <Link href="/demo-management">
                 <Button
                   variant="outline"
