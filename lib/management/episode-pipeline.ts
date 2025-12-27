@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 
 export interface DramaWithEpisodes {
   callReportId: string;
@@ -31,43 +32,78 @@ export interface EvaluatorDetail {
  * Get all dramas with their episode counts
  */
 export async function getDramasWithEpisodes(): Promise<DramaWithEpisodes[]> {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
 
-  // Get call reports with episodes
-  const { data: callReports, error } = await supabase
+  // Step 1: Fetch call reports
+  const { data: callReports, error: callReportsError } = await supabase
     .from('call_reports')
-    .select(`
-      id,
-      working_title,
-      episodes (
-        id,
-        episode_number,
-        episodic_evaluations (
-          id,
-          evaluator_id
-        )
-      )
-    `)
+    .select('id, working_title')
     .eq('meeting_type', 'call_report')
     .not('working_title', 'is', null)
     .order('created_at', { ascending: false });
 
-  if (error) {
-    console.error('Error fetching dramas with episodes:', error);
+  if (callReportsError) {
+    console.error('Error fetching call reports:', callReportsError);
     return [];
   }
 
-  const dramasWithEpisodes: DramaWithEpisodes[] = (callReports || [])
-    .filter((report: any) => report.episodes && report.episodes.length > 0)
+  if (!callReports || callReports.length === 0) {
+    return [];
+  }
+
+  const callReportIds = callReports.map(cr => cr.id);
+
+  // Step 2: Fetch ALL episodes for these call reports with evaluations
+  const { data: episodes, error: episodesError } = await supabase
+    .from('episodes')
+    .select(`
+      id,
+      episode_number,
+      call_report_id,
+      episodic_evaluations (
+        id,
+        evaluator_id
+      )
+    `)
+    .in('call_report_id', callReportIds);
+
+  if (episodesError) {
+    console.error('Error fetching episodes:', episodesError);
+  }
+
+  // Step 3: Group episodes by call_report_id and count evaluations
+  const episodeDataByCallReport: Record<string, {
+    total: number;
+    evaluated: number;
+  }> = {};
+
+  (episodes || []).forEach((ep: any) => {
+    if (ep.call_report_id) {
+      if (!episodeDataByCallReport[ep.call_report_id]) {
+        episodeDataByCallReport[ep.call_report_id] = {
+          total: 0,
+          evaluated: 0,
+        };
+      }
+      episodeDataByCallReport[ep.call_report_id].total++;
+
+      // Count as evaluated if it has at least one evaluation
+      if (ep.episodic_evaluations && ep.episodic_evaluations.length > 0) {
+        episodeDataByCallReport[ep.call_report_id].evaluated++;
+      }
+    }
+  });
+
+  // Step 4: Map call reports with episode counts, filter out those with no episodes
+  const dramasWithEpisodes: DramaWithEpisodes[] = callReports
+    .filter((report: any) => {
+      const data = episodeDataByCallReport[report.id];
+      return data && data.total > 0;
+    })
     .map((report: any) => {
-      const episodes = report.episodes || [];
-      const totalEpisodes = episodes.length;
-
-      // Count evaluated episodes (episodes with at least one evaluation)
-      const evaluatedEpisodes = episodes.filter((ep: any) =>
-        ep.episodic_evaluations && ep.episodic_evaluations.length > 0
-      ).length;
-
+      const data = episodeDataByCallReport[report.id];
+      const totalEpisodes = data.total;
+      const evaluatedEpisodes = data.evaluated;
       const pendingEpisodes = totalEpisodes - evaluatedEpisodes;
 
       return {
@@ -86,7 +122,7 @@ export async function getDramasWithEpisodes(): Promise<DramaWithEpisodes[]> {
  * Get episodes for a specific call report/drama
  */
 export async function getEpisodesForDrama(callReportId: string): Promise<EpisodeWithProgress[]> {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
 
   // Get episodes for this call report
   const { data: episodes, error } = await supabase
@@ -158,29 +194,37 @@ export async function getAllEpisodesAndEvaluatorsBatch(
     return { episodesByDrama: {}, evaluatorsByEpisode: {} };
   }
 
-  const supabase = await createClient();
+  const supabase = createAdminClient();
 
-  // Fetch all episodes for all dramas in ONE query
-  const { data: allEpisodes } = await supabase
+  // Query 1: Fetch episodes WITHOUT nested evaluations
+  const { data: allEpisodes, error: episodesError } = await supabase
     .from('episodes')
-    .select(`
-      id,
-      episode_number,
-      call_report_id,
-      story_id,
-      episodic_evaluations (
-        id,
-        evaluator_id,
-        overall_score,
-        grade,
-        created_at,
-        events
-      )
-    `)
-    .or(dramaIds.map(id => `call_report_id.eq.${id}`).join(','))
-    .order('episode_number', { ascending: true });
+    .select('id, episode_number, call_report_id')
+    .in('call_report_id', dramaIds)
+    .order('episode_number', { ascending: true});
 
-  // Get all evaluators in ONE query
+  // Add error logging
+  if (episodesError) {
+    console.error('Error fetching episodes in batch:', episodesError);
+    console.error('Drama IDs requested:', dramaIds);
+  }
+
+  // Log the results for debugging
+  console.log('Episodes fetched:', allEpisodes?.length || 0, 'for', dramaIds.length, 'dramas');
+
+  // Query 2: Fetch ALL evaluations (no filter - we'll filter in code)
+  // Note: Filtering by 578 episode IDs causes "fetch failed" error due to query size
+  const { data: allEvaluations, error: evaluationsError } = await supabase
+    .from('episodic_evaluations')
+    .select('id, episode_id, evaluator_id, overall_average, overall_grade, created_at, events');
+
+  if (evaluationsError) {
+    console.error('Error fetching evaluations in batch:', evaluationsError);
+  }
+
+  console.log('Evaluations fetched:', allEvaluations?.length || 0);
+
+  // Query 3: Get all evaluators
   const { data: allEvaluators } = await supabase
     .from('users')
     .select('id, name')
@@ -188,6 +232,16 @@ export async function getAllEpisodesAndEvaluatorsBatch(
     .order('name', { ascending: true });
 
   const totalEvaluators = allEvaluators?.length || 0;
+
+  // Build evaluation map: episode_id -> evaluation[]
+  const evaluationsByEpisodeMap: Record<string, any[]> = {};
+  (allEvaluations || []).forEach((evaluation: any) => {
+    if (!evaluationsByEpisodeMap[evaluation.episode_id]) {
+      evaluationsByEpisodeMap[evaluation.episode_id] = [];
+    }
+    evaluationsByEpisodeMap[evaluation.episode_id].push(evaluation);
+  });
+
   const episodesByDrama: Record<string, EpisodeWithProgress[]> = {};
   const evaluatorsByEpisode: Record<string, { completed: EvaluatorDetail[]; pending: EvaluatorDetail[] }> = {};
 
@@ -199,9 +253,19 @@ export async function getAllEpisodesAndEvaluatorsBatch(
   // Process all episodes
   (allEpisodes || []).forEach((episode: any) => {
     const dramaId = episode.call_report_id;
-    if (!dramaId) return;
 
-    const evaluations = episode.episodic_evaluations || [];
+    if (!dramaId) {
+      console.warn('Episode without call_report_id:', episode.id);
+      return;
+    }
+
+    if (!episodesByDrama[dramaId]) {
+      console.warn('Episode belongs to unknown drama:', dramaId, 'Episode:', episode.id);
+      return;
+    }
+
+    // Get evaluations for this episode from the map
+    const evaluations = evaluationsByEpisodeMap[episode.id] || [];
     const completedEvaluators = evaluations.length;
     const pendingEvaluators = totalEvaluators - completedEvaluators;
     const progressPercentage = totalEvaluators
@@ -233,8 +297,8 @@ export async function getAllEpisodesAndEvaluatorsBatch(
       evaluations.map((ev: any) => [
         ev.evaluator_id,
         {
-          overallScore: ev.overall_score,
-          grade: ev.grade,
+          overallScore: ev.overall_average,
+          grade: ev.overall_grade,
           evaluatedAt: ev.created_at,
         }
       ])
@@ -277,7 +341,7 @@ export async function getEvaluatorDetailsForEpisode(episodeId: string): Promise<
   completed: EvaluatorDetail[];
   pending: EvaluatorDetail[];
 }> {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
 
   // Get all evaluators
   const { data: allEvaluators } = await supabase
@@ -292,8 +356,8 @@ export async function getEvaluatorDetailsForEpisode(episodeId: string): Promise<
     .select(`
       id,
       evaluator_id,
-      overall_score,
-      grade,
+      overall_average,
+      overall_grade,
       created_at,
       events,
       evaluator:users!episodic_evaluations_evaluator_id_fkey (
@@ -307,8 +371,8 @@ export async function getEvaluatorDetailsForEpisode(episodeId: string): Promise<
     (evaluations || []).map((ev: any) => [
       ev.evaluator_id,
       {
-        overallScore: ev.overall_score,
-        grade: ev.grade,
+        overallScore: ev.overall_average,
+        grade: ev.overall_grade,
         evaluatedAt: ev.created_at,
       }
     ])
@@ -360,7 +424,7 @@ export interface EventAnalysisData {
 }
 
 export async function getEventAnalysisForDrama(callReportId: string): Promise<EventAnalysisData[]> {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
 
   // Get all episodes for this drama with their evaluations and evaluator info
   const { data: episodes, error } = await supabase
