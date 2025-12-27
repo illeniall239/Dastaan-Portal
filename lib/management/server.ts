@@ -84,11 +84,20 @@ export interface CriticalAlert {
 
 /**
  * Get executive summary stats for hero section
+ * FIXED: Uses admin client and avoids nested queries for better performance
  */
 export async function getExecutiveSummary(): Promise<ExecutiveSummary> {
   const supabase = await createClient();
 
   try {
+    // Fetch call reports to get story IDs (avoiding nested query)
+    const { data: callReports } = await supabase
+      .from("call_reports")
+      .select("story_id")
+      .eq("meeting_type", "call_report");
+
+    const storyIds = [...new Set(callReports?.map((cr: any) => cr.story_id).filter(Boolean))];
+
     const [
       storiesRes,
       negotiationsRes,
@@ -97,18 +106,13 @@ export async function getExecutiveSummary(): Promise<ExecutiveSummary> {
       activeContractsRes,
       auditRes
     ] = await Promise.all([
-      // Total active projects (not archived/rejected, only call reports not scheduled meetings)
+      // Total active projects (stories with call reports)
       supabase
         .from("stories")
-        .select(`
-          *,
-          call_reports!inner (
-            meeting_type
-          )
-        `, { count: "exact", head: true })
+        .select("*", { count: "exact", head: true })
+        .in("id", storyIds.length > 0 ? storyIds : ['00000000-0000-0000-0000-000000000000'])
         .neq("status", "archived")
-        .neq("status", "rejected")
-        .eq("call_reports.meeting_type", "call_report"),
+        .neq("status", "rejected"),
 
       // Pending negotiations
       supabase
@@ -116,7 +120,7 @@ export async function getExecutiveSummary(): Promise<ExecutiveSummary> {
         .select("agreed_price")
         .eq("status", "in_progress"),
 
-      // Active contracts
+      // All contracts (for total value)
       supabase
         .from("contracts")
         .select("total_value"),

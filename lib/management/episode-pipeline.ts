@@ -5,7 +5,8 @@ export interface DramaWithEpisodes {
   callReportId: string;
   workingTitle: string;
   totalEpisodes: number;
-  evaluatedEpisodes: number;
+  receivedEpisodes: number;   // Episodes uploaded/created
+  evaluatedEpisodes: number;  // Episodes with evaluations
   pendingEpisodes: number;
 }
 
@@ -63,38 +64,67 @@ export async function getDramasWithEpisodes(): Promise<DramaWithEpisodes[]> {
     console.error('Error fetching episodes:', episodesError);
   }
 
-  console.log('Total episodes fetched:', episodes?.length || 0);
+  // Step 3: Fetch ALL evaluations separately to avoid nested query issues
+  const { data: allEvaluations, error: evaluationsError } = await supabase
+    .from('episodic_evaluations')
+    .select('id, episode_id');
 
-  // Step 3: Count received episodes by call_report_id
-  const receivedEpisodesByCallReport: Record<string, number> = {};
+  if (evaluationsError) {
+    console.error('Error fetching evaluations:', evaluationsError);
+  }
+
+  console.log('Total episodes fetched:', episodes?.length || 0);
+  console.log('Total evaluations fetched:', allEvaluations?.length || 0);
+
+  // Build a set of episode IDs that have evaluations
+  const episodeHasEvaluations = new Set(
+    (allEvaluations || []).map((ev: any) => ev.episode_id)
+  );
+
+  // Step 4: Count episodes by call_report_id
+  const episodeDataByCallReport: Record<string, {
+    received: number;
+    evaluated: number;
+  }> = {};
 
   (episodes || []).forEach((ep: any) => {
     if (ep.call_report_id) {
-      if (!receivedEpisodesByCallReport[ep.call_report_id]) {
-        receivedEpisodesByCallReport[ep.call_report_id] = 0;
+      if (!episodeDataByCallReport[ep.call_report_id]) {
+        episodeDataByCallReport[ep.call_report_id] = {
+          received: 0,
+          evaluated: 0,
+        };
       }
-      receivedEpisodesByCallReport[ep.call_report_id]++;
+      // Count received episodes
+      episodeDataByCallReport[ep.call_report_id].received++;
+
+      // Count evaluated episodes (episodes with at least one evaluation)
+      if (episodeHasEvaluations.has(ep.id)) {
+        episodeDataByCallReport[ep.call_report_id].evaluated++;
+      }
     }
   });
 
-  // Step 4: Map call reports with planned vs received counts
+  // Step 5: Map call reports with planned vs evaluated counts
   const dramasWithEpisodes: DramaWithEpisodes[] = callReports
     .filter((report: any) => {
-      // Show dramas that have either planned episodes OR received episodes
-      const receivedCount = receivedEpisodesByCallReport[report.id] || 0;
-      const plannedCount = report.total_episodes || 0;
-      return receivedCount > 0 || plannedCount > 0;
+      // Show dramas that have received episodes
+      const data = episodeDataByCallReport[report.id];
+      return data && data.received > 0;
     })
     .map((report: any) => {
-      const receivedCount = receivedEpisodesByCallReport[report.id] || 0;
+      const data = episodeDataByCallReport[report.id];
       const plannedCount = report.total_episodes || 0;
-      const pendingEpisodes = Math.max(0, plannedCount - receivedCount);
+      const evaluatedCount = data?.evaluated || 0;
+      const receivedCount = data?.received || 0;
+      const pendingEpisodes = Math.max(0, plannedCount - evaluatedCount);
 
       return {
         callReportId: report.id,
         workingTitle: report.working_title,
-        totalEpisodes: plannedCount,        // Planned episodes
-        evaluatedEpisodes: receivedCount,   // Received episodes
+        totalEpisodes: plannedCount,           // Planned episodes
+        receivedEpisodes: receivedCount,       // Episodes uploaded/created
+        evaluatedEpisodes: evaluatedCount,     // Episodes with evaluations
         pendingEpisodes,
       };
     });

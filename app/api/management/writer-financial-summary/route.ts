@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
@@ -11,6 +12,12 @@ export const dynamic = "force-dynamic";
  * - Total paid amounts
  * - Outstanding balances
  * - Number of projects
+ *
+ * FIXED ISSUES:
+ * - Uses admin client to bypass RLS
+ * - Fetches data separately (no nested queries)
+ * - Properly handles multiple payment schedules per contract
+ * - Fixed project count deduplication across negotiations and contracts
  */
 export async function GET() {
   try {
@@ -32,24 +39,17 @@ export async function GET() {
       .eq("id", user.id)
       .single();
 
-    if (!userData || !["management", "admin"].includes(userData.role)) {
+    if (!userData || !["management", "admin", "executive"].includes(userData.role)) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    // Fetch all negotiations with agreed prices
-    const { data: negotiations, error: negotiationsError } = await supabase
+    // Use admin client for data fetching to bypass RLS
+    const adminClient = createAdminClient();
+
+    // Fetch all negotiations (no nested queries)
+    const { data: negotiations, error: negotiationsError } = await adminClient
       .from("negotiations")
-      .select(`
-        id,
-        writer_producer_name,
-        agreed_price,
-        status,
-        stories!inner(
-          id,
-          story_id,
-          title
-        )
-      `)
+      .select("id, story_id, writer_producer_name, agreed_price, status")
       .eq("status", "agreed");
 
     if (negotiationsError) {
@@ -60,23 +60,17 @@ export async function GET() {
       );
     }
 
-    // Fetch all contracts with total values
-    const { data: contracts, error: contractsError } = await supabase
+    // Fetch stories for negotiations
+    const negotiationStoryIds = [...new Set(negotiations?.map((n: any) => n.story_id).filter(Boolean))];
+    const { data: negotiationStories } = await adminClient
+      .from("stories")
+      .select("id, story_id, title")
+      .in("id", negotiationStoryIds);
+
+    // Fetch all contracts (no nested queries)
+    const { data: contracts, error: contractsError } = await adminClient
       .from("contracts")
-      .select(`
-        id,
-        total_value,
-        status,
-        payment_schedules(
-          id,
-          writer_producer_name
-        ),
-        stories!inner(
-          id,
-          story_id,
-          title
-        )
-      `)
+      .select("id, story_id, total_value, status")
       .in("status", ["active", "pending_signatures", "completed"]);
 
     if (contractsError) {
@@ -87,42 +81,67 @@ export async function GET() {
       );
     }
 
-    // Fetch all payments
-    const { data: payments, error: paymentsError } = await supabase
+    // Fetch stories for contracts
+    const contractStoryIds = [...new Set(contracts?.map((c: any) => c.story_id).filter(Boolean))];
+    const { data: contractStories } = await adminClient
+      .from("stories")
+      .select("id, story_id, title")
+      .in("id", contractStoryIds);
+
+    // Fetch payment schedules separately (avoids nested query issues)
+    const contractIds = contracts?.map((c: any) => c.id) || [];
+    const { data: paymentSchedules, error: paymentSchedulesError } = await adminClient
+      .from("payment_schedules")
+      .select("id, contract_id, writer_producer_name")
+      .in("contract_id", contractIds);
+
+    if (paymentSchedulesError) {
+      console.error("Error fetching payment schedules:", paymentSchedulesError);
+    }
+
+    // Fetch payments separately
+    const paymentScheduleIds = paymentSchedules?.map((ps: any) => ps.id) || [];
+    const { data: payments, error: paymentsError } = await adminClient
       .from("payments")
-      .select(`
-        id,
-        net_amount,
-        status,
-        payment_schedules!inner(
-          id,
-          writer_producer_name,
-          contracts!inner(
-            id,
-            stories!inner(
-              id,
-              story_id,
-              title
-            )
-          )
-        )
-      `)
+      .select("id, payment_schedule_id, net_amount, status")
+      .in("payment_schedule_id", paymentScheduleIds)
       .eq("status", "paid");
 
     if (paymentsError) {
       console.error("Error fetching payments:", paymentsError);
-      return NextResponse.json(
-        { error: "Failed to fetch payments" },
-        { status: 500 }
-      );
     }
+
+    console.log('Data fetched:', {
+      negotiations: negotiations?.length || 0,
+      contracts: contracts?.length || 0,
+      paymentSchedules: paymentSchedules?.length || 0,
+      payments: payments?.length || 0
+    });
+
+    // Build maps for lookups
+    const storyMap = new Map();
+    [...(negotiationStories || []), ...(contractStories || [])].forEach((story: any) => {
+      storyMap.set(story.id, story);
+    });
+
+    const paymentScheduleMap = new Map();
+    (paymentSchedules || []).forEach((ps: any) => {
+      paymentScheduleMap.set(ps.id, ps);
+    });
+
+    const contractMap = new Map();
+    (contracts || []).forEach((contract: any) => {
+      contractMap.set(contract.id, contract);
+    });
 
     // Aggregate data by writer
     const writerSummary: Record<string, any> = {};
+    const projectsByStoryId = new Map<string, Set<string>>(); // Track which writers are associated with each story
 
     // Process negotiations
-    negotiations?.forEach((negotiation: any) => {
+    (negotiations || []).forEach((negotiation: any) => {
       const writerName = negotiation.writer_producer_name || "Unknown";
+      const story = storyMap.get(negotiation.story_id);
 
       if (!writerSummary[writerName]) {
         writerSummary[writerName] = {
@@ -132,60 +151,87 @@ export async function GET() {
           total_paid: 0,
           outstanding_balance: 0,
           project_count: 0,
-          projects: [],
+          story_ids: new Set(),
         };
       }
 
       writerSummary[writerName].total_negotiated += parseFloat(negotiation.agreed_price || "0");
-      writerSummary[writerName].project_count += 1;
-      writerSummary[writerName].projects.push({
-        type: "negotiation",
-        id: negotiation.id,
-        story_id: negotiation.stories?.story_id,
-        title: negotiation.stories?.title,
-        amount: parseFloat(negotiation.agreed_price || "0"),
-      });
+
+      // Track story for deduplication
+      if (story?.story_id) {
+        writerSummary[writerName].story_ids.add(story.story_id);
+      }
     });
 
-    // Process contracts
-    contracts?.forEach((contract: any) => {
-      const writerName = contract.payment_schedules?.[0]?.writer_producer_name || "Unknown";
+    // Process contracts with ALL payment schedules
+    (contracts || []).forEach((contract: any) => {
+      const story = storyMap.get(contract.story_id);
 
-      if (!writerSummary[writerName]) {
-        writerSummary[writerName] = {
-          writer_name: writerName,
-          total_negotiated: 0,
-          total_contracted: 0,
-          total_paid: 0,
-          outstanding_balance: 0,
-          project_count: 0,
-          projects: [],
-        };
-      }
-
-      writerSummary[writerName].total_contracted += parseFloat(contract.total_value || "0");
-
-      // Check if this contract's story isn't already counted
-      const existingProject = writerSummary[writerName].projects.find(
-        (p: any) => p.story_id === contract.stories?.story_id
+      // Get ALL payment schedules for this contract (not just first one)
+      const contractPaymentSchedules = (paymentSchedules || []).filter(
+        (ps: any) => ps.contract_id === contract.id
       );
 
-      if (!existingProject) {
-        writerSummary[writerName].project_count += 1;
-      }
+      // If no payment schedules, attribute to "Unknown"
+      if (contractPaymentSchedules.length === 0) {
+        const writerName = "Unknown";
 
-      writerSummary[writerName].projects.push({
-        type: "contract",
-        id: contract.id,
-        story_id: contract.stories?.story_id,
-        title: contract.stories?.title,
-        amount: parseFloat(contract.total_value || "0"),
-      });
+        if (!writerSummary[writerName]) {
+          writerSummary[writerName] = {
+            writer_name: writerName,
+            total_negotiated: 0,
+            total_contracted: 0,
+            total_paid: 0,
+            outstanding_balance: 0,
+            project_count: 0,
+            story_ids: new Set(),
+          };
+        }
+
+        writerSummary[writerName].total_contracted += parseFloat(contract.total_value || "0");
+
+        if (story?.story_id) {
+          writerSummary[writerName].story_ids.add(story.story_id);
+        }
+      } else {
+        // Distribute contract value across all payment schedules equally
+        const valuePerWriter = parseFloat(contract.total_value || "0") / contractPaymentSchedules.length;
+
+        contractPaymentSchedules.forEach((ps: any) => {
+          const writerName = ps.writer_producer_name || "Unknown";
+
+          if (!writerSummary[writerName]) {
+            writerSummary[writerName] = {
+              writer_name: writerName,
+              total_negotiated: 0,
+              total_contracted: 0,
+              total_paid: 0,
+              outstanding_balance: 0,
+              project_count: 0,
+              story_ids: new Set(),
+            };
+          }
+
+          writerSummary[writerName].total_contracted += valuePerWriter;
+
+          // Track story for deduplication
+          if (story?.story_id) {
+            writerSummary[writerName].story_ids.add(story.story_id);
+          }
+        });
+      }
     });
 
     // Process payments
-    payments?.forEach((payment: any) => {
-      const writerName = payment.payment_schedules?.writer_producer_name || "Unknown";
+    (payments || []).forEach((payment: any) => {
+      const paymentSchedule = paymentScheduleMap.get(payment.payment_schedule_id);
+
+      if (!paymentSchedule) {
+        console.warn('Payment without payment schedule:', payment.id);
+        return;
+      }
+
+      const writerName = paymentSchedule.writer_producer_name || "Unknown";
 
       if (!writerSummary[writerName]) {
         writerSummary[writerName] = {
@@ -195,16 +241,23 @@ export async function GET() {
           total_paid: 0,
           outstanding_balance: 0,
           project_count: 0,
-          projects: [],
+          story_ids: new Set(),
         };
       }
 
       writerSummary[writerName].total_paid += parseFloat(payment.net_amount || "0");
     });
 
-    // Calculate outstanding balances
+    // Calculate outstanding balances and project counts
     Object.keys(writerSummary).forEach((writerName) => {
       const writer = writerSummary[writerName];
+
+      // Project count = unique story_ids for this writer
+      writer.project_count = writer.story_ids.size;
+
+      // Remove story_ids Set before sending to client (not JSON serializable)
+      delete writer.story_ids;
+
       // Outstanding = max(contracted, negotiated) - paid
       const committed = Math.max(writer.total_contracted, writer.total_negotiated);
       writer.outstanding_balance = committed - writer.total_paid;
@@ -233,6 +286,8 @@ export async function GET() {
         sum + writer.project_count, 0
       ),
     };
+
+    console.log('Aggregated totals:', totals);
 
     return NextResponse.json({
       summary: summaryArray,

@@ -101,10 +101,10 @@ export default async function ManagementDashboard({
   // Transform episode data into ScriptingPhaseData format
   const episodeBasedScriptingData: ScriptingPhaseData[] = dramasWithEpisodes.map((drama) => {
     const progressPercentage = drama.totalEpisodes > 0
-      ? Math.round((drama.evaluatedEpisodes / drama.totalEpisodes) * 100)
+      ? Math.round((drama.receivedEpisodes / drama.totalEpisodes) * 100)
       : 0;
 
-    // Determine status based on evaluation progress
+    // Determine status based on received episodes progress
     let status: 'on_schedule' | 'on_hold' | 'behind_schedule';
     if (progressPercentage >= 70) {
       status = 'on_schedule';
@@ -114,11 +114,11 @@ export default async function ManagementDashboard({
       status = 'behind_schedule';
     }
 
-    // Current phase = next episode to evaluate
-    const nextEpisode = drama.evaluatedEpisodes + 1;
+    // Current phase = next episode to receive
+    const nextEpisode = drama.receivedEpisodes + 1;
     const currentPhase = nextEpisode <= drama.totalEpisodes
       ? `Episode ${nextEpisode} of ${drama.totalEpisodes}`
-      : 'All Episodes Evaluated';
+      : 'All Episodes Received';
 
     return {
       id: drama.callReportId,
@@ -129,7 +129,7 @@ export default async function ManagementDashboard({
       currentPhase,
       lastUpdated: new Date().toISOString(),
       totalEpisodes: drama.totalEpisodes,
-      evaluatedEpisodes: drama.evaluatedEpisodes,
+      evaluatedEpisodes: drama.receivedEpisodes,  // Using receivedEpisodes for Scripting Phase
     };
   });
 
