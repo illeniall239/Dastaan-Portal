@@ -34,10 +34,10 @@ export interface EvaluatorDetail {
 export async function getDramasWithEpisodes(): Promise<DramaWithEpisodes[]> {
   const supabase = createAdminClient();
 
-  // Step 1: Fetch call reports
+  // Step 1: Fetch call reports with planned episode count
   const { data: callReports, error: callReportsError } = await supabase
     .from('call_reports')
-    .select('id, working_title')
+    .select('id, working_title, total_episodes')
     .eq('meeting_type', 'call_report')
     .not('working_title', 'is', null)
     .order('created_at', { ascending: false });
@@ -53,64 +53,48 @@ export async function getDramasWithEpisodes(): Promise<DramaWithEpisodes[]> {
 
   const callReportIds = callReports.map(cr => cr.id);
 
-  // Step 2: Fetch ALL episodes for these call reports with evaluations
+  // Step 2: Fetch ALL episodes for these call reports
   const { data: episodes, error: episodesError } = await supabase
     .from('episodes')
-    .select(`
-      id,
-      episode_number,
-      call_report_id,
-      episodic_evaluations (
-        id,
-        evaluator_id
-      )
-    `)
+    .select('id, episode_number, call_report_id')
     .in('call_report_id', callReportIds);
 
   if (episodesError) {
     console.error('Error fetching episodes:', episodesError);
   }
 
-  // Step 3: Group episodes by call_report_id and count evaluations
-  const episodeDataByCallReport: Record<string, {
-    total: number;
-    evaluated: number;
-  }> = {};
+  console.log('Total episodes fetched:', episodes?.length || 0);
+
+  // Step 3: Count received episodes by call_report_id
+  const receivedEpisodesByCallReport: Record<string, number> = {};
 
   (episodes || []).forEach((ep: any) => {
     if (ep.call_report_id) {
-      if (!episodeDataByCallReport[ep.call_report_id]) {
-        episodeDataByCallReport[ep.call_report_id] = {
-          total: 0,
-          evaluated: 0,
-        };
+      if (!receivedEpisodesByCallReport[ep.call_report_id]) {
+        receivedEpisodesByCallReport[ep.call_report_id] = 0;
       }
-      episodeDataByCallReport[ep.call_report_id].total++;
-
-      // Count as evaluated if it has at least one evaluation
-      if (ep.episodic_evaluations && ep.episodic_evaluations.length > 0) {
-        episodeDataByCallReport[ep.call_report_id].evaluated++;
-      }
+      receivedEpisodesByCallReport[ep.call_report_id]++;
     }
   });
 
-  // Step 4: Map call reports with episode counts, filter out those with no episodes
+  // Step 4: Map call reports with planned vs received counts
   const dramasWithEpisodes: DramaWithEpisodes[] = callReports
     .filter((report: any) => {
-      const data = episodeDataByCallReport[report.id];
-      return data && data.total > 0;
+      // Show dramas that have either planned episodes OR received episodes
+      const receivedCount = receivedEpisodesByCallReport[report.id] || 0;
+      const plannedCount = report.total_episodes || 0;
+      return receivedCount > 0 || plannedCount > 0;
     })
     .map((report: any) => {
-      const data = episodeDataByCallReport[report.id];
-      const totalEpisodes = data.total;
-      const evaluatedEpisodes = data.evaluated;
-      const pendingEpisodes = totalEpisodes - evaluatedEpisodes;
+      const receivedCount = receivedEpisodesByCallReport[report.id] || 0;
+      const plannedCount = report.total_episodes || 0;
+      const pendingEpisodes = Math.max(0, plannedCount - receivedCount);
 
       return {
         callReportId: report.id,
         workingTitle: report.working_title,
-        totalEpisodes,
-        evaluatedEpisodes,
+        totalEpisodes: plannedCount,        // Planned episodes
+        evaluatedEpisodes: receivedCount,   // Received episodes
         pendingEpisodes,
       };
     });

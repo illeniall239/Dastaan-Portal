@@ -8,6 +8,8 @@ export interface ScriptingPhaseData {
   status: 'on_schedule' | 'on_hold' | 'behind_schedule';
   currentPhase: string;
   lastUpdated: string;
+  totalEpisodes?: number;
+  evaluatedEpisodes?: number;
 }
 
 /**

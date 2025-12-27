@@ -27,7 +27,7 @@ import { getExecutiveSummary, getDepartmentWorkload } from "@/lib/management/ser
 import { getCriticalAlerts } from "@/lib/management/critical-alerts";
 import { getPipelineOverview } from "@/lib/management/pipeline-analytics";
 import { getAllEvaluatorStats } from "@/lib/management/evaluator-performance";
-import { getScriptingPhaseData } from "@/lib/management/scripting-analytics";
+import { getScriptingPhaseData, ScriptingPhaseData } from "@/lib/management/scripting-analytics";
 import { getDramasWithEpisodes, getAllEpisodesAndEvaluatorsBatch } from "@/lib/management/episode-pipeline";
 import { getArchiveByGenre } from "@/lib/management/archive-analytics";
 import { createClient } from "@/lib/supabase/server";
@@ -97,6 +97,41 @@ export default async function ManagementDashboard({
   const { episodesByDrama, evaluatorsByEpisode } = dramaIds.length > 0
     ? await getAllEpisodesAndEvaluatorsBatch(dramaIds)
     : { episodesByDrama: {}, evaluatorsByEpisode: {} };
+
+  // Transform episode data into ScriptingPhaseData format
+  const episodeBasedScriptingData: ScriptingPhaseData[] = dramasWithEpisodes.map((drama) => {
+    const progressPercentage = drama.totalEpisodes > 0
+      ? Math.round((drama.evaluatedEpisodes / drama.totalEpisodes) * 100)
+      : 0;
+
+    // Determine status based on evaluation progress
+    let status: 'on_schedule' | 'on_hold' | 'behind_schedule';
+    if (progressPercentage >= 70) {
+      status = 'on_schedule';
+    } else if (progressPercentage >= 40) {
+      status = 'on_hold';
+    } else {
+      status = 'behind_schedule';
+    }
+
+    // Current phase = next episode to evaluate
+    const nextEpisode = drama.evaluatedEpisodes + 1;
+    const currentPhase = nextEpisode <= drama.totalEpisodes
+      ? `Episode ${nextEpisode} of ${drama.totalEpisodes}`
+      : 'All Episodes Evaluated';
+
+    return {
+      id: drama.callReportId,
+      workingTitle: drama.workingTitle,
+      callReportId: drama.callReportId,
+      scriptProgress: progressPercentage,
+      status,
+      currentPhase,
+      lastUpdated: new Date().toISOString(),
+      totalEpisodes: drama.totalEpisodes,
+      evaluatedEpisodes: drama.evaluatedEpisodes,
+    };
+  });
 
   // Format currency helper
   const formatCurrency = (amount: number) => {
@@ -285,7 +320,7 @@ export default async function ManagementDashboard({
         </div>
 
         <div className="space-y-6">
-          <ScriptingPhase data={scriptingPhaseData} />
+          <ScriptingPhase data={episodeBasedScriptingData} />
           <EvaluatorPipelineEpisodes
             dramas={dramasWithEpisodes}
             episodesByDrama={episodesByDrama}

@@ -8,8 +8,25 @@ interface ScriptingPhaseProps {
 }
 
 export function ScriptingPhase({ data }: ScriptingPhaseProps) {
-  const getStatusBadge = (status: string) => {
-    switch (status) {
+  const getStatusBadge = (drama: ScriptingPhaseData) => {
+    // If episode counts are available, show them; otherwise show status
+    if (drama.totalEpisodes !== undefined && drama.evaluatedEpisodes !== undefined) {
+      const status = drama.status;
+      const colorClass = status === 'on_schedule'
+        ? 'bg-green-500'
+        : status === 'on_hold'
+        ? 'bg-yellow-500'
+        : 'bg-red-500';
+
+      return (
+        <Badge className={`${colorClass} text-white text-[10px] sm:text-xs`}>
+          {drama.evaluatedEpisodes}/{drama.totalEpisodes} Episodes
+        </Badge>
+      );
+    }
+
+    // Fallback to status labels if no episode data
+    switch (drama.status) {
       case 'on_schedule':
         return <Badge className="bg-green-500 text-white text-[10px] sm:text-xs">On Schedule</Badge>;
       case 'on_hold':
@@ -74,7 +91,7 @@ export function ScriptingPhase({ data }: ScriptingPhaseProps) {
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2 sm:gap-3 min-w-0">
                   <h4 className="font-semibold text-sm sm:text-base text-slate-900 truncate">{drama.workingTitle}</h4>
-                  {getStatusBadge(drama.status)}
+                  {getStatusBadge(drama)}
                 </div>
                 <span className="text-xs sm:text-sm font-bold text-slate-700 flex-shrink-0">{drama.scriptProgress}%</span>
               </div>
