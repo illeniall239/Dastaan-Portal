@@ -112,14 +112,15 @@ export function ManagementEpisodesCards({ episodes }: ManagementEpisodesCardsPro
                             {episode.attachment_name && (
                               <>
                                 <span>•</span>
-                                <a
-                                  href={episode.attachment_url}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="text-primary hover:underline"
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    window.open(`/api/episodes/download/${episode.id}`, "_blank");
+                                  }}
+                                  className="text-primary hover:underline text-left"
                                 >
                                   {episode.attachment_name}
-                                </a>
+                                </button>
                               </>
                             )}
                           </div>

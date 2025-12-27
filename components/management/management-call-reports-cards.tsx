@@ -5,28 +5,27 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/componen
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ShareLinkDialog } from "@/components/management/share-link-dialog";
-import { CalendarDays, Users, FileText, Share2 } from "lucide-react";
+import { CallReportDetailDialog } from "@/components/management/call-report-detail-dialog";
+import { CalendarDays, Users, FileText, Share2, Eye } from "lucide-react";
 import { format } from "date-fns";
 
 interface ManagementCallReportsCardsProps {
   callReports: any[];
 }
 
-const statusColors: Record<string, string> = {
-  draft: "bg-slate-100 text-slate-700 border-slate-200",
-  submitted: "bg-blue-100 text-blue-700 border-blue-200",
-  in_review: "bg-yellow-100 text-yellow-700 border-yellow-200",
-  approved: "bg-green-100 text-green-700 border-green-200",
-  rejected: "bg-red-100 text-red-700 border-red-200",
-};
-
 export function ManagementCallReportsCards({ callReports }: ManagementCallReportsCardsProps) {
   const [selectedReport, setSelectedReport] = useState<any>(null);
   const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
+  const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
 
   const handleShare = (report: any) => {
     setSelectedReport(report);
     setIsShareDialogOpen(true);
+  };
+
+  const handleViewDetails = (report: any) => {
+    setSelectedReport(report);
+    setIsDetailDialogOpen(true);
   };
 
   if (!callReports || callReports.length === 0) {
@@ -58,14 +57,9 @@ export function ManagementCallReportsCards({ callReports }: ManagementCallReport
           return (
             <Card key={report.id} className="flex flex-col">
               <CardHeader className="space-y-3">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="space-y-1">
-                    <CardTitle className="text-lg leading-tight">{report.working_title}</CardTitle>
-                    {storyTitle && <p className="text-sm text-muted-foreground">Story: {storyTitle}</p>}
-                  </div>
-                  <Badge className={statusColors[report.status] || "bg-slate-100 text-slate-700 border-slate-200"}>
-                    {report.status?.replace(/_/g, " ") || "draft"}
-                  </Badge>
+                <div className="space-y-1">
+                  <CardTitle className="text-lg leading-tight">{report.working_title}</CardTitle>
+                  {storyTitle && <p className="text-sm text-muted-foreground">Story: {storyTitle}</p>}
                 </div>
                 <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
                   <span>Writer: {writer}</span>
@@ -134,19 +128,29 @@ export function ManagementCallReportsCards({ callReports }: ManagementCallReport
                 )}
               </CardContent>
 
-              <CardFooter className="flex items-center justify-between text-xs text-muted-foreground">
-                <div>
-                  <p>Created at {format(new Date(report.created_at), "PP")}</p>
-                  <p>Updated at {format(new Date(report.updated_at), "PP")}</p>
-                </div>
-                <div className="flex items-center gap-2">
+              <CardFooter className="pt-4 border-t">
+                <div className="flex items-center gap-2 w-full">
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => handleShare(report)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleViewDetails(report);
+                    }}
+                  >
+                    <Eye className="h-3 w-3 mr-1" />
+                    View Details
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleShare(report);
+                    }}
                   >
                     <Share2 className="h-3 w-3 mr-1" />
-                    Share Externally
+                    Share
                   </Button>
                 </div>
               </CardFooter>
@@ -167,6 +171,12 @@ export function ManagementCallReportsCards({ callReports }: ManagementCallReport
           contentTitle={selectedReport.working_title}
         />
       )}
+
+      <CallReportDetailDialog
+        report={selectedReport}
+        isOpen={isDetailDialogOpen}
+        onClose={() => setIsDetailDialogOpen(false)}
+      />
     </>
   );
 }

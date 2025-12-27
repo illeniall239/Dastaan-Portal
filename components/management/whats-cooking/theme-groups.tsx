@@ -74,7 +74,7 @@ export function ThemeGroups({ ideas }: ThemeGroupsProps) {
                       className="w-3 h-3 rounded-full"
                       style={{ backgroundColor: color }}
                     />
-                    <span className="font-medium text-gray-900">{theme}</span>
+                    <span className="text-sm font-medium text-gray-900 text-left">{theme}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="text-lg font-bold text-gray-700">{themeIdeas.length}</span>

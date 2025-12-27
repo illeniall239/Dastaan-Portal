@@ -105,7 +105,7 @@ export default async function WhatsCookingPage() {
               <TrendingUp className="h-5 w-5 text-white" />
             </div>
             <div>
-              <p className="text-xs text-white/70 font-medium">Completion Rate</p>
+              <p className="text-xs text-white/70 font-medium">Episode Delivery Progress</p>
               <p className="text-2xl font-bold text-white">{episodeMetrics.overallCompletionPercentage}%</p>
             </div>
           </div>

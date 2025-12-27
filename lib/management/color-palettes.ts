@@ -223,6 +223,22 @@ export function getStatusLabel(status: string): string {
 }
 
 /**
+ * Get user-friendly label for category
+ * @param category - Category enum value
+ * @returns Human-readable label
+ */
+export function getCategoryLabel(category: string): string {
+  const labels: Record<string, string> = {
+    'external_producer': 'External Producer',
+    'writer_pitch': 'Writer Pitch',
+    'inhouse_content': 'In-house Content',
+    'content_head_initiative': 'Content Head Initiative',
+    'given_by_management': 'Given by Management'
+  };
+  return labels[category] || category;
+}
+
+/**
  * Check if idea is recent (created within last 7 days)
  * @param createdAt - ISO date string
  * @returns boolean

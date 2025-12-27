@@ -5,6 +5,7 @@ import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, Cell } from 
 import { Card } from "@/components/ui/card";
 import { DrillDownModal, DrillDownData } from "@/components/management/drill-down-modal";
 import type { ActiveIdeaDetail } from "@/lib/management/active-ideas-details";
+import { getCategoryLabel } from "@/lib/management/color-palettes";
 
 interface SlotBarsProps {
   ideas: ActiveIdeaDetail[];
@@ -50,17 +51,34 @@ export function SlotBars({ ideas }: SlotBarsProps) {
       data: filteredIdeas,
       columns: [
         { key: "working_title", label: "Title" },
-        { key: "genre", label: "Genre" },
-        { key: "category", label: "Category" },
+        {
+          key: "writer_names",
+          label: "Writer",
+          format: (value: string[]) => value && value.length > 0 ? value.join(', ') : 'N/A'
+        },
+        {
+          key: "genre",
+          label: "Genre",
+          format: (value: string[]) => value && value.length > 0 ? value.join(', ') : 'N/A'
+        },
+        {
+          key: "category",
+          label: "Category",
+          format: (value: string) => getCategoryLabel(value)
+        },
         {
           key: "average_score",
           label: "Score",
           format: (value: number) => value ? value.toFixed(2) : "N/A"
         },
         {
-          key: "evaluator_count",
+          key: "evaluator_scores",
           label: "Evaluators",
-          format: (value: number) => `${value || 0}`
+          format: (value: any) => {
+            if (!value) return '0';
+            const count = Object.values(value).filter(score => score !== null).length;
+            return `${count}`;
+          }
         },
         { key: "slot", label: "Slot" },
         {

@@ -121,8 +121,8 @@ export default async function TeamAnalyticsPage() {
           <TeamComparisonBarChart
             data={comparison}
             metric="call_reports"
-            title="Teams by Call Reports"
-            description="Teams sorted by total call reports created"
+            title="Teams by Writer Engagement Reports"
+            description="Teams sorted by total writer engagement reports created"
           />
           <TeamTypePieChart
             data={typeDistribution}

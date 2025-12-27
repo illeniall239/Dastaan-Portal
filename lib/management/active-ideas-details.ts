@@ -82,7 +82,7 @@ export async function getActiveIdeasByGenre(
         developed_by
       `)
       .is('archived_at', null)
-      .order('created_at', { ascending: false});
+      .order('created_at', { ascending: true });
 
     // TEAM ISOLATION: Apply filter unless admin/management
     if (!hasGlobalAccess && teamId) {

@@ -49,6 +49,8 @@ export default async function ManagementStoryBankPage() {
       created_at,
       updated_at,
       meeting_type,
+      created_by,
+      creator:users!created_by(name, email),
       stories:stories(
         id,
         story_id,
@@ -74,6 +76,47 @@ export default async function ManagementStoryBankPage() {
     console.error("  - Full error (JSON):", JSON.stringify(callReportsError, null, 2));
     console.error("  - Full error (Object):", callReportsError);
   }
+
+  // Fetch attachments for call reports
+  const callReportIds = (callReports || []).map((cr: any) => cr.id);
+  const { data: attachments, error: attachmentsError } = callReportIds.length > 0
+    ? await adminClient
+        .from("attachments")
+        .select(`
+          id,
+          entity_id,
+          file_name,
+          file_path,
+          file_size,
+          file_type,
+          uploaded_at,
+          uploader:users!uploaded_by(name, email)
+        `)
+        .eq("entity_type", "call_report")
+        .in("entity_id", callReportIds)
+        .order("uploaded_at", { ascending: false })
+    : { data: [], error: null };
+
+  if (attachmentsError) {
+    console.error("❌ Error fetching attachments:");
+    console.error("  - Message:", attachmentsError.message);
+    console.error("  - Code:", attachmentsError.code);
+  }
+
+  // Group attachments by call_report_id
+  const attachmentsByCallReport: Record<string, any[]> = {};
+  (attachments || []).forEach((attachment: any) => {
+    if (!attachmentsByCallReport[attachment.entity_id]) {
+      attachmentsByCallReport[attachment.entity_id] = [];
+    }
+    attachmentsByCallReport[attachment.entity_id].push(attachment);
+  });
+
+  // Merge attachments into call reports
+  const callReportsWithAttachments = (callReports || []).map((report: any) => ({
+    ...report,
+    attachments: attachmentsByCallReport[report.id] || [],
+  }));
 
   // Fetch episodes linked to call reports or stories
   const { data: episodes, error: episodesError } = await adminClient
@@ -156,7 +199,7 @@ export default async function ManagementStoryBankPage() {
         </p>
       </div>
 
-      <StoryBank callReports={callReports || []} episodes={episodesWithCounts} />
+      <StoryBank callReports={callReportsWithAttachments} episodes={episodesWithCounts} />
     </div>
   );
 }

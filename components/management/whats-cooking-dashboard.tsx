@@ -38,7 +38,7 @@ interface WhatsCookingDashboardProps {
   ideas: ActiveIdeaDetail[];
 }
 
-type SortField = "title" | "rating" | "genre" | "slot" | "director" | "status" | "writer" | "episodes";
+type SortField = "title" | "rating" | "genre" | "slot" | "director" | "status" | "writer" | "episodes" | "index";
 type SortDirection = "asc" | "desc" | null;
 type GroupByOption = 'none' | 'slot' | 'writer' | 'director' | 'genre' | 'type' | 'status';
 
@@ -228,6 +228,12 @@ export function WhatsCookingDashboard({ ideas }: WhatsCookingDashboardProps) {
             const epsB = b.completion_percentage ?? -1;
             comparison = epsA - epsB;
             break;
+          case "index":
+            // Sort by created_at to maintain insertion order
+            const dateA = new Date(a.created_at).getTime();
+            const dateB = new Date(b.created_at).getTime();
+            comparison = dateA - dateB;
+            break;
         }
 
         return sortDirection === "asc" ? comparison : -comparison;
@@ -343,7 +349,7 @@ export function WhatsCookingDashboard({ ideas }: WhatsCookingDashboardProps) {
   };
 
   // Render table row
-  const renderIdeaRow = (idea: ActiveIdeaDetail) => {
+  const renderIdeaRow = (idea: ActiveIdeaDetail, index: number, totalCount: number) => {
     const ratingStyle = getRatingBadge(idea.overall_rating);
     const isNew = isRecent(idea.created_at);
 
@@ -352,6 +358,11 @@ export function WhatsCookingDashboard({ ideas }: WhatsCookingDashboardProps) {
         key={idea.id}
         className="hover:bg-gray-50 border-b border-gray-100"
       >
+        <TableCell className="text-center text-sm text-gray-500 font-medium">
+          {sortField === "index" && sortDirection === "desc"
+            ? totalCount - index
+            : index + 1}
+        </TableCell>
         <TableCell className="font-medium">
           <div className="flex items-center gap-2">
             <Link
@@ -414,6 +425,26 @@ export function WhatsCookingDashboard({ ideas }: WhatsCookingDashboardProps) {
     );
   };
 
+  // Calculate total count for serial number display
+  const totalIdeasCount = useMemo(() => {
+    const countItems = (groups: Record<string, NestedGroup>): number => {
+      let count = 0;
+      Object.values(groups).forEach(group => {
+        if (group.items && group.items.length > 0) {
+          count += group.items.length;
+        }
+        if (group.subGroups) {
+          count += countItems(group.subGroups);
+        }
+      });
+      return count;
+    };
+    return countItems(groupedIdeas);
+  }, [groupedIdeas]);
+
+  // Track row index for serial numbers
+  let rowIndex = 0;
+
   // Recursive rendering function for nested groups
   const renderNestedGroups = (
     groups: Record<string, NestedGroup>,
@@ -435,7 +466,7 @@ export function WhatsCookingDashboard({ ideas }: WhatsCookingDashboardProps) {
             key={groupKey}
             className="border-t border-gray-200 bg-gray-50"
           >
-            <TableCell colSpan={8} className="py-2">
+            <TableCell colSpan={9} className="py-2">
               <button
                 onClick={() => toggleGroup(groupKey)}
                 className="flex items-center gap-2 text-gray-700 hover:text-[#224794] w-full"
@@ -466,7 +497,8 @@ export function WhatsCookingDashboard({ ideas }: WhatsCookingDashboardProps) {
         } else {
           // Leaf level, render items
           group.items.forEach(idea => {
-            rows.push(renderIdeaRow(idea));
+            rows.push(renderIdeaRow(idea, rowIndex, totalIdeasCount));
+            rowIndex++;
           });
         }
       }
@@ -598,28 +630,31 @@ export function WhatsCookingDashboard({ ideas }: WhatsCookingDashboardProps) {
           <Table>
             <TableHeader>
               <TableRow className="bg-gray-50 border-b border-gray-200">
-                <TableHead className="w-[25%] font-medium text-gray-700 cursor-pointer hover:bg-gray-100" onClick={() => handleSort("title")}>
+                <TableHead className="w-[60px] text-center font-medium text-gray-700 cursor-pointer hover:bg-gray-100 whitespace-nowrap" onClick={() => handleSort("index")}>
+                  # {getSortIcon("index")}
+                </TableHead>
+                <TableHead className="w-[25%] font-medium text-gray-700 cursor-pointer hover:bg-gray-100 whitespace-nowrap" onClick={() => handleSort("title")}>
                   Title {getSortIcon("title")}
                 </TableHead>
-                <TableHead className="w-[80px] text-center font-medium text-gray-700 cursor-pointer hover:bg-gray-100" onClick={() => handleSort("rating")}>
+                <TableHead className="w-[80px] text-center font-medium text-gray-700 cursor-pointer hover:bg-gray-100 whitespace-nowrap" onClick={() => handleSort("rating")}>
                   Rating {getSortIcon("rating")}
                 </TableHead>
-                <TableHead className="w-[18%] font-medium text-gray-700 cursor-pointer hover:bg-gray-100" onClick={() => handleSort("writer")}>
+                <TableHead className="w-[18%] font-medium text-gray-700 cursor-pointer hover:bg-gray-100 whitespace-nowrap" onClick={() => handleSort("writer")}>
                   Writer {getSortIcon("writer")}
                 </TableHead>
-                <TableHead className="w-[15%] font-medium text-gray-700 cursor-pointer hover:bg-gray-100" onClick={() => handleSort("director")}>
+                <TableHead className="w-[15%] font-medium text-gray-700 cursor-pointer hover:bg-gray-100 whitespace-nowrap" onClick={() => handleSort("director")}>
                   Director {getSortIcon("director")}
                 </TableHead>
-                <TableHead className="w-[120px] font-medium text-gray-700 cursor-pointer hover:bg-gray-100" onClick={() => handleSort("episodes")}>
+                <TableHead className="w-[120px] font-medium text-gray-700 cursor-pointer hover:bg-gray-100 whitespace-nowrap" onClick={() => handleSort("episodes")}>
                   Progress {getSortIcon("episodes")}
                 </TableHead>
-                <TableHead className="w-[12%] font-medium text-gray-700 cursor-pointer hover:bg-gray-100" onClick={() => handleSort("genre")}>
+                <TableHead className="w-[12%] font-medium text-gray-700 cursor-pointer hover:bg-gray-100 whitespace-nowrap" onClick={() => handleSort("genre")}>
                   Genre {getSortIcon("genre")}
                 </TableHead>
-                <TableHead className="w-[100px] font-medium text-gray-700 cursor-pointer hover:bg-gray-100" onClick={() => handleSort("slot")}>
+                <TableHead className="w-[100px] font-medium text-gray-700 cursor-pointer hover:bg-gray-100 whitespace-nowrap" onClick={() => handleSort("slot")}>
                   Slot {getSortIcon("slot")}
                 </TableHead>
-                <TableHead className="w-[120px] font-medium text-gray-700 cursor-pointer hover:bg-gray-100" onClick={() => handleSort("status")}>
+                <TableHead className="w-[120px] font-medium text-gray-700 cursor-pointer hover:bg-gray-100 whitespace-nowrap" onClick={() => handleSort("status")}>
                   Stage {getSortIcon("status")}
                 </TableHead>
               </TableRow>
@@ -627,7 +662,7 @@ export function WhatsCookingDashboard({ ideas }: WhatsCookingDashboardProps) {
             <TableBody>
               {filteredIdeas.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center py-12 text-gray-500">
+                  <TableCell colSpan={9} className="text-center py-12 text-gray-500">
                     No projects found matching your filters
                   </TableCell>
                 </TableRow>

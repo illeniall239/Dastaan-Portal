@@ -36,7 +36,7 @@ export function EpisodeProgress({ ideas }: EpisodeProgressProps) {
           const received = project.received_episodes || 0;
           const total = project.total_episodes || 0;
           
-          // Color based on completion
+          // Color based on episode delivery progress
           let barColor = "#224794";
           if (percentage >= 80) barColor = "#22c55e";
           else if (percentage >= 50) barColor = "#f59e0b";
@@ -71,7 +71,7 @@ export function EpisodeProgress({ ideas }: EpisodeProgressProps) {
 
       {/* Summary */}
       <div className="mt-3 pt-2 border-t border-gray-100 text-xs text-gray-500">
-        Showing top {topProjects.length} by completion
+        Showing top {topProjects.length} by episode delivery progress
       </div>
     </Card>
   );

@@ -52,8 +52,10 @@ export function GenreDonut({ ideas }: GenreDonutProps) {
 
   const total = ideas.length;
 
-  const handleSegmentClick = (entry: any) => {
-    const genreName = entry.name;
+  const handleSegmentClick = (data: any) => {
+    const genreName = data.name;
+
+    if (!genreName) return;
 
     // Filter ideas for this specific genre
     const filteredIdeas = ideas.filter(idea => {
@@ -83,9 +85,13 @@ export function GenreDonut({ ideas }: GenreDonutProps) {
           format: (value: number) => value ? value.toFixed(2) : "N/A"
         },
         {
-          key: "evaluator_count",
+          key: "evaluator_scores",
           label: "Evaluators",
-          format: (value: number) => `${value || 0}`
+          format: (value: any) => {
+            if (!value) return '0';
+            const count = Object.values(value).filter(score => score !== null).length;
+            return `${count}`;
+          }
         },
         { key: "slot", label: "Slot" },
         {

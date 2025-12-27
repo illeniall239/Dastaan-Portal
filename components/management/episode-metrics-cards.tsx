@@ -41,7 +41,7 @@ export function EpisodeMetricsCards({ metrics }: EpisodeMetricsCardsProps) {
         </CardContent>
       </Card>
 
-      {/* Overall Completion */}
+      {/* Overall Episode Delivery Progress */}
       <Card className="border-0 shadow-lg bg-gradient-to-br from-purple-500 to-purple-600">
         <CardContent className="p-4">
           <div className="flex items-center gap-3">
@@ -49,7 +49,7 @@ export function EpisodeMetricsCards({ metrics }: EpisodeMetricsCardsProps) {
               <Clock className="h-5 w-5 text-white" />
             </div>
             <div>
-              <p className="text-xs text-purple-100 font-medium">Overall Completion</p>
+              <p className="text-xs text-purple-100 font-medium">Episode Delivery Progress</p>
               <p className="text-2xl font-bold text-white">{metrics.overallCompletionPercentage}%</p>
             </div>
           </div>

@@ -36,7 +36,7 @@ export function TeamStatsCards({ stats }: TeamStatsCardsProps) {
       textColor: "text-blue-900",
     },
     {
-      title: "Call Reports",
+      title: "Writer Engagement Reports",
       value: stats.total_call_reports,
       icon: FileText,
       description: "Total reports created",

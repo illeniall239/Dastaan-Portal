@@ -129,7 +129,7 @@ export function TeamComparisonTable({ teams, filteredType }: TeamComparisonTable
                       className="h-8 hover:bg-teal-50"
                       onClick={() => handleSort('call_reports_created')}
                     >
-                      Call Reports
+                      Writer Engagement Reports
                       <SortIcon field="call_reports_created" />
                     </Button>
                   </TableHead>

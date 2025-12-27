@@ -152,14 +152,17 @@ export function EpisodeEditForm({ episode, onSuccess }: EpisodeEditFormProps) {
               <Label>Current Attachment</Label>
               <div className="flex items-center gap-2 p-3 bg-slate-50 rounded-md border">
                 <FileText className="h-5 w-5 text-slate-600" />
-                <a
-                  href={existingAttachment.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-sm text-blue-600 hover:underline flex-1 truncate"
+                <button
+                  onClick={(e) => {
+                    e.preventDefault();
+                    if (episode.id) {
+                      window.open(`/api/episodes/download/${episode.id}`, "_blank");
+                    }
+                  }}
+                  className="text-sm text-blue-600 hover:underline flex-1 truncate text-left"
                 >
                   {existingAttachment.name || "View attachment"}
-                </a>
+                </button>
                 <Badge variant="outline" className="text-xs">Current</Badge>
               </div>
             </div>
