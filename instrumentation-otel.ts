@@ -61,17 +61,30 @@ function createTraceExporter() {
   if (exporterType === 'otlp') {
     // OTLP HTTP exporter for Grafana Cloud (Week 3)
     const endpoint = process.env.OTEL_EXPORTER_OTLP_ENDPOINT;
-    const headers = process.env.OTEL_EXPORTER_OTLP_HEADERS;
+    const authHeader = process.env.OTEL_EXPORTER_OTLP_HEADERS;
 
     if (!endpoint) {
       console.warn('[OTel] OTLP endpoint not configured, falling back to console exporter');
       return new ConsoleSpanExporter();
     }
 
+    // Parse authorization header (should be in format "Authorization=Basic xxx")
+    const headers: Record<string, string> = {};
+    if (authHeader) {
+      // Remove "Authorization=" prefix if present
+      const authValue = authHeader.replace(/^Authorization=/i, '').trim();
+      headers['Authorization'] = authValue;
+    }
+
+    console.log('[OTel] Configuring OTLP exporter:', {
+      endpoint: `${endpoint}/v1/traces`,
+      hasAuth: !!authHeader,
+    });
+
     return new OTLPTraceExporter({
       url: `${endpoint}/v1/traces`,
-      headers: headers ? { Authorization: headers } : undefined,
-      timeoutMillis: 5000, // 5 second timeout
+      headers,
+      timeoutMillis: 10000, // 10 second timeout for reliability
     });
   }
 
@@ -86,17 +99,24 @@ function createMetricsExporter() {
   if (exporterType === 'otlp') {
     // OTLP HTTP exporter for Grafana Cloud (Week 3)
     const endpoint = process.env.OTEL_EXPORTER_OTLP_ENDPOINT;
-    const headers = process.env.OTEL_EXPORTER_OTLP_HEADERS;
+    const authHeader = process.env.OTEL_EXPORTER_OTLP_HEADERS;
 
     if (!endpoint) {
       console.warn('[OTel] OTLP endpoint not configured, metrics will not be exported');
       return undefined;
     }
 
+    // Parse authorization header
+    const headers: Record<string, string> = {};
+    if (authHeader) {
+      const authValue = authHeader.replace(/^Authorization=/i, '').trim();
+      headers['Authorization'] = authValue;
+    }
+
     return new OTLPMetricExporter({
       url: `${endpoint}/v1/metrics`,
-      headers: headers ? { Authorization: headers } : undefined,
-      timeoutMillis: 5000,
+      headers,
+      timeoutMillis: 10000,
     });
   }
 
