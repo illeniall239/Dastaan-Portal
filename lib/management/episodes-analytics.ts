@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 /**
  * Episodes & Episodic Evaluations Analytics for Management Dashboard
@@ -58,7 +58,7 @@ export interface QualityDistribution {
  * Get episodes overview statistics
  */
 export async function getEpisodeOverview(): Promise<EpisodeOverview> {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
 
   try {
     // Get all episodes
@@ -112,7 +112,7 @@ export async function getEpisodeOverview(): Promise<EpisodeOverview> {
  * Get episodic evaluations overview
  */
 export async function getEpisodicEvaluationOverview(): Promise<EpisodicEvaluationOverview> {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
 
   try {
     const { data: evaluations } = await supabase
@@ -205,7 +205,7 @@ export async function getEpisodicEvaluationOverview(): Promise<EpisodicEvaluatio
  * Get episode production trends (weekly)
  */
 export async function getEpisodeProductionTrends(days: number = 90): Promise<EpisodeProductionTrend[]> {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
 
   try {
     const { data: episodes } = await supabase
@@ -257,7 +257,7 @@ export async function getEpisodeProductionTrends(days: number = 90): Promise<Epi
  * Get quality distribution for pages and scenes
  */
 export async function getQualityDistribution(): Promise<QualityDistribution> {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
 
   try {
     const { data: episodes } = await supabase

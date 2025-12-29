@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 
 export interface OverduePayment {
   id: string;
@@ -14,7 +14,7 @@ export interface OverduePayment {
 }
 
 export async function getOverduePayments() {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
 
   const now = new Date();
 

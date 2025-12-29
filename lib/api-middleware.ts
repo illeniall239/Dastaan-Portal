@@ -153,19 +153,55 @@ export function handleApiError(error: unknown): NextResponse {
 
 /**
  * Wrap an API handler to emit Server-Timing for end-to-end latency measurement.
+ * Enhanced with OpenTelemetry tracing and metrics (Week 2)
  */
 export async function withApiPerf(handler: () => Promise<NextResponse>, req?: Request): Promise<NextResponse> {
   const start = performance.now();
+  const route = req ? new URL(req.url).pathname : 'unknown';
+  const method = req?.method || 'UNKNOWN';
+
   try {
-    const res = await handler();
+    // Import OTel utilities dynamically (only in production with OTel enabled)
+    const { instrumentApiHandler } = process.env.NODE_ENV === 'production'
+      ? await import('./telemetry/spans').catch(() => ({ instrumentApiHandler: null }))
+      : { instrumentApiHandler: null };
+
+    const { recordApiLatency } = process.env.NODE_ENV === 'production'
+      ? await import('./telemetry/metrics').catch(() => ({ recordApiLatency: null }))
+      : { recordApiLatency: null };
+
+    // Execute handler (with OTel tracing if available)
+    const res = instrumentApiHandler
+      ? await instrumentApiHandler(route, handler)
+      : await handler();
+
     const dur = performance.now() - start;
+
+    // Add Server-Timing header
     res.headers.set("Server-Timing", `total;dur=${dur.toFixed(0)}`);
+
+    // Add cache headers for GET requests
     if (req && req.method === 'GET') {
       res.headers.set('Cache-Control', 'public, max-age=30, s-maxage=120, stale-while-revalidate=300');
     }
+
+    // Record metrics (if OTel is available)
+    if (recordApiLatency) {
+      recordApiLatency(route, method, res.status, dur);
+    }
+
     return res;
   } catch (error) {
     const dur = performance.now() - start;
+
+    // Record error metrics (if OTel is available)
+    if (process.env.NODE_ENV === 'production') {
+      const { recordApiLatency } = await import('./telemetry/metrics').catch(() => ({ recordApiLatency: null }));
+      if (recordApiLatency) {
+        recordApiLatency(route, method, 500, dur);
+      }
+    }
+
     const res = NextResponse.json({ error: "Internal server error" }, { status: 500 });
     res.headers.set("Server-Timing", `total;dur=${dur.toFixed(0)}`);
     return res;

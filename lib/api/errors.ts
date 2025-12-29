@@ -258,11 +258,30 @@ export function rateLimitError(
 
 /**
  * Internal server error (500)
+ * Also captures the error to GlitchTip
  */
 export function internalError(
   message: string = "An unexpected error occurred",
-  details?: any
+  details?: any,
+  error?: Error
 ): NextResponse<ApiErrorResponse> {
+  // Capture to GlitchTip if error object provided (only in production)
+  if (error && process.env.NODE_ENV === "production") {
+    import("@sentry/nextjs").then(({ captureException }) => {
+      captureException(error, {
+        level: "error",
+        tags: {
+          source: "api",
+          error_type: "internal",
+        },
+        extra: {
+          message,
+          details,
+        },
+      });
+    });
+  }
+
   return createErrorResponse(message, 500, {
     code: ApiErrorCode.INTERNAL_ERROR,
     details: process.env.NODE_ENV === "development" ? details : undefined,
@@ -304,6 +323,7 @@ export function constraintViolationError(
 
 /**
  * Handle Supabase/PostgreSQL errors and convert to standard API errors
+ * Also captures unexpected database errors to GlitchTip
  *
  * @param error - The database error object
  * @param context - Optional context about what operation failed
@@ -321,6 +341,36 @@ export function handleDatabaseError(
   error: any,
   context?: string
 ): NextResponse<ApiErrorResponse> {
+  // Capture unexpected database errors to GlitchTip (not constraint violations)
+  const isExpectedError =
+    error.code === "23505" || // Unique constraint
+    error.code === "23503" || // Foreign key
+    error.code === "23514" || // Check constraint
+    error.code === "42501" || // RLS policy
+    error.message?.includes("policy");
+
+  if (!isExpectedError && process.env.NODE_ENV === "production") {
+    import("@sentry/nextjs").then(({ captureException }) => {
+      const errorObj =
+        error instanceof Error ? error : new Error(error.message || "Database error");
+
+      captureException(errorObj, {
+        level: "error",
+        tags: {
+          source: "database",
+          error_type: "database",
+          error_code: error.code,
+        },
+        contexts: {
+          database: {
+            code: error.code,
+            message: error.message,
+            context,
+          },
+        },
+      });
+    });
+  }
   // PostgreSQL unique constraint violation
   if (error.code === "23505") {
     const constraintMatch = error.message?.match(/constraint "([^"]+)"/);

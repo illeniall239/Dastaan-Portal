@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 
 export interface PendingApproval {
   id: string;
@@ -15,7 +15,7 @@ export interface PendingApproval {
 }
 
 export async function getPendingApprovals() {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
 
   const { data: stories, error } = await supabase
     .from('stories')

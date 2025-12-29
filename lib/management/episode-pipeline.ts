@@ -1,5 +1,5 @@
-import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { cachedQuery, CacheTags } from '@/lib/cache/request-cache';
 
 export interface DramaWithEpisodes {
   callReportId: string;
@@ -27,6 +27,35 @@ export interface EvaluatorDetail {
   overallScore?: number;
   grade?: string;
   evaluatedAt?: string;
+}
+
+/**
+ * OPTIMIZED: Get dramas with their episodes and evaluator details in a single parallel operation
+ * CACHED: Uses Next.js request memoization with 5-minute revalidation
+ */
+export async function getDramasWithEpisodesAndDetails(): Promise<{
+  dramas: DramaWithEpisodes[];
+  episodesByDrama: Record<string, EpisodeWithProgress[]>;
+  evaluatorsByEpisode: Record<string, { completed: EvaluatorDetail[]; pending: EvaluatorDetail[] }>;
+}> {
+  return cachedQuery(
+    async () => {
+      const dramas = await getDramasWithEpisodes();
+      const dramaIds = dramas.map(d => d.callReportId);
+
+      if (dramaIds.length === 0) {
+        return { dramas, episodesByDrama: {}, evaluatorsByEpisode: {} };
+      }
+
+      const { episodesByDrama, evaluatorsByEpisode } = await getAllEpisodesAndEvaluatorsBatch(dramaIds);
+      return { dramas, episodesByDrama, evaluatorsByEpisode };
+    },
+    ['dramas-episodes-details'],
+    {
+      revalidate: 300,
+      tags: [CacheTags.EPISODE_PIPELINE]
+    }
+  )();
 }
 
 /**
@@ -60,21 +89,10 @@ export async function getDramasWithEpisodes(): Promise<DramaWithEpisodes[]> {
     .select('id, episode_number, call_report_id')
     .in('call_report_id', callReportIds);
 
-  if (episodesError) {
-    console.error('Error fetching episodes:', episodesError);
-  }
-
   // Step 3: Fetch ALL evaluations separately to avoid nested query issues
-  const { data: allEvaluations, error: evaluationsError } = await supabase
+  const { data: allEvaluations } = await supabase
     .from('episodic_evaluations')
     .select('id, episode_id');
-
-  if (evaluationsError) {
-    console.error('Error fetching evaluations:', evaluationsError);
-  }
-
-  console.log('Total episodes fetched:', episodes?.length || 0);
-  console.log('Total evaluations fetched:', allEvaluations?.length || 0);
 
   // Build a set of episode IDs that have evaluations
   const episodeHasEvaluations = new Set(
@@ -217,26 +235,28 @@ export async function getAllEpisodesAndEvaluatorsBatch(
     .in('call_report_id', dramaIds)
     .order('episode_number', { ascending: true});
 
-  // Add error logging
   if (episodesError) {
-    console.error('Error fetching episodes in batch:', episodesError);
-    console.error('Drama IDs requested:', dramaIds);
+    // Error fetching episodes - return empty results
   }
 
-  // Log the results for debugging
-  console.log('Episodes fetched:', allEpisodes?.length || 0, 'for', dramaIds.length, 'dramas');
+  const episodeIds = allEpisodes?.map(e => e.id) || [];
 
-  // Query 2: Fetch ALL evaluations (no filter - we'll filter in code)
-  // Note: Filtering by 578 episode IDs causes "fetch failed" error due to query size
-  const { data: allEvaluations, error: evaluationsError } = await supabase
-    .from('episodic_evaluations')
-    .select('id, episode_id, evaluator_id, overall_average, overall_grade, created_at, events');
+  // Query 2: OPTIMIZED - Fetch evaluations in chunks to avoid URL length limits
+  // Chunk size of 100 episode IDs is safe for .in() queries
+  const CHUNK_SIZE = 100;
+  const allEvaluations = [];
 
-  if (evaluationsError) {
-    console.error('Error fetching evaluations in batch:', evaluationsError);
+  for (let i = 0; i < episodeIds.length; i += CHUNK_SIZE) {
+    const chunk = episodeIds.slice(i, i + CHUNK_SIZE);
+    const { data, error } = await supabase
+      .from('episodic_evaluations')
+      .select('id, episode_id, evaluator_id, overall_average, overall_grade, created_at, events')
+      .in('episode_id', chunk);
+
+    if (!error && data) {
+      allEvaluations.push(...data);
+    }
   }
-
-  console.log('Evaluations fetched:', allEvaluations?.length || 0);
 
   // Query 3: Get all evaluators
   const { data: allEvaluators } = await supabase
@@ -268,13 +288,7 @@ export async function getAllEpisodesAndEvaluatorsBatch(
   (allEpisodes || []).forEach((episode: any) => {
     const dramaId = episode.call_report_id;
 
-    if (!dramaId) {
-      console.warn('Episode without call_report_id:', episode.id);
-      return;
-    }
-
-    if (!episodesByDrama[dramaId]) {
-      console.warn('Episode belongs to unknown drama:', dramaId, 'Episode:', episode.id);
+    if (!dramaId || !episodesByDrama[dramaId]) {
       return;
     }
 

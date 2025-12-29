@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 
 export interface EvaluatorScores {
   nadeem?: number | null;
@@ -48,7 +48,7 @@ export async function getActiveIdeasByGenre(
   teamId?: string | null,
   userRole?: string | null
 ): Promise<ActiveIdeaDetail[]> {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
 
   try {
     const hasGlobalAccess = userRole && ['admin', 'management'].includes(userRole);

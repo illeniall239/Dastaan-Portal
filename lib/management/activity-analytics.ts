@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 
 export interface RecentActivity {
   id: string;
@@ -17,7 +17,7 @@ export interface RecentActivity {
  * Get recent activity from audit logs and table updates
  */
 export async function getRecentActivity(limit: number = 15): Promise<RecentActivity[]> {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
   const activities: RecentActivity[] = [];
 
   try {

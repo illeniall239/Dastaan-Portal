@@ -320,6 +320,116 @@ export function logBusinessEvent(
   );
 }
 
+/**
+ * Log error and send to GlitchTip
+ *
+ * @param error Error object or message
+ * @param context Additional context
+ *
+ * @example
+ * logError(new Error('Database connection failed'), { table: 'users', operation: 'select' });
+ */
+export function logError(
+  error: Error | string,
+  context?: Record<string, unknown>
+): void {
+  const errorObj = typeof error === 'string' ? new Error(error) : error;
+
+  // Log to Pino
+  logger.error({ error: errorObj, ...context }, errorObj.message);
+
+  // Send to GlitchTip (only in production)
+  if (process.env.NODE_ENV === 'production') {
+    // Dynamic import to avoid loading Sentry in development
+    import('@sentry/nextjs').then(({ captureException }) => {
+      captureException(errorObj, {
+        level: 'error',
+        tags: {
+          source: 'logger',
+          ...context,
+        },
+        extra: context,
+      });
+    });
+  }
+}
+
+/**
+ * Log fatal error and send to GlitchTip
+ *
+ * @param error Error object or message
+ * @param context Additional context
+ *
+ * @example
+ * logFatal(new Error('Critical system failure'), { service: 'database' });
+ */
+export function logFatal(
+  error: Error | string,
+  context?: Record<string, unknown>
+): void {
+  const errorObj = typeof error === 'string' ? new Error(error) : error;
+
+  // Log to Pino
+  logger.fatal({ error: errorObj, ...context }, errorObj.message);
+
+  // Send to GlitchTip (only in production)
+  if (process.env.NODE_ENV === 'production') {
+    // Dynamic import to avoid loading Sentry in development
+    import('@sentry/nextjs').then(({ captureException }) => {
+      captureException(errorObj, {
+        level: 'fatal',
+        tags: {
+          source: 'logger',
+          ...context,
+        },
+        extra: context,
+      });
+    });
+  }
+}
+
+/**
+ * Log database error and send to GlitchTip
+ *
+ * @param error Error object
+ * @param query Query that failed
+ * @param context Additional context
+ *
+ * @example
+ * logDatabaseError(err, 'SELECT * FROM users', { table: 'users' });
+ */
+export function logDatabaseError(
+  error: Error,
+  query: string,
+  context?: Record<string, unknown>
+): void {
+  const errorContext = {
+    type: 'database_error',
+    query,
+    ...context,
+  };
+
+  logger.error(errorContext, `Database error: ${error.message}`);
+
+  if (process.env.NODE_ENV === 'production') {
+    import('@sentry/nextjs').then(({ captureException }) => {
+      captureException(error, {
+        level: 'error',
+        tags: {
+          source: 'database',
+          error_type: 'database',
+        },
+        contexts: {
+          database: {
+            query,
+            ...context,
+          },
+        },
+      });
+    });
+  }
+}
+
 // Export the main logger instance
 export { logger };
 

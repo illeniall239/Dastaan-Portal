@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 
 export interface IdeasByGenreData {
   genre: string;
@@ -10,7 +10,7 @@ export interface IdeasByGenreData {
  * Excludes archived ideas
  */
 export async function getIdeasByGenre(): Promise<IdeasByGenreData[]> {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
 
   // Query call_reports table, filtering out archived ideas
   const { data: callReports, error } = await supabase
@@ -61,7 +61,7 @@ export async function getIdeasByGenre(): Promise<IdeasByGenreData[]> {
  * Get total count of active ideas (call reports not archived)
  */
 export async function getTotalActiveIdeas(): Promise<number> {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
 
   const { count, error } = await supabase
     .from('call_reports')
@@ -80,7 +80,7 @@ export async function getTotalActiveIdeas(): Promise<number> {
  * Get ideas breakdown by status
  */
 export async function getIdeasByStatus() {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
 
   const { data, error } = await supabase
     .from('call_reports')

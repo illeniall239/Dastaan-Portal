@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 
 export interface ActiveProject {
   id: string;
@@ -14,7 +14,7 @@ export interface ActiveProject {
 }
 
 export async function getActiveProjects() {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
 
   // Query stories with inner join to call_reports to filter by meeting_type
   // This excludes scheduled meetings (which are not actual story projects)

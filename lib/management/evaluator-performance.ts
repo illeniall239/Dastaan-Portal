@@ -1,5 +1,5 @@
-import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { cachedQuery, CacheTags } from "@/lib/cache/request-cache";
 
 /**
  * Evaluator Performance Analytics for Management Dashboard
@@ -45,7 +45,7 @@ export interface EvaluatorActivity {
  * Get evaluator overview statistics
  */
 export async function getEvaluatorOverview(): Promise<EvaluatorOverview> {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
   const adminClient = createAdminClient();
 
   try {
@@ -92,147 +92,64 @@ export async function getEvaluatorOverview(): Promise<EvaluatorOverview> {
 
 /**
  * Get detailed stats for all evaluators
+ * OPTIMIZED: Uses SQL function to replace N+1 query pattern
+ * CACHED: Uses Next.js request memoization with 5-minute revalidation
  * @param fromDate Optional start date for filtering
  * @param toDate Optional end date for filtering
  */
 export async function getAllEvaluatorStats(fromDate?: Date, toDate?: Date): Promise<EvaluatorStats[]> {
-  const supabase = await createClient();
-  const adminClient = createAdminClient();
+  const cacheKey = ['evaluator-stats'];
+  if (fromDate) cacheKey.push(`from-${fromDate.toISOString()}`);
+  if (toDate) cacheKey.push(`to-${toDate.toISOString()}`);
 
-  try {
-    // Get all evaluators (using regular client for auth check)
-    const { data: evaluators } = await supabase
-      .from("users")
-      .select("id, name, email")
-      .eq("role", "evaluator")
-      .eq("status", "active");
+  return cachedQuery(
+    async () => {
+      const adminClient = createAdminClient();
 
-    if (!evaluators) return [];
+      try {
+        const { data, error } = await adminClient.rpc('get_all_evaluator_stats', {
+          from_date: fromDate?.toISOString() || null,
+          to_date: toDate?.toISOString() || null
+        });
 
-    // Use admin client to bypass RLS for data fetching
-    // Get call report evaluations with timestamps (with optional date filtering)
-    let callReportQuery = adminClient
-      .from("evaluator_forms")
-      .select("evaluator_id, created_at, time_spent_minutes");
-
-    if (fromDate) {
-      callReportQuery = callReportQuery.gte("created_at", fromDate.toISOString());
-    }
-    if (toDate) {
-      callReportQuery = callReportQuery.lte("created_at", toDate.toISOString());
-    }
-
-    const { data: callReportEvals, error: crError } = await callReportQuery;
-
-    if (crError) {
-      console.error("Error fetching call report evaluations:", crError);
-    }
-
-    // Get episodic evaluations with timestamps (with optional date filtering)
-    let episodicQuery = adminClient
-      .from("episodic_evaluations")
-      .select("evaluator_id, submitted_at, time_spent_minutes");
-
-    if (fromDate) {
-      episodicQuery = episodicQuery.gte("submitted_at", fromDate.toISOString());
-    }
-    if (toDate) {
-      episodicQuery = episodicQuery.lte("submitted_at", toDate.toISOString());
-    }
-
-    const { data: episodicEvals, error: epError } = await episodicQuery;
-
-    if (epError) {
-      console.error("Error fetching episodic evaluations:", epError);
-    }
-
-    // Get call reports created by evaluators (logged call reports)
-    let callReportsQuery = adminClient
-      .from("call_reports")
-      .select("created_by, created_at, time_spent_minutes");
-
-    if (fromDate) {
-      callReportsQuery = callReportsQuery.gte("created_at", fromDate.toISOString());
-    }
-    if (toDate) {
-      callReportsQuery = callReportsQuery.lte("created_at", toDate.toISOString());
-    }
-
-    const { data: callReports, error: crLogsError } = await callReportsQuery;
-
-    if (crLogsError) {
-      console.error("Error fetching call reports:", crLogsError);
-    }
-
-    console.log('Evaluator stats data fetched:', {
-      evaluators: evaluators.length,
-      callReportEvals: callReportEvals?.length || 0,
-      episodicEvals: episodicEvals?.length || 0,
-      callReportsLogged: callReports?.length || 0
-    });
-
-    return evaluators.map(evaluator => {
-      const crEvals = callReportEvals?.filter(e => e.evaluator_id === evaluator.id) || [];
-      const epEvals = episodicEvals?.filter(e => e.evaluator_id === evaluator.id) || [];
-      const loggedCallReports = callReports?.filter(cr => cr.created_by === evaluator.id) || [];
-
-      // Total Activities = ALL activities (evaluations + logged call reports)
-      const totalActivities = crEvals.length + epEvals.length + loggedCallReports.length;
-
-      // Calculate mins per day from actual time spent
-      const allDates = [
-        ...crEvals.map(e => new Date(e.created_at)),
-        ...epEvals.map(e => new Date(e.submitted_at)),
-        ...loggedCallReports.map(cr => new Date(cr.created_at)).filter(d => !isNaN(d.getTime())),
-      ].filter(d => d instanceof Date && !isNaN(d.getTime()));
-
-      let avgTimeSpent = 0;
-      if (allDates.length >= 1) {
-        // Calculate total minutes spent across all activities
-        const totalMinutes = [
-          ...crEvals.map(e => e.time_spent_minutes || 0),
-          ...epEvals.map(e => e.time_spent_minutes || 0),
-          ...loggedCallReports.map(cr => cr.time_spent_minutes || 0),
-        ].reduce((sum, mins) => sum + mins, 0);
-
-        if (totalMinutes > 0 && allDates.length >= 2) {
-          // Calculate active days range
-          const sortedDates = allDates.sort((a, b) => a.getTime() - b.getTime());
-          const firstDate = sortedDates[0];
-          const lastDate = sortedDates[sortedDates.length - 1];
-          const diffTime = Math.abs(lastDate.getTime() - firstDate.getTime());
-          const totalDaysActive = Math.max(1, diffTime / (1000 * 60 * 60 * 24)); // At least 1 day
-
-          // Minutes per day
-          avgTimeSpent = parseFloat((totalMinutes / totalDaysActive).toFixed(1));
-        } else if (totalMinutes > 0) {
-          // Only one activity - use total minutes as mins/day
-          avgTimeSpent = totalMinutes;
+        if (error) {
+          return [];
         }
-      }
 
-      return {
-        id: evaluator.id,
-        name: evaluator.name,
-        email: evaluator.email,
-        oneLinerEvaluations: crEvals.length,           // One-liner evaluations (call report evaluations)
-        episodicEvals: epEvals.length,
-        writerEngagementReports: loggedCallReports.length,  // Call reports logged by evaluator
-        totalEvaluations: totalActivities,  // Changed to totalActivities to count ALL activities
-        avgTimeSpent,  // Now represents activities per day (frequency)
-      };
-    });
-  } catch (error) {
-    console.error("Error fetching evaluator stats:", error);
-    return [];
-  }
+        return (data || []).map((row: any) => {
+          // Calculate avgTimeSpent (mins per day)
+          const avgTimeSpent = row.active_days > 0
+            ? parseFloat((row.total_time_spent_minutes / row.active_days).toFixed(1))
+            : 0;
+
+          return {
+            id: row.evaluator_id,
+            name: row.evaluator_name,
+            email: row.evaluator_email,
+            oneLinerEvaluations: Number(row.oneliner_evaluations),
+            episodicEvals: Number(row.episodic_evals),
+            writerEngagementReports: Number(row.writer_engagement_reports),
+            totalEvaluations: Number(row.total_evaluations),
+            avgTimeSpent,
+          };
+        });
+      } catch (error) {
+        return [];
+      }
+    },
+    cacheKey,
+    {
+      revalidate: 300,
+      tags: [CacheTags.EVALUATOR_STATS]
+    }
+  )();
 }
 
 /**
  * Get evaluator workload (for workload balance chart)
  */
 export async function getEvaluatorWorkloads(): Promise<EvaluatorWorkload[]> {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
   const adminClient = createAdminClient();
 
   try {
@@ -276,7 +193,7 @@ export async function getEvaluatorWorkloads(): Promise<EvaluatorWorkload[]> {
  * Get evaluator activity heat map data (last 12 weeks)
  */
 export async function getEvaluatorActivityHeatmap(): Promise<EvaluatorActivity[]> {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
   const adminClient = createAdminClient();
 
   try {

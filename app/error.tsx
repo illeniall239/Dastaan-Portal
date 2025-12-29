@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { AlertTriangle } from "lucide-react";
+import * as Sentry from "@sentry/nextjs";
 
 export default function Error({
   error,
@@ -13,12 +14,29 @@ export default function Error({
   reset: () => void;
 }) {
   useEffect(() => {
-    // Log error to console (Vercel automatically captures these logs)
-    console.error("Application error:", error);
-    if (error.digest) {
-      console.error("Error ID:", error.digest);
+    // Report error to GlitchTip
+    Sentry.captureException(error, {
+      level: "error",
+      tags: {
+        error_boundary: "app",
+        location: "root",
+      },
+      contexts: {
+        error: {
+          digest: error.digest,
+          message: error.message,
+          stack: error.stack,
+        },
+      },
+    });
+
+    // Also log to console in development
+    if (process.env.NODE_ENV === "development") {
+      console.error("Application error:", error);
+      if (error.digest) {
+        console.error("Error ID:", error.digest);
+      }
     }
-    console.error("Location: Root Error Boundary");
   }, [error]);
 
   return (

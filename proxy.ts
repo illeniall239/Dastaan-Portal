@@ -48,11 +48,11 @@ export async function proxy(request: NextRequest) {
   // Basic CSP (adjust allowed sources as needed)
   const csp = [
     "default-src 'self'",
-    "script-src 'self' 'unsafe-inline' 'unsafe-eval' *.supabase.co",
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval' *.supabase.co va.vercel-scripts.com vitals.vercel-insights.com",
     "style-src 'self' 'unsafe-inline' fonts.googleapis.com",
     "img-src 'self' data: blob: *.supabase.co",
     "font-src 'self' fonts.googleapis.com fonts.gstatic.com",
-    "connect-src 'self' *.supabase.co",
+    "connect-src 'self' *.supabase.co wss://*.supabase.co vitals.vercel-insights.com",
     "frame-ancestors 'none'",
   ].join('; ');
   supabaseResponse.headers.set('Content-Security-Policy', csp);

@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 
 export interface PipelineItem {
   id: string;
@@ -13,7 +13,7 @@ export interface PipelineItem {
 }
 
 export async function getPipelineValue() {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
 
   // Get contracts
   const { data: contracts } = await supabase

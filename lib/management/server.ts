@@ -1,4 +1,6 @@
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { cachedQuery, CacheTags } from "@/lib/cache/request-cache";
+import type { CriticalAlert } from "./critical-alerts";
 
 /**
  * Management Dashboard Server Functions
@@ -70,110 +72,117 @@ export interface DepartmentWorkload {
   };
 }
 
-export interface CriticalAlert {
-  id: string;
-  type: "stuck_project" | "overdue_script" | "expiring_contract" | "overdue_payment" | "slow_legal";
-  title: string;
-  description: string;
-  severity: "high" | "medium" | "low";
-  entityId: string;
-  entityType: string;
-  daysOverdue?: number;
-  link: string;
-}
+// CriticalAlert type imported from critical-alerts.ts to avoid duplication
 
 /**
  * Get executive summary stats for hero section
- * FIXED: Uses admin client and avoids nested queries for better performance
+ * CACHED: Uses Next.js request memoization with 5-minute revalidation
+ * INSTRUMENTED: OpenTelemetry tracing (Week 2)
  */
 export async function getExecutiveSummary(): Promise<ExecutiveSummary> {
-  const supabase = await createClient();
+  // Instrument server function (production only)
+  const instrumentFn = process.env.NODE_ENV === 'production'
+    ? (await import('@/lib/telemetry/spans').catch(() => ({ instrumentServerFunction: null }))).instrumentServerFunction
+    : null;
 
-  try {
-    // Fetch call reports to get story IDs (avoiding nested query)
-    const { data: callReports } = await supabase
-      .from("call_reports")
-      .select("story_id")
-      .eq("meeting_type", "call_report");
+  const wrappedQuery = async () => cachedQuery(
+    async () => {
+      const supabase = createAdminClient();
 
-    const storyIds = [...new Set(callReports?.map((cr: any) => cr.story_id).filter(Boolean))];
+      try {
+        // Fetch call reports to get story IDs (avoiding nested query)
+        const { data: callReports } = await supabase
+          .from("call_reports")
+          .select("story_id")
+          .eq("meeting_type", "call_report");
 
-    const [
-      storiesRes,
-      negotiationsRes,
-      contractsRes,
-      paymentsRes,
-      activeContractsRes,
-      auditRes
-    ] = await Promise.all([
-      // Total active projects (stories with call reports)
-      supabase
-        .from("stories")
-        .select("*", { count: "exact", head: true })
-        .in("id", storyIds.length > 0 ? storyIds : ['00000000-0000-0000-0000-000000000000'])
-        .neq("status", "archived")
-        .neq("status", "rejected"),
+        const storyIds = [...new Set(callReports?.map((cr: any) => cr.story_id).filter(Boolean))];
 
-      // Pending negotiations
-      supabase
-        .from("negotiations")
-        .select("agreed_price")
-        .eq("status", "in_progress"),
+        const [
+          storiesRes,
+          negotiationsRes,
+          contractsRes,
+          paymentsRes,
+          activeContractsRes,
+          auditRes
+        ] = await Promise.all([
+          // Total active projects (stories with call reports)
+          supabase
+            .from("stories")
+            .select("*", { count: "exact", head: true })
+            .in("id", storyIds.length > 0 ? storyIds : ['00000000-0000-0000-0000-000000000000'])
+            .neq("status", "archived")
+            .neq("status", "rejected"),
 
-      // All contracts (for total value)
-      supabase
-        .from("contracts")
-        .select("total_value"),
+          // Pending negotiations
+          supabase
+            .from("negotiations")
+            .select("agreed_price")
+            .eq("status", "in_progress"),
 
-      // Overdue payments
-      supabase
-        .from("payments")
-        .select("*", { count: "exact", head: true })
-        .eq("status", "overdue"),
+          // All contracts (for total value)
+          supabase
+            .from("contracts")
+            .select("total_value"),
 
-      // Active contracts count
-      supabase
-        .from("contracts")
-        .select("*", { count: "exact", head: true })
-        .eq("status", "active"),
+          // Overdue payments
+          supabase
+            .from("payments")
+            .select("*", { count: "exact", head: true })
+            .eq("status", "overdue"),
 
-      // Weekly activities (last 7 days)
-      supabase
-        .from("audit_logs")
-        .select("*", { count: "exact", head: true })
-        .gte("timestamp", new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString())
-    ]);
+          // Active contracts count
+          supabase
+            .from("contracts")
+            .select("*", { count: "exact", head: true })
+            .eq("status", "active"),
 
-    // Calculate pipeline value
-    const pendingValue = (negotiationsRes.data || []).reduce((sum: number, n: any) => sum + (parseFloat(n.agreed_price) || 0), 0);
-    const committedValue = (contractsRes.data || []).reduce((sum: number, c: any) => sum + (parseFloat(c.total_value) || 0), 0);
+          // Weekly activities (last 7 days)
+          supabase
+            .from("audit_logs")
+            .select("*", { count: "exact", head: true })
+            .gte("timestamp", new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString())
+        ]);
 
-    return {
-      totalActiveProjects: storiesRes.count || 0,
-      pipelineValue: pendingValue + committedValue,
-      pendingApprovals: 0, // Will calculate from one_liners pending
-      activeContracts: activeContractsRes.count || 0,
-      overduePayments: paymentsRes.count || 0,
-      weeklyActivities: auditRes.count || 0
-    };
-  } catch (error) {
-    console.error("Error fetching executive summary:", error);
-    return {
-      totalActiveProjects: 0,
-      pipelineValue: 0,
-      pendingApprovals: 0,
-      activeContracts: 0,
-      overduePayments: 0,
-      weeklyActivities: 0
-    };
-  }
+        // Calculate pipeline value
+        const pendingValue = (negotiationsRes.data || []).reduce((sum: number, n: any) => sum + (parseFloat(n.agreed_price) || 0), 0);
+        const committedValue = (contractsRes.data || []).reduce((sum: number, c: any) => sum + (parseFloat(c.total_value) || 0), 0);
+
+        return {
+          totalActiveProjects: storiesRes.count || 0,
+          pipelineValue: pendingValue + committedValue,
+          pendingApprovals: 0, // Will calculate from one_liners pending
+          activeContracts: activeContractsRes.count || 0,
+          overduePayments: paymentsRes.count || 0,
+          weeklyActivities: auditRes.count || 0
+        };
+      } catch (error) {
+        return {
+          totalActiveProjects: 0,
+          pipelineValue: 0,
+          pendingApprovals: 0,
+          activeContracts: 0,
+          overduePayments: 0,
+          weeklyActivities: 0
+        };
+      }
+    },
+    ['executive-summary'],
+    {
+      revalidate: 300,
+      tags: [CacheTags.EXECUTIVE_SUMMARY, CacheTags.PIPELINE_OVERVIEW]
+    }
+  )();
+
+  // Wrap with instrumentation if available
+  return instrumentFn ? instrumentFn('getExecutiveSummary', wrappedQuery) : wrappedQuery();
 }
 
 /**
  * Get pipeline funnel data
  */
 export async function getPipelineFunnel(): Promise<PipelineFunnel> {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
 
   try {
     const { data: stories } = await supabase
@@ -229,7 +238,7 @@ export async function getPipelineFunnel(): Promise<PipelineFunnel> {
  * Get financial overview
  */
 export async function getFinancialOverview(): Promise<FinancialOverview> {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
 
   try {
     const [contractsRes, negotiationsRes, paymentsRes, topProjectsRes] = await Promise.all([
@@ -304,7 +313,7 @@ export async function getFinancialOverview(): Promise<FinancialOverview> {
  * Get performance metrics
  */
 export async function getPerformanceMetrics(): Promise<PerformanceMetrics> {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
 
   try {
     const [evaluationsRes, storiesRes, paymentsRes, legalRes] = await Promise.all([
@@ -392,163 +401,200 @@ export async function getPerformanceMetrics(): Promise<PerformanceMetrics> {
 
 /**
  * Get department workload
+ * CACHED: Uses Next.js request memoization with 5-minute revalidation
+ * INSTRUMENTED: OpenTelemetry tracing (Week 2)
  */
 export async function getDepartmentWorkload(): Promise<DepartmentWorkload> {
-  const supabase = await createClient();
+  // Instrument server function (production only)
+  const instrumentFn = process.env.NODE_ENV === 'production'
+    ? (await import('@/lib/telemetry/spans').catch(() => ({ instrumentServerFunction: null }))).instrumentServerFunction
+    : null;
 
-  try {
-    const [callReportsRes, evaluationsRes, oneLinerRes, legalRes, paymentsRes] = await Promise.all([
-      supabase.from("call_reports").select("*", { count: "exact", head: true }),
-      supabase.from("evaluator_forms").select("submitted_at"),
-      supabase.from("one_liners").select("*", { count: "exact", head: true }).eq("decision", "pending"),
-      supabase.from("legal_reviews").select("*", { count: "exact", head: true }).is("decided_at", null),
-      supabase.from("payments").select("*", { count: "exact", head: true }).eq("status", "pending")
-    ]);
+  const wrappedQuery = async () => cachedQuery(
+    async () => {
+      const supabase = createAdminClient();
 
-    const evaluations = evaluationsRes.data || [];
-    const assignedEvaluations = evaluations.length;
-    const completedEvaluations = evaluations.filter((e: any) => e.submitted_at).length;
+      try {
+        const [callReportsRes, evaluationsRes, oneLinerRes, legalRes, paymentsRes] = await Promise.all([
+          supabase.from("call_reports").select("*", { count: "exact", head: true }),
+          supabase.from("evaluator_forms").select("submitted_at"),
+          supabase.from("one_liners").select("*", { count: "exact", head: true }).eq("decision", "pending"),
+          supabase.from("legal_reviews").select("*", { count: "exact", head: true }).is("decided_at", null),
+          supabase.from("payments").select("*", { count: "exact", head: true }).eq("status", "pending")
+        ]);
 
-    return {
-      contentTeam: {
-        activeCallReports: callReportsRes.count || 0,
-        pendingEvaluations: assignedEvaluations - completedEvaluations
-      },
-      executives: {
-        pendingApprovals: oneLinerRes.count || 0
-      },
-      legal: {
-        reviewsInProgress: legalRes.count || 0
-      },
-      finance: {
-        pendingPaymentApprovals: paymentsRes.count || 0
-      },
-      evaluators: {
-        assignedEvaluations,
-        completedEvaluations
+        const evaluations = evaluationsRes.data || [];
+        const assignedEvaluations = evaluations.length;
+        const completedEvaluations = evaluations.filter((e: any) => e.submitted_at).length;
+
+        return {
+          contentTeam: {
+            activeCallReports: callReportsRes.count || 0,
+            pendingEvaluations: assignedEvaluations - completedEvaluations
+          },
+          executives: {
+            pendingApprovals: oneLinerRes.count || 0
+          },
+          legal: {
+            reviewsInProgress: legalRes.count || 0
+          },
+          finance: {
+            pendingPaymentApprovals: paymentsRes.count || 0
+          },
+          evaluators: {
+            assignedEvaluations,
+            completedEvaluations
+          }
+        };
+      } catch (error) {
+        return {
+          contentTeam: { activeCallReports: 0, pendingEvaluations: 0 },
+          executives: { pendingApprovals: 0 },
+          legal: { reviewsInProgress: 0 },
+          finance: { pendingPaymentApprovals: 0 },
+          evaluators: { assignedEvaluations: 0, completedEvaluations: 0 }
+        };
       }
-    };
-  } catch (error) {
-    console.error("Error fetching department workload:", error);
-    return {
-      contentTeam: { activeCallReports: 0, pendingEvaluations: 0 },
-      executives: { pendingApprovals: 0 },
-      legal: { reviewsInProgress: 0 },
-      finance: { pendingPaymentApprovals: 0 },
-      evaluators: { assignedEvaluations: 0, completedEvaluations: 0 }
-    };
-  }
+    },
+    ['department-workload'],
+    {
+      revalidate: 300,
+      tags: [CacheTags.DEPARTMENT_WORKLOAD]
+    }
+  )();
+
+  // Wrap with instrumentation if available
+  return instrumentFn ? instrumentFn('getDepartmentWorkload', wrappedQuery) : wrappedQuery();
 }
 
 /**
  * Get critical alerts
+ * CACHED: Uses Next.js request memoization with 5-minute revalidation
+ * INSTRUMENTED: OpenTelemetry tracing (Week 2)
  */
 export async function getCriticalAlerts(): Promise<CriticalAlert[]> {
-  const supabase = await createClient();
-  const alerts: CriticalAlert[] = [];
+  // Instrument server function (production only)
+  const instrumentFn = process.env.NODE_ENV === 'production'
+    ? (await import('@/lib/telemetry/spans').catch(() => ({ instrumentServerFunction: null }))).instrumentServerFunction
+    : null;
 
-  try {
-    // Get stuck projects (same status > 30 days)
-    const { data: stories } = await supabase
-      .from("stories")
-      .select("id, title, status, updated_at")
-      .neq("status", "archived")
-      .neq("status", "rejected");
+  const wrappedQuery = async () => cachedQuery(
+    async () => {
+      const supabase = createAdminClient();
+      const alerts: CriticalAlert[] = [];
 
-    (stories || []).forEach((story: any) => {
-      const daysSinceUpdate = Math.floor((Date.now() - new Date(story.updated_at).getTime()) / (1000 * 60 * 60 * 24));
-      if (daysSinceUpdate > 30) {
-        alerts.push({
-          id: story.id,
-          type: "stuck_project",
-          title: "Project Stuck in Pipeline",
-          description: `"${story.title}" has been in ${story.status} for ${daysSinceUpdate} days`,
-          severity: daysSinceUpdate > 60 ? "high" : "medium",
-          entityId: story.id,
-          entityType: "story",
-          daysOverdue: daysSinceUpdate - 30,
-          link: `/stories/${story.id}`
+      try {
+        // Get stuck projects (same status > 30 days)
+        const { data: stories } = await supabase
+          .from("stories")
+          .select("id, title, status, updated_at")
+          .neq("status", "archived")
+          .neq("status", "rejected");
+
+        (stories || []).forEach((story: any) => {
+          const daysSinceUpdate = Math.floor((Date.now() - new Date(story.updated_at).getTime()) / (1000 * 60 * 60 * 24));
+          if (daysSinceUpdate > 30) {
+            alerts.push({
+              id: `stuck-${story.id}`,
+              type: "stuck_story",
+              title: `Story stuck in ${story.status}`,
+              description: `"${story.title}" has been in ${story.status} for ${daysSinceUpdate} days`,
+              severity: daysSinceUpdate > 60 ? "critical" : "warning",
+              affectedEntity: story.title,
+              entityId: story.id,
+              daysDelayed: daysSinceUpdate - 30,
+              createdAt: story.updated_at,
+            });
+          }
         });
-      }
-    });
 
-    // Get overdue payments
-    const { data: payments } = await supabase
-      .from("payments")
-      .select("id, milestone_name, overdue_days")
-      .eq("status", "overdue");
+        // Get overdue payments
+        const { data: payments } = await supabase
+          .from("payments")
+          .select("id, milestone_name, overdue_days")
+          .eq("status", "overdue");
 
-    (payments || []).forEach((payment: any) => {
-      if (payment.overdue_days && payment.overdue_days > 7) {
-        alerts.push({
-          id: payment.id,
-          type: "overdue_payment",
-          title: "Payment Overdue",
-          description: `Payment "${payment.milestone_name}" is ${payment.overdue_days} days overdue`,
-          severity: payment.overdue_days > 30 ? "high" : "medium",
-          entityId: payment.id,
-          entityType: "payment",
-          daysOverdue: payment.overdue_days,
-          link: `/finance/payments/${payment.id}`
+        (payments || []).forEach((payment: any) => {
+          if (payment.overdue_days && payment.overdue_days > 7) {
+            alerts.push({
+              id: `payment-${payment.id}`,
+              type: "payment_overdue",
+              title: "Payment Overdue",
+              description: `Payment "${payment.milestone_name}" is ${payment.overdue_days} days overdue`,
+              severity: payment.overdue_days > 30 ? "critical" : "warning",
+              affectedEntity: payment.milestone_name || "Payment",
+              entityId: payment.id,
+              daysDelayed: payment.overdue_days,
+              createdAt: new Date().toISOString(),
+            });
+          }
         });
-      }
-    });
 
-    // Get slow legal reviews (> 14 days)
-    const { data: legalReviews } = await supabase
-      .from("legal_reviews")
-      .select("id, legal_review_id, days_in_review")
-      .is("decided_at", null);
+        // Get slow legal reviews (> 14 days)
+        const { data: legalReviews } = await supabase
+          .from("legal_reviews")
+          .select("id, legal_review_id, days_in_review")
+          .is("decided_at", null);
 
-    (legalReviews || []).forEach((review: any) => {
-      if (review.days_in_review && review.days_in_review > 14) {
-        alerts.push({
-          id: review.id,
-          type: "slow_legal",
-          title: "Legal Review Delayed",
-          description: `Review ${review.legal_review_id} has been pending for ${review.days_in_review} days`,
-          severity: review.days_in_review > 30 ? "high" : "medium",
-          entityId: review.id,
-          entityType: "legal_review",
-          daysOverdue: review.days_in_review - 14,
-          link: `/legal/reviews/${review.id}`
+        (legalReviews || []).forEach((review: any) => {
+          if (review.days_in_review && review.days_in_review > 14) {
+            alerts.push({
+              id: `legal-${review.id}`,
+              type: "evaluation_delay",
+              title: "Legal Review Delayed",
+              description: `Review ${review.legal_review_id} has been pending for ${review.days_in_review} days`,
+              severity: review.days_in_review > 30 ? "critical" : "warning",
+              affectedEntity: review.legal_review_id || "Legal Review",
+              entityId: review.id,
+              daysDelayed: review.days_in_review - 14,
+              createdAt: new Date().toISOString(),
+            });
+          }
         });
+
+        // Get expiring contracts (< 30 days)
+        const { data: contracts } = await supabase
+          .from("contracts")
+          .select("id, contract_id, project_title, contract_end_date")
+          .eq("status", "active");
+
+        (contracts || []).forEach((contract: any) => {
+          if (contract.contract_end_date) {
+            const daysUntilExpiry = Math.floor((new Date(contract.contract_end_date).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+            if (daysUntilExpiry < 30 && daysUntilExpiry > 0) {
+              alerts.push({
+                id: `contract-${contract.id}`,
+                type: "long_negotiation",
+                title: "Contract Expiring Soon",
+                description: `Contract ${contract.contract_id} for "${contract.project_title}" expires in ${daysUntilExpiry} days`,
+                severity: daysUntilExpiry < 7 ? "critical" : "warning",
+                affectedEntity: contract.project_title || contract.contract_id,
+                entityId: contract.id,
+                daysDelayed: 30 - daysUntilExpiry,
+                createdAt: contract.contract_end_date,
+              });
+            }
+          }
+        });
+
+        // Sort by severity and limit to top 10
+        return alerts
+          .sort((a, b) => {
+            const severityOrder = { critical: 0, warning: 1, info: 2 };
+            return severityOrder[a.severity] - severityOrder[b.severity];
+          })
+          .slice(0, 10);
+      } catch (error) {
+        return [];
       }
-    });
+    },
+    ['critical-alerts'],
+    {
+      revalidate: 300,
+      tags: [CacheTags.CRITICAL_ALERTS]
+    }
+  )();
 
-    // Get expiring contracts (< 30 days)
-    const { data: contracts } = await supabase
-      .from("contracts")
-      .select("id, contract_id, project_title, contract_end_date")
-      .eq("status", "active");
-
-    (contracts || []).forEach((contract: any) => {
-      if (contract.contract_end_date) {
-        const daysUntilExpiry = Math.floor((new Date(contract.contract_end_date).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
-        if (daysUntilExpiry < 30 && daysUntilExpiry > 0) {
-          alerts.push({
-            id: contract.id,
-            type: "expiring_contract",
-            title: "Contract Expiring Soon",
-            description: `Contract ${contract.contract_id} for "${contract.project_title}" expires in ${daysUntilExpiry} days`,
-            severity: daysUntilExpiry < 7 ? "high" : "medium",
-            entityId: contract.id,
-            entityType: "contract",
-            link: `/contracts/${contract.id}`
-          });
-        }
-      }
-    });
-
-    // Sort by severity and limit to top 10
-    return alerts
-      .sort((a, b) => {
-        const severityOrder = { high: 0, medium: 1, low: 2 };
-        return severityOrder[a.severity] - severityOrder[b.severity];
-      })
-      .slice(0, 10);
-  } catch (error) {
-    console.error("Error fetching critical alerts:", error);
-    return [];
-  }
+  // Wrap with instrumentation if available
+  return instrumentFn ? instrumentFn('getCriticalAlerts', wrappedQuery) : wrappedQuery();
 }

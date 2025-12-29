@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { AlertTriangle, RefreshCw, LayoutDashboard } from "lucide-react";
+import * as Sentry from "@sentry/nextjs";
 
 export default function ManagementError({
   error,
@@ -13,11 +14,29 @@ export default function ManagementError({
   reset: () => void;
 }) {
   useEffect(() => {
-    console.error("Management section error:", error);
-    if (error.digest) {
-      console.error("Error ID:", error.digest);
+    // Report error to GlitchTip
+    Sentry.captureException(error, {
+      level: "error",
+      tags: {
+        error_boundary: "management",
+        location: "management-dashboard",
+      },
+      contexts: {
+        error: {
+          digest: error.digest,
+          message: error.message,
+          stack: error.stack,
+        },
+      },
+    });
+
+    // Also log to console in development
+    if (process.env.NODE_ENV === "development") {
+      console.error("Management section error:", error);
+      if (error.digest) {
+        console.error("Error ID:", error.digest);
+      }
     }
-    console.error("Location: Management Error Boundary");
   }, [error]);
 
   return (

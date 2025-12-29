@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { AlertTriangle, Home, RefreshCw } from "lucide-react";
 import Link from "next/link";
+import * as Sentry from "@sentry/nextjs";
 
 export default function ContentDepartmentError({
   error,
@@ -14,12 +15,29 @@ export default function ContentDepartmentError({
   reset: () => void;
 }) {
   useEffect(() => {
-    // Log error for debugging (Vercel automatically captures these logs)
-    console.error("Content department error:", error);
-    if (error.digest) {
-      console.error("Error ID:", error.digest);
+    // Report error to GlitchTip
+    Sentry.captureException(error, {
+      level: "error",
+      tags: {
+        error_boundary: "content_department",
+        location: "content-department",
+      },
+      contexts: {
+        error: {
+          digest: error.digest,
+          message: error.message,
+          stack: error.stack,
+        },
+      },
+    });
+
+    // Also log to console in development
+    if (process.env.NODE_ENV === "development") {
+      console.error("Content department error:", error);
+      if (error.digest) {
+        console.error("Error ID:", error.digest);
+      }
     }
-    console.error("Location: Content Department Error Boundary");
   }, [error]);
 
   return (

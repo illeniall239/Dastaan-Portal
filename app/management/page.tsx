@@ -1,5 +1,6 @@
 import { getCurrentUser } from "@/lib/auth";
 import { redirect } from "next/navigation";
+import { Suspense } from "react";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -8,31 +9,29 @@ import {
   Clock,
   AlertTriangle,
   Activity,
-  Briefcase
+  Briefcase,
 } from "lucide-react";
-import { ArchiveGenreChart } from "@/components/management/charts/archive-genre-chart";
-import { IdeasByGenreChart } from "@/components/management/charts/ideas-by-genre-chart";
-import { EvaluatorLeaderboard } from "@/components/management/evaluator-leaderboard";
-import { PipelineOverviewCards } from "@/components/management/cards/pipeline-overview-cards";
-import { CriticalAlertsCard } from "@/components/management/cards/critical-alerts-card";
-import { RecentActivityCard } from "@/components/management/cards/recent-activity-card";
 import { ManagementHeader } from "@/components/management/management-header";
-import { ScriptingPhase } from "@/components/management/scripting-phase";
-import { EvaluatorPipelineEpisodes } from "@/components/management/evaluator-pipeline-episodes";
-import { ContractTermsOverview } from "@/components/management/contract-terms-overview";
-import { StageWisePipeline } from "@/components/management/stage-wise-pipeline";
-import { WriterFinancialSummaryWidget } from "@/components/management/writer-financial-summary-widget";
 import { ExportButton } from "@/components/management/export-button";
 import { getExecutiveSummary, getDepartmentWorkload } from "@/lib/management/server";
-import { getCriticalAlerts } from "@/lib/management/critical-alerts";
-import { getPipelineOverview } from "@/lib/management/pipeline-analytics";
-import { getAllEvaluatorStats } from "@/lib/management/evaluator-performance";
-import { getScriptingPhaseData, ScriptingPhaseData } from "@/lib/management/scripting-analytics";
-import { getDramasWithEpisodes, getAllEpisodesAndEvaluatorsBatch } from "@/lib/management/episode-pipeline";
-import { getArchiveByGenre } from "@/lib/management/archive-analytics";
-import { createClient } from "@/lib/supabase/server";
-import { getTopPerformingTeams } from "@/lib/management/team-performance";
-import { TopTeamsWidget } from "@/components/management/team-performance/top-teams-widget";
+import {
+  CriticalAlertsSection,
+  TeamPerformanceSection,
+  ScriptingEpisodeSection,
+  PipelineOverviewSection,
+  EvaluatorPerformanceSection,
+  ContractTermsSection,
+  WriterFinancialSection,
+} from "@/components/management/dashboard-sections";
+import {
+  CriticalAlertsSkeleton,
+  TeamPerformanceSkeleton,
+  ScriptingPhaseSkeleton,
+  PipelineOverviewSkeleton,
+  EvaluatorPerformanceSkeleton,
+  ContractTermsSkeleton,
+  WriterFinancialSkeleton,
+} from "@/components/management/skeletons";
 
 // Add Next.js caching
 export const revalidate = 300; // 5 minutes for better performance
@@ -53,91 +52,18 @@ export default async function ManagementDashboard({
     redirect("/dashboard");
   }
 
-  // Fetch ALL data in parallel for instant loading
-  const supabase = await createClient();
-
-  // Fetch negotiations
-  const { data: contractTerms } = await supabase
-    .from("negotiations")
-    .select(`
-      *,
-      stories!inner(
-        story_id,
-        title,
-        writer_originator_name,
-        genre
-      )
-    `)
-    .order("created_at", { ascending: false });
-
-  const [
-    summary,
-    workload,
-    alerts,
-    scriptingPhaseData,
-    dramasWithEpisodes,
-    archiveByGenre,
-    pipelineData,
-    evaluatorStats,
-    topTeams
-  ] = await Promise.all([
+  // Fetch ONLY critical above-the-fold data
+  // Other sections will stream in via Suspense
+  const [summary, workload] = await Promise.all([
     getExecutiveSummary(),
     getDepartmentWorkload(),
-    getCriticalAlerts(),
-    getScriptingPhaseData(),
-    getDramasWithEpisodes(),
-    getArchiveByGenre(),
-    getPipelineOverview(),
-    getAllEvaluatorStats(),
-    getTopPerformingTeams(5)
   ]);
-
-  // Fetch episode details for dramas (depends on dramasWithEpisodes)
-  const dramaIds = dramasWithEpisodes.map(d => d.callReportId);
-  const { episodesByDrama, evaluatorsByEpisode } = dramaIds.length > 0
-    ? await getAllEpisodesAndEvaluatorsBatch(dramaIds)
-    : { episodesByDrama: {}, evaluatorsByEpisode: {} };
-
-  // Transform episode data into ScriptingPhaseData format
-  const episodeBasedScriptingData: ScriptingPhaseData[] = dramasWithEpisodes.map((drama) => {
-    const progressPercentage = drama.totalEpisodes > 0
-      ? Math.round((drama.receivedEpisodes / drama.totalEpisodes) * 100)
-      : 0;
-
-    // Determine status based on received episodes progress
-    let status: 'on_schedule' | 'on_hold' | 'behind_schedule';
-    if (progressPercentage >= 70) {
-      status = 'on_schedule';
-    } else if (progressPercentage >= 40) {
-      status = 'on_hold';
-    } else {
-      status = 'behind_schedule';
-    }
-
-    // Current phase = next episode to receive
-    const nextEpisode = drama.receivedEpisodes + 1;
-    const currentPhase = nextEpisode <= drama.totalEpisodes
-      ? `Episode ${nextEpisode} of ${drama.totalEpisodes}`
-      : 'All Episodes Received';
-
-    return {
-      id: drama.callReportId,
-      workingTitle: drama.workingTitle,
-      callReportId: drama.callReportId,
-      scriptProgress: progressPercentage,
-      status,
-      currentPhase,
-      lastUpdated: new Date().toISOString(),
-      totalEpisodes: drama.totalEpisodes,
-      evaluatedEpisodes: drama.receivedEpisodes,  // Using receivedEpisodes for Scripting Phase
-    };
-  });
 
   // Format currency helper
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-PK', {
-      style: 'currency',
-      currency: 'PKR',
+    return new Intl.NumberFormat("en-PK", {
+      style: "currency",
+      currency: "PKR",
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
     }).format(amount);
@@ -148,10 +74,12 @@ export default async function ManagementDashboard({
       {/* Page Header */}
       <ManagementHeader userName={user.name} />
 
-      {/* Executive Summary Stats */}
+      {/* Executive Summary Stats - Critical, loaded immediately */}
       <div id="executive-summary" className="mb-6 sm:mb-8">
         <div className="flex items-center justify-between mb-3 sm:mb-4">
-          <h2 className="text-base sm:text-lg lg:text-xl font-bold text-gray-900">Executive Summary</h2>
+          <h2 className="text-base sm:text-lg lg:text-xl font-bold text-gray-900">
+            Executive Summary
+          </h2>
           <div className="no-print">
             <ExportButton
               elementId="executive-summary"
@@ -165,16 +93,14 @@ export default async function ManagementDashboard({
           <Link href="/management/active-projects" className="transition-transform hover:scale-105">
             <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200 cursor-pointer hover:shadow-lg transition-shadow">
               <CardHeader className="flex flex-row items-center justify-between pb-2 p-3 sm:p-4 lg:p-6">
-                <CardTitle className="text-sm font-medium text-blue-900">
-                  Active Projects
-                </CardTitle>
+                <CardTitle className="text-sm font-medium text-blue-900">Active Projects</CardTitle>
                 <FileText className="h-4 w-4 md:h-5 md:w-5 text-blue-600" />
               </CardHeader>
               <CardContent className="p-3 sm:p-4 lg:p-6 pt-0">
-                <div className="text-xl sm:text-2xl md:text-3xl font-bold text-blue-900">{summary.totalActiveProjects}</div>
-                <p className="text-xs text-blue-700 mt-1">
-                  Stories in development pipeline
-                </p>
+                <div className="text-xl sm:text-2xl md:text-3xl font-bold text-blue-900">
+                  {summary.totalActiveProjects}
+                </div>
+                <p className="text-xs text-blue-700 mt-1">Stories in development pipeline</p>
               </CardContent>
             </Card>
           </Link>
@@ -182,18 +108,14 @@ export default async function ManagementDashboard({
           <Link href="/management/pipeline-value" className="transition-transform hover:scale-105">
             <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200 cursor-pointer hover:shadow-lg transition-shadow">
               <CardHeader className="flex flex-row items-center justify-between pb-2 p-3 sm:p-4 lg:p-6">
-                <CardTitle className="text-sm font-medium text-green-900">
-                  Pipeline Value
-                </CardTitle>
+                <CardTitle className="text-sm font-medium text-green-900">Pipeline Value</CardTitle>
                 <DollarSign className="h-4 w-4 md:h-5 md:w-5 text-green-600" />
               </CardHeader>
               <CardContent className="p-3 sm:p-4 lg:p-6 pt-0">
                 <div className="text-xl sm:text-2xl md:text-3xl font-bold text-green-900">
                   {formatCurrency(summary.pipelineValue)}
                 </div>
-                <p className="text-xs text-green-700 mt-1">
-                  Total contracts + negotiations
-                </p>
+                <p className="text-xs text-green-700 mt-1">Total contracts + negotiations</p>
               </CardContent>
             </Card>
           </Link>
@@ -207,32 +129,36 @@ export default async function ManagementDashboard({
                 <Briefcase className="h-4 w-4 md:h-5 md:w-5 text-orange-600" />
               </CardHeader>
               <CardContent className="p-3 sm:p-4 lg:p-6 pt-0">
-                <div className="text-xl sm:text-2xl md:text-3xl font-bold text-orange-900">{summary.activeContracts}</div>
-                <p className="text-xs text-orange-700 mt-1">
-                  Contracts currently in effect
-                </p>
+                <div className="text-xl sm:text-2xl md:text-3xl font-bold text-orange-900">
+                  {summary.activeContracts}
+                </div>
+                <p className="text-xs text-orange-700 mt-1">Contracts currently in effect</p>
               </CardContent>
             </Card>
           </Link>
 
-          <Link href="/management/payments/overdue" className="transition-transform hover:scale-105">
+          <Link
+            href="/management/payments/overdue"
+            className="transition-transform hover:scale-105"
+          >
             <Card className="bg-gradient-to-br from-red-50 to-red-100 border-red-200 cursor-pointer hover:shadow-lg transition-shadow">
               <CardHeader className="flex flex-row items-center justify-between pb-2 p-3 sm:p-4 lg:p-6">
-                <CardTitle className="text-sm font-medium text-red-900">
-                  Overdue Payments
-                </CardTitle>
+                <CardTitle className="text-sm font-medium text-red-900">Overdue Payments</CardTitle>
                 <AlertTriangle className="h-4 w-4 md:h-5 md:w-5 text-red-600" />
               </CardHeader>
               <CardContent className="p-3 sm:p-4 lg:p-6 pt-0">
-                <div className="text-xl sm:text-2xl md:text-3xl font-bold text-red-900">{summary.overduePayments}</div>
-                <p className="text-xs text-red-700 mt-1">
-                  Payments requiring attention
-                </p>
+                <div className="text-xl sm:text-2xl md:text-3xl font-bold text-red-900">
+                  {summary.overduePayments}
+                </div>
+                <p className="text-xs text-red-700 mt-1">Payments requiring attention</p>
               </CardContent>
             </Card>
           </Link>
 
-          <Link href="/management/weekly-activities" className="transition-transform hover:scale-105">
+          <Link
+            href="/management/weekly-activities"
+            className="transition-transform hover:scale-105"
+          >
             <Card className="bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200 cursor-pointer hover:shadow-lg transition-shadow">
               <CardHeader className="flex flex-row items-center justify-between pb-2 p-3 sm:p-4 lg:p-6">
                 <CardTitle className="text-sm font-medium text-purple-900">
@@ -241,10 +167,10 @@ export default async function ManagementDashboard({
                 <Activity className="h-4 w-4 md:h-5 md:w-5 text-purple-600" />
               </CardHeader>
               <CardContent className="p-3 sm:p-4 lg:p-6 pt-0">
-                <div className="text-xl sm:text-2xl md:text-3xl font-bold text-purple-900">{summary.weeklyActivities}</div>
-                <p className="text-xs text-purple-700 mt-1">
-                  Actions taken this week
-                </p>
+                <div className="text-xl sm:text-2xl md:text-3xl font-bold text-purple-900">
+                  {summary.weeklyActivities}
+                </div>
+                <p className="text-xs text-purple-700 mt-1">Actions taken this week</p>
               </CardContent>
             </Card>
           </Link>
@@ -258,154 +184,44 @@ export default async function ManagementDashboard({
                 <Clock className="h-4 w-4 md:h-5 md:w-5 text-indigo-600" />
               </CardHeader>
               <CardContent className="p-3 sm:p-4 lg:p-6 pt-0">
-                <div className="text-xl sm:text-2xl md:text-3xl font-bold text-indigo-900">{workload.executives.pendingApprovals}</div>
-                <p className="text-xs text-indigo-700 mt-1">
-                  Awaiting committee decision
-                </p>
+                <div className="text-xl sm:text-2xl md:text-3xl font-bold text-indigo-900">
+                  {workload.executives.pendingApprovals}
+                </div>
+                <p className="text-xs text-indigo-700 mt-1">Awaiting committee decision</p>
               </CardContent>
             </Card>
           </Link>
         </div>
       </div>
 
-      {/* Critical Alerts */}
-      <div id="critical-alerts-section" className="mb-6 sm:mb-8">
-        <div className="flex items-center justify-between mb-3 sm:mb-4">
-          <h2 className="text-base sm:text-lg lg:text-xl font-bold text-gray-900">Critical Alerts</h2>
-          <div className="no-print">
-            <ExportButton
-              elementId="critical-alerts-section"
-              filename="critical-alerts"
-              formats={["png", "pdf"]}
-              compact
-            />
-          </div>
-        </div>
-        <CriticalAlertsCard alerts={alerts} />
-      </div>
+      {/* Below-the-fold sections - Stream in progressively */}
+      <Suspense fallback={<CriticalAlertsSkeleton />}>
+        <CriticalAlertsSection />
+      </Suspense>
 
-      {/* Team Performance */}
-      <div id="teams-section" className="mb-6 sm:mb-8">
-        <div className="flex items-center justify-between mb-3 sm:mb-4">
-          <h2 className="text-base sm:text-lg lg:text-xl font-bold text-gray-900">Team Performance</h2>
-          <div className="no-print">
-            <ExportButton
-              elementId="teams-section"
-              filename="teams"
-              formats={["png", "pdf"]}
-              compact
-            />
-          </div>
-        </div>
-        <TopTeamsWidget teams={topTeams} />
-      </div>
+      <Suspense fallback={<TeamPerformanceSkeleton />}>
+        <TeamPerformanceSection />
+      </Suspense>
 
-      {/* Scripting Phase & Episode Evaluation Pipeline */}
-      <div id="scripting-episode-section" className="mb-6 sm:mb-8">
-        <div className="flex items-center justify-between mb-4 sm:mb-6">
-          <div>
-            <h2 className="text-base sm:text-lg lg:text-xl font-bold text-gray-900">Scripting Phase & Episode Evaluation Pipeline</h2>
-            <p className="text-muted-foreground mt-1">
-              Track episodic evaluation progress by drama
-            </p>
-          </div>
-          <div className="no-print">
-            <ExportButton
-              elementId="scripting-episode-section"
-              filename="scripting-episode-pipeline"
-              formats={["png", "pdf"]}
-              compact
-            />
-          </div>
-        </div>
+      <Suspense fallback={<ScriptingPhaseSkeleton />}>
+        <ScriptingEpisodeSection />
+      </Suspense>
 
-        <div className="space-y-6">
-          <ScriptingPhase data={episodeBasedScriptingData} />
-          <EvaluatorPipelineEpisodes
-            dramas={dramasWithEpisodes}
-            episodesByDrama={episodesByDrama}
-            evaluatorsByEpisode={evaluatorsByEpisode}
-          />
-          <ArchiveGenreChart data={archiveByGenre} />
-        </div>
-      </div>
+      <Suspense fallback={<PipelineOverviewSkeleton />}>
+        <PipelineOverviewSection />
+      </Suspense>
 
-      {/* Content Pipeline Flow */}
-      <div id="pipeline-section" className="mb-6 sm:mb-8">
-        <div className="flex items-center justify-between mb-4 sm:mb-6">
-          <div>
-            <h2 className="text-base sm:text-lg lg:text-xl font-bold text-gray-900">Content Pipeline Flow</h2>
-            <p className="text-muted-foreground mt-1">
-              Story workflow from submission to completion
-            </p>
-          </div>
-          <div className="no-print">
-            <ExportButton
-              elementId="pipeline-section"
-              filename="content-pipeline-flow"
-              formats={["png", "pdf"]}
-              compact
-            />
-          </div>
-        </div>
+      <Suspense fallback={<EvaluatorPerformanceSkeleton />}>
+        <EvaluatorPerformanceSection />
+      </Suspense>
 
-        {/* Overview Cards Row */}
-        <div className="mb-6">
-          <PipelineOverviewCards
-            totalStories={pipelineData.totalStories}
-            activePipeline={pipelineData.activePipeline}
-            avgTimeToCompletion={pipelineData.avgTimeToCompletion}
-          />
-        </div>
+      <Suspense fallback={<ContractTermsSkeleton />}>
+        <ContractTermsSection />
+      </Suspense>
 
-        {/* Recent Activity */}
-        <RecentActivityCard activities={[]} />
-      </div>
-
-      {/* Evaluator Activity Section */}
-      <div id="evaluator-performance" className="mb-6 sm:mb-8">
-        <div className="flex items-center justify-between mb-4 sm:mb-6">
-          <div>
-            <h2 className="text-base sm:text-lg lg:text-xl font-bold text-gray-900">Evaluator Activity Tracking</h2>
-            <p className="text-muted-foreground mt-1">
-              Monitor evaluator workload and activity across all evaluation tasks
-            </p>
-          </div>
-          <div className="no-print">
-            <ExportButton
-              elementId="evaluator-performance"
-              filename="evaluator-performance"
-              formats={["png", "pdf"]}
-              compact
-            />
-          </div>
-        </div>
-
-        <div className="grid gap-6">
-          <EvaluatorLeaderboard
-            key="evaluator-real-mode"
-            evaluators={evaluatorStats}
-          />
-        </div>
-      </div>
-
-      {/* Contract Terms Overview Section */}
-      <div id="contract-terms-section" className="mb-6 sm:mb-8">
-        <ContractTermsOverview contractTerms={contractTerms || []} />
-      </div>
-
-      {/* Writer Financial Summary Section */}
-      <div id="writer-financial-section" className="mb-6 sm:mb-8">
-        <div className="flex items-center justify-between mb-4 sm:mb-6">
-          <div>
-            <h2 className="text-base sm:text-lg lg:text-xl font-bold text-gray-900">Writer Payments & Financial Overview</h2>
-            <p className="text-muted-foreground mt-1">
-              Track negotiated amounts, contracts, and payments to writers and producers
-            </p>
-          </div>
-        </div>
-        <WriterFinancialSummaryWidget />
-      </div>
+      <Suspense fallback={<WriterFinancialSkeleton />}>
+        <WriterFinancialSection />
+      </Suspense>
     </div>
   );
 }

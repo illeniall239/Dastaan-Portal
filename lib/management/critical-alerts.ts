@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 
 export type AlertSeverity = 'critical' | 'warning' | 'info';
 export type AlertType = 'bottleneck' | 'stuck_story' | 'evaluation_delay' | 'payment_overdue' | 'long_negotiation';
@@ -19,7 +19,7 @@ export interface CriticalAlert {
  * Get all critical alerts for the pipeline
  */
 export async function getCriticalAlerts(): Promise<CriticalAlert[]> {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
   const alerts: CriticalAlert[] = [];
 
   try {

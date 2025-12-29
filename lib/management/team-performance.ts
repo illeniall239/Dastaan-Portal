@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/client";
-import { createClient as createServerClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { TeamPerformance, TeamType } from "@/types";
+import { cachedQuery, CacheTags } from "@/lib/cache/request-cache";
 
 /**
  * Team Performance Analytics Library
@@ -64,7 +64,7 @@ export async function getAllTeamPerformance(): Promise<TeamPerformance[]> {
  * Server-side function to fetch all team performance data
  */
 export async function getAllTeamPerformanceServer(): Promise<TeamPerformance[]> {
-  const supabase = await createServerClient();
+  const supabase = createAdminClient();
 
   const { data, error } = await supabase
     .from("team_performance")
@@ -166,22 +166,31 @@ export async function getTeamComparison(teamType?: TeamType): Promise<TeamCompar
 
 /**
  * Get team performance data across all metrics
+ * CACHED: Uses Next.js request memoization with 5-minute revalidation
  */
 export async function getTopPerformingTeams(limit: number = 5): Promise<TeamPerformance[]> {
-  const supabase = createClient();
+  return cachedQuery(
+    async () => {
+      const supabase = createAdminClient();
 
-  const { data, error } = await supabase
-    .from("team_performance")
-    .select("*")
-    .order("call_reports_created", { ascending: false })
-    .limit(limit);
+      const { data, error } = await supabase
+        .from("team_performance")
+        .select("*")
+        .order("call_reports_created", { ascending: false })
+        .limit(limit);
 
-  if (error) {
-    console.error("Error fetching team performance data:", error);
-    return []; // Gracefully return empty array instead of throwing
-  }
+      if (error) {
+        return []; // Gracefully return empty array instead of throwing
+      }
 
-  return data || [];
+      return data || [];
+    },
+    ['top-performing-teams', `limit-${limit}`],
+    {
+      revalidate: 300,
+      tags: [CacheTags.TOP_TEAMS]
+    }
+  )();
 }
 
 /**

@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 
 export interface ActiveContract {
   id: string;
@@ -16,7 +16,7 @@ export interface ActiveContract {
 }
 
 export async function getActiveContracts() {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
 
   const { data: contracts, error } = await supabase
     .from('contracts')

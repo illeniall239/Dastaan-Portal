@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 
 export type ActivityType = 'story' | 'evaluation' | 'approval' | 'contract' | 'payment' | 'contractTerm';
 
@@ -33,7 +33,7 @@ export interface ActivityStats {
  * Uses audit_logs first, falls back to querying source tables if empty
  */
 export async function getWeeklyActivities(): Promise<WeeklyActivity[]> {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
   const activities: WeeklyActivity[] = [];
 
   try {
@@ -264,7 +264,7 @@ export async function getWeeklyActivities(): Promise<WeeklyActivity[]> {
  */
 export async function getWeeklyActivityStats(): Promise<ActivityStats> {
   const activities = await getWeeklyActivities();
-  const supabase = await createClient();
+  const supabase = createAdminClient();
 
   try {
     // Get previous week's count for comparison

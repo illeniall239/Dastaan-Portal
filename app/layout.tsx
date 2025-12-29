@@ -1,3 +1,5 @@
+
+
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
@@ -8,9 +10,10 @@ import { SidebarProvider } from "@/lib/providers/sidebar-provider";
 import RouteProgress from "@/components/ui/route-progress";
 import LayoutClient from "./layout-client";
 import { Suspense } from "react";
-import { Analytics } from "@vercel/analytics/react";
+import { Analytics } from "@vercel/analytics/next";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 
-const inter = Inter({ 
+const inter = Inter({
   subsets: ["latin"],
   variable: '--font-inter',
 });
@@ -47,6 +50,7 @@ export default function RootLayout({
           </QueryProvider>
         </LayoutClient>
         <Analytics />
+        <SpeedInsights />
       </body>
     </html>
   );

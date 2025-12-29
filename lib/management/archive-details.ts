@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 
 export interface ArchiveDetail {
   id: string;
@@ -18,7 +18,7 @@ export interface ArchiveDetail {
  * Get archived stories by genre from the archive table
  */
 export async function getArchiveStoriesByGenre(genre?: string): Promise<ArchiveDetail[]> {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
 
   try {
     let query = supabase
@@ -77,7 +77,7 @@ export async function getArchiveStoriesByGenre(genre?: string): Promise<ArchiveD
  * Note: rejected_archive doesn't have a direct genre field, need to join or infer
  */
 export async function getRejectedCallReportsByGenre(genre?: string): Promise<ArchiveDetail[]> {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
 
   try {
     // Note: rejected_archive table doesn't have a genre field in the schema

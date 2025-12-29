@@ -107,12 +107,26 @@ export async function withRequestLogging(
   // Extract user context (IP, user agent)
   const userContext = extractUserContext(request);
 
+  // Extract trace context from OpenTelemetry (Week 2)
+  let traceContext: { traceId?: string; spanId?: string } = {};
+  if (process.env.NODE_ENV === 'production') {
+    try {
+      const { getTraceContext } = await import('@/lib/telemetry/tracer');
+      traceContext = getTraceContext();
+    } catch {
+      // OTel not available, continue without trace IDs
+    }
+  }
+
   // Build request context
   const requestContext: Record<string, unknown> = {
     method,
     path,
     ...userContext,
     ...additionalContext,
+    // Add trace IDs to logs for correlation
+    ...(traceContext.traceId && { traceId: traceContext.traceId }),
+    ...(traceContext.spanId && { spanId: traceContext.spanId }),
   };
 
   // Add query parameters if enabled
@@ -179,11 +193,19 @@ export async function withRequestLogging(
       logger.info(logData, message);
     }
 
-    // Add correlation ID to response headers
+    // Add correlation ID and trace IDs to response headers
     const headers = new Headers(response.headers);
     const finalCorrelationId = getCorrelationId();
     if (finalCorrelationId) {
       headers.set('x-correlation-id', finalCorrelationId);
+    }
+
+    // Add trace IDs for distributed tracing (Week 2)
+    if (traceContext.traceId) {
+      headers.set('x-trace-id', traceContext.traceId);
+    }
+    if (traceContext.spanId) {
+      headers.set('x-span-id', traceContext.spanId);
     }
 
     return new NextResponse(response.body, {
