@@ -141,7 +141,7 @@ async function DashboardContent() {
     },
     {
       icon: FileText,
-      label: "View Call Reports",
+      label: "View Writer Engagement Reports",
       description: "All engagement reports",
       href: "/content-department/call-reports",
     },
@@ -216,13 +216,13 @@ async function DashboardContent() {
           </div>
         </ModernContentCard>
 
-        {/* Recent Call Reports */}
+        {/* Recent Writer Engagement Reports */}
         <ModernContentCard
-          title="Recent Call Reports"
+          title="Recent Writer Engagement Reports"
           subtitle="Last 5 writer engagement reports"
         >
           <p className="text-sm text-gray-500 text-center py-8">
-            View all call reports to see recent activity
+            View all writer engagement reports to see recent activity
           </p>
           <div className="pt-2 text-center">
             <Link

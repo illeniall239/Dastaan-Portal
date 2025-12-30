@@ -59,7 +59,7 @@ export default async function CallReportsPage() {
         </Button>
       </div>
 
-      {/* Call Reports List - Show skeleton while fetching */}
+      {/* Writer Engagement Reports List - Show skeleton while fetching */}
       <Suspense fallback={<CallReportCardsGridSkeleton count={3} />}>
         <CallReportsList />
       </Suspense>
@@ -67,14 +67,14 @@ export default async function CallReportsPage() {
   );
 }
 
-// Call Reports List Component - Fetches data
+// Writer Engagement Reports List Component - Fetches data
 async function CallReportsList() {
-  // Fetch call reports
+  // Fetch writer engagement reports
   let callReports: any[] = [];
   try {
     callReports = await getAllCallReports();
   } catch (error) {
-    console.error("Error fetching call reports:", error);
+    console.error("Error fetching writer engagement reports:", error);
   }
 
   return (
