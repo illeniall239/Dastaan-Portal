@@ -6,6 +6,8 @@ import { getUserSession, setUserSession } from "@/lib/session";
 import { logger } from "@/lib/logger";
 
 // Cache getCurrentUser to prevent duplicate database queries within a single request
+// IMPORTANT: This relies on proxy.ts (Next.js 16 middleware) to maintain the session cookie
+// proxy.ts handles auth checks and DB queries, this function just reads from the cookie
 export const getCurrentUser = cache(async () => {
   const supabase = await createClient();
 
@@ -18,11 +20,10 @@ export const getCurrentUser = cache(async () => {
     return null;
   }
 
-  // Try to get user data from session cookie first (performance optimization)
+  // Get user data from session cookie (set by proxy.ts)
   const sessionUser = await getUserSession();
   if (sessionUser && sessionUser.id === user.id) {
     // Cookie is valid and matches current user - return it
-    // Note: created_at is not cached in session for performance
     return {
       ...sessionUser,
       department: sessionUser.department,
@@ -30,24 +31,21 @@ export const getCurrentUser = cache(async () => {
     };
   }
 
-  // Fall back to DB query if no valid session cookie
-  
-  
+  // If no session cookie, proxy.ts should have redirected to login
+  // This shouldn't happen in normal flow, but log for debugging
+  logger.warn("⚠️ [getCurrentUser] No session cookie found - proxy.ts may not be running correctly");
+
+  // Emergency fallback: query DB (this indicates proxy.ts isn't working)
   const { data: profile, error: profileError } = await supabase
     .from("users")
     .select("id, email, name, role, position, department, created_at")
     .eq("id", user.id)
     .single();
-  
 
   if (profileError) {
     logger.error("❌ [getCurrentUser] Error fetching user profile:", profileError);
     return null;
   }
-
-  // Note: We cannot update session cookie from server components
-  // The session cookie is updated via middleware or route handlers
-  // This prevents the "Cookies can only be modified in a Server Action or Route Handler" error
 
   return profile;
 });

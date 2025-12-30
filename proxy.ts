@@ -108,7 +108,7 @@ export async function proxy(request: NextRequest) {
       try {
         const { data: userData, error } = await supabase
           .from('users')
-          .select('role')
+          .select('id, email, name, role, position, department')
           .eq('id', user.id)
           .single();
 
@@ -118,6 +118,26 @@ export async function proxy(request: NextRequest) {
         } else {
           userRole = userData?.role;
           logger.dev(`🔍 [Proxy] DB query returned role: ${userRole}`);
+
+          // Set session cookie for future requests (performance optimization)
+          if (userData) {
+            const sessionData = {
+              id: userData.id,
+              email: userData.email,
+              name: userData.name,
+              role: userData.role,
+              position: userData.position,
+              department: userData.department,
+            };
+            supabaseResponse.cookies.set('user_session', JSON.stringify(sessionData), {
+              httpOnly: true,
+              secure: process.env.NODE_ENV === 'production',
+              sameSite: 'lax',
+              maxAge: 60 * 60 * 24 * 7, // 7 days
+              path: '/',
+            });
+            logger.dev('✅ [Proxy] Session cookie updated');
+          }
         }
       } catch (error) {
         logger.error('❌ [Proxy] Exception querying user role:', error);
