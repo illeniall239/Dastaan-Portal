@@ -81,6 +81,7 @@ export async function getActiveIdeasByGenre(
         idea_by,
         developed_by
       `)
+      .eq('meeting_type', 'call_report')
       .is('archived_at', null)
       .order('created_at', { ascending: true });
 

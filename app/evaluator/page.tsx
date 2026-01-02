@@ -14,7 +14,6 @@ import { createClient } from "@/lib/supabase/server";
 import { PendingEvaluationsNotification } from "@/components/evaluations/pending-evaluations-notification";
 import { Suspense } from "react";
 import { NotificationSkeleton } from "@/components/skeletons/notification-skeleton";
-import { getEvaluatorTeam, getTeamMembers } from "@/lib/evaluations/team";
 import { ModernStatCard } from "@/components/dashboard/modern-stat-card";
 import { ModernContentCard } from "@/components/dashboard/modern-content-card";
 import { formatDateTime, formatDate } from "@/lib/utils/format-date";
@@ -76,19 +75,6 @@ async function DashboardContent({ userId }: { userId: string }) {
 
   const hasGlobalAccess = ["admin", "management"].includes(currentUser.role);
 
-  // Try to get team data (may not exist for all evaluators)
-  let teamMembersCount = 0;
-  let hasTeam = false;
-  try {
-    const team = await getEvaluatorTeam();
-    const members = await getTeamMembers(team.id);
-    teamMembersCount = members.length;
-    hasTeam = true;
-  } catch (error) {
-    // Evaluator doesn't have a team yet - this is fine
-    hasTeam = false;
-  }
-
   // Fetch ALL data in parallel for maximum performance
   const [statsData, pendingData, completedData] = await Promise.all([
     // Stats data - WITH TEAM FILTERS
@@ -115,6 +101,21 @@ async function DashboardContent({ userId }: { userId: string }) {
         evaluator_user_id: userId,
         team_id_filter: currentUser.team_id,
       }),
+      // Upcoming scheduled meetings count
+      (async () => {
+        const today = new Date().toISOString();
+        let query = supabase
+          .from("call_reports")
+          .select("id", { count: "exact", head: true })
+          .eq("meeting_type", "scheduled_meeting")
+          .gte("meeting_date", today);
+
+        if (!hasGlobalAccess && currentUser.team_id) {
+          query = query.eq("team_id", currentUser.team_id);
+        }
+
+        return await query;
+      })(),
     ]),
 
     // Pending evaluations data
@@ -198,10 +199,11 @@ async function DashboardContent({ userId }: { userId: string }) {
   ]);
 
   // Extract counts from stats data
-  const [callReportsRes, completedEvaluationsRes, pendingCountRes] = statsData;
+  const [callReportsRes, completedEvaluationsRes, pendingCountRes, scheduledMeetingsRes] = statsData;
   const callReportsCount = callReportsRes.count || 0;
   const completedEvaluationsCount = completedEvaluationsRes.count || 0;
   const pendingEvaluationsCount = pendingCountRes.data || 0;
+  const scheduledMeetingsCount = scheduledMeetingsRes.count || 0;
 
   // Extract completed evaluations
   const completedEvaluations = completedData.data || [];
@@ -253,20 +255,18 @@ async function DashboardContent({ userId }: { userId: string }) {
         />
 
         <ModernStatCard
-          title="Total Call Reports"
+          title="Total Writer Engagement Reports"
           value={callReportsCount}
           icon={FileText}
           href="/evaluator/call-reports"
         />
 
-        {hasTeam && (
-          <ModernStatCard
-            title="My Team"
-            value={teamMembersCount}
-            icon={Users}
-            href="/evaluator/team"
-          />
-        )}
+        <ModernStatCard
+          title="Scheduled Meetings"
+          value={scheduledMeetingsCount}
+          icon={CalendarIcon}
+          href="/evaluator/calendar"
+        />
       </div>
 
       {/* Content Grid */}
