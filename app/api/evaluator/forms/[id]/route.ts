@@ -3,6 +3,7 @@ import { logger } from "@/lib/logger";
 import { createClient } from "@/lib/supabase/server";
 import { applyRateLimit, addRateLimitHeaders, withCors } from "@/lib/api-middleware";
 import { RateLimitPresets } from "@/lib/rate-limit-redis";
+import { revalidatePath } from 'next/cache';
 
 /**
  * PATCH /api/evaluator/forms/[id]
@@ -80,6 +81,11 @@ export async function PATCH(
       { status: 500 }
     ));
   }
+
+  // Revalidate evaluation list pages to show updated evaluation immediately
+  revalidatePath('/content-department/evaluations-list');
+  revalidatePath('/evaluator/evaluations-list');
+  revalidatePath('/evaluator/my-evaluations');
 
   return addRateLimitHeaders(withCors(request, NextResponse.json({ evaluation: data })), rate.result);
 }

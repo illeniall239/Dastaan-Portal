@@ -31,7 +31,7 @@ export default async function CallReportsPage() {
 
   // Allow content department users to access this page
   if (user.role !== "content_creator") {
-    redirect("/content-department");
+    redirect("/permission-denied?message=Only content creators can access writer engagement reports.&returnUrl=/content-department");
   }
 
   return (

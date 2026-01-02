@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/select";
 import { EpisodeUploadForm, type EpisodeFormEntry } from "@/components/episodes/episode-upload-form";
 import { createClient } from "@/lib/supabase/client";
+import { uploadEpisodeFile } from "@/lib/episodes/upload-client";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 import { BackButton } from "@/components/ui/back-button";
@@ -59,6 +60,9 @@ export default function LogEpisodesPage() {
       additional_info: "",
     },
   ]);
+
+  // Upload progress tracking (episode number to progress percentage)
+  const [uploadProgress, setUploadProgress] = useState<Record<number, number>>({});
 
   // Fetch logged call reports
   useEffect(() => {
@@ -211,6 +215,10 @@ export default function LogEpisodesPage() {
     setLoading(true);
 
     try {
+      // Get Supabase config for upload helper
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+      const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+
       // Upload files to Supabase Storage and prepare episode data
       const episodesData = await Promise.all(
         episodes.map(async (episode) => {
@@ -219,32 +227,43 @@ export default function LogEpisodesPage() {
           let attachment_type = null;
 
           if (episode.file) {
-            // Upload file to Supabase Storage
+            // Upload file to Supabase Storage with progress tracking
             const fileExt = episode.file.name.split(".").pop();
             const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
             const filePath = `${selectedSource}/${fileName}`;
 
-            const { data: uploadData, error: uploadError } = await supabase.storage
-              .from("episodes")
-              .upload(filePath, episode.file);
+            try {
+              const result = await uploadEpisodeFile(
+                episode.file,
+                "episodes",
+                filePath,
+                supabaseUrl,
+                supabaseAnonKey,
+                (progress) => {
+                  setUploadProgress(prev => ({ ...prev, [episode.episode_number]: progress }));
+                }
+              );
 
-            if (uploadError) {
+              attachment_url = result.publicUrl;
+              attachment_name = episode.file.name;
+              attachment_type = episode.file.type;
+
+              // Remove from progress tracking when complete
+              setUploadProgress(prev => {
+                const newProgress = { ...prev };
+                delete newProgress[episode.episode_number];
+                return newProgress;
+              });
+            } catch (uploadError) {
               console.error("File upload error:", uploadError);
+              // Remove from progress tracking on error
+              setUploadProgress(prev => {
+                const newProgress = { ...prev };
+                delete newProgress[episode.episode_number];
+                return newProgress;
+              });
               throw new Error(`Failed to upload ${episode.file.name}`);
             }
-
-            // Get public URL
-            const { data: urlData } = supabase.storage
-              .from("episodes")
-              .getPublicUrl(filePath);
-
-            if (!urlData || !urlData.publicUrl) {
-              throw new Error(`Failed to generate public URL for ${episode.file.name}`);
-            }
-
-            attachment_url = urlData.publicUrl;
-            attachment_name = episode.file.name;
-            attachment_type = episode.file.type;
           }
 
           return {
@@ -293,8 +312,9 @@ export default function LogEpisodesPage() {
         },
       ]);
 
-      // Navigate to episodes list
+      // Navigate to episodes list with fresh data
       router.push("/evaluator/episodes");
+      router.refresh(); // Force data refresh to show new episodes
     } catch (error: any) {
       console.error("Error creating episodes:", error);
       toast.error(error.message || "Failed to log episodes");
@@ -366,6 +386,7 @@ export default function LogEpisodesPage() {
               onEpisodesChange={setEpisodes}
               disabled={loading}
               existingEpisodeNumbers={existingEpisodeNumbers}
+              uploadProgress={uploadProgress}
             />
           </div>
         )}

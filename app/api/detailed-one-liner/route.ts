@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { logger } from "@/lib/logger";
 import { createClient } from "@/lib/supabase/server";
 import { detailedOneLinerSchema } from "@/lib/validations/detailed-one-liner";
+import { revalidatePath } from 'next/cache';
 
 /**
  * POST /api/detailed-one-liner
@@ -243,6 +244,10 @@ export async function POST(request: Request) {
     if (fetchError) {
       logger.error(`Error fetching complete detailed one-liner:: ${fetchError instanceof Error ? fetchError.message : String(fetchError)}`);
     }
+
+    // Revalidate detailed one-liner list pages to show new entry immediately
+    revalidatePath('/content-department/detailed-one-liner');
+    revalidatePath('/evaluator/detailed-one-liner');
 
     return NextResponse.json(
       {

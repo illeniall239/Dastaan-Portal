@@ -30,6 +30,9 @@ export default function AdminUsersPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalUsers, setTotalUsers] = useState(0);
+  const pageSize = 50; // Show 50 users per page
 
   // Dialog states
   const [editDialogOpen, setEditDialogOpen] = useState(false);
@@ -42,11 +45,20 @@ export default function AdminUsersPage() {
   const fetchUsers = useCallback(async () => {
     setLoading(true);
     try {
+      // Get total count
+      const { count } = await supabase
+        .from("users")
+        .select("*", { count: "exact", head: true });
+
+      setTotalUsers(count || 0);
+
+      // Fetch paginated users
+      const offset = (currentPage - 1) * pageSize;
       const { data, error } = await supabase
         .from("users")
         .select("id, name, email, position, role, department, status, created_at")
         .order("created_at", { ascending: false })
-        .limit(100);
+        .range(offset, offset + pageSize - 1);
 
       if (error) {
         toast.error("Failed to load users", {
@@ -62,7 +74,7 @@ export default function AdminUsersPage() {
     } finally {
       setLoading(false);
     }
-  }, [supabase]);
+  }, [supabase, currentPage, pageSize]);
 
   useEffect(() => {
     fetchUsers();
@@ -127,14 +139,6 @@ export default function AdminUsersPage() {
     return colors[role] || "bg-gray-100 text-gray-800 border-gray-300";
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
-  }
-
   return (
     <div className="mobile-container mobile-section">
       {/* Header */}
@@ -162,16 +166,43 @@ export default function AdminUsersPage() {
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="pl-10 touch-target"
+            disabled={loading}
           />
         </div>
         <p className="text-xs sm:text-sm text-muted-foreground mt-2">
-          Showing {filteredUsers.length} of {users.length} users
+          {loading ? (
+            <span className="animate-pulse">Loading users...</span>
+          ) : (
+            <>
+              Showing {filteredUsers.length} of {totalUsers} users
+              {searchTerm && ` (filtered from ${totalUsers} total)`}
+            </>
+          )}
         </p>
       </div>
 
+      {loading && (
+        /* Loading skeleton */
+        <div className="bg-white rounded-lg border shadow-sm overflow-hidden">
+          <div className="p-4 space-y-3">
+            {[1, 2, 3, 4, 5].map((i) => (
+              <div key={i} className="flex items-center space-x-4 animate-pulse">
+                <div className="h-10 w-10 bg-gray-200 rounded-full" />
+                <div className="flex-1 space-y-2">
+                  <div className="h-4 bg-gray-200 rounded w-1/4" />
+                  <div className="h-3 bg-gray-200 rounded w-1/3" />
+                </div>
+                <div className="h-6 w-20 bg-gray-200 rounded" />
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Users Table */}
-      <div className="bg-white rounded-lg border shadow-sm overflow-hidden">
-        <ResponsiveTable
+      {!loading && (
+        <div className="bg-white rounded-lg border shadow-sm overflow-hidden">
+          <ResponsiveTable
           columns={[
             { key: 'name', label: 'Name' },
             { key: 'email', label: 'Email' },
@@ -363,6 +394,36 @@ export default function AdminUsersPage() {
           emptyMessage="No users found"
         />
       </div>
+      )}
+
+      {/* Pagination Controls */}
+      {!loading && !searchTerm && Math.ceil(totalUsers / pageSize) > 1 && (
+        <div className="flex items-center justify-between px-2 py-4">
+          <div className="text-sm text-muted-foreground">
+            Page {currentPage} of {Math.ceil(totalUsers / pageSize)}
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+              disabled={currentPage === 1}
+              className="touch-target"
+            >
+              Previous
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentPage(prev => Math.min(Math.ceil(totalUsers / pageSize), prev + 1))}
+              disabled={currentPage === Math.ceil(totalUsers / pageSize)}
+              className="touch-target"
+            >
+              Next
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* Dialogs */}
       {selectedUser && (

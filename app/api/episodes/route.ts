@@ -5,6 +5,7 @@ import { createMultipleEpisodesSchema, episodesQuerySchema } from "@/lib/validat
 import { withApiPerf, applyRateLimit, addRateLimitHeaders, withCors } from "@/lib/api-middleware";
 import { RateLimitPresets } from "@/lib/rate-limit-redis";
 import { parsePaginationParams, applyPagination, createPaginatedResponse } from "@/lib/utils/pagination";
+import { revalidatePath } from 'next/cache';
 import {
   unauthorizedError,
   forbiddenError,
@@ -183,6 +184,11 @@ export async function POST(request: Request) {
       message: `Successfully created ${createdEpisodes.length} episode(s)`,
       episodes: createdEpisodes,
     }, { status: 201 });
+
+    // Revalidate episode list pages to show new episodes immediately
+    revalidatePath('/content-department/episodes');
+    revalidatePath('/evaluator/episodes');
+
     return addRateLimitHeaders(withCors(request, res), rate.result);
 
   } catch (error) {

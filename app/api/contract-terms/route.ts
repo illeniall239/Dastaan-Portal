@@ -13,6 +13,7 @@ import {
 } from "@/lib/api-middleware";
 import { RateLimitPresets } from "@/lib/rate-limit-redis";
 import { parsePaginationParams, applyPagination, createPaginatedResponse } from "@/lib/utils/pagination";
+import { revalidatePath } from 'next/cache';
 
 /**
  * GET /api/contract-terms
@@ -251,6 +252,10 @@ export async function POST(request: Request) {
       logger.error(`Error updating story status:: ${storyError instanceof Error ? storyError.message : String(storyError)}`);
       // Continue even if story update fails
     }
+
+    // Revalidate contract terms list pages to show new term immediately
+    revalidatePath('/content-department/contract-terms');
+    revalidatePath('/evaluator/contract-terms');
 
     const res = NextResponse.json(
       {

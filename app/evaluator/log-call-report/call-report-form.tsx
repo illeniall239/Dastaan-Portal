@@ -114,6 +114,7 @@ export function CallReportForm({
 
   // File upload state
   const [filesToUpload, setFilesToUpload] = useState<File[]>([]);
+  const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({});
   const [existingAttachments, setExistingAttachments] = useState<AttachmentRecord[]>(memoizedInitialAttachments);
   const [attachmentsMarkedForDeletion, setAttachmentsMarkedForDeletion] = useState<string[]>([]);
   const handleExistingAttachmentDownload = (attachment: AttachmentRecord) => {
@@ -308,10 +309,24 @@ export function CallReportForm({
         if (filesToUpload.length > 0) {
           for (const file of filesToUpload) {
             try {
-              await uploadFile(file, "call_report", callReportId);
+              await uploadFile(file, "call_report", callReportId, (progress) => {
+                setUploadProgress(prev => ({ ...prev, [file.name]: progress }));
+              });
+              // Remove from progress tracking when complete
+              setUploadProgress(prev => {
+                const newProgress = { ...prev };
+                delete newProgress[file.name];
+                return newProgress;
+              });
             } catch (error) {
               console.error("Error uploading file:", error);
               toast.error(`Failed to upload file: ${file.name}. ${error instanceof Error ? error.message : 'Please try again.'}`);
+              // Remove from progress tracking on error
+              setUploadProgress(prev => {
+                const newProgress = { ...prev };
+                delete newProgress[file.name];
+                return newProgress;
+              });
             }
           }
           toast.success(`Writer Engagement Report updated successfully with ${filesToUpload.length} new attachment(s)!`);
@@ -385,10 +400,24 @@ export function CallReportForm({
         if (filesToUpload.length > 0 && result.id) {
           for (const file of filesToUpload) {
             try {
-              await uploadFile(file, "call_report", result.id);
+              await uploadFile(file, "call_report", result.id, (progress) => {
+                setUploadProgress(prev => ({ ...prev, [file.name]: progress }));
+              });
+              // Remove from progress tracking when complete
+              setUploadProgress(prev => {
+                const newProgress = { ...prev };
+                delete newProgress[file.name];
+                return newProgress;
+              });
             } catch (error) {
               console.error("Error uploading file:", error);
               toast.error(`Failed to upload file: ${file.name}. ${error instanceof Error ? error.message : 'Please try again.'}`);
+              // Remove from progress tracking on error
+              setUploadProgress(prev => {
+                const newProgress = { ...prev };
+                delete newProgress[file.name];
+                return newProgress;
+              });
             }
           }
           toast.success(`Writer Engagement Report logged successfully with ${filesToUpload.length} attachment(s)!`);
@@ -807,6 +836,7 @@ export function CallReportForm({
           onFileUpload={handleFileUpload}
           onFileRemove={handleFileRemove}
           uploadedFiles={filesToUpload}
+          uploadProgress={uploadProgress}
           maxFileSize={20}
           acceptedFileTypes={['.pdf', '.doc', '.docx', '.ppt', '.pptx', '.txt', '.jpeg', '.jpg', '.png']}
         />

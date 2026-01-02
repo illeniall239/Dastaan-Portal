@@ -21,6 +21,7 @@ interface EpisodeUploadFormProps {
   onEpisodesChange: (episodes: EpisodeFormEntry[]) => void;
   disabled?: boolean;
   existingEpisodeNumbers?: number[];
+  uploadProgress?: Record<number, number>; // episode number to progress percentage
 }
 
 export function EpisodeUploadForm({
@@ -28,6 +29,7 @@ export function EpisodeUploadForm({
   onEpisodesChange,
   disabled = false,
   existingEpisodeNumbers = [],
+  uploadProgress = {},
 }: EpisodeUploadFormProps) {
   const updateEpisodes = (list: EpisodeFormEntry[]) => {
     // Sort episodes by episode_number before updating parent
@@ -135,6 +137,7 @@ export function EpisodeUploadForm({
                 onFileSelect={(file) => updateEpisode(index, "file", file)}
                 onFileRemove={() => updateEpisode(index, "file", null)}
                 disabled={disabled}
+                uploadProgress={uploadProgress[episode.episode_number]}
               />
             </div>
 

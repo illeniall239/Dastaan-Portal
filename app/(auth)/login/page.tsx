@@ -36,11 +36,22 @@ export default function LoginPage() {
   const onSubmit = async (data: LoginFormData) => {
     setLoading(true);
 
+    // Set timeout for login request (15 seconds)
+    const timeout = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error("timeout")), 15000)
+    );
+
     try {
-      const { data: authData, error } = await supabase.auth.signInWithPassword({
-        email: data.email,
-        password: data.password,
-      });
+      // Race between login and timeout
+      const authData = await Promise.race([
+        supabase.auth.signInWithPassword({
+          email: data.email,
+          password: data.password,
+        }),
+        timeout
+      ]) as any;
+
+      const { data: authResult, error } = authData;
 
       if (error) {
         toast.error("Login failed", {
@@ -50,16 +61,25 @@ export default function LoginPage() {
         return;
       }
 
-      if (authData.user) {
+      if (authResult.user) {
         try {
-          await fetch("/api/auth/session", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-          });
+          // Also add timeout for session API call
+          const sessionTimeout = new Promise((_, reject) =>
+            setTimeout(() => reject(new Error("timeout")), 10000)
+          );
+
+          await Promise.race([
+            fetch("/api/auth/session", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+            }),
+            sessionTimeout
+          ]);
         } catch (error) {
           console.error("Failed to set session cookie:", error);
+          // Continue anyway as auth succeeded
         }
 
         toast.success("Welcome back!", {
@@ -69,10 +89,17 @@ export default function LoginPage() {
         router.refresh();
         return;
       }
-    } catch (error) {
-      toast.error("An error occurred", {
-        description: "Please try again later.",
-      });
+    } catch (error: any) {
+      if (error.message === "timeout") {
+        toast.error("Request timed out", {
+          description: "The login request is taking too long. Please check your connection and try again.",
+          duration: 5000,
+        });
+      } else {
+        toast.error("An error occurred", {
+          description: "Please try again later.",
+        });
+      }
       setLoading(false);
     }
   };

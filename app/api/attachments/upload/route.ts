@@ -16,7 +16,10 @@ export async function POST(request: NextRequest) {
     } = await supabase.auth.getUser();
 
     if (userError || !user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json({
+        error: "Authentication required",
+        message: "You must be logged in to upload files. Please sign in and try again."
+      }, { status: 401 });
     }
 
     // Clone the request to avoid "body already used" errors
@@ -26,10 +29,10 @@ export async function POST(request: NextRequest) {
     const entityId = formData.get("entityId");
 
     if (!(file instanceof File)) {
-      return NextResponse.json(
-        { error: "File is required" },
-        { status: 400 }
-      );
+      return NextResponse.json({
+        error: "No file provided",
+        message: "Please select a file to upload. The 'file' field is required in the form data."
+      }, { status: 400 });
     }
 
     if (
@@ -38,10 +41,10 @@ export async function POST(request: NextRequest) {
       !entityType ||
       !entityId
     ) {
-      return NextResponse.json(
-        { error: "Invalid entity information" },
-        { status: 400 }
-      );
+      return NextResponse.json({
+        error: "Missing required information",
+        message: "Both 'entityType' and 'entityId' are required to attach the file to a record. Please ensure these fields are provided."
+      }, { status: 400 });
     }
 
     // Validate UUID format
@@ -50,13 +53,10 @@ export async function POST(request: NextRequest) {
 
     if (!entityIdValidation.success) {
       console.error("Invalid entity ID format:", entityId);
-      return NextResponse.json(
-        {
-          error: "Invalid entity ID format",
-          details: "Entity ID must be a valid UUID"
-        },
-        { status: 400 }
-      );
+      return NextResponse.json({
+        error: "Invalid record identifier",
+        message: "The entity ID must be a valid UUID format. Please check the ID and try again."
+      }, { status: 400 });
     }
 
     const fileExtension = file.name.includes(".")
@@ -78,10 +78,22 @@ export async function POST(request: NextRequest) {
 
     if (uploadError) {
       console.error("Storage upload error:", uploadError);
-      return NextResponse.json(
-        { error: "Failed to upload file", details: uploadError.message },
-        { status: 500 }
-      );
+
+      // Provide more specific error messages based on common issues
+      let userMessage = "The file could not be uploaded to storage. ";
+      if (uploadError.message?.includes("size")) {
+        userMessage += "The file may be too large. Please try a smaller file.";
+      } else if (uploadError.message?.includes("type") || uploadError.message?.includes("format")) {
+        userMessage += "The file format may not be supported.";
+      } else {
+        userMessage += "Please try again or contact support if the problem persists.";
+      }
+
+      return NextResponse.json({
+        error: "Upload failed",
+        message: userMessage,
+        details: process.env.NODE_ENV === 'development' ? uploadError.message : undefined
+      }, { status: 500 });
     }
 
     const { data: publicUrlData } = supabase.storage
@@ -122,13 +134,23 @@ export async function POST(request: NextRequest) {
       // Clean up uploaded file
       await supabase.storage.from("attachments").remove([filePath]);
 
-      return NextResponse.json(
-        {
-          error: "Failed to create attachment record",
-          details: process.env.NODE_ENV === 'development' ? insertError.message : undefined
-        },
-        { status: 500 }
-      );
+      // Provide more specific error messages based on error codes
+      let userMessage = "The file was uploaded but could not be linked to the record. ";
+      if (insertError.code === "23503") {
+        // Foreign key violation
+        userMessage += "The record you're trying to attach the file to may no longer exist.";
+      } else if (insertError.code === "23505") {
+        // Unique violation
+        userMessage += "This file may already be attached to this record.";
+      } else {
+        userMessage += "Please try again or contact support if the problem persists.";
+      }
+
+      return NextResponse.json({
+        error: "Failed to save attachment",
+        message: userMessage,
+        details: process.env.NODE_ENV === 'development' ? insertError.message : undefined
+      }, { status: 500 });
     }
 
     return NextResponse.json({
@@ -157,15 +179,13 @@ export async function POST(request: NextRequest) {
     }
 
     console.error("==========================================");
-    return NextResponse.json(
-      {
-        error: "Failed to upload file",
-        details: process.env.NODE_ENV === 'development'
-          ? (error instanceof Error ? error.message : String(error))
-          : "Internal server error"
-      },
-      { status: 500 }
-    );
+    return NextResponse.json({
+      error: "Upload failed",
+      message: "An unexpected error occurred while uploading the file. Please try again or contact support if the problem persists.",
+      details: process.env.NODE_ENV === 'development'
+        ? (error instanceof Error ? error.message : String(error))
+        : undefined
+    }, { status: 500 });
   }
 }
 

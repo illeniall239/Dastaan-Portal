@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
+import { revalidatePath } from 'next/cache';
 
 // GET /api/writers - Fetch all active writers
 export async function GET() {
@@ -79,6 +80,10 @@ export async function POST(request: Request) {
         { status: 500 }
       );
     }
+
+    // Revalidate pages that display writers list
+    revalidatePath('/content-department/log-call-report');
+    revalidatePath('/evaluator/log-call-report');
 
     return NextResponse.json(newWriter, { status: 201 });
   } catch (error) {

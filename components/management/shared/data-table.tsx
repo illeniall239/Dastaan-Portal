@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { ArrowUpDown, ArrowUp, ArrowDown, ChevronLeft, ChevronRight } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 
 export type ColumnDef<T> = {
@@ -43,6 +43,11 @@ export function DataTable<T extends Record<string, any>>({
   const [sortColumn, setSortColumn] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
   const [currentPage, setCurrentPage] = useState(1);
+
+  // Reset pagination when data changes (e.g., when filtering is applied)
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [data.length]);
 
   // Sorting logic
   const handleSort = (columnId: string) => {

@@ -5,6 +5,7 @@ import { updateEpisodeSchema } from "@/lib/validations/episodes";
 import { idParamSchema } from "@/lib/validations/uuid-params";
 import { applyRateLimit, addRateLimitHeaders, withCors } from "@/lib/api-middleware";
 import { RateLimitPresets } from "@/lib/rate-limit-redis";
+import { revalidatePath } from 'next/cache';
 
 /**
  * GET /api/episodes/[id]
@@ -180,6 +181,10 @@ export async function PATCH(
       );
     }
 
+    // Revalidate episode list pages to show updated episodes immediately
+    revalidatePath('/content-department/episodes');
+    revalidatePath('/evaluator/episodes');
+
     return addRateLimitHeaders(withCors(request, NextResponse.json({
       message: "Episode updated successfully",
       episode: updatedEpisode,
@@ -298,6 +303,10 @@ export async function DELETE(
         // Continue anyway - episode is deleted from database
       }
     }
+
+    // Revalidate episode list pages to show deleted episode removed immediately
+    revalidatePath('/content-department/episodes');
+    revalidatePath('/evaluator/episodes');
 
     return addRateLimitHeaders(withCors(request, NextResponse.json({
       message: "Episode deleted successfully",

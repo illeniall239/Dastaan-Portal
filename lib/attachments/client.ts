@@ -1,42 +1,76 @@
 import { createClient } from '@/lib/supabase/client';
 
 // Function to upload files via server API route to avoid client-side Supabase storage issues
-export async function uploadFile(file: File, entityType: string, entityId: string) {
+export async function uploadFile(
+  file: File,
+  entityType: string,
+  entityId: string,
+  onProgress?: (progress: number) => void
+) {
   const formData = new FormData();
   formData.append('file', file);
   formData.append('entityType', entityType);
   formData.append('entityId', entityId);
 
-  const response = await fetch('/api/attachments/upload', {
-    method: 'POST',
-    body: formData,
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+
+    // Track upload progress
+    xhr.upload.addEventListener('progress', (event) => {
+      if (event.lengthComputable && onProgress) {
+        const progress = Math.round((event.loaded / event.total) * 100);
+        onProgress(progress);
+      }
+    });
+
+    // Handle completion
+    xhr.addEventListener('load', () => {
+      // Check content type before parsing
+      const contentType = xhr.getResponseHeader('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        console.error('Server returned non-JSON response:', {
+          status: xhr.status,
+          contentType,
+        });
+        console.error('Response body:', xhr.responseText.substring(0, 500));
+        reject(new Error(`Upload failed with status ${xhr.status}: Server returned HTML instead of JSON`));
+        return;
+      }
+
+      try {
+        const result = JSON.parse(xhr.responseText);
+
+        if (xhr.status >= 200 && xhr.status < 300) {
+          resolve(result.attachment);
+        } else {
+          console.error('Upload failed:', {
+            status: xhr.status,
+            error: result.error,
+            details: result.details,
+            message: result.message
+          });
+          reject(new Error(result.message || result.error || 'Failed to upload file'));
+        }
+      } catch (parseError) {
+        console.error('Failed to parse response:', parseError);
+        reject(new Error('Failed to parse server response'));
+      }
+    });
+
+    // Handle network errors
+    xhr.addEventListener('error', () => {
+      reject(new Error('Network error during file upload'));
+    });
+
+    // Handle aborts
+    xhr.addEventListener('abort', () => {
+      reject(new Error('File upload was cancelled'));
+    });
+
+    // Send the request
+    xhr.open('POST', '/api/attachments/upload');
+    xhr.send(formData);
   });
-
-  // Check content type before parsing
-  const contentType = response.headers.get('content-type');
-  if (!contentType || !contentType.includes('application/json')) {
-    console.error('Server returned non-JSON response:', {
-      status: response.status,
-      contentType,
-      url: response.url
-    });
-    const text = await response.text();
-    console.error('Response body:', text.substring(0, 500));
-    throw new Error(`Upload failed with status ${response.status}: Server returned HTML instead of JSON`);
-  }
-
-  const result = await response.json();
-
-  if (!response.ok) {
-    console.error('Upload failed:', {
-      status: response.status,
-      error: result.error,
-      details: result.details
-    });
-    throw new Error(result.error || 'Failed to upload file');
-  }
-
-  return result.attachment;
 }
 
 // Function to delete a file (still uses client-side Supabase for now)

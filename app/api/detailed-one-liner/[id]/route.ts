@@ -3,6 +3,7 @@ import { logger } from "@/lib/logger";
 import { createClient } from "@/lib/supabase/server";
 import { idParamSchema } from "@/lib/validations/uuid-params";
 import { updateDetailedOneLinerSchema } from "@/lib/validations/detailed-one-liner";
+import { revalidatePath } from 'next/cache';
 
 /**
  * GET /api/detailed-one-liner/[id]
@@ -506,6 +507,10 @@ export async function PATCH(
     if (updated.character_relationships) {
       updated.character_relationships.sort((a: any, b: any) => a.sort_order - b.sort_order);
     }
+
+    // Revalidate detailed one-liner list pages to show updated entry immediately
+    revalidatePath('/content-department/detailed-one-liner');
+    revalidatePath('/evaluator/detailed-one-liner');
 
     return NextResponse.json({
       message: "Detailed one-liner updated successfully",

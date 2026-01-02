@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { idParamSchema } from "@/lib/validations/uuid-params";
 import { updateCallReportSchema } from "@/lib/validations/call-reports";
 import { sanitizeCallReportForUser } from "@/lib/call-reports/privacy";
+import { revalidatePath } from 'next/cache';
 
 /**
  * GET /api/call-reports/[id]
@@ -256,6 +257,12 @@ export async function PATCH(
         }
       }
     }
+
+    // Revalidate call report list pages to show updated reports immediately
+    revalidatePath('/content-department/call-reports');
+    revalidatePath('/evaluator/call-reports');
+    revalidatePath('/content-department/status-updater');
+    revalidatePath('/evaluator/status-updater');
 
     return NextResponse.json({
       message: "Call report updated successfully",

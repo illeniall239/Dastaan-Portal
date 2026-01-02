@@ -132,6 +132,7 @@ export default function ContentDepartmentEpisodeEditPage({ params }: EpisodeEdit
         episode={episode}
         onSuccess={() => {
           router.push("/content-department/episodes");
+          router.refresh(); // Force data refresh to show updated episode
         }}
       />
     </div>

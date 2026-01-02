@@ -76,10 +76,12 @@ export default async function ManagementEvaluationsPage() {
     .limit(100);
 
   // Fetch external evaluations (submissions)
+  // Limit to 500 most recent to prevent performance issues with large datasets
   const { data: rawEvaluations } = await supabase
     .from("external_evaluations")
     .select("*")
-    .order("submitted_at", { ascending: false });
+    .order("submitted_at", { ascending: false })
+    .limit(500);
 
   // Group evaluations by submission (link_id + evaluator_email)
   const evaluationsBySubmission = new Map<string, any[]>();

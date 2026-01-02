@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { episodicEvaluationSchema } from "@/lib/validations/episodic-evaluations";
 import { episodicEvaluationsQuerySchema } from "@/lib/validations/query-params";
 import { parsePaginationParams, applyPagination, createPaginatedResponse } from "@/lib/utils/pagination";
+import { revalidatePath } from 'next/cache';
 
 /**
  * POST /api/episodic-evaluations
@@ -114,6 +115,10 @@ export async function POST(request: Request) {
         { status: 500 }
       );
     }
+
+    // Revalidate evaluation list pages to show new evaluations immediately
+    revalidatePath('/content-department/episodic-evaluations');
+    revalidatePath('/evaluator/episodic-evaluations');
 
     return NextResponse.json(
       {

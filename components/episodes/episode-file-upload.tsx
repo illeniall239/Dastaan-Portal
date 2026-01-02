@@ -20,6 +20,7 @@ interface EpisodeFileUploadProps {
   existingFileName?: string;
   existingFileUrl?: string;
   onExistingFileDownload?: () => void;
+  uploadProgress?: number; // upload progress percentage
 }
 
 export function EpisodeFileUpload({
@@ -30,6 +31,7 @@ export function EpisodeFileUpload({
   existingFileName,
   existingFileUrl,
   onExistingFileDownload,
+  uploadProgress,
 }: EpisodeFileUploadProps) {
   const [dragActive, setDragActive] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -194,11 +196,14 @@ export function EpisodeFileUpload({
       ) : (
         <div className="border rounded-lg p-4 bg-gray-50">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="text-gray-600">{getFileIcon(file.name)}</div>
-              <div>
-                <p className="text-sm font-medium text-gray-900">{file.name}</p>
-                <p className="text-xs text-gray-500">{formatFileSize(file.size)}</p>
+            <div className="flex items-center gap-3 flex-1 min-w-0">
+              <div className="text-gray-600 flex-shrink-0">{getFileIcon(file.name)}</div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-gray-900 truncate">{file.name}</p>
+                <p className="text-xs text-gray-500">
+                  {formatFileSize(file.size)}
+                  {uploadProgress !== undefined && <span className="ml-2 text-blue-600">Uploading...</span>}
+                </p>
               </div>
             </div>
             {!disabled && (
@@ -210,11 +215,29 @@ export function EpisodeFileUpload({
                   e.stopPropagation();
                   onFileRemove();
                 }}
+                disabled={uploadProgress !== undefined}
+                className="flex-shrink-0"
               >
                 <X className="h-4 w-4" />
               </Button>
             )}
           </div>
+
+          {/* Progress bar */}
+          {uploadProgress !== undefined && (
+            <div className="mt-3">
+              <div className="flex justify-between text-xs mb-1">
+                <span className="text-gray-600">Uploading episode file</span>
+                <span className="text-blue-600 font-medium">{uploadProgress}%</span>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+                <div
+                  className="bg-blue-600 h-2 rounded-full transition-all duration-300 ease-out"
+                  style={{ width: `${uploadProgress}%` }}
+                ></div>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>

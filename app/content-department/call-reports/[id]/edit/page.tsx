@@ -169,6 +169,7 @@ export default function ContentDepartmentCallReportEditPage({ params }: CallRepo
         initialAttachments={attachments}
         onSuccess={() => {
           router.push(`/content-department/call-reports/${callReportId}`);
+          router.refresh(); // Force data refresh to show updated call report
         }}
       />
     </div>

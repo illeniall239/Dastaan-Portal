@@ -7,6 +7,7 @@ import {
   addRateLimitHeaders,
 } from "@/lib/api-middleware";
 import { RateLimitPresets } from "@/lib/rate-limit-redis";
+import { revalidatePath } from 'next/cache';
 
 /**
  * GET /api/negotiations/[id]
@@ -140,6 +141,10 @@ export async function PATCH(
       );
     }
 
+    // Revalidate contract terms list pages to show updated term immediately
+    revalidatePath('/content-department/contract-terms');
+    revalidatePath('/evaluator/contract-terms');
+
     const res = NextResponse.json({
       message: "Contract term updated successfully",
       negotiation: data,
@@ -204,6 +209,10 @@ export async function DELETE(
         { status: 500 }
       );
     }
+
+    // Revalidate contract terms list pages to show deleted term removed immediately
+    revalidatePath('/content-department/contract-terms');
+    revalidatePath('/evaluator/contract-terms');
 
     const res = NextResponse.json({
       message: "Contract term deleted successfully",

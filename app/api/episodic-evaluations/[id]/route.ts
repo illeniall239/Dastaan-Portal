@@ -5,6 +5,7 @@ import { applyRateLimit, addRateLimitHeaders, withCors } from "@/lib/api-middlew
 import { RateLimitPresets } from "@/lib/rate-limit-redis";
 import { idParamSchema } from "@/lib/validations/uuid-params";
 import { updateEpisodicEvaluationSchema } from "@/lib/validations/episodic-evaluations";
+import { revalidatePath } from 'next/cache';
 
 /**
  * GET /api/episodic-evaluations/[id]
@@ -185,6 +186,10 @@ export async function DELETE(
       );
     }
 
+    // Revalidate evaluation list pages to show deleted evaluation removed immediately
+    revalidatePath('/content-department/episodic-evaluations');
+    revalidatePath('/evaluator/episodic-evaluations');
+
     return addRateLimitHeaders(withCors(request, NextResponse.json({
       message: "Episodic evaluation deleted successfully",
     })), rate.result);
@@ -300,6 +305,10 @@ export async function PATCH(
         { status: 500 }
       );
     }
+
+    // Revalidate evaluation list pages to show updated evaluation immediately
+    revalidatePath('/content-department/episodic-evaluations');
+    revalidatePath('/evaluator/episodic-evaluations');
 
     return addRateLimitHeaders(withCors(request, NextResponse.json({ evaluation: updated })), rate.result);
   } catch (error) {
