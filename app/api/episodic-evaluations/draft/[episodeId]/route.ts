@@ -102,7 +102,7 @@ export async function POST(
     .eq("id", user.id)
     .single();
 
-  if (userError || !userData || !["evaluator", "admin"].includes(userData.role)) {
+  if (userError || !userData || !["evaluator", "programmer", "admin"].includes(userData.role)) {
     return NextResponse.json(
       { error: "Forbidden - Only evaluators can save draft evaluations" },
       { status: 403 }

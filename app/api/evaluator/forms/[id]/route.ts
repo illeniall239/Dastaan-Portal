@@ -4,6 +4,8 @@ import { createClient } from "@/lib/supabase/server";
 import { applyRateLimit, addRateLimitHeaders, withCors } from "@/lib/api-middleware";
 import { RateLimitPresets } from "@/lib/rate-limit-redis";
 import { revalidatePath } from 'next/cache';
+import { updateEvaluationSchema } from "@/lib/validations/evaluations";
+import { idParamSchema } from "@/lib/validations/uuid-params";
 
 /**
  * PATCH /api/evaluator/forms/[id]
@@ -17,6 +19,16 @@ export async function PATCH(
   const rate = await applyRateLimit(request, RateLimitPresets.strict);
   if (!rate.success) return rate.response!;
   const { id } = await params;
+
+  // Validate UUID format
+  const paramValidation = idParamSchema.safeParse({ id });
+  if (!paramValidation.success) {
+    return NextResponse.json(
+      { error: "Invalid ID format", details: paramValidation.error.issues },
+      { status: 400 }
+    );
+  }
+
   const supabase = await createClient();
 
   const { data: { user } } = await supabase.auth.getUser();
@@ -45,28 +57,24 @@ export async function PATCH(
   }
 
   const payload = await request.json();
-  const allowed = [
-    "target_writer",
-    "per_ep_price_range",
-    "genre",
-    "slot",
-    "big_idea",
-    "theme",
-    "premise_conflict_score",
-    "storyline_plot_score",
-    "episodic_progression_score",
-    "characters_score",
-    "overall_assessment_score",
-    "first_2_eps_required",
-    "comments",
-    "decision",
-    "decision_notes",
-  ];
-  const updatePayload: Record<string, any> = {};
-  for (const key of allowed) {
-    if (key in payload) updatePayload[key] = payload[key];
+
+  // Validate request body
+  const validation = updateEvaluationSchema.safeParse(payload);
+
+  if (!validation.success) {
+    return withCors(request, NextResponse.json(
+      { error: "Invalid request", details: validation.error.issues },
+      { status: 400 }
+    ));
   }
-  updatePayload.updated_at = new Date().toISOString();
+
+  const validatedData = validation.data;
+
+  // Add updated_at timestamp
+  const updatePayload = {
+    ...validatedData,
+    updated_at: new Date().toISOString(),
+  };
 
   const { data, error: updateError } = await supabase
     .from("evaluator_forms")
@@ -76,8 +84,9 @@ export async function PATCH(
     .single();
 
   if (updateError) {
+    logger.error("Error updating evaluation", { error: updateError, context: "PATCH /api/evaluator/forms/[id]" });
     return withCors(request, NextResponse.json(
-      { error: "Failed to update evaluation", details: updateError.message },
+      { error: "Failed to update evaluation" },
       { status: 500 }
     ));
   }

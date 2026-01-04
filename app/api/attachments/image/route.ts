@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { logger } from "@/lib/logger";
 
 export async function GET(request: NextRequest) {
   try {
@@ -35,7 +36,7 @@ export async function GET(request: NextRequest) {
       .download(filePath);
 
     if (downloadError || !fileData) {
-      console.error("Error downloading file:", downloadError);
+      logger.error("Error downloading file:", downloadError);
       return NextResponse.json(
         { error: "Failed to fetch image" },
         { status: 500 }
@@ -66,7 +67,7 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error("Image proxy error:", error);
+    logger.error("Image proxy error:", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

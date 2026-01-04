@@ -46,14 +46,13 @@ export async function GET(request: NextRequest) {
       .order("meeting_date", { ascending: false });
 
     if (callReportsError) {
-      logger.error("Error fetching call reports:", callReportsError);
+      logger.error("Error fetching call reports", { error: callReportsError, context: "GET /api/evaluations/pending" });
       return withCors(
         request,
         NextResponse.json(
           {
             success: false,
             error: "Failed to fetch call reports",
-            details: callReportsError.message,
           },
           { status: 500 }
         )
@@ -67,14 +66,13 @@ export async function GET(request: NextRequest) {
       .eq("evaluator_id", evaluatorId);
 
     if (evaluationsError) {
-      logger.error("Error fetching evaluations:", evaluationsError);
+      logger.error("Error fetching evaluations", { error: evaluationsError, context: "GET /api/evaluations/pending" });
       return withCors(
         request,
         NextResponse.json(
           {
             success: false,
             error: "Failed to fetch evaluations",
-            details: evaluationsError.message,
           },
           { status: 500 }
         )

@@ -16,6 +16,8 @@ import { BackButton } from "@/components/ui/back-button";
 import { canViewPrivateFields } from "@/lib/call-reports/privacy";
 import type { User } from "@/types";
 import { formatDateTimeLong } from "@/lib/utils/format-date";
+import { getSegregatedEvaluations } from "@/lib/evaluations/server";
+import { SegregatedEvaluationsDisplay } from "@/components/evaluations/segregated-evaluations-display";
 
 // Helper to convert stored image path to secure proxy URL
 function getSecureImageUrl(value: string | null | undefined): string | null {
@@ -120,6 +122,15 @@ export default async function CallReportDetailPage({ params }: { params: Promise
   } catch (error) {
     console.error("Error fetching attachments:", error);
     // Continue without attachments if there's an error
+  }
+
+  // Fetch segregated evaluations for this call report
+  let segregatedEvaluations = null;
+  try {
+    segregatedEvaluations = await getSegregatedEvaluations(resolvedParams.id);
+  } catch (error) {
+    console.error("Error fetching segregated evaluations:", error);
+    // Continue without evaluations if there's an error
   }
 
   const loggedTimestamp =
@@ -389,6 +400,11 @@ export default async function CallReportDetailPage({ params }: { params: Promise
               </div>
             </CardContent>
           </Card>
+        )}
+
+        {/* Segregated Evaluations */}
+        {segregatedEvaluations && segregatedEvaluations.total > 0 && (
+          <SegregatedEvaluationsDisplay evaluations={segregatedEvaluations} />
         )}
       </div>
     </div>

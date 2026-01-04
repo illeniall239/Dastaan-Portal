@@ -81,11 +81,10 @@ export async function POST(
       .single();
 
     if (error) {
-      logger.error(`Error marking negotiation as agreed: ${error instanceof Error ? error.message : String(error)}`);
+      logger.error("Error marking negotiation as agreed", { error, context: "POST /api/contract-terms/[id]/agree" });
       return NextResponse.json(
         {
           error: "Failed to mark negotiation as agreed",
-          details: error.message,
         },
         { status: 500 }
       );
@@ -108,7 +107,7 @@ export async function POST(
       .eq("id", data.story_id);
 
     if (storyError) {
-      logger.error(`Error updating story status:: ${storyError instanceof Error ? storyError.message : String(storyError)}`);
+      logger.error("Error updating story status", { error: storyError, context: "POST /api/contract-terms/[id]/agree" });
       // Continue even if story update fails
     }
 
@@ -119,7 +118,7 @@ export async function POST(
 
     return addRateLimitHeaders(res, rate.result);
   } catch (error) {
-    logger.error(`Error in POST /api/negotiations/[id]/agree: ${error instanceof Error ? error.message : String(error)}`);
+    logger.error("Error in POST /api/contract-terms/[id]/agree", { error, context: "POST /api/contract-terms/[id]/agree" });
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

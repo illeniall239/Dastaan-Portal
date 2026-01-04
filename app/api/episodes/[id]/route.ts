@@ -55,9 +55,9 @@ export async function GET(
           { status: 404 }
         );
       }
-      logger.error(`Error fetching episode: ${error instanceof Error ? error.message : String(error)}`);
+      logger.error("Error fetching episode", { error, context: "GET /api/episodes/[id]" });
       return NextResponse.json(
-        { error: "Failed to fetch episode", details: error.message },
+        { error: "Failed to fetch episode" },
         { status: 500 }
       );
     }
@@ -128,9 +128,9 @@ export async function PATCH(
           { status: 404 }
         );
       }
-      logger.error(`Error fetching episode:: ${fetchError instanceof Error ? fetchError.message : String(fetchError)}`);
+      logger.error("Error fetching episode for update", { error: fetchError, context: "PATCH /api/episodes/[id]" });
       return NextResponse.json(
-        { error: "Failed to fetch episode", details: fetchError.message },
+        { error: "Failed to fetch episode" },
         { status: 500 }
       );
     }
@@ -138,7 +138,7 @@ export async function PATCH(
     // Check permissions: owner, evaluator, or manager/admin
     const canEdit =
       existingEpisode.logged_by === user.id ||
-      ["evaluator", "content_manager", "admin"].includes(userData.role);
+      ["evaluator", "programmer", "content_manager", "admin"].includes(userData.role);
 
     if (!canEdit) {
       return NextResponse.json(
@@ -174,9 +174,9 @@ export async function PATCH(
       .single();
 
     if (updateError) {
-      logger.error(`Error updating episode:: ${updateError instanceof Error ? updateError.message : String(updateError)}`);
+      logger.error("Error updating episode", { error: updateError, context: "PATCH /api/episodes/[id]" });
       return NextResponse.json(
-        { error: "Failed to update episode", details: updateError.message },
+        { error: "Failed to update episode" },
         { status: 500 }
       );
     }
@@ -254,9 +254,9 @@ export async function DELETE(
           { status: 404 }
         );
       }
-      logger.error(`Error fetching episode:: ${fetchError instanceof Error ? fetchError.message : String(fetchError)}`);
+      logger.error("Error fetching episode for deletion", { error: fetchError, context: "DELETE /api/episodes/[id]" });
       return NextResponse.json(
-        { error: "Failed to fetch episode", details: fetchError.message },
+        { error: "Failed to fetch episode" },
         { status: 500 }
       );
     }
@@ -264,7 +264,7 @@ export async function DELETE(
     // Check permissions: owner, evaluator, or manager/admin
     const canDelete =
       existingEpisode.logged_by === user.id ||
-      ["evaluator", "content_manager", "admin"].includes(userData.role);
+      ["evaluator", "programmer", "content_manager", "admin"].includes(userData.role);
 
     if (!canDelete) {
       return NextResponse.json(
@@ -280,9 +280,9 @@ export async function DELETE(
       .eq("id", id);
 
     if (deleteError) {
-      logger.error(`Error deleting episode:: ${deleteError instanceof Error ? deleteError.message : String(deleteError)}`);
+      logger.error("Error deleting episode", { error: deleteError, context: "DELETE /api/episodes/[id]" });
       return NextResponse.json(
-        { error: "Failed to delete episode", details: deleteError.message },
+        { error: "Failed to delete episode" },
         { status: 500 }
       );
     }
@@ -299,7 +299,7 @@ export async function DELETE(
           .from("episodes")
           .remove([filePath]);
       } catch (storageError) {
-        logger.error(`Error deleting attachment from storage:: ${storageError instanceof Error ? storageError.message : String(storageError)}`);
+        logger.error("Error deleting attachment from storage", { error: storageError, context: "DELETE /api/episodes/[id]" });
         // Continue anyway - episode is deleted from database
       }
     }

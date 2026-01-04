@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { assignUsersToTeamSchema, removeUsersFromTeamSchema } from "@/lib/validations/teams";
 import { logAdminAction, getRequestContext } from "@/lib/audit/server";
+import { logger } from "@/lib/logger";
 
 /**
  * GET /api/admin/teams/[id]/members
@@ -66,9 +67,9 @@ export async function GET(
       .order('name');
 
     if (error) {
-      console.error("Error fetching team members:", error);
+      logger.error("Error fetching team members", { error, context: "GET /api/admin/teams/[id]/members" });
       return NextResponse.json(
-        { error: "Failed to fetch team members", message: error.message },
+        { error: "Failed to fetch team members" },
         { status: 500 }
       );
     }
@@ -79,7 +80,7 @@ export async function GET(
       total: members?.length || 0,
     });
   } catch (error) {
-    console.error("Error in GET /api/admin/teams/[id]/members:", error);
+    logger.error("Error in GET /api/admin/teams/[id]/members", { error, context: "GET /api/admin/teams/[id]/members" });
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }
@@ -158,9 +159,9 @@ export async function POST(
       .in('id', user_ids);
 
     if (usersError) {
-      console.error("Error fetching users:", usersError);
+      logger.error("Error fetching users", { error: usersError, context: "POST /api/admin/teams/[id]/members" });
       return NextResponse.json(
-        { error: "Failed to fetch users", message: usersError.message },
+        { error: "Failed to fetch users" },
         { status: 500 }
       );
     }
@@ -188,9 +189,9 @@ export async function POST(
       .select('id, name, email');
 
     if (updateError) {
-      console.error("Error assigning users to team:", updateError);
+      logger.error("Error assigning users to team", { error: updateError, context: "POST /api/admin/teams/[id]/members" });
       return NextResponse.json(
-        { error: "Failed to assign users to team", message: updateError.message },
+        { error: "Failed to assign users to team" },
         { status: 500 }
       );
     }
@@ -214,7 +215,7 @@ export async function POST(
           userEmail: assignedUser.email,
         },
       }).catch(err => {
-        console.error("Failed to log admin action:", err);
+        logger.error("Failed to log admin action", { error: err, context: "POST /api/admin/teams/[id]/members" });
         // Don't fail the request if logging fails
       });
     }
@@ -222,7 +223,7 @@ export async function POST(
     // Refresh materialized views
     const { error: refreshError } = await adminClient.rpc('refresh_all_team_views');
     if (refreshError) {
-      console.error("Failed to refresh team views:", refreshError);
+      logger.error("Failed to refresh team views", { error: refreshError, context: "POST /api/admin/teams/[id]/members" });
       // Don't fail the request if refresh fails
     }
 
@@ -233,7 +234,7 @@ export async function POST(
       reassigned_count: usersWithPreviousTeams.length,
     });
   } catch (error) {
-    console.error("Error in POST /api/admin/teams/[id]/members:", error);
+    logger.error("Error in POST /api/admin/teams/[id]/members", { error, context: "POST /api/admin/teams/[id]/members" });
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }
@@ -309,9 +310,9 @@ export async function DELETE(
       .in('id', user_ids);
 
     if (usersError) {
-      console.error("Error fetching users:", usersError);
+      logger.error("Error fetching users for removal", { error: usersError, context: "DELETE /api/admin/teams/[id]/members" });
       return NextResponse.json(
-        { error: "Failed to fetch users", message: usersError.message },
+        { error: "Failed to fetch users" },
         { status: 500 }
       );
     }
@@ -343,9 +344,9 @@ export async function DELETE(
       .select('id, name, email');
 
     if (updateError) {
-      console.error("Error removing users from team:", updateError);
+      logger.error("Error removing users from team", { error: updateError, context: "DELETE /api/admin/teams/[id]/members" });
       return NextResponse.json(
-        { error: "Failed to remove users from team", message: updateError.message },
+        { error: "Failed to remove users from team" },
         { status: 500 }
       );
     }
@@ -366,7 +367,7 @@ export async function DELETE(
           userEmail: removedUser.email,
         },
       }).catch(err => {
-        console.error("Failed to log admin action:", err);
+        logger.error("Failed to log admin action", { error: err, context: "DELETE /api/admin/teams/[id]/members" });
         // Don't fail the request if logging fails
       });
     }
@@ -374,7 +375,7 @@ export async function DELETE(
     // Refresh materialized views
     const { error: refreshError } = await adminClient.rpc('refresh_all_team_views');
     if (refreshError) {
-      console.error("Failed to refresh team views:", refreshError);
+      logger.error("Failed to refresh team views", { error: refreshError, context: "DELETE /api/admin/teams/[id]/members" });
       // Don't fail the request if refresh fails
     }
 
@@ -384,7 +385,7 @@ export async function DELETE(
       removed_users: updatedUsers,
     });
   } catch (error) {
-    console.error("Error in DELETE /api/admin/teams/[id]/members:", error);
+    logger.error("Error in DELETE /api/admin/teams/[id]/members", { error, context: "DELETE /api/admin/teams/[id]/members" });
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

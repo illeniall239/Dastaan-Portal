@@ -152,20 +152,9 @@ export default function EpisodicEvaluationPage({ params }: EpisodePageProps) {
   return (
     <div className="mobile-container mobile-section space-y-4 sm:space-y-6 max-w-5xl mx-auto">
       {/* Header */}
-      <div className="mb-6">
-        <BackButton fallbackHref="/evaluator/episodes" className="mb-4" />
-
-        <div className="flex items-start justify-between">
-          <div>
-            <h1 className="text-xl sm:text-2xl font-bold mb-2">
-              {existingEvaluation ? (isEditing ? "Edit Evaluation" : "View Evaluation") : "Evaluate Episode"}
-            </h1>
-            <p className="text-muted-foreground">
-              {existingEvaluation
-                ? (isEditing ? "You can update and resubmit your evaluation" : "Your submitted evaluation for this episode")
-                : "Complete the episodic evaluation form below"}
-            </p>
-          </div>
+      <div className="flex flex-col gap-4 sm:gap-6 mb-8">
+        <div className="flex items-center justify-between">
+          <BackButton fallbackHref="/evaluator/episodes" variant="outline" size="sm" className="w-fit" />
           {existingEvaluation && !isEditing && (
             <div className="flex items-center gap-3">
               <Badge className="bg-green-100 text-green-800 border-green-300">Submitted</Badge>
@@ -174,6 +163,16 @@ export default function EpisodicEvaluationPage({ params }: EpisodePageProps) {
               </Button>
             </div>
           )}
+        </div>
+        <div className="space-y-1">
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight">
+            {existingEvaluation ? (isEditing ? "Edit Evaluation" : "View Evaluation") : "Evaluate Episode"}
+          </h1>
+          <p className="text-muted-foreground text-sm sm:text-base">
+            {existingEvaluation
+              ? (isEditing ? "You can update and resubmit your evaluation" : "Your submitted evaluation for this episode")
+              : "Complete the episodic evaluation form below"}
+          </p>
         </div>
       </div>
 

@@ -3,91 +3,81 @@
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
-import { Loader2 } from "lucide-react";
+import { Loader2, FileText, Film } from "lucide-react";
 import { formatDate } from "@/lib/utils/format-date";
+import { SegregatedEvaluationsDisplay } from "@/components/evaluations/segregated-evaluations-display";
+import { SegregatedEpisodicEvaluationsDisplay } from "@/components/evaluations/segregated-episodic-evaluations-display";
+import type { SegregatedEvaluations, SegregatedEpisodicEvaluations } from "@/types";
 
-interface TeamEvaluationStats {
-  callReportCount: number;
-  episodicCount: number;
-  oneLinerCount: number;
-  totalEvaluations: number;
+interface CallReportWithEvaluations {
+  id: string;
+  callReportId: string;
+  workingTitle: string;
+  writerName: string;
+  meetingDate: string;
+  createdAt: string;
+  updatedAt: string;
+  evaluationCount: number;
+  segregatedEvaluations: SegregatedEvaluations;
+}
+
+interface EpisodeWithEvaluations {
+  id: string;
+  episodeNumber: number;
+  title: string;
+  callReportId: string;
+  dramaTitle: string;
+  createdAt: string;
+  updatedAt: string;
+  evaluationCount: number;
+  segregatedEvaluations: SegregatedEpisodicEvaluations;
 }
 
 interface InternalEvaluationsTabProps {
-  teams: any[];
   currentUser: any;
 }
 
-export function InternalEvaluationsTab({ teams, currentUser }: InternalEvaluationsTabProps) {
-  const [teamStats, setTeamStats] = useState<Map<string, TeamEvaluationStats>>(new Map());
+export function InternalEvaluationsTab({ currentUser }: InternalEvaluationsTabProps) {
+  const [callReports, setCallReports] = useState<CallReportWithEvaluations[]>([]);
+  const [episodes, setEpisodes] = useState<EpisodeWithEvaluations[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    async function fetchEvaluations() {
+    async function fetchData() {
       try {
-        // Fetch all evaluator stats
-        const statsRes = await fetch('/api/management/evaluator-stats');
-        if (!statsRes.ok) throw new Error('Failed to fetch stats');
+        setLoading(true);
+        setError(null);
 
-        const { stats: evaluatorStats } = await statsRes.json();
+        // Fetch call reports and episodes in parallel
+        const [callReportsRes, episodesRes] = await Promise.all([
+          fetch("/api/management/call-reports-with-evaluations"),
+          fetch("/api/management/episodes-with-evaluations"),
+        ]);
 
-        // Fetch all users to get team_id mapping
-        const usersRes = await fetch('/api/users/search?q=');
-        const response = await usersRes.json();
-        const users = response.users || [];
+        if (!callReportsRes.ok) {
+          throw new Error("Failed to fetch call reports");
+        }
 
-        // Create a map of user_id to team_id
-        const userTeamMap = new Map();
-        users.forEach((user: any) => {
-          if (user.team_id) {
-            userTeamMap.set(user.id, user.team_id);
-          }
-        });
+        if (!episodesRes.ok) {
+          throw new Error("Failed to fetch episodes");
+        }
 
-        // Group evaluator stats by team
-        const teamStatsMap = new Map<string, TeamEvaluationStats>();
+        const callReportsData = await callReportsRes.json();
+        const episodesData = await episodesRes.json();
 
-        // Initialize stats for all teams
-        teams.forEach(team => {
-          teamStatsMap.set(team.id, {
-            callReportCount: 0,
-            episodicCount: 0,
-            oneLinerCount: 0,
-            totalEvaluations: 0,
-          });
-        });
-
-        // Aggregate stats by team
-        evaluatorStats.forEach((stat: any) => {
-          const teamId = userTeamMap.get(stat.id);
-          if (teamId && teamStatsMap.has(teamId)) {
-            const teamStat = teamStatsMap.get(teamId)!;
-            teamStat.callReportCount += stat.callReportEvals || 0;
-            teamStat.episodicCount += stat.episodicEvals || 0;
-            teamStat.oneLinerCount += stat.oneLinerCount || 0;
-            teamStat.totalEvaluations += stat.totalEvaluations || 0;
-          }
-        });
-
-        setTeamStats(teamStatsMap);
-      } catch (error) {
-        console.error("Error fetching evaluations:", error);
+        setCallReports(callReportsData.callReports || []);
+        setEpisodes(episodesData.episodes || []);
+      } catch (err: any) {
+        console.error("Error fetching evaluations:", err);
+        setError(err.message || "Failed to load evaluations");
       } finally {
         setLoading(false);
       }
     }
 
-    fetchEvaluations();
-  }, [teams]);
+    fetchData();
+  }, []);
 
   if (loading) {
     return (
@@ -97,136 +87,155 @@ export function InternalEvaluationsTab({ teams, currentUser }: InternalEvaluatio
     );
   }
 
+  if (error) {
+    return (
+      <div className="text-center py-12">
+        <p className="text-destructive mb-2">Error loading evaluations</p>
+        <p className="text-sm text-muted-foreground">{error}</p>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <Tabs defaultValue="call-reports" className="w-full">
         <TabsList>
-          <TabsTrigger value="call-reports">One Liner Evaluations</TabsTrigger>
-          <TabsTrigger value="episodic">Episodic Evaluations</TabsTrigger>
+          <TabsTrigger value="call-reports">
+            <FileText className="h-4 w-4 mr-2" />
+            One Liner Evaluations ({callReports.length})
+          </TabsTrigger>
+          <TabsTrigger value="episodic">
+            <Film className="h-4 w-4 mr-2" />
+            Episodic Evaluations ({episodes.length})
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="call-reports" className="mt-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>One Liner Evaluations by Team</CardTitle>
-              <CardDescription>
-                Internal evaluator performance and activity
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {teams && teams.length > 0 ? (
-                  teams.map((team) => (
-                    <Card key={team.id} className="border-l-4 border-l-blue-500">
-                      <CardHeader>
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <CardTitle className="text-lg">{team.name}</CardTitle>
-                            <CardDescription>
-                              {team.type} • {team.member_count || 0} members
-                            </CardDescription>
-                          </div>
-                          <div className="text-right">
-                            <div className="text-2xl font-bold text-blue-600">
-                              {teamStats.get(team.id)?.callReportCount || 0}
-                            </div>
-                            <p className="text-xs text-muted-foreground">
-                              One Liner Evaluations
-                            </p>
-                          </div>
+          {callReports.length > 0 ? (
+            <div className="space-y-6">
+              {callReports.map((callReport) => (
+                <Card key={callReport.id} className="overflow-hidden">
+                  <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 border-b">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <CardTitle className="text-xl mb-2">
+                          {callReport.workingTitle}
+                        </CardTitle>
+                        <CardDescription className="flex flex-wrap gap-x-3 gap-y-1">
+                          <span className="flex items-center">
+                            <strong className="mr-1">Writer:</strong> {callReport.writerName}
+                          </span>
+                          <span>•</span>
+                          <span className="flex items-center">
+                            <strong className="mr-1">Date:</strong>{" "}
+                            {formatDate(callReport.meetingDate)}
+                          </span>
+                          <span>•</span>
+                          <span className="flex items-center">
+                            <strong className="mr-1">ID:</strong> {callReport.callReportId}
+                          </span>
+                        </CardDescription>
+                      </div>
+                      <div className="text-right ml-4">
+                        <div className="text-2xl font-bold text-blue-600">
+                          {callReport.evaluationCount}
                         </div>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="grid grid-cols-2 gap-4 text-sm">
-                          <div>
-                            <p className="text-muted-foreground">Avg per Member</p>
-                            <p className="text-lg font-semibold">
-                              {team.member_count > 0
-                                ? ((teamStats.get(team.id)?.callReportCount || 0) / team.member_count).toFixed(1)
-                                : '0.0'
-                              }
-                            </p>
-                          </div>
-                          <div>
-                            <p className="text-muted-foreground">Total Evaluations</p>
-                            <p className="text-lg font-semibold">
-                              {teamStats.get(team.id)?.totalEvaluations || 0}
-                            </p>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))
-                ) : (
-                  <div className="text-center py-8 text-muted-foreground">
-                    <p>No teams found</p>
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
+                        <p className="text-xs text-muted-foreground">
+                          Evaluation{callReport.evaluationCount !== 1 ? "s" : ""}
+                        </p>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="pt-6">
+                    {callReport.segregatedEvaluations.total > 0 ? (
+                      <SegregatedEvaluationsDisplay
+                        evaluations={callReport.segregatedEvaluations}
+                      />
+                    ) : (
+                      <div className="text-center py-8 text-muted-foreground">
+                        <FileText className="mx-auto h-12 w-12 mb-3 opacity-50" />
+                        <p>No evaluations available</p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <Card>
+              <CardContent className="py-12">
+                <div className="text-center text-muted-foreground">
+                  <FileText className="mx-auto h-16 w-16 mb-4 opacity-50" />
+                  <p className="text-lg font-medium mb-2">No Call Report Evaluations Found</p>
+                  <p className="text-sm">
+                    Evaluations will appear here once call reports have been evaluated
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
 
         <TabsContent value="episodic" className="mt-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Episodic Evaluations by Team</CardTitle>
-              <CardDescription>
-                Episode evaluation performance across teams
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {teams && teams.length > 0 ? (
-                  teams.map((team) => (
-                    <Card key={team.id} className="border-l-4 border-l-purple-500">
-                      <CardHeader>
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <CardTitle className="text-lg">{team.name}</CardTitle>
-                            <CardDescription>
-                              {team.type} • {team.member_count || 0} members
-                            </CardDescription>
-                          </div>
-                          <div className="text-right">
-                            <div className="text-2xl font-bold text-purple-600">
-                              {teamStats.get(team.id)?.episodicCount || 0}
-                            </div>
-                            <p className="text-xs text-muted-foreground">
-                              Episode Evaluations
-                            </p>
-                          </div>
+          {episodes.length > 0 ? (
+            <div className="space-y-6">
+              {episodes.map((episode) => (
+                <Card key={episode.id} className="overflow-hidden">
+                  <CardHeader className="bg-gradient-to-r from-purple-50 to-pink-50 border-b">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <CardTitle className="text-xl mb-2">
+                          Episode {episode.episodeNumber}: {episode.title}
+                        </CardTitle>
+                        <CardDescription className="flex flex-wrap gap-x-3 gap-y-1">
+                          <span className="flex items-center">
+                            <strong className="mr-1">Drama:</strong> {episode.dramaTitle}
+                          </span>
+                          <span>•</span>
+                          <span className="flex items-center">
+                            <strong className="mr-1">Created:</strong>{" "}
+                            {formatDate(episode.createdAt)}
+                          </span>
+                        </CardDescription>
+                      </div>
+                      <div className="text-right ml-4">
+                        <div className="text-2xl font-bold text-purple-600">
+                          {episode.evaluationCount}
                         </div>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="grid grid-cols-2 gap-4 text-sm">
-                          <div>
-                            <p className="text-muted-foreground">Avg per Member</p>
-                            <p className="text-lg font-semibold">
-                              {team.member_count > 0
-                                ? ((teamStats.get(team.id)?.episodicCount || 0) / team.member_count).toFixed(1)
-                                : '0.0'
-                              }
-                            </p>
-                          </div>
-                          <div>
-                            <p className="text-muted-foreground">One-Liners</p>
-                            <p className="text-lg font-semibold">
-                              {teamStats.get(team.id)?.oneLinerCount || 0}
-                            </p>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))
-                ) : (
-                  <div className="text-center py-8 text-muted-foreground">
-                    <p>No teams found</p>
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
+                        <p className="text-xs text-muted-foreground">
+                          Evaluation{episode.evaluationCount !== 1 ? "s" : ""}
+                        </p>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="pt-6">
+                    {episode.segregatedEvaluations.total > 0 ? (
+                      <SegregatedEpisodicEvaluationsDisplay
+                        evaluations={episode.segregatedEvaluations}
+                      />
+                    ) : (
+                      <div className="text-center py-8 text-muted-foreground">
+                        <Film className="mx-auto h-12 w-12 mb-3 opacity-50" />
+                        <p>No evaluations available</p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <Card>
+              <CardContent className="py-12">
+                <div className="text-center text-muted-foreground">
+                  <Film className="mx-auto h-16 w-16 mb-4 opacity-50" />
+                  <p className="text-lg font-medium mb-2">No Episode Evaluations Found</p>
+                  <p className="text-sm">
+                    Evaluations will appear here once episodes have been evaluated
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
       </Tabs>
     </div>

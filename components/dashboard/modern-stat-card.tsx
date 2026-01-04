@@ -23,8 +23,8 @@ export function ModernStatCard({
   accent = false,
 }: ModernStatCardProps) {
   const content = (
-    <>
-      <div className="flex items-start justify-between mb-4">
+    <div className="flex flex-col h-full">
+      <div className="flex items-start justify-between mb-4 min-h-[3rem]">
         <h3
           className={cn(
             "text-sm font-semibold uppercase tracking-wide",
@@ -36,38 +36,40 @@ export function ModernStatCard({
         {Icon && (
           <Icon
             className={cn(
-              "h-5 w-5",
+              "h-5 w-5 flex-shrink-0 ml-2",
               accent ? "text-white/60" : "text-gray-400"
             )}
           />
         )}
       </div>
 
-      <p
-        className={cn(
-          "text-5xl font-bold mb-2",
-          accent ? "text-white" : "text-gray-900"
-        )}
-      >
-        {value}
-      </p>
-
-      {trend && (
+      <div className="mt-auto">
         <p
           className={cn(
-            "text-xs font-medium flex items-center gap-1",
-            accent ? "text-white/70" : "text-gray-500"
+            "text-5xl font-bold mb-2",
+            accent ? "text-white" : "text-gray-900"
           )}
         >
-          {trend.isPositive ? (
-            <TrendingUp className="h-3 w-3" />
-          ) : (
-            <TrendingDown className="h-3 w-3" />
-          )}
-          {trend.value}
+          {value}
         </p>
-      )}
-    </>
+
+        {trend && (
+          <p
+            className={cn(
+              "text-xs font-medium flex items-center gap-1",
+              accent ? "text-white/70" : "text-gray-500"
+            )}
+          >
+            {trend.isPositive ? (
+              <TrendingUp className="h-3 w-3" />
+            ) : (
+              <TrendingDown className="h-3 w-3" />
+            )}
+            {trend.value}
+          </p>
+        )}
+      </div>
+    </div>
   );
 
   if (href) {

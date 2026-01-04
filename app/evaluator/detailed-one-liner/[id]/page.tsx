@@ -69,29 +69,32 @@ export default async function DetailedOneLinerPage({
     <div className="mobile-container mobile-section">
       <div className="mobile-header-spacing">
         {/* Header */}
-        <div className="flex items-center gap-4 mb-6">
-          <BackButton fallbackHref="/evaluator/call-reports" variant="outline" />
-          {canEdit && (
-            <Button asChild variant="default" size="sm">
-              <Link href={`/evaluator/detailed-one-liner/${id}/edit`}>
-                <Pencil className="h-4 w-4 mr-2" />
-                Edit
-              </Link>
-            </Button>
-          )}
-        </div>
-
-        <div className="mb-6">
-          <h1 className="text-xl sm:text-2xl font-bold mb-2">Detailed One-Liner</h1>
-          {callReport && (
-            <div className="flex flex-wrap gap-2 text-sm text-muted-foreground">
-              <span>Call Report: {callReport.call_report_id}</span>
-              <span>•</span>
-              <span>{callReport.working_title}</span>
-              <span>•</span>
-              <span>Writer: {callReport.writer_name}</span>
-            </div>
-          )}
+        <div className="flex flex-col gap-4 sm:gap-6 mb-8">
+          <div className="flex items-center justify-between">
+            <BackButton fallbackHref="/evaluator/call-reports" variant="outline" size="sm" className="w-fit" />
+            {canEdit && (
+              <Button asChild variant="default" size="sm">
+                <Link href={`/evaluator/detailed-one-liner/${id}/edit`}>
+                  <Pencil className="h-4 w-4 mr-2" />
+                  Edit
+                </Link>
+              </Button>
+            )}
+          </div>
+          <div className="space-y-2">
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Detailed One-Liner</h1>
+            {callReport && (
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
+                <Badge variant="outline" className="font-mono text-[10px] uppercase tracking-wider">
+                  {callReport.call_report_id}
+                </Badge>
+                <span className="hidden sm:inline text-border">|</span>
+                <span className="font-medium text-foreground">{callReport.working_title}</span>
+                <span>•</span>
+                <span>Writer: {callReport.writer_name}</span>
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="space-y-6">
@@ -209,8 +212,8 @@ export default async function DetailedOneLinerPage({
                             item.budget_category === "High"
                               ? "destructive"
                               : item.budget_category === "Medium"
-                              ? "secondary"
-                              : "default"
+                                ? "secondary"
+                                : "default"
                           }
                         >
                           {item.budget_category} Budget

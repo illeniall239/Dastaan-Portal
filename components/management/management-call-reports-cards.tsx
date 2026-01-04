@@ -1,12 +1,13 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ShareLinkDialog } from "@/components/management/share-link-dialog";
 import { CallReportDetailDialog } from "@/components/management/call-report-detail-dialog";
-import { CalendarDays, Users, FileText, Share2, Eye } from "lucide-react";
+import { CalendarDays, Users, FileText, Share2, Eye, Star } from "lucide-react";
 import { format } from "date-fns";
 
 interface ManagementCallReportsCardsProps {
@@ -14,6 +15,7 @@ interface ManagementCallReportsCardsProps {
 }
 
 export function ManagementCallReportsCards({ callReports }: ManagementCallReportsCardsProps) {
+  const router = useRouter();
   const [selectedReport, setSelectedReport] = useState<any>(null);
   const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
   const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
@@ -26,6 +28,10 @@ export function ManagementCallReportsCards({ callReports }: ManagementCallReport
   const handleViewDetails = (report: any) => {
     setSelectedReport(report);
     setIsDetailDialogOpen(true);
+  };
+
+  const handleEvaluate = (reportId: string) => {
+    router.push(`/management/evaluate/call-report/${reportId}`);
   };
 
   if (!callReports || callReports.length === 0) {
@@ -129,7 +135,18 @@ export function ManagementCallReportsCards({ callReports }: ManagementCallReport
               </CardContent>
 
               <CardFooter className="pt-4 border-t">
-                <div className="flex items-center gap-2 w-full">
+                <div className="flex items-center gap-2 w-full flex-wrap">
+                  <Button
+                    variant={report.evaluation_count > 0 ? "outline" : "default"}
+                    size="sm"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleEvaluate(report.id);
+                    }}
+                  >
+                    <Star className="h-3 w-3 mr-1" />
+                    {report.evaluation_count > 0 ? "View Evaluation" : "Evaluate"}
+                  </Button>
                   <Button
                     variant="outline"
                     size="sm"

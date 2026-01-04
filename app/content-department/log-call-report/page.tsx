@@ -18,15 +18,14 @@ export default async function LogCallReportPage() {
 
   return (
     <div className="mobile-container mobile-section">
-      <div className="flex items-center gap-4 mb-6">
-        <BackButton fallbackHref="/content-department" variant="outline" size="sm" />
-      </div>
-
-      <div className="mb-4 sm:mb-6 text-center">
-        <h1 className="text-xl sm:text-2xl font-bold whitespace-nowrap">Log Writer Engagement Report</h1>
-        <p className="text-muted-foreground text-sm sm:text-base">
-          Document your meeting with a writer or producer
-        </p>
+      <div className="flex flex-col gap-4 sm:gap-6 mb-8">
+        <BackButton fallbackHref="/content-department" variant="outline" size="sm" className="w-fit" />
+        <div className="space-y-1">
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Log Writer Engagement Report</h1>
+          <p className="text-muted-foreground text-sm sm:text-base">
+            Document your meeting with a writer or producer
+          </p>
+        </div>
       </div>
 
       <CallReportForm userId={user.id} userName={user.name || "Unknown"} userPosition={user.position} />

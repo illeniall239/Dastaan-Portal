@@ -116,12 +116,11 @@ export default function EvaluatorEpisodeEditPage({ params }: EpisodeEditPageProp
   return (
     <div className="mobile-container mobile-section space-y-4 sm:space-y-6 max-w-4xl mx-auto">
       {/* Header */}
-      <div className="mb-6">
-        <BackButton fallbackHref="/evaluator/episodes" className="mb-4" />
-
-        <div>
-          <h1 className="text-xl sm:text-2xl font-bold mb-2">Edit Episode</h1>
-          <p className="text-muted-foreground">
+      <div className="flex flex-col gap-4 sm:gap-6 mb-8">
+        <BackButton fallbackHref="/evaluator/episodes" variant="outline" size="sm" className="w-fit" />
+        <div className="space-y-1">
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Edit Episode</h1>
+          <p className="text-muted-foreground text-sm sm:text-base">
             Update episode details and information
           </p>
         </div>

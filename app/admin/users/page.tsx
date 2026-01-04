@@ -11,7 +11,7 @@ import { EditUserDialog } from "@/components/admin/edit-user-dialog";
 import { ChangeRoleDialog } from "@/components/admin/change-role-dialog";
 import { DeleteUserDialog } from "@/components/admin/delete-user-dialog";
 import { ResponsiveTable } from "@/components/ui/responsive-table";
-import { Search, UserPlus, Loader2, User, Mail, Briefcase, Shield, Calendar } from "lucide-react";
+import { Search, UserPlus, Loader2, User, Users, Mail, Briefcase, Shield, Calendar } from "lucide-react";
 import { toast } from "sonner";
 import { logger } from "@/lib/logger";
 
@@ -24,6 +24,14 @@ interface User {
   department: string | null;
   status: string;
   created_at: string;
+  team_id?: string;
+  team?: {
+    id: string;
+    name: string;
+    team_head?: {
+      name: string;
+    };
+  };
 }
 
 export default function AdminUsersPage() {
@@ -56,7 +64,24 @@ export default function AdminUsersPage() {
       const offset = (currentPage - 1) * pageSize;
       const { data, error } = await supabase
         .from("users")
-        .select("id, name, email, position, role, department, status, created_at")
+        .select(`
+          id,
+          name,
+          email,
+          position,
+          role,
+          department,
+          status,
+          created_at,
+          team_id,
+          team:teams!team_id(
+            id,
+            name,
+            team_head:users!team_head_id(
+              name
+            )
+          )
+        `)
         .order("created_at", { ascending: false })
         .range(offset, offset + pageSize - 1);
 
@@ -67,7 +92,42 @@ export default function AdminUsersPage() {
         return;
       }
 
-      setUsers(data || []);
+      interface TeamHead {
+        name: string;
+      }
+
+      interface TeamData {
+        id: string;
+        name: string;
+        team_head?: TeamHead | TeamHead[];
+      }
+
+      interface UserData {
+        id: string;
+        name: string;
+        email: string;
+        position: string | null;
+        role: string;
+        department: string | null;
+        status: string;
+        created_at: string;
+        team_id?: string;
+        team?: TeamData | TeamData[];
+      }
+
+      // Transform the data to match User type (team and team_head should be objects, not arrays)
+      const transformedData = (data || []).map((user: UserData) => {
+        const team = Array.isArray(user.team) ? user.team[0] : user.team;
+        return {
+          ...user,
+          team: team ? {
+            ...team,
+            team_head: Array.isArray(team.team_head) ? team.team_head[0] : team.team_head,
+          } : undefined,
+        };
+      });
+
+      setUsers(transformedData);
     } catch (error) {
       logger.error("Error fetching users:", error);
       toast.error("An error occurred while loading users");
@@ -135,6 +195,7 @@ export default function AdminUsersPage() {
       evaluator: "bg-green-100 text-green-800 border-green-300",
       legal: "bg-yellow-100 text-yellow-800 border-yellow-300",
       finance: "bg-orange-100 text-orange-800 border-orange-300",
+      programmer: "bg-indigo-100 text-indigo-800 border-indigo-300",
     };
     return colors[role] || "bg-gray-100 text-gray-800 border-gray-300";
   };
@@ -208,6 +269,7 @@ export default function AdminUsersPage() {
             { key: 'email', label: 'Email' },
             { key: 'position', label: 'Position' },
             { key: 'role', label: 'Role' },
+            { key: 'team', label: 'Team' },
             { key: 'status', label: 'Status' },
             { key: 'joined', label: 'Joined' },
             { key: 'actions', label: 'Actions' },
@@ -233,6 +295,21 @@ export default function AdminUsersPage() {
                 >
                   {user.role || "No Role"}
                 </Badge>
+              </td>
+              <td className="px-6 py-4 whitespace-nowrap">
+                {user.team ? (
+                  <Badge
+                    variant="outline"
+                    className="bg-blue-100 text-blue-800 border-blue-300"
+                  >
+                    {user.team.team_head?.name
+                      ? `${user.team.team_head.name}'s Team`
+                      : user.team.name
+                    }
+                  </Badge>
+                ) : (
+                  <span className="text-sm text-gray-400">-</span>
+                )}
               </td>
               <td className="px-6 py-4 whitespace-nowrap">
                 <Badge
@@ -336,6 +413,20 @@ export default function AdminUsersPage() {
                       {user.role || "No Role"}
                     </Badge>
                   </div>
+                  {user.team && (
+                    <div className="flex items-center gap-2 text-sm">
+                      <Users className="h-3.5 w-3.5 text-muted-foreground" />
+                      <Badge
+                        variant="outline"
+                        className="bg-blue-100 text-blue-800 border-blue-300 text-xs"
+                      >
+                        {user.team.team_head?.name
+                          ? `${user.team.team_head.name}'s Team`
+                          : user.team.name
+                        }
+                      </Badge>
+                    </div>
+                  )}
                   <div className="flex items-center gap-2 text-sm">
                     <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
                     <span className="text-muted-foreground text-xs">

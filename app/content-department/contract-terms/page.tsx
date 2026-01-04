@@ -69,24 +69,26 @@ export default async function ContentDepartmentContractTermsPage() {
 
   return (
     <div className="mobile-container mobile-section">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0 mobile-header-spacing">
-        <div className="flex items-center gap-4">
-          <BackButton fallbackHref="/content-department" variant="outline" size="sm" />
-          <div>
-            <h1 className="text-xl sm:text-2xl font-bold">Contract Terms</h1>
-            <p className="text-muted-foreground mt-2 text-sm sm:text-base">
-              Manage project contract terms and term sheets
-            </p>
-          </div>
+      <div className="flex flex-col gap-4 sm:gap-6 mb-8">
+        <div className="flex items-center justify-between">
+          <BackButton fallbackHref="/content-department" variant="outline" size="sm" className="w-fit" />
+          {canCreate && (
+            <Button asChild className="touch-target">
+              <Link href="/content-department/contract terms/new">
+                <Plus className="h-4 w-4 mr-2" />
+                <span className="hidden sm:inline">New Negotiation</span>
+                <span className="sm:hidden">New</span>
+              </Link>
+            </Button>
+          )}
         </div>
-        {canCreate && (
-          <Button asChild>
-            <Link href="/content-department/contract terms/new">
-              <Plus className="h-4 w-4 mr-2" />
-              New Negotiation
-            </Link>
-          </Button>
-        )}
+
+        <div className="space-y-1">
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Contract Terms</h1>
+          <p className="text-muted-foreground text-sm sm:text-base">
+            Manage project contract terms and term sheets
+          </p>
+        </div>
       </div>
 
       <ContractTermList

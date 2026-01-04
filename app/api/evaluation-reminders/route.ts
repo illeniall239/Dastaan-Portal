@@ -37,11 +37,11 @@ export async function POST(request: NextRequest) {
       }
     );
   } catch (error) {
-    logger.error(`Error running evaluation reminders: ${error instanceof Error ? error.message : String(error)}`);
+    logger.error("Error running evaluation reminders", { error, context: "POST /api/evaluation-reminders" });
     return new Response(
-      JSON.stringify({ 
-        success: false, 
-        error: error instanceof Error ? error.message : 'Unknown error occurred' 
+      JSON.stringify({
+        success: false,
+        error: 'Failed to run evaluation reminders'
       }),
       {
         status: 500,

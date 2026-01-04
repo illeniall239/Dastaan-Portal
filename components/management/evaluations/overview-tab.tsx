@@ -24,22 +24,35 @@ export function OverviewTab({ teams, currentUser, externalEvaluations }: Overvie
   useEffect(() => {
     async function fetchStats() {
       try {
-        // Fetch aggregated evaluator stats
-        const response = await fetch('/api/management/evaluator-stats');
-        if (!response.ok) throw new Error('Failed to fetch stats');
+        // Fetch aggregated evaluator stats + pending count in parallel
+        const [statsRes, pendingRes] = await Promise.all([
+          fetch("/api/management/evaluator-stats"),
+          fetch("/api/management/pending-evaluations"),
+        ]);
 
-        const { stats: evaluatorStats } = await response.json();
+        if (!statsRes.ok) throw new Error("Failed to fetch stats");
+        if (!pendingRes.ok) throw new Error("Failed to fetch pending evaluations");
+
+        const { stats: evaluatorStats } = await statsRes.json();
+        const { pendingCount } = await pendingRes.json();
 
         // Calculate totals from stats array
-        const totalCallReportEvals = evaluatorStats.reduce((sum: number, s: any) => sum + (s.callReportEvals || 0), 0);
-        const totalEpisodicEvals = evaluatorStats.reduce((sum: number, s: any) => sum + (s.episodicEvals || 0), 0);
+        const totalCallReportEvals = evaluatorStats.reduce(
+          (sum: number, s: any) => sum + (s.oneLinerEvaluations || 0),
+          0
+        );
+        const totalEpisodicEvals = evaluatorStats.reduce(
+          (sum: number, s: any) => sum + (s.episodicEvals || 0),
+          0
+        );
 
-        // Calculate completed today (filter by today's date)
-        const today = new Date().toISOString().split('T')[0];
-        const completedToday = 0; // TODO: Need date-filtered endpoint
+        // Fetch completed evaluations for today
+        const completedTodayResponse = await fetch('/api/evaluations/completed-today');
+        const completedTodayData = await completedTodayResponse.json();
+        const completedToday = completedTodayData.success ? completedTodayData.completedToday : 0;
 
-        // Calculate pending evaluations
-        const pendingEvals = 0; // TODO: Need endpoint for pending status
+        // Pending evaluations across assignments
+        const pendingEvals = pendingCount ?? 0;
 
         setStats({
           totalCallReportEvals,

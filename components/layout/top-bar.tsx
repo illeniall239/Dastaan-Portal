@@ -7,11 +7,10 @@ import {
   FileTextIcon,
   CheckCircle2,
   LogOut,
-  Search,
+  Menu,
 } from "lucide-react";
 import { logger } from "@/lib/logger";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -20,6 +19,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useNotificationContext } from "@/lib/providers/notification-provider";
+import { useSidebar } from "@/lib/providers/sidebar-provider";
 import { cn } from "@/lib/utils";
 import { useRouter } from "next/navigation";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
@@ -64,9 +64,9 @@ export const TopBar = memo(function TopBar({
 }: TopBarProps) {
   const router = useRouter();
   const { notifications, unreadCount, handleMarkAsRead, handleMarkAllAsRead } = useNotificationContext();
+  const { toggleMobile } = useSidebar();
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
 
   const handleLogout = useCallback(async () => {
     setIsLoggingOut(true);
@@ -82,47 +82,39 @@ export const TopBar = memo(function TopBar({
     }
   }, [router]);
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (searchQuery.trim()) {
-      // TODO: Implement search functionality
-      console.log("Searching for:", searchQuery);
-    }
-  };
-
   return (
     <>
       {isLoggingOut && <LoadingSpinner text="Logging out..." />}
-      
-      {/* Fixed top bar spanning the content area */}
-      <div className="fixed top-0 right-0 left-16 lg:left-70 h-16 bg-white border-b border-gray-200 z-40 flex items-center justify-between px-4 lg:px-8">
-        {/* Search Bar */}
-        <form onSubmit={handleSearch} className="flex-1 max-w-[180px] sm:max-w-xs lg:max-w-md">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-            <Input
-              type="text"
-              placeholder="Search..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 h-10 bg-gray-50 border-gray-200 rounded-lg focus:bg-white focus:ring-2 focus:ring-[#224794]/20 focus:border-[#224794] transition-all"
-            />
-          </div>
-        </form>
+
+      {/* Fixed top bar spanning the full width on mobile, starting after sidebar on desktop */}
+      <div className="fixed top-0 right-0 left-0 lg:left-70 h-14 bg-[#224794] border-b border-[#1a3670] z-[60] flex items-center justify-between px-4 lg:px-8">
+        {/* Left side: Hamburger menu (mobile only) */}
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={toggleMobile}
+          className="lg:hidden h-9 w-9 text-white hover:bg-white/10"
+          aria-label="Toggle menu"
+        >
+          <Menu className="h-5 w-5" />
+        </Button>
+
+        {/* Spacer for desktop (hidden on mobile) */}
+        <div className="hidden lg:block" />
 
         {/* Right side: Notifications + Profile */}
-        <div className="flex items-center gap-3 ml-4">
+        <div className="flex items-center gap-3">
           {/* Notifications Dropdown */}
           <DropdownMenu open={isNotificationOpen} onOpenChange={setIsNotificationOpen}>
             <DropdownMenuTrigger asChild>
               <Button
                 variant="ghost"
                 size="icon"
-                className="relative h-10 w-10 rounded-full hover:bg-gray-100 transition-colors"
+                className="relative h-9 w-9 rounded-full hover:bg-white/10 transition-colors"
               >
-                <Bell className="h-5 w-5 text-gray-600" />
+                <Bell className="h-5 w-5 text-white" />
                 {unreadCount > 0 && (
-                  <span className="absolute -top-0.5 -right-0.5 h-5 w-5 bg-red-500 rounded-full text-[10px] text-white flex items-center justify-center font-bold">
+                  <span className="absolute -top-0 -right-0 h-4 w-4 bg-red-500 rounded-full text-[9px] text-white flex items-center justify-center font-bold">
                     {unreadCount > 9 ? "9+" : unreadCount}
                   </span>
                 )}
@@ -196,16 +188,16 @@ export const TopBar = memo(function TopBar({
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button
-                className="flex items-center gap-3 hover:bg-gray-50 rounded-full pl-1 pr-3 py-1 transition-all"
+                className="flex items-center gap-2.5 hover:bg-white/10 rounded-full pl-1 pr-2.5 py-1 transition-all"
                 aria-label="Profile menu"
               >
-                <div className="h-9 w-9 rounded-full bg-[#224794] flex items-center justify-center text-white font-semibold text-sm">
+                <div className="h-8 w-8 rounded-full bg-[#5b7dc4] flex items-center justify-center text-white font-semibold text-xs shadow-sm">
                   {userName.charAt(0).toUpperCase()}
                 </div>
                 <div className="hidden sm:block text-left">
-                  <p className="text-sm font-semibold text-gray-900 leading-tight">{userName}</p>
+                  <p className="text-sm font-semibold text-white leading-tight">{userName}</p>
                   {userEmail && (
-                    <p className="text-xs text-gray-500 leading-tight truncate max-w-[150px]">{userEmail}</p>
+                    <p className="text-[11px] text-white/80 leading-tight truncate max-w-[140px]">{userEmail}</p>
                   )}
                 </div>
               </button>

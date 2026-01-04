@@ -9,7 +9,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import Link from "next/link";
-import { CalendarIcon, UserIcon, FileTextIcon, StarIcon, TrendingUp, TrendingDown, Minus, CheckCircle2, Clock } from "lucide-react";
+import { CalendarIcon, UserIcon, FileTextIcon, StarIcon, TrendingUp, TrendingDown, Minus, CheckCircle2, Clock, AlertCircle } from "lucide-react";
 import { getEvaluationById } from "@/lib/evaluations/server";
 import { EvaluationProgressBar } from "@/components/evaluations/evaluation-progress-bar";
 import { BackButton } from "@/components/ui/back-button";
@@ -97,28 +97,28 @@ export default async function EvaluatorEvaluationDetailPage({ params }: { params
   return (
     <div className="mobile-container mobile-section space-y-4 sm:space-y-6">
       {/* Page Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <BackButton fallbackHref="/evaluator/evaluations-list?view=completed" variant="outline" />
-          <div>
-            <h1 className="text-xl sm:text-2xl font-bold tracking-tight">
-              {evaluation.call_reports?.working_title || "Evaluation Details"}
-            </h1>
-            <p className="text-muted-foreground mt-1">
-              Evaluation ID: {evaluation.form_id}
-            </p>
+      <div className="flex flex-col gap-4 sm:gap-6 mb-8">
+        <div className="flex items-center justify-between">
+          <BackButton fallbackHref="/evaluator/evaluations-list?view=completed" variant="outline" size="sm" className="w-fit" />
+          <div className="flex items-center gap-3">
+            <div className={`px-4 py-2 rounded-lg text-xl font-bold ${getScoreColor(evaluation.average_score || 0)}`}>
+              {evaluation.average_score?.toFixed(1) || "N/A"}/10
+            </div>
+            {/* Edit button to open evaluate page in edit mode */}
+            <Button asChild variant="outline" size="sm">
+              <Link href={`/evaluator/evaluate/${evaluation.call_report_id}?edit=1`}>
+                Edit
+              </Link>
+            </Button>
           </div>
         </div>
-        <div className="flex items-center gap-3">
-          <div className={`px-6 py-3 rounded-lg text-2xl font-bold ${getScoreColor(evaluation.average_score || 0)}`}>
-            {evaluation.average_score?.toFixed(1) || "N/A"}/10
-          </div>
-          {/* Edit button to open evaluate page in edit mode */}
-          <Button asChild variant="outline">
-            <Link href={`/evaluator/evaluate/${evaluation.call_report_id}?edit=1`}>
-              Edit
-            </Link>
-          </Button>
+        <div className="space-y-1">
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight">
+            {evaluation.call_reports?.working_title || "Evaluation Details"}
+          </h1>
+          <p className="text-muted-foreground text-sm sm:text-base">
+            Evaluation ID: {evaluation.form_id}
+          </p>
         </div>
       </div>
 
@@ -398,11 +398,12 @@ export default async function EvaluatorEvaluationDetailPage({ params }: { params
 
           {/* Decision Card */}
           {evaluation.decision && (
-            <Card className={`border-2 ${
-              evaluation.decision === 'approve'
-                ? 'border-green-500 bg-green-50/50'
-                : 'border-red-500 bg-red-50/50'
-            }`}>
+            <Card className={`border-2 ${evaluation.decision === 'approve'
+              ? 'border-green-500 bg-green-50/50'
+              : evaluation.decision === 'reject'
+                ? 'border-red-500 bg-red-50/50'
+                : 'border-yellow-500 bg-yellow-50/50'
+              }`}>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   {evaluation.decision === 'approve' ? (
@@ -410,10 +411,15 @@ export default async function EvaluatorEvaluationDetailPage({ params }: { params
                       <CheckCircle2 className="h-5 w-5 text-green-600" />
                       <span className="text-green-700">Decision: Approved</span>
                     </>
-                  ) : (
+                  ) : evaluation.decision === 'reject' ? (
                     <>
                       <FileTextIcon className="h-5 w-5 text-red-600" />
                       <span className="text-red-700">Decision: Rejected</span>
+                    </>
+                  ) : (
+                    <>
+                      <AlertCircle className="h-5 w-5 text-yellow-600" />
+                      <span className="text-yellow-700">Decision: Needs Improvement</span>
                     </>
                   )}
                 </CardTitle>
@@ -423,6 +429,14 @@ export default async function EvaluatorEvaluationDetailPage({ params }: { params
                   <div className="space-y-2">
                     <p className="text-sm font-semibold text-red-900">Justification for Rejection:</p>
                     <p className="text-sm text-red-800 whitespace-pre-wrap bg-white p-3 rounded-lg border border-red-200">
+                      {evaluation.decision_notes}
+                    </p>
+                  </div>
+                )}
+                {evaluation.decision === 'needs_improvement' && evaluation.decision_notes && (
+                  <div className="space-y-2">
+                    <p className="text-sm font-semibold text-yellow-900">Required Improvements:</p>
+                    <p className="text-sm text-yellow-800 whitespace-pre-wrap bg-white p-3 rounded-lg border border-yellow-200">
                       {evaluation.decision_notes}
                     </p>
                   </div>
@@ -464,16 +478,7 @@ export default async function EvaluatorEvaluationDetailPage({ params }: { params
                   </div>
                 )}
 
-                {evaluation.call_reports.usp && (
-                  <div>
-                    <h3 className="text-sm font-semibold mb-1">USP</h3>
-                    <p className="text-sm text-muted-foreground">
-                      {evaluation.call_reports.usp}
-                    </p>
-                  </div>
-                )}
 
-              
               </CardContent>
             </Card>
           )}

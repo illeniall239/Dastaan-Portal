@@ -1,13 +1,12 @@
 import { createClient } from "@/lib/supabase/client";
 import type { EpisodicEvaluation, EpisodicEvaluationWithDetails } from "@/types";
 
-const supabase = createClient();
-
 /**
  * Get all episodes available for evaluation
  * @returns Episodes that can be evaluated
  */
 export async function getEpisodesForEvaluation() {
+  const supabase = createClient();
   const { data: episodes, error } = await supabase
     .from("episodes")
     .select(`
@@ -31,6 +30,7 @@ export async function getEpisodesForEvaluation() {
  * @returns Evaluator's episodic evaluations
  */
 export async function getMyEpisodicEvaluations() {
+  const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
   if (!user) {
@@ -65,6 +65,7 @@ export async function getMyEpisodicEvaluations() {
  * @returns Existing evaluation if found, null otherwise
  */
 export async function getEpisodicEvaluationForEpisode(episodeId: string) {
+  const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
   if (!user) {
@@ -100,6 +101,7 @@ export async function getEpisodicEvaluationForEpisode(episodeId: string) {
  * @returns Evaluation details
  */
 export async function getEpisodicEvaluationById(id: string) {
+  const supabase = createClient();
   const { data: evaluation, error } = await supabase
     .from("episodic_evaluations")
     .select(`
@@ -130,6 +132,7 @@ export async function getEpisodicEvaluationById(id: string) {
 export async function createEpisodicEvaluation(
   evaluationData: Omit<EpisodicEvaluation, "id" | "evaluator_id" | "pages_score" | "scenes_score" | "overall_average" | "overall_grade" | "submitted_at" | "created_at" | "updated_at">
 ) {
+  const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
   if (!user) {
@@ -166,6 +169,7 @@ export async function createEpisodicEvaluation(
  * @param id - Evaluation ID to delete
  */
 export async function deleteEpisodicEvaluation(id: string) {
+  const supabase = createClient();
   const { error } = await supabase
     .from("episodic_evaluations")
     .delete()

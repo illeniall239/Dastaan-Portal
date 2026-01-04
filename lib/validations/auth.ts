@@ -1,33 +1,20 @@
 import { z } from "zod";
+import type { UserRole } from "@/types";
 
 // Organization email domain (for testing, we'll allow any domain)
 // const ALLOWED_EMAIL_DOMAIN = "geo.com";
 
 // Helper function to map department to role
-export const departmentToRole = (department: string): "content_creator" | "content_head" | "evaluator" | "legal" | "finance" | "management" | "admin" => {
-  const contentDepartments = [
-    "production_content_1",
-    "production_content_2",
-    "channel_content_1",
-    "channel_content_2",
-    "adaptation_content"
-  ];
-
-  if (contentDepartments.includes(department)) {
-    return "content_creator";
-  }
-
+export const departmentToRole = (department: string): UserRole => {
   switch (department) {
-    case "management":
-      return "management";
-    case "content_head":
-      return "content_head";
     case "evaluator":
       return "evaluator";
-    case "legal":
-      return "legal";
-    case "finance":
-      return "finance";
+    case "management":
+      return "management";
+    case "content_team":
+      return "content_creator";
+    case "programming_team":
+      return "programmer";
     case "admin":
       return "admin";
     default:
@@ -72,17 +59,13 @@ export const signupSchema = z
       // ),
 
     department: z.enum([
-      "production_content_1",
-      "production_content_2",
-      "channel_content_1",
-      "channel_content_2",
-      "adaptation_content",
-      "management",
       "evaluator",
-      "legal",
-      "finance"
+      "management",
+      "content_team",
+      "programming_team",
     ], {
       required_error: "Department is required",
+      invalid_type_error: "Please select a valid department",
     }),
 
     position: z
@@ -180,19 +163,15 @@ export const adminCreateUserSchema = z.object({
     .optional()
     .or(z.literal("")),
   department: z.enum([
-    "production_content_1",
-    "production_content_2",
-    "channel_content_1",
-    "channel_content_2",
-    "adaptation_content",
-    "management",
+    "admin",
     "content_head",
     "evaluator",
-    "legal",
-    "finance",
-    "admin",
+    "management",
+    "content_team",
+    "programming_team",
   ], {
     required_error: "Department is required",
+    invalid_type_error: "Please select a valid department",
   }),
   team_id: z
     .string()

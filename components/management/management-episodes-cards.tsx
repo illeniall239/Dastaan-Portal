@@ -1,17 +1,19 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ShareLinkDialog } from "@/components/management/share-link-dialog";
-import { Share2, FileText, CheckCircle } from "lucide-react";
+import { Share2, FileText, CheckCircle, Star } from "lucide-react";
 
 interface ManagementEpisodesCardsProps {
   episodes: any[];
 }
 
 export function ManagementEpisodesCards({ episodes }: ManagementEpisodesCardsProps) {
+  const router = useRouter();
   const [selectedEpisode, setSelectedEpisode] = useState<any>(null);
   const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
 
@@ -34,6 +36,10 @@ export function ManagementEpisodesCards({ episodes }: ManagementEpisodesCardsPro
   const handleShare = (episode: any) => {
     setSelectedEpisode(episode);
     setIsShareDialogOpen(true);
+  };
+
+  const handleEvaluate = (episodeId: string) => {
+    router.push(`/management/evaluate/episode/${episodeId}`);
   };
 
   if (episodes.length === 0) {
@@ -125,14 +131,27 @@ export function ManagementEpisodesCards({ episodes }: ManagementEpisodesCardsPro
                             )}
                           </div>
                         </div>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleShare(episode)}
-                        >
-                          <Share2 className="h-3 w-3 mr-1" />
-                          Share Externally
-                        </Button>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant={episode.evaluation_count > 0 ? "outline" : "default"}
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleEvaluate(episode.id);
+                            }}
+                          >
+                            <Star className="h-3 w-3 mr-1" />
+                            {episode.evaluation_count > 0 ? "View Evaluation" : "Evaluate"}
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleShare(episode)}
+                          >
+                            <Share2 className="h-3 w-3 mr-1" />
+                            Share Externally
+                          </Button>
+                        </div>
                       </div>
                     ))}
                 </div>

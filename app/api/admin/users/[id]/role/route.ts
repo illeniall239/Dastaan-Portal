@@ -64,7 +64,8 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   });
 
   if (error) {
-    return withCors(request, NextResponse.json({ error: error.message }, { status: 500 }));
+    logger.error("Error updating user role in auth", { error, context: "PATCH /api/admin/users/[id]/role" });
+    return withCors(request, NextResponse.json({ error: "Failed to update user role" }, { status: 500 }));
   }
 
   // Also update the public.users table
@@ -76,7 +77,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   if (publicUserError) {
     // If this fails, we should ideally roll back the auth user update
     // For now, we'll just log the error
-    logger.error(`Error updating public user role:: ${publicUserError instanceof Error ? publicUserError.message : String(publicUserError)}`);
+    logger.error("Error updating public user role", { error: publicUserError, context: "PATCH /api/admin/users/[id]/role" });
     return withCors(request, NextResponse.json({ error: "Failed to update user role in public table" }, { status: 500 }));
   }
 

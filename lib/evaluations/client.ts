@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/client";
+import { logger } from "@/lib/logger";
 
 export interface Evaluation {
   id: string;
@@ -19,7 +20,7 @@ export interface Evaluation {
   first_2_eps_required?: boolean;
   average_score?: number;
   comments?: string;
-  decision?: "approve" | "reject";
+  decision?: "approve" | "reject" | "needs_improvement";
   decision_notes?: string;
   created_at: string;
   submitted_at?: string;
@@ -41,7 +42,7 @@ export interface CreateEvaluationInput {
   overall_assessment_score: number;
   first_2_eps_required?: boolean;
   comments?: string;
-  decision: "approve" | "reject";
+  decision: "approve" | "reject" | "needs_improvement";
   decision_notes?: string;
   time_spent_minutes?: number;
   started_at?: string;
@@ -62,7 +63,7 @@ export interface UpdateEvaluationInput {
   overall_assessment_score?: number;
   first_2_eps_required?: boolean | null;
   comments?: string | null;
-  decision?: "approve" | "reject";
+  decision?: "approve" | "reject" | "needs_improvement";
   decision_notes?: string | null;
   time_spent_minutes?: number;
   started_at?: string;
@@ -116,7 +117,11 @@ export async function createEvaluationClient(evaluationData: CreateEvaluationInp
   }
 
   // Get the call report for notifications and audit log
-  let callReport: any = null;
+  interface CallReportInfo {
+    working_title: string;
+    writer_name: string;
+  }
+  let callReport: CallReportInfo | null = null;
 
   // Create notifications for content department members
   try {
@@ -149,7 +154,7 @@ export async function createEvaluationClient(evaluationData: CreateEvaluationInp
         const notifications = recipientUsers.map((user) => ({
           user_id: user.id,
           type: "success",
-          title: `New evaluation submitted: ${callReport.working_title}`,
+          title: `New evaluation submitted: ${callReport?.working_title || "Unknown"}`,
           message: `Evaluation completed with average score: ${data.average_score}/10`,
           entity_type: "evaluation_submitted",
           entity_id: data.id,
@@ -161,7 +166,7 @@ export async function createEvaluationClient(evaluationData: CreateEvaluationInp
       }
     }
   } catch (notifError) {
-    console.error("Failed to create notifications:", notifError);
+    logger.error("Failed to create notifications:", notifError);
     // Don't fail the evaluation creation if notification fails
   }
 
@@ -182,7 +187,7 @@ export async function createEvaluationClient(evaluationData: CreateEvaluationInp
 
     await supabase.from("audit_logs").insert(auditLog);
   } catch (auditError) {
-    console.error("Failed to create audit log:", auditError);
+    logger.error("Failed to create audit log:", auditError);
     // Don't fail the evaluation creation if audit logging fails
   }
 
@@ -215,7 +220,7 @@ export async function updateEvaluationClient(evaluationData: UpdateEvaluationInp
     started_at,
   } = evaluationData;
 
-  const updatePayload: any = {
+  const updatePayload = {
     target_writer: target_writer ?? null,
     per_ep_price_range: per_ep_price_range ?? null,
     genre: genre ?? null,
@@ -295,7 +300,6 @@ export async function getEvaluationByIdClient(id: string) {
         writer_name,
         call_report_id,
         logline,
-        usp,
         category
       ),
       evaluators:evaluator_id (

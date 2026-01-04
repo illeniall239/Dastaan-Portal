@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { logger } from "@/lib/logger";
 import { NextRequest, NextResponse } from "next/server";
+import { rateLimit, getClientIdentifier, createRateLimitHeaders } from "@/lib/rate-limit-redis";
 
 export const dynamic = "force-dynamic";
 
@@ -14,7 +15,7 @@ async function getAttachmentsForEntity(adminSupabase: any, entityType: string, e
     .order('uploaded_at', { ascending: false });
 
   if (error) {
-    console.error('Error fetching attachments:', error);
+    logger.error('Error fetching attachments:', error);
     return [];
   }
 
@@ -49,7 +50,7 @@ async function fetchContentByType(adminSupabase: any, contentType: string, conte
       .single();
 
     if (episodeError || !episode) {
-      console.error("Error fetching episode:", episodeError);
+      logger.error("Error fetching episode:", episodeError);
       return null;
     }
 
@@ -140,7 +141,7 @@ async function fetchContentByType(adminSupabase: any, contentType: string, conte
       .single();
 
     if (callReportError || !callReport) {
-      console.error("Error fetching call report:", callReportError);
+      logger.error("Error fetching call report:", callReportError);
       return null;
     }
 
@@ -199,6 +200,23 @@ export async function GET(
   { params }: { params: Promise<{ token: string }> }
 ) {
   try {
+    // Apply rate limiting: 10 requests per hour per IP (prevent token enumeration attacks)
+    const identifier = getClientIdentifier(request);
+    const rateLimitResult = await rateLimit(identifier, {
+      limit: 10,
+      window: 60 * 60 * 1000, // 1 hour in milliseconds
+    });
+
+    if (!rateLimitResult.success) {
+      return NextResponse.json(
+        { error: "Too many requests. Please try again later." },
+        {
+          status: 429,
+          headers: createRateLimitHeaders(rateLimitResult),
+        }
+      );
+    }
+
     const resolvedParams = await params;
     const token = resolvedParams.token;
 
@@ -313,13 +331,12 @@ export async function GET(
         );
       }
 
+      // Sanitized response - do not expose internal UUIDs or email restrictions
       return NextResponse.json({
         valid: true,
         link: {
           content_type: link.content_type,
-          content_id: link.content_id,
           expires_at: link.expires_at,
-          allowed_emails: link.allowed_emails,
         },
         content,
       });
@@ -347,13 +364,12 @@ export async function GET(
       );
     }
 
+    // Sanitized response - do not expose internal UUIDs or email restrictions
     return NextResponse.json({
       valid: true,
       link: {
         content_type: link.content_type,
-        content_id: link.content_id,
         expires_at: link.expires_at,
-        allowed_emails: link.allowed_emails,
       },
       contents: validContents,
     });

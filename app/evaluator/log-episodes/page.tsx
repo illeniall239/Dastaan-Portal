@@ -71,7 +71,7 @@ export default function LogEpisodesPage() {
 
       try {
         // Fetch call reports with writers in a single query using JOIN (eliminates N+1)
-        const { data: callReportsData, error: crError} = await supabase
+        const { data: callReportsData, error: crError } = await supabase
           .from("call_reports")
           .select(`
             id,
@@ -333,15 +333,14 @@ export default function LogEpisodesPage() {
 
   return (
     <div className="container mx-auto py-8 max-w-4xl">
-      <div className="flex items-center gap-4 mb-6">
-        <BackButton fallbackHref="/evaluator" variant="outline" size="sm" />
-      </div>
-
-      <div className="mb-8">
-        <h1 className="text-xl sm:text-2xl font-bold mb-2">Log Episodes</h1>
-        <p className="text-muted-foreground">
-          Add episode details with attachments and additional information
-        </p>
+      <div className="flex flex-col gap-4 sm:gap-6 mb-8">
+        <BackButton fallbackHref="/evaluator" variant="outline" size="sm" className="w-fit" />
+        <div className="space-y-1">
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Log Episodes</h1>
+          <p className="text-muted-foreground text-sm sm:text-base">
+            Add episode details with attachments and additional information
+          </p>
+        </div>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-8">

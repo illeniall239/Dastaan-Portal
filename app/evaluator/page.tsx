@@ -16,6 +16,7 @@ import { Suspense } from "react";
 import { NotificationSkeleton } from "@/components/skeletons/notification-skeleton";
 import { ModernStatCard } from "@/components/dashboard/modern-stat-card";
 import { ModernContentCard } from "@/components/dashboard/modern-content-card";
+import { Badge } from "@/components/ui/badge";
 import { formatDateTime, formatDate } from "@/lib/utils/format-date";
 
 // Add Next.js caching - revalidate every 5 minutes (300 seconds)
@@ -348,7 +349,7 @@ async function DashboardContent({ userId }: { userId: string }) {
               {completedEvaluations.map((evaluation, index) => (
                 <div
                   key={evaluation.id}
-                  className="flex items-center justify-between p-3 rounded-lg border border-gray-200"
+                  className="flex items-start justify-between p-3 rounded-lg border border-gray-200"
                 >
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-gray-900 line-clamp-1">
@@ -361,10 +362,28 @@ async function DashboardContent({ userId }: { userId: string }) {
                       Evaluated: {formatDate(evaluation.created_at)}
                     </p>
                   </div>
-                  <div className="ml-4 flex-shrink-0">
-                    <span className="inline-flex items-center px-3 py-1 rounded-lg text-sm font-bold bg-green-100 text-green-800">
+                  <div className="ml-4 flex-shrink-0 flex flex-col items-end space-y-2 min-w-[120px]">
+                    <span className="inline-flex items-center justify-center px-3 py-1 rounded-lg text-sm font-bold bg-green-100 text-green-800 w-full border border-green-200">
                       {evaluation.average_score.toFixed(1)}/10
                     </span>
+                    {evaluation.decision && (
+                      <Badge
+                        variant={
+                          evaluation.decision === "approve"
+                            ? "default"
+                            : evaluation.decision === "reject"
+                              ? "destructive"
+                              : "secondary"
+                        }
+                        className="text-xs w-full justify-center py-1"
+                      >
+                        {evaluation.decision === "approve"
+                          ? "Approved"
+                          : evaluation.decision === "reject"
+                            ? "Rejected"
+                            : "Needs Improvement"}
+                      </Badge>
+                    )}
                   </div>
                 </div>
               ))}

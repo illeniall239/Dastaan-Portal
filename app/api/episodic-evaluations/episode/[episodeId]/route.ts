@@ -38,7 +38,7 @@ export async function GET(
     .eq("id", user.id)
     .single();
 
-  if (!userData || !["evaluator", "content_manager", "admin"].includes(userData.role)) {
+  if (!userData || !["evaluator", "programmer", "content_manager", "admin", "management", "executive"].includes(userData.role)) {
     return NextResponse.json(
       { error: "Forbidden - Insufficient permissions" },
       { status: 403 }

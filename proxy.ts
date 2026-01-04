@@ -12,6 +12,8 @@ const protectedRoutes: Record<string, string[]> = {
   "/finance/payments": ["finance", "admin"],
   "/content-department/call-reports": ["content_manager", "content_creator", "evaluator"],
   "/content-department": ["content_manager", "content_creator"],
+  "/programmer": ["programmer", "admin"],
+  "/evaluator": ["evaluator", "admin"],
   // /stakeholder-demo is intentionally not listed here to make it publicly accessible
 };
 
@@ -168,6 +170,8 @@ export async function proxy(request: NextRequest) {
           return NextResponse.redirect(new URL("/content-department", request.url));
         case "evaluator":
           return NextResponse.redirect(new URL("/evaluator", request.url));
+        case "programmer":
+          return NextResponse.redirect(new URL("/programmer", request.url));
         // executive, legal, finance stay on /dashboard (no default case needed)
       }
     }
@@ -184,6 +188,8 @@ export async function proxy(request: NextRequest) {
           return NextResponse.redirect(new URL("/content-department", request.url));
         case "evaluator":
           return NextResponse.redirect(new URL("/evaluator", request.url));
+        case "programmer":
+          return NextResponse.redirect(new URL("/programmer", request.url));
         default:
           // executive, legal, finance → dashboard
           return NextResponse.redirect(new URL("/dashboard", request.url));

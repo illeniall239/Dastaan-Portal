@@ -94,9 +94,9 @@ export async function POST(request: Request) {
       .single();
 
     if (insertError || !detailedOneLiner) {
-      logger.error(`Error creating detailed one-liner:: ${insertError instanceof Error ? insertError.message : String(insertError)}`);
+      logger.error("Error creating detailed one-liner", { error: insertError, context: "POST /api/detailed-one-liner" });
       return NextResponse.json(
-        { error: "Failed to create detailed one-liner", details: insertError?.message },
+        { error: "Failed to create detailed one-liner" },
         { status: 500 }
       );
     }
@@ -116,7 +116,7 @@ export async function POST(request: Request) {
         .insert(narrativeItems);
 
       if (narrativeError) {
-        logger.error(`Error creating narrative breakdown items:: ${narrativeError instanceof Error ? narrativeError.message : String(narrativeError)}`);
+        logger.error("Error creating narrative breakdown items", { error: narrativeError, context: "POST /api/detailed-one-liner" });
         // Rollback: delete the detailed one-liner if narrative items fail
         await supabase
           .from("detailed_one_liners")
@@ -124,7 +124,7 @@ export async function POST(request: Request) {
           .eq("id", detailedOneLiner.id);
 
         return NextResponse.json(
-          { error: "Failed to create narrative breakdown items", details: narrativeError.message },
+          { error: "Failed to create narrative breakdown items" },
           { status: 500 }
         );
       }
@@ -147,7 +147,7 @@ export async function POST(request: Request) {
         .insert(eventItems);
 
       if (eventError) {
-        logger.error(`Error creating event planning items:: ${eventError instanceof Error ? eventError.message : String(eventError)}`);
+        logger.error("Error creating event planning items", { error: eventError, context: "POST /api/detailed-one-liner" });
         // Rollback: delete the detailed one-liner if event items fail
         await supabase
           .from("detailed_one_liners")
@@ -155,7 +155,7 @@ export async function POST(request: Request) {
           .eq("id", detailedOneLiner.id);
 
         return NextResponse.json(
-          { error: "Failed to create event planning items", details: eventError.message },
+          { error: "Failed to create event planning items" },
           { status: 500 }
         );
       }
@@ -176,7 +176,7 @@ export async function POST(request: Request) {
         .insert(weaknessItems);
 
       if (weaknessError) {
-        logger.error(`Error creating potential weaknesses/risks items:: ${weaknessError instanceof Error ? weaknessError.message : String(weaknessError)}`);
+        logger.error("Error creating potential weaknesses/risks items", { error: weaknessError, context: "POST /api/detailed-one-liner" });
         // Rollback: delete the detailed one-liner if weakness items fail
         await supabase
           .from("detailed_one_liners")
@@ -184,7 +184,7 @@ export async function POST(request: Request) {
           .eq("id", detailedOneLiner.id);
 
         return NextResponse.json(
-          { error: "Failed to create potential weaknesses/risks items", details: weaknessError.message },
+          { error: "Failed to create potential weaknesses/risks items" },
           { status: 500 }
         );
       }
@@ -213,7 +213,7 @@ export async function POST(request: Request) {
         .insert(characterRelationshipItems);
 
       if (characterError) {
-        logger.error(`Error creating character relationships:: ${characterError instanceof Error ? characterError.message : String(characterError)}`);
+        logger.error("Error creating character relationships", { error: characterError, context: "POST /api/detailed-one-liner" });
         // Rollback: delete the detailed one-liner if character relationships fail
         await supabase
           .from("detailed_one_liners")
@@ -221,7 +221,7 @@ export async function POST(request: Request) {
           .eq("id", detailedOneLiner.id);
 
         return NextResponse.json(
-          { error: "Failed to create character relationships", details: characterError.message },
+          { error: "Failed to create character relationships" },
           { status: 500 }
         );
       }
@@ -242,7 +242,7 @@ export async function POST(request: Request) {
       .single();
 
     if (fetchError) {
-      logger.error(`Error fetching complete detailed one-liner:: ${fetchError instanceof Error ? fetchError.message : String(fetchError)}`);
+      logger.error("Error fetching complete detailed one-liner", { error: fetchError, context: "POST /api/detailed-one-liner" });
     }
 
     // Revalidate detailed one-liner list pages to show new entry immediately
@@ -257,9 +257,9 @@ export async function POST(request: Request) {
       { status: 201 }
     );
   } catch (error) {
-    logger.error(`Unexpected error creating detailed one-liner: ${error instanceof Error ? error.message : String(error)}`);
+    logger.error("Unexpected error creating detailed one-liner", { error, context: "POST /api/detailed-one-liner" });
     return NextResponse.json(
-      { error: "Internal server error", details: error instanceof Error ? error.message : "Unknown error" },
+      { error: "Internal server error" },
       { status: 500 }
     );
   }

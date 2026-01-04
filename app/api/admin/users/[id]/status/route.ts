@@ -44,7 +44,8 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     .eq('id', id);
 
   if (error) {
-    return withCors(request, NextResponse.json({ error: error.message }, { status: 500 }));
+    logger.error("Error updating user status", { error, context: "PATCH /api/admin/users/[id]/status" });
+    return withCors(request, NextResponse.json({ error: "Failed to update user status" }, { status: 500 }));
   }
 
   return addRateLimitHeaders(withCors(request, NextResponse.json({ message: "User status updated successfully" })), rate.result);

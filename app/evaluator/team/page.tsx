@@ -23,17 +23,18 @@ export default async function EvaluatorTeamPage() {
 
     return (
       <div className="container mx-auto p-6 space-y-6">
-        <BackButton fallbackHref="/evaluator" variant="outline" size="sm" />
-
         {/* Page Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Team Management</h1>
-            <p className="text-muted-foreground">
-              Manage your team and track their work
-            </p>
+        <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between mb-8">
+          <div className="flex flex-col gap-4 sm:gap-6 w-full lg:w-auto">
+            <BackButton fallbackHref="/evaluator" variant="outline" size="sm" className="w-fit" />
+            <div className="space-y-1">
+              <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Team Management</h1>
+              <p className="text-muted-foreground text-sm sm:text-base">
+                Manage your team and track their work
+              </p>
+            </div>
           </div>
-          <Button variant="outline" asChild>
+          <Button variant="outline" asChild className="w-full lg:w-auto">
             <Link href="/evaluator/team/request-change">
               <Mail className="mr-2 h-4 w-4" />
               Request Team Change

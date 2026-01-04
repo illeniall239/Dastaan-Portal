@@ -22,7 +22,7 @@ export function useAuth() {
         // Fetch full user profile
         const { data: profile, error } = await supabase
           .from("users")
-          .select("*")
+          .select("id, email, name, role, department, status, team_id, created_at, updated_at")
           .eq("id", authUser.id)
           .single();
 
@@ -44,7 +44,7 @@ export function useAuth() {
       if (session?.user) {
         const { data: profile, error } = await supabase
           .from("users")
-          .select("*")
+          .select("id, email, name, role, department, status, team_id, created_at, updated_at")
           .eq("id", session.user.id)
           .single();
 

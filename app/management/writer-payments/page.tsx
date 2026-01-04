@@ -148,20 +148,21 @@ export default function WriterPaymentsPage() {
   return (
     <div className="mobile-container mobile-section space-y-4 sm:space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <div className="flex items-center gap-2 mb-2">
-            <BackButton fallbackHref="/management" variant="ghost" size="icon" />
-            <h1 className="text-xl sm:text-2xl font-bold">Writer Payments</h1>
-          </div>
+      {/* Header */}
+      <div className="flex flex-col gap-4 sm:gap-6 mb-8">
+        <div className="flex items-center justify-between">
+          <BackButton fallbackHref="/management" variant="outline" size="sm" className="w-fit" />
+          <Button onClick={handleExport} variant="outline" size="sm">
+            <Download className="h-4 w-4 mr-2" />
+            Export CSV
+          </Button>
+        </div>
+        <div className="space-y-1">
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Writer Payments</h1>
           <p className="text-muted-foreground text-sm sm:text-base">
             Financial summary showing negotiated amounts, contracts, and payments by writer
           </p>
         </div>
-        <Button onClick={handleExport} variant="outline" size="sm">
-          <Download className="h-4 w-4 mr-2" />
-          Export CSV
-        </Button>
       </div>
 
       {/* Summary Cards */}

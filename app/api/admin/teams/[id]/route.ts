@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { updateTeamSchema } from "@/lib/validations/teams";
 import { logAdminAction, getRequestContext } from "@/lib/audit/server";
+import { logger } from "@/lib/logger";
 
 /**
  * GET /api/admin/teams/[id]
@@ -61,9 +62,9 @@ export async function GET(
         );
       }
 
-      console.error("Error fetching team:", error);
+      logger.error("Error fetching team", { error, context: "GET /api/admin/teams/[id]" });
       return NextResponse.json(
-        { error: "Failed to fetch team", message: error.message },
+        { error: "Failed to fetch team" },
         { status: 500 }
       );
     }
@@ -89,7 +90,7 @@ export async function GET(
       },
     });
   } catch (error) {
-    console.error("Error in GET /api/admin/teams/[id]:", error);
+    logger.error("Error in GET /api/admin/teams/[id]", { error, context: "GET /api/admin/teams/[id]" });
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }
@@ -207,7 +208,7 @@ export async function PUT(
         });
 
       if (circularError) {
-        console.error("Error checking circular reference:", circularError);
+        logger.error("Error checking circular reference", { error: circularError, context: "PUT /api/admin/teams/[id]" });
         return NextResponse.json(
           { error: "Failed to validate team hierarchy" },
           { status: 500 }
@@ -247,7 +248,7 @@ export async function PUT(
       .single();
 
     if (updateError) {
-      console.error("Error updating team:", updateError);
+      logger.error("Error updating team", { error: updateError, context: "PUT /api/admin/teams/[id]" });
 
       // Check for unique constraint violation
       if (updateError.code === '23505') {
@@ -258,7 +259,7 @@ export async function PUT(
       }
 
       return NextResponse.json(
-        { error: "Failed to update team", message: updateError.message },
+        { error: "Failed to update team" },
         { status: 500 }
       );
     }
@@ -280,13 +281,13 @@ export async function PUT(
     // Refresh materialized views
     const { error: refreshError } = await adminClient.rpc('refresh_all_team_views');
     if (refreshError) {
-      console.error("Failed to refresh team views:", refreshError);
+      logger.error("Failed to refresh team views", { error: refreshError, context: "PUT /api/admin/teams/[id]" });
       // Don't fail the request if refresh fails
     }
 
     return NextResponse.json({ team: updatedTeam });
   } catch (error) {
-    console.error("Error in PUT /api/admin/teams/[id]:", error);
+    logger.error("Error in PUT /api/admin/teams/[id]", { error, context: "PUT /api/admin/teams/[id]" });
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }
@@ -379,9 +380,9 @@ export async function DELETE(
       .eq('id', teamId);
 
     if (deleteError) {
-      console.error("Error deleting team:", deleteError);
+      logger.error("Error deleting team", { error: deleteError, context: "DELETE /api/admin/teams/[id]" });
       return NextResponse.json(
-        { error: "Failed to delete team", message: deleteError.message },
+        { error: "Failed to delete team" },
         { status: 500 }
       );
     }
@@ -402,7 +403,7 @@ export async function DELETE(
     // Refresh materialized views
     const { error: refreshError } = await adminClient.rpc('refresh_all_team_views');
     if (refreshError) {
-      console.error("Failed to refresh team views:", refreshError);
+      logger.error("Failed to refresh team views", { error: refreshError, context: "DELETE /api/admin/teams/[id]" });
       // Don't fail the request if refresh fails
     }
 
@@ -411,7 +412,7 @@ export async function DELETE(
       deletedTeamId: teamId
     });
   } catch (error) {
-    console.error("Error in DELETE /api/admin/teams/[id]:", error);
+    logger.error("Error in DELETE /api/admin/teams/[id]", { error, context: "DELETE /api/admin/teams/[id]" });
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

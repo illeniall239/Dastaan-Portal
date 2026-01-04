@@ -3,6 +3,7 @@ import {
   createNotifications,
   getContentActivityNotificationRecipients,
 } from "@/lib/notifications/server";
+import { logger } from "@/lib/logger";
 
 export interface MeetingWriter {
   writer_id: string;
@@ -29,6 +30,13 @@ export interface Meeting {
   has_detailed_one_liner?: boolean;
   writer_names?: string[];
   writers?: MeetingWriter[];
+  evaluation_log?: {
+    final_decision: 'approved' | 'rejected' | 'needs_improvement' | 'pending';
+    approval_count: number;
+    rejection_count: number;
+    needs_improvement_count: number;
+    decision_reason: string;
+  } | null;
 }
 
 export interface CreateMeetingInput {
@@ -42,8 +50,6 @@ export interface CreateMeetingInput {
   contact_address?: string;
   working_title: string;
   logline: string;
-  // deprecated fields retained for compatibility
-  usp?: string;
   // removed: target_audience
   genre?: string;
   theme?: string;
@@ -72,7 +78,7 @@ export async function createMeeting(meetingData: CreateMeetingInput) {
     .single();
 
   if (userProfileError) {
-    console.error("Failed to fetch user profile for team_id", userProfileError);
+    logger.error("Failed to fetch user profile for team_id", userProfileError);
     throw new Error("Unable to verify your team. Please try again.");
   }
 
@@ -149,7 +155,7 @@ export async function createMeeting(meetingData: CreateMeetingInput) {
   let storyRecord = null;
   let storyError = null;
   const maxRetries = 5;
-  
+
   for (let attempt = 0; attempt < maxRetries; attempt++) {
     const storyRandomNum = Math.floor(Math.random() * 10000)
       .toString()
@@ -182,23 +188,23 @@ export async function createMeeting(meetingData: CreateMeetingInput) {
 
     storyRecord = result.data;
     storyError = result.error;
-    
+
     if (storyError) {
-      console.error("Supabase story insert error:", storyError);
+      logger.error("Supabase story insert error:", storyError);
       // If we get a policy violation on SELECT but the INSERT might have worked (unlikely with .select()),
       // we can try to fetch it again by the unique story_id we just generated.
       if (storyError.code === '42501' || storyError.message?.includes('policy')) {
-         console.warn("Policy error on select, trying to fetch by story_id...");
-         const { data: fetchedStory, error: fetchError } = await supabase
-            .from("stories")
-            .select("*")
-            .eq("story_id", story_id)
-            .single();
-            
-         if (fetchedStory && !fetchError) {
-            storyRecord = fetchedStory;
-            storyError = null;
-         }
+        logger.warn("Policy error on select, trying to fetch by story_id...");
+        const { data: fetchedStory, error: fetchError } = await supabase
+          .from("stories")
+          .select("id, story_id, title, team_id, created_at, logged_by, category, writer_originator_name, suggested_writer, synopsis, genre, target_audience, status, current_stage, created_by")
+          .eq("story_id", story_id)
+          .single();
+
+        if (fetchedStory && !fetchError) {
+          storyRecord = fetchedStory;
+          storyError = null;
+        }
       }
     }
 
@@ -208,13 +214,13 @@ export async function createMeeting(meetingData: CreateMeetingInput) {
     }
 
     // Check if error is a duplicate constraint violation (PostgreSQL error code 23505)
-    const isDuplicateError = storyError?.code === '23505' || 
-                             storyError?.message?.toLowerCase().includes('duplicate') ||
-                             storyError?.message?.toLowerCase().includes('unique');
+    const isDuplicateError = storyError?.code === '23505' ||
+      storyError?.message?.toLowerCase().includes('duplicate') ||
+      storyError?.message?.toLowerCase().includes('unique');
 
     // If duplicate and we have retries left, try again
     if (isDuplicateError && attempt < maxRetries - 1) {
-      console.warn(`Duplicate story_id detected (${story_id}), retrying... (attempt ${attempt + 1}/${maxRetries})`);
+      logger.warn(`Duplicate story_id detected (${story_id}), retrying... (attempt ${attempt + 1}/${maxRetries})`);
       continue;
     }
 
@@ -223,12 +229,12 @@ export async function createMeeting(meetingData: CreateMeetingInput) {
   }
 
   if (storyError) {
-    console.error("Story creation error:", storyError);
+    logger.error("Story creation error:", storyError);
     throw new Error(`Failed to create story: ${storyError.message}`);
   }
 
   if (!storyRecord || !storyRecord.id) {
-    console.error("Story record is null or missing id:", storyRecord);
+    logger.error("Story record is null or missing id:", storyRecord);
     throw new Error(`Failed to create story: Story record was not returned properly`);
   }
 
@@ -279,7 +285,7 @@ export async function createMeeting(meetingData: CreateMeetingInput) {
       meetingData.created_by // Track who created this
     );
   } catch (notifError) {
-    console.error("Failed to create notifications:", notifError);
+    logger.error("Failed to create notifications:", notifError);
     // Don't fail the meeting creation if notification fails
   }
 
@@ -296,7 +302,7 @@ export async function getAllMeetings() {
 
   const { data, error } = await supabase
     .from("call_reports")
-    .select("*")
+    .select("id, working_title, writer_name, meeting_date, meeting_attendees, meeting_notes, created_by, created_at, meeting_type")
     .eq("meeting_type", "scheduled_meeting")
     .order("meeting_date", { ascending: true });
 
@@ -304,8 +310,19 @@ export async function getAllMeetings() {
     throw new Error(`Failed to fetch meetings: ${error.message}`);
   }
 
+  interface CallReportData {
+    id: string;
+    working_title: string;
+    writer_name: string;
+    meeting_date: string;
+    meeting_attendees: string[] | null;
+    meeting_notes: string;
+    created_by: string;
+    created_at: string;
+  }
+
   // Transform call reports to meeting format
-  const meetings: Meeting[] = data.map((report: any) => ({
+  const meetings: Meeting[] = data.map((report: CallReportData) => ({
     id: report.id,
     title: report.working_title,
     writer_name: report.writer_name,
@@ -355,12 +372,19 @@ export async function getAllCallReports() {
         writer_phone,
         display_order,
         writer:writers(name)
+      ),
+      evaluation_logs!evaluation_logs_call_report_id_fkey (
+        final_decision,
+        approval_count,
+        rejection_count,
+        needs_improvement_count,
+        decision_reason
       )
     `)
     .eq("meeting_type", "call_report");
 
-  // TEAM ISOLATION: Apply filter unless admin/management
-  const hasGlobalAccess = currentUser?.role && ['admin', 'management'].includes(currentUser.role);
+  // TEAM ISOLATION: Apply filter unless admin/management/programmer
+  const hasGlobalAccess = currentUser?.role && ['admin', 'management', 'programmer'].includes(currentUser.role);
   if (!hasGlobalAccess && currentUser?.team_id) {
     query = query.eq("team_id", currentUser.team_id);
   }
@@ -371,10 +395,45 @@ export async function getAllCallReports() {
     throw new Error(`Failed to fetch call reports: ${error.message}`);
   }
 
+  interface CallReportWriterData {
+    writer_id: string;
+    writer_email: string | null;
+    writer_phone: string | null;
+    display_order: number;
+    writer: {
+      name: string;
+    } | null;
+  }
+
+  interface EvaluationLogData {
+    final_decision: 'approved' | 'rejected' | 'needs_improvement' | 'pending';
+    approval_count: number;
+    rejection_count: number;
+    needs_improvement_count: number;
+    decision_reason: string;
+  }
+
+  interface CallReportWithRelations {
+    id: string;
+    call_report_id: string;
+    working_title: string;
+    writer_name: string;
+    meeting_date: string;
+    meeting_attendees: string[] | null;
+    meeting_notes: string;
+    created_by: string;
+    created_at: string;
+    category: string;
+    logline: string;
+    call_report_writers?: CallReportWriterData[];
+    detailed_one_liners?: Array<{ id: string }>;
+    evaluation_logs?: EvaluationLogData[];
+  }
+
   // Transform call reports to meeting format
-  const meetings: Meeting[] = data.map((report: any) => {
+  const meetings: Meeting[] = data.map((report: CallReportWithRelations) => {
     const writers: MeetingWriter[] =
-      report.call_report_writers?.map((writer: any) => ({
+      report.call_report_writers?.map((writer: CallReportWriterData) => ({
         writer_id: writer.writer_id,
         writer_name: writer.writer?.name || "",
         writer_email: writer.writer_email,
@@ -406,6 +465,7 @@ export async function getAllCallReports() {
       has_detailed_one_liner: !!report.detailed_one_liners?.[0]?.id,
       writer_names: writerNames,
       writers: sortedWriters,
+      evaluation_log: report.evaluation_logs?.[0] || null,
     };
   });
 
@@ -422,7 +482,7 @@ export async function getAllMeetingsByDateRange(startDate: string, endDate: stri
 
   const { data, error } = await supabase
     .from("call_reports")
-    .select("*")
+    .select("id, working_title, writer_name, meeting_date, meeting_attendees, meeting_notes, created_by, created_at, meeting_type")
     .gte("meeting_date", startDate)
     .lte("meeting_date", endDate)
     .order("meeting_date", { ascending: true });
@@ -431,8 +491,19 @@ export async function getAllMeetingsByDateRange(startDate: string, endDate: stri
     throw new Error(`Failed to fetch meetings: ${error.message}`);
   }
 
+  interface CallReportByDateData {
+    id: string;
+    working_title: string;
+    writer_name: string;
+    meeting_date: string;
+    meeting_attendees: string[] | null;
+    meeting_notes: string;
+    created_by: string;
+    created_at: string;
+  }
+
   // Transform call reports to meeting format
-  const meetings: Meeting[] = data.map((report: any) => ({
+  const meetings: Meeting[] = data.map((report: CallReportByDateData) => ({
     id: report.id,
     title: report.working_title,
     writer_name: report.writer_name,

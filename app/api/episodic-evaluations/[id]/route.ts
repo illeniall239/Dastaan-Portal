@@ -41,7 +41,7 @@ export async function GET(
       .from("episodic_evaluations")
       .select(`
         *,
-        evaluator:users!evaluator_id(name, email),
+        evaluator:users!evaluator_id(name, email, role),
         episode:episodes(
           *,
           call_report:call_reports(working_title, writer_name),
@@ -58,9 +58,9 @@ export async function GET(
           { status: 404 }
         );
       }
-      logger.error(`Error fetching episodic evaluation: ${error instanceof Error ? error.message : String(error)}`);
+      logger.error("Error fetching episodic evaluation", { error, context: "GET /api/episodic-evaluations/[id]" });
       return NextResponse.json(
-        { error: "Failed to fetch episodic evaluation", details: error.message },
+        { error: "Failed to fetch episodic evaluation" },
         { status: 500 }
       );
     }
@@ -77,9 +77,16 @@ export async function GET(
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    const canView =
-      evaluation.evaluator_id === user.id ||
-      ["content_manager", "admin"].includes(userData.role);
+    let canView = false;
+    if (["admin", "content_manager", "management", "executive"].includes(userData.role)) {
+      canView = true;
+    } else if (userData.role === "evaluator") {
+      // Evaluators can only view their own evaluations
+      canView = evaluation.evaluator_id === user.id;
+    } else if (userData.role === "programmer") {
+      // Programmers can view any evaluation done by the programming team
+      canView = evaluation.evaluator?.role === "programmer";
+    }
 
     if (!canView) {
       return NextResponse.json(
@@ -154,9 +161,9 @@ export async function DELETE(
           { status: 404 }
         );
       }
-      logger.error(`Error fetching episodic evaluation:: ${fetchError instanceof Error ? fetchError.message : String(fetchError)}`);
+      logger.error("Error fetching episodic evaluation for deletion", { error: fetchError, context: "DELETE /api/episodic-evaluations/[id]" });
       return NextResponse.json(
-        { error: "Failed to fetch episodic evaluation", details: fetchError.message },
+        { error: "Failed to fetch episodic evaluation" },
         { status: 500 }
       );
     }
@@ -179,9 +186,9 @@ export async function DELETE(
       .eq("id", id);
 
     if (deleteError) {
-      logger.error(`Error deleting episodic evaluation:: ${deleteError instanceof Error ? deleteError.message : String(deleteError)}`);
+      logger.error("Error deleting episodic evaluation", { error: deleteError, context: "DELETE /api/episodic-evaluations/[id]" });
       return NextResponse.json(
-        { error: "Failed to delete episodic evaluation", details: deleteError.message },
+        { error: "Failed to delete episodic evaluation" },
         { status: 500 }
       );
     }
@@ -258,9 +265,9 @@ export async function PATCH(
           { status: 404 }
         );
       }
-      logger.error(`Error fetching episodic evaluation:: ${fetchError instanceof Error ? fetchError.message : String(fetchError)}`);
+      logger.error("Error fetching episodic evaluation for update", { error: fetchError, context: "PATCH /api/episodic-evaluations/[id]" });
       return NextResponse.json(
-        { error: "Failed to fetch episodic evaluation", details: fetchError.message },
+        { error: "Failed to fetch episodic evaluation" },
         { status: 500 }
       );
     }
@@ -299,9 +306,9 @@ export async function PATCH(
       .single();
 
     if (updateError) {
-      logger.error(`Error updating episodic evaluation:: ${updateError instanceof Error ? updateError.message : String(updateError)}`);
+      logger.error("Error updating episodic evaluation", { error: updateError, context: "PATCH /api/episodic-evaluations/[id]" });
       return NextResponse.json(
-        { error: "Failed to update episodic evaluation", details: updateError.message },
+        { error: "Failed to update episodic evaluation" },
         { status: 500 }
       );
     }

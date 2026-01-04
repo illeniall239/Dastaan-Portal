@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { logger } from "@/lib/logger";
 
 const createGenreSchema = z.object({
   name: z.string().min(1, "Genre name is required").max(100, "Genre name too long"),
@@ -21,7 +22,7 @@ export async function GET() {
     .order("name", { ascending: true }); // Then alphabetically
 
   if (error) {
-    console.error("Error fetching genres:", error);
+    logger.error("Error fetching genres:", error);
     return NextResponse.json(
       { error: "Failed to fetch genres" },
       { status: 500 }
@@ -95,7 +96,7 @@ export async function POST(request: Request) {
       .single();
 
     if (insertError) {
-      console.error("Error creating genre:", insertError);
+      logger.error("Error creating genre:", insertError);
       return NextResponse.json(
         { error: "Failed to create genre" },
         { status: 500 }
@@ -104,7 +105,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ genre }, { status: 201 });
   } catch (error) {
-    console.error("Unexpected error in POST /api/genres:", error);
+    logger.error("Unexpected error in POST /api/genres:", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

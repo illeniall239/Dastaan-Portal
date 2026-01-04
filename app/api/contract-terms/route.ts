@@ -121,9 +121,9 @@ export async function GET(request: NextRequest) {
     const { data, error, count } = await query;
 
     if (error) {
-      logger.error(`Error fetching negotiations: ${error instanceof Error ? error.message : String(error)}`);
+      logger.error("Error fetching negotiations", { error, context: "GET /api/contract-terms" });
       return NextResponse.json(
-        { error: "Failed to fetch contract terms", details: error.message },
+        { error: "Failed to fetch contract terms" },
         { status: 500 }
       );
     }
@@ -232,9 +232,9 @@ export async function POST(request: Request) {
       .single();
 
     if (error) {
-      logger.error(`Error creating negotiation: ${error instanceof Error ? error.message : String(error)}`);
+      logger.error("Error creating negotiation", { error, context: "POST /api/contract-terms" });
       return NextResponse.json(
-        { error: "Failed to create contract term", details: error.message },
+        { error: "Failed to create contract term" },
         { status: 500 }
       );
     }
@@ -249,7 +249,7 @@ export async function POST(request: Request) {
       .eq("id", contractTermData.story_id);
 
     if (storyError) {
-      logger.error(`Error updating story status:: ${storyError instanceof Error ? storyError.message : String(storyError)}`);
+      logger.error("Error updating story status", { error: storyError, context: "POST /api/contract-terms" });
       // Continue even if story update fails
     }
 

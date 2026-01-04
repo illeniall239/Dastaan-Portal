@@ -329,15 +329,14 @@ export default function EditDetailedOneLinerPage({ params }: EditDetailedOneLine
     <div className="mobile-container mobile-section">
       <div className="mobile-header-spacing">
         {/* Header */}
-        <div className="flex items-center gap-4 mb-6">
-          <BackButton fallbackHref="/evaluator/call-reports" variant="outline" size="sm" />
-        </div>
-
-        <div className="mb-6">
-          <h1 className="text-xl sm:text-2xl font-bold mb-2">Edit Detailed One-Liner</h1>
-          <p className="text-muted-foreground">
-            Update the comprehensive one-liner analysis with narrative breakdown.
-          </p>
+        <div className="flex flex-col gap-4 sm:gap-6 mb-8">
+          <BackButton fallbackHref="/evaluator/call-reports" variant="outline" size="sm" className="w-fit" />
+          <div className="space-y-1">
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Edit Detailed One-Liner</h1>
+            <p className="text-muted-foreground text-sm sm:text-base">
+              Update the comprehensive one-liner analysis with narrative breakdown.
+            </p>
+          </div>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">

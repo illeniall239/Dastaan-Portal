@@ -48,7 +48,7 @@ export function EvaluationsDashboard({
         </TabsContent>
 
         <TabsContent value="internal" className="mt-6">
-          <InternalEvaluationsTab teams={teams} currentUser={currentUser} />
+          <InternalEvaluationsTab currentUser={currentUser} />
         </TabsContent>
 
         <TabsContent value="external" className="mt-6">

@@ -68,7 +68,7 @@ export async function DELETE(
     const { error: authError } = await adminClient.auth.admin.deleteUser(id);
 
     if (authError) {
-      logger.error(`Error deleting from auth.users:: ${authError instanceof Error ? authError.message : String(authError)}`);
+      logger.error("Error deleting from auth.users", { error: authError, context: "DELETE /api/admin/users/[id]" });
       return NextResponse.json(
         { error: "Failed to delete user from auth system" },
         { status: 500 }
@@ -82,7 +82,7 @@ export async function DELETE(
       .eq("id", id);
 
     if (publicError) {
-      logger.error(`Error deleting from public.users:: ${publicError instanceof Error ? publicError.message : String(publicError)}`);
+      logger.error("Error deleting from public.users", { error: publicError, context: "DELETE /api/admin/users/[id]" });
       // Don't return error here, user is already deleted from auth
     }
 
@@ -103,7 +103,7 @@ export async function DELETE(
       message: "User deleted successfully",
     })), rate.result);
   } catch (error) {
-    logger.error(`Unexpected error deleting user: ${error instanceof Error ? error.message : String(error)}`);
+    logger.error("Unexpected error deleting user", { error, context: "DELETE /api/admin/users/[id]" });
     return withCors(request, NextResponse.json(
       { error: "An unexpected error occurred" },
       { status: 500 }
@@ -171,7 +171,7 @@ export async function PATCH(
       });
 
       if (authError) {
-        logger.error(`Error updating auth.users email:: ${authError instanceof Error ? authError.message : String(authError)}`);
+        logger.error("Error updating auth.users email", { error: authError, context: "PATCH /api/admin/users/[id]" });
         return NextResponse.json(
           { error: "Failed to update email in auth system" },
           { status: 500 }
@@ -191,7 +191,7 @@ export async function PATCH(
       });
 
       if (metaError) {
-        logger.error(`Error updating user metadata:: ${metaError instanceof Error ? metaError.message : String(metaError)}`);
+        logger.error("Error updating user metadata", { error: metaError, context: "PATCH /api/admin/users/[id]" });
       }
     }
 
@@ -212,7 +212,7 @@ export async function PATCH(
       .single();
 
     if (publicError) {
-      logger.error(`Error updating public.users:: ${publicError instanceof Error ? publicError.message : String(publicError)}`);
+      logger.error("Error updating public.users", { error: publicError, context: "PATCH /api/admin/users/[id]" });
       return NextResponse.json(
         { error: "Failed to update user in public table" },
         { status: 500 }
@@ -238,7 +238,7 @@ export async function PATCH(
       user: updatedUser,
     })), rate.result);
   } catch (error) {
-    logger.error(`Unexpected error updating user: ${error instanceof Error ? error.message : String(error)}`);
+    logger.error("Unexpected error updating user", { error, context: "PATCH /api/admin/users/[id]" });
     return withCors(request, NextResponse.json(
       { error: "An unexpected error occurred" },
       { status: 500 }

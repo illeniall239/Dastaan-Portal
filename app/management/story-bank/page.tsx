@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { redirect } from "next/navigation";
 import { StoryBank } from "@/components/management/story-bank";
+import { BackButton } from "@/components/ui/back-button";
 
 export const dynamic = "force-dynamic";
 
@@ -81,8 +82,8 @@ export default async function ManagementStoryBankPage() {
   const callReportIds = (callReports || []).map((cr: any) => cr.id);
   const { data: attachments, error: attachmentsError } = callReportIds.length > 0
     ? await adminClient
-        .from("attachments")
-        .select(`
+      .from("attachments")
+      .select(`
           id,
           entity_id,
           file_name,
@@ -92,9 +93,9 @@ export default async function ManagementStoryBankPage() {
           uploaded_at,
           uploader:users!uploaded_by(name, email)
         `)
-        .eq("entity_type", "call_report")
-        .in("entity_id", callReportIds)
-        .order("uploaded_at", { ascending: false })
+      .eq("entity_type", "call_report")
+      .in("entity_id", callReportIds)
+      .order("uploaded_at", { ascending: false })
     : { data: [], error: null };
 
   if (attachmentsError) {
@@ -192,11 +193,14 @@ export default async function ManagementStoryBankPage() {
 
   return (
     <div className="mobile-container mobile-section">
-      <div className="mobile-header-spacing">
-        <h1 className="text-xl sm:text-2xl font-bold">Script Bank</h1>
-        <p className="text-muted-foreground mt-2 text-sm sm:text-base">
-          Manage writer engagement reports and their linked episodes
-        </p>
+      <div className="flex flex-col gap-4 sm:gap-6 mb-4 sm:mb-6 md:mb-8">
+        <BackButton fallbackHref="/management" variant="outline" size="sm" className="w-fit" />
+        <div className="space-y-1">
+          <h1 className="text-xl sm:text-2xl font-bold whitespace-nowrap">Script Bank</h1>
+          <p className="text-muted-foreground text-sm sm:text-base">
+            Manage writer engagement reports and their linked episodes
+          </p>
+        </div>
       </div>
 
       <StoryBank callReports={callReportsWithAttachments} episodes={episodesWithCounts} />

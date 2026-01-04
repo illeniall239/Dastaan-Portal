@@ -72,8 +72,16 @@ export default async function ContentDepartmentContractTermDetailsPage({
   const canEdit = userData.role === "content_manager" || userData.role === "admin";
 
   return (
-    <div className="container mx-auto py-8 px-4">
-      <BackButton fallbackHref="/content-department/contract-terms" variant="outline" size="sm" className="mb-4" />
+    <div className="mobile-container mobile-section space-y-4 sm:space-y-6">
+      <div className="flex flex-col gap-4 sm:gap-6 mb-8">
+        <BackButton fallbackHref="/content-department/contract-terms" variant="outline" size="sm" className="w-fit" />
+        <div className="space-y-1">
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Contract Terms</h1>
+          <p className="text-muted-foreground text-sm sm:text-base">
+            Manage project contract terms and term sheets
+          </p>
+        </div>
+      </div>
       <ContractTermDetails
         contractTerm={contractTerm}
         basePath="/content-department/contract-terms"

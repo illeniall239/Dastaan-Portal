@@ -18,6 +18,7 @@ import Link from "next/link";
 import { toast } from "sonner";
 import { WriterSelect } from "@/components/writers/writer-select";
 import type { Writer } from "@/types";
+import { BackButton } from "@/components/ui/back-button";
 
 interface Track {
   id: number;
@@ -126,11 +127,14 @@ export function OneLinerForm() {
     <form onSubmit={handleSubmit}>
       <div className="py-6 space-y-6 max-w-6xl mx-auto px-4 sm:px-6">
         {/* Header */}
-        <div className="flex justify-between items-center">
-          <h1 className="text-xl sm:text-2xl font-bold text-gray-800">One-Liner Submission</h1>
-          <Button variant="outline" size="sm" asChild>
-            <Link href="/evaluator">Back to Dashboard</Link>
-          </Button>
+        <div className="flex flex-col gap-4 sm:gap-6 mb-8">
+          <BackButton fallbackHref="/evaluator" variant="outline" size="sm" className="w-fit" />
+          <div className="space-y-1">
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight">One-Liner Submission</h1>
+            <p className="text-muted-foreground text-sm sm:text-base">
+              Submit a detailed one-liner for story evaluation
+            </p>
+          </div>
         </div>
 
         {/* Section 1: Basic Information */}

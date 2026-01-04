@@ -116,6 +116,38 @@ export default async function ManagementExternalEvaluationsPage() {
     console.error("Error fetching external evaluations:", evaluationsError);
   }
 
+  // Group evaluations by evaluator + link combination
+  const submissionsMap = new Map<string, any>();
+  (evaluations || []).forEach((evaluation) => {
+    // Group by unique evaluator + link combination
+    const key = `${evaluation.evaluator_email || 'anonymous'}-${evaluation.link_id}`;
+
+    if (!submissionsMap.has(key)) {
+      submissionsMap.set(key, {
+        id: key, // Unique ID for submission
+        link_id: evaluation.link_id,
+        evaluator_name: evaluation.evaluator_name,
+        evaluator_email: evaluation.evaluator_email,
+        evaluator_organization: evaluation.evaluator_organization,
+        submitted_at: evaluation.submitted_at, // Use first evaluation's timestamp
+        token: evaluation.external_evaluation_links?.token,
+        evaluation_count: 0,
+        evaluations: []
+      });
+    }
+
+    const submission = submissionsMap.get(key)!;
+    submission.evaluations.push(evaluation);
+    submission.evaluation_count = submission.evaluations.length;
+
+    // Keep the earliest submission time
+    if (new Date(evaluation.submitted_at) < new Date(submission.submitted_at)) {
+      submission.submitted_at = evaluation.submitted_at;
+    }
+  });
+
+  const groupedSubmissions = Array.from(submissionsMap.values());
+
   // Fetch content counts for each link from junction table
   const { data: linkContents, error: linkContentsError } = await supabase
     .from("external_link_contents")
@@ -155,7 +187,7 @@ export default async function ManagementExternalEvaluationsPage() {
         episodes={episodes || []}
         oneLiners={oneLiners || []}
         callReports={callReports || []}
-        evaluations={evaluations || []}
+        evaluations={groupedSubmissions}
         contentCountsMap={contentCountsMap}
       />
     </div>

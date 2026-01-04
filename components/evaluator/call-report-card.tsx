@@ -9,9 +9,10 @@ import { EvaluationProgressBar } from "@/components/evaluations/evaluation-progr
 
 interface CallReportCardProps {
   report: any;
+  portalPrefix?: string; // e.g., "evaluator" or "programmer"
 }
 
-export function CallReportCard({ report }: CallReportCardProps) {
+export function CallReportCard({ report, portalPrefix = "evaluator" }: CallReportCardProps) {
   // Format timestamp
 
   // Format timestamp
@@ -133,6 +134,45 @@ export function CallReportCard({ report }: CallReportCardProps) {
                   internalRequired={internalRequired}
                   externalRequired={externalRequired}
                 />
+                {/* Verdict Summary */}
+                {report.evaluation_log?.final_decision && (
+                  <div className="mt-3 pt-3 border-t border-slate-200">
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs font-semibold text-slate-600">Final Verdict:</p>
+                      <div className="flex items-center gap-2">
+                        <Badge
+                          variant={
+                            report.evaluation_log.final_decision === "approved"
+                              ? "default"
+                              : report.evaluation_log.final_decision === "rejected"
+                                ? "destructive"
+                                : report.evaluation_log.final_decision === "needs_improvement"
+                                  ? "secondary"
+                                  : "outline"
+                          }
+                          className="text-xs font-bold"
+                        >
+                          {report.evaluation_log.final_decision === "approved"
+                            ? "Approved"
+                            : report.evaluation_log.final_decision === "rejected"
+                              ? "Rejected"
+                              : report.evaluation_log.final_decision === "needs_improvement"
+                                ? "Needs Improvement"
+                                : "Pending"}
+                        </Badge>
+                        {(report.evaluation_log.approval_count > 0 ||
+                          report.evaluation_log.rejection_count > 0 ||
+                          report.evaluation_log.needs_improvement_count > 0) && (
+                          <span className="text-xs text-slate-600">
+                            ({report.evaluation_log.approval_count} approve,
+                             {report.evaluation_log.rejection_count} reject,
+                             {report.evaluation_log.needs_improvement_count} need improvement)
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
@@ -153,13 +193,13 @@ export function CallReportCard({ report }: CallReportCardProps) {
           </div>
           <div className="mt-4 pt-4 border-t flex justify-end gap-2">
             <Button variant="outline" size="sm" asChild>
-              <Link href={`/evaluator/call-reports/${report.id}`}>
+              <Link href={`/${portalPrefix}/call-reports/${report.id}`}>
                 <EyeIcon className="h-4 w-4 mr-2" />
                 View Details
               </Link>
             </Button>
             <Button variant="default" size="sm" asChild>
-              <Link href={`/evaluator/call-reports/${report.id}/detailed-one-liner`}>
+              <Link href={`/${portalPrefix}/call-reports/${report.id}/detailed-one-liner`}>
                 <FilePenLine className="h-4 w-4 mr-2" />
                 Detailed One-Liner
               </Link>

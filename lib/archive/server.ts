@@ -8,7 +8,6 @@ export interface RejectedArchiveItem {
   writer_name: string;
   working_title: string;
   logline: string;
-  usp: string;
   meeting_date: string;
   average_score: number;
   total_evaluations: number;
@@ -41,7 +40,7 @@ export async function getRejectedArchive() {
 
   const { data, error } = await supabase
     .from("rejected_archive")
-    .select("*")
+    .select("id, call_report_id, original_id, meeting_type, writer_name, working_title, logline, meeting_date, average_score, total_evaluations, rejection_reason, archived_at, original_created_at")
     .order("archived_at", { ascending: false });
 
   if (error) {
@@ -60,7 +59,7 @@ export async function getArchivedItemWithEvaluations(archiveId: string) {
   // Get the archived call report
   const { data: archive, error: archiveError } = await supabase
     .from("rejected_archive")
-    .select("*")
+    .select("id, call_report_id, original_id, meeting_type, writer_name, working_title, logline, meeting_date, average_score, total_evaluations, rejection_reason, archived_at, original_created_at")
     .eq("id", archiveId)
     .single();
 
@@ -71,7 +70,7 @@ export async function getArchivedItemWithEvaluations(archiveId: string) {
   // Get all evaluation snapshots for this archive
   const { data: evaluations, error: evalError } = await supabase
     .from("evaluations_snapshot")
-    .select("*")
+    .select("id, form_id, archive_id, evaluator_name, evaluator_email, premise_conflict_score, storyline_plot_score, episodic_progression_score, characters_score, overall_assessment_score, average_score, comments, submitted_at")
     .eq("archive_id", archiveId)
     .order("submitted_at", { ascending: false });
 
@@ -99,7 +98,7 @@ export async function getRejectedArchivePaginated(
 
   const { data, error, count } = await supabase
     .from("rejected_archive")
-    .select("*", { count: "exact" })
+    .select("id, call_report_id, original_id, meeting_type, writer_name, working_title, logline, meeting_date, average_score, total_evaluations, rejection_reason, archived_at, original_created_at", { count: "exact" })
     .order("archived_at", { ascending: false })
     .range(from, to);
 
@@ -124,7 +123,7 @@ export async function searchRejectedArchive(searchTerm: string) {
 
   const { data, error } = await supabase
     .from("rejected_archive")
-    .select("*")
+    .select("id, call_report_id, original_id, meeting_type, writer_name, working_title, logline, meeting_date, average_score, total_evaluations, rejection_reason, archived_at, original_created_at")
     .or(`writer_name.ilike.%${searchTerm}%,working_title.ilike.%${searchTerm}%`)
     .order("archived_at", { ascending: false });
 
@@ -162,7 +161,7 @@ export async function getArchiveStatistics() {
   const avgRejectionScore =
     avgData && avgData.length > 0
       ? avgData.reduce((sum, item) => sum + (item.average_score || 0), 0) /
-        avgData.length
+      avgData.length
       : 0;
 
   // Get rejected items by month (last 6 months)
@@ -193,7 +192,7 @@ export async function getItemsNeedingImprovement() {
 
   const { data, error } = await supabase
     .from("call_reports")
-    .select("*")
+    .select("id, call_report_id, working_title, writer_name, contact_email, logline, category, evaluation_status, meeting_date, created_at, updated_at")
     .eq("evaluation_status", "needs_improvement")
     .order("updated_at", { ascending: false });
 

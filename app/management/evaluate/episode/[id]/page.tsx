@@ -1,0 +1,183 @@
+"use client";
+
+import { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
+import { EpisodicEvaluationForm } from "@/components/episodic-evaluations/episodic-evaluation-form";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Card } from "@/components/ui/card";
+import { toast } from "sonner";
+import { Loader2, FileText } from "lucide-react";
+import { BackButton } from "@/components/ui/back-button";
+import type { Episode, EpisodicEvaluation } from "@/types";
+import type { EpisodicEvaluationFormData } from "@/lib/validations/episodic-evaluations";
+
+interface EpisodePageProps {
+  params: Promise<{ id: string }>;
+}
+
+export default function ManagementEvaluateEpisodePage({ params }: EpisodePageProps) {
+  const router = useRouter();
+  const supabase = createClient();
+
+  const [episodeId, setEpisodeId] = useState<string | null>(null);
+  const [episode, setEpisode] = useState<Episode | null>(null);
+  const [existingEvaluation, setExistingEvaluation] = useState<EpisodicEvaluation | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [userRole, setUserRole] = useState<string | null>(null);
+
+  useEffect(() => {
+    params.then((resolvedParams) => {
+      setEpisodeId(resolvedParams.id);
+    });
+  }, [params]);
+
+  // Check user role
+  useEffect(() => {
+    async function checkUser() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        router.push("/login");
+        return;
+      }
+
+      const { data: userData } = await supabase
+        .from("users")
+        .select("role")
+        .eq("id", user.id)
+        .single();
+
+      if (!userData || !["admin", "management", "executive"].includes(userData.role)) {
+        router.push("/unauthorized");
+        return;
+      }
+
+      setUserRole(userData.role);
+    }
+
+    checkUser();
+  }, [router, supabase]);
+
+  const fetchEpisodeAndEvaluation = useCallback(async () => {
+    if (!episodeId) return;
+
+    setLoading(true);
+    try {
+      // Fetch episode details
+      const episodeResponse = await fetch(`/api/episodes/${episodeId}`);
+      const episodeData = await episodeResponse.json();
+
+      if (!episodeResponse.ok) {
+        throw new Error(episodeData.error || "Failed to fetch episode");
+      }
+
+      setEpisode(episodeData.episode);
+
+      // Check if user has already evaluated this episode
+      const evalResponse = await fetch(`/api/episodic-evaluations/episode/${episodeId}`);
+      const evalData = await evalResponse.json();
+
+      if (!evalResponse.ok) {
+        console.error("Error checking evaluation status:", evalData.error);
+      } else if (evalData.evaluation) {
+        setExistingEvaluation(evalData.evaluation);
+      }
+    } catch (error: any) {
+      console.error("Error fetching data:", error);
+      toast.error(error.message || "Failed to load episode");
+      router.push("/management");
+    } finally {
+      setLoading(false);
+    }
+  }, [episodeId, router]);
+
+  useEffect(() => {
+    if (episodeId && userRole) {
+      fetchEpisodeAndEvaluation();
+    }
+  }, [episodeId, userRole, fetchEpisodeAndEvaluation]);
+
+  const handleSubmit = async (formData: EpisodicEvaluationFormData) => {
+    try {
+      // Management users can only create new evaluations, not edit existing ones
+      if (existingEvaluation) {
+        toast.error("You have already evaluated this episode");
+        return;
+      }
+
+      // Create new evaluation
+      const response = await fetch("/api/episodic-evaluations", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          ...formData,
+          episode_id: episodeId,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to submit evaluation");
+      }
+
+      toast.success("Management evaluation submitted successfully!");
+
+      setTimeout(() => {
+        router.push("/management");
+      }, 1500);
+    } catch (error: any) {
+      console.error("Error submitting evaluation:", error);
+      throw error;
+    }
+  };
+
+  if (loading || !userRole) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+      </div>
+    );
+  }
+
+  if (!episode) {
+    return (
+      <div className="container mx-auto py-6 max-w-4xl">
+        <Card className="p-12 text-center">
+          <FileText className="mx-auto h-16 w-16 text-gray-400 mb-4" />
+          <h2 className="text-2xl font-bold mb-2">Episode Not Found</h2>
+          <p className="text-muted-foreground mb-6">
+            The episode you&apos;re looking for doesn&apos;t exist or has been removed.
+          </p>
+          <BackButton fallbackHref="/management" />
+        </Card>
+      </div>
+    );
+  }
+
+  return (
+    <div className="container mx-auto py-6 max-w-4xl">
+      <div className="flex flex-col gap-4 sm:gap-6 mb-8">
+        <BackButton fallbackHref="/management" variant="outline" size="sm" className="w-fit" />
+        <div className="space-y-1">
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight">
+            Evaluate Episode {episode.episode_number}
+          </h1>
+          <p className="text-muted-foreground text-sm sm:text-base">
+            {episode.title || "Untitled Episode"}
+          </p>
+        </div>
+      </div>
+
+      <EpisodicEvaluationForm
+        episode={episode}
+        onSubmit={handleSubmit}
+        existingEvaluation={existingEvaluation || undefined}
+        disabled={!!existingEvaluation}
+      />
+    </div>
+  );
+}

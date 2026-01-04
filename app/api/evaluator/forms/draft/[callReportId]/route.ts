@@ -27,7 +27,7 @@ const draftDataSchema = z.object({
   dialoguesScore: z.number().min(1).max(10).optional(),
   first2EpsRequired: z.boolean().optional(),
   comments: z.string().optional(),
-  decision: z.enum(["approve", "reject"]).optional(),
+  decision: z.enum(["approve", "reject", "needs_improvement"]).optional(),
   decisionNotes: z.string().optional(),
   accumulatedTimeMinutes: z.number().min(0).optional(),
 });
@@ -95,7 +95,7 @@ export async function POST(
     .eq("id", user.id)
     .single();
 
-  if (userError || !userData || !["evaluator", "admin"].includes(userData.role)) {
+  if (userError || !userData || !["evaluator", "programmer", "management", "admin"].includes(userData.role)) {
     return forbiddenError("Only evaluators can save draft evaluations");
   }
 

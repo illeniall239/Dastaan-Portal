@@ -68,12 +68,14 @@ export default async function EditEvaluatorNegotiationPage({
 
   return (
     <div className="mobile-container mobile-section">
-      <div className="mobile-header-spacing">
-        <BackButton fallbackHref="/evaluator/contract-terms" className="mb-4" />
-        <h1 className="text-xl sm:text-2xl font-bold">Edit Contract Term</h1>
-        <p className="text-muted-foreground mt-2 text-sm sm:text-base">
-          Update contract term details for {(contractTerm as any).stories?.title || "this project"}
-        </p>
+      <div className="flex flex-col gap-4 sm:gap-6 mb-8">
+        <BackButton fallbackHref="/evaluator/contract-terms" variant="outline" size="sm" className="w-fit" />
+        <div className="space-y-1">
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Edit Contract Term</h1>
+          <p className="text-muted-foreground text-sm sm:text-base">
+            Update contract term details for {(contractTerm as any).stories?.title || "this project"}
+          </p>
+        </div>
       </div>
 
       <ContractTermForm

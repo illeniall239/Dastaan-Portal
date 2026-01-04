@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/client';
+import { logger } from '@/lib/logger';
 
 // Function to upload files via server API route to avoid client-side Supabase storage issues
 export async function uploadFile(
@@ -28,11 +29,11 @@ export async function uploadFile(
       // Check content type before parsing
       const contentType = xhr.getResponseHeader('content-type');
       if (!contentType || !contentType.includes('application/json')) {
-        console.error('Server returned non-JSON response:', {
+        logger.error('Server returned non-JSON response:', {
           status: xhr.status,
           contentType,
         });
-        console.error('Response body:', xhr.responseText.substring(0, 500));
+        logger.error('Response body:', xhr.responseText.substring(0, 500));
         reject(new Error(`Upload failed with status ${xhr.status}: Server returned HTML instead of JSON`));
         return;
       }
@@ -43,7 +44,7 @@ export async function uploadFile(
         if (xhr.status >= 200 && xhr.status < 300) {
           resolve(result.attachment);
         } else {
-          console.error('Upload failed:', {
+          logger.error('Upload failed:', {
             status: xhr.status,
             error: result.error,
             details: result.details,
@@ -52,7 +53,7 @@ export async function uploadFile(
           reject(new Error(result.message || result.error || 'Failed to upload file'));
         }
       } catch (parseError) {
-        console.error('Failed to parse response:', parseError);
+        logger.error('Failed to parse response:', parseError);
         reject(new Error('Failed to parse server response'));
       }
     });
@@ -83,7 +84,7 @@ export async function deleteFile(fileId: string, filePath: string) {
     .remove([filePath]);
 
   if (storageError) {
-    console.error('Error deleting file from storage:', storageError);
+    logger.error('Error deleting file from storage:', storageError);
     throw new Error(`Failed to delete file from storage: ${storageError.message}`);
   }
 
@@ -94,7 +95,7 @@ export async function deleteFile(fileId: string, filePath: string) {
     .eq('id', fileId);
 
   if (dbError) {
-    console.error('Error deleting attachment record:', dbError);
+    logger.error('Error deleting attachment record:', dbError);
     throw new Error(`Failed to delete attachment record: ${dbError.message}`);
   }
 }
@@ -111,7 +112,7 @@ export async function getAttachmentsForEntity(entityType: string, entityId: stri
     .order('uploaded_at', { ascending: false });
 
   if (error) {
-    console.error('Error fetching attachments:', error);
+    logger.error('Error fetching attachments:', error);
     throw new Error(`Failed to fetch attachments: ${error.message}`);
   }
 
@@ -127,7 +128,7 @@ export async function getSignedUrl(filePath: string, expiresIn = 3600) {
     .createSignedUrl(filePath, expiresIn);
 
   if (error) {
-    console.error('Error creating signed URL:', error);
+    logger.error('Error creating signed URL:', error);
     throw new Error(`Failed to create signed URL: ${error.message}`);
   }
 

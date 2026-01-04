@@ -49,9 +49,9 @@ export async function GET(
       .single();
 
     if (error) {
-      logger.error(`Error fetching negotiation: ${error instanceof Error ? error.message : String(error)}`);
+      logger.error("Error fetching negotiation", { error, context: "GET /api/contract-terms/[id]" });
       return NextResponse.json(
-        { error: "Failed to fetch negotiation", details: error.message },
+        { error: "Failed to fetch negotiation" },
         { status: 500 }
       );
     }
@@ -134,9 +134,9 @@ export async function PATCH(
       .single();
 
     if (error) {
-      logger.error(`Error updating negotiation: ${error instanceof Error ? error.message : String(error)}`);
+      logger.error("Error updating negotiation", { error, context: "PATCH /api/contract-terms/[id]" });
       return NextResponse.json(
-        { error: "Failed to update contract term", details: error.message },
+        { error: "Failed to update contract term" },
         { status: 500 }
       );
     }
@@ -203,9 +203,9 @@ export async function DELETE(
       .eq("id", id);
 
     if (error) {
-      logger.error(`Error deleting negotiation: ${error instanceof Error ? error.message : String(error)}`);
+      logger.error("Error deleting negotiation", { error, context: "DELETE /api/contract-terms/[id]" });
       return NextResponse.json(
-        { error: "Failed to delete contract term", details: error.message },
+        { error: "Failed to delete contract term" },
         { status: 500 }
       );
     }

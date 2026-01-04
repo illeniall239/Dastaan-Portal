@@ -93,15 +93,15 @@ export default async function EvaluatorEvaluationsListPage({ searchParams }: { s
 
   // Determine view based on query parameter
   const currentView = resolvedSearchParams.view === 'completed' ? 'completed' : 'pending';
-  
+
   // Filter reports based on view
   let filteredReports;
   if (currentView === "pending") {
-    filteredReports = callReports.filter(report => 
+    filteredReports = callReports.filter(report =>
       !myEvaluatedReportIds.has(report.id)
     );
   } else {
-    filteredReports = callReports.filter(report => 
+    filteredReports = callReports.filter(report =>
       myEvaluatedReportIds.has(report.id)
     );
   }
@@ -109,11 +109,11 @@ export default async function EvaluatorEvaluationsListPage({ searchParams }: { s
   return (
     <div className="mobile-container mobile-section space-y-4 sm:space-y-6">
       {/* Page Header */}
-      <div className="flex items-start gap-3 sm:gap-4">
-        <BackButton fallbackHref="/evaluator" variant="outline" size="sm" className="flex-shrink-0" />
-        <div className="min-w-0">
+      <div className="flex flex-col gap-4 sm:gap-6 mb-8">
+        <BackButton fallbackHref="/evaluator" variant="outline" size="sm" className="w-fit" />
+        <div className="space-y-1">
           <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Evaluation List</h1>
-          <p className="text-muted-foreground mt-1 text-sm sm:text-base">
+          <p className="text-muted-foreground text-sm sm:text-base">
             Select a One-Liner to evaluate and score
           </p>
         </div>
@@ -123,21 +123,19 @@ export default async function EvaluatorEvaluationsListPage({ searchParams }: { s
       <div className="flex flex-col sm:flex-row gap-2 sm:justify-end">
         <Link
           href="/evaluator/evaluations-list?view=pending"
-          className={`w-full sm:w-auto py-2 px-4 rounded-md text-sm font-medium text-center border ${
-            currentView === "pending"
-              ? "bg-[#224794] text-white border-[#224794]"
-              : "bg-slate-100 text-slate-700 hover:bg-slate-200 border-slate-300"
-          }`}
+          className={`w-full sm:w-auto py-2 px-4 rounded-md text-sm font-medium text-center border ${currentView === "pending"
+            ? "bg-[#224794] text-white border-[#224794]"
+            : "bg-slate-100 text-slate-700 hover:bg-slate-200 border-slate-300"
+            }`}
         >
           Pending Evaluations
         </Link>
         <Link
           href="/evaluator/evaluations-list?view=completed"
-          className={`w-full sm:w-auto py-2 px-4 rounded-md text-sm font-medium text-center border ${
-            currentView === "completed"
-              ? "bg-[#224794] text-white border-[#224794]"
-              : "bg-slate-100 text-slate-700 hover:bg-slate-200 border-slate-300"
-          }`}
+          className={`w-full sm:w-auto py-2 px-4 rounded-md text-sm font-medium text-center border ${currentView === "completed"
+            ? "bg-[#224794] text-white border-[#224794]"
+            : "bg-slate-100 text-slate-700 hover:bg-slate-200 border-slate-300"
+            }`}
         >
           Completed Evaluations
         </Link>
@@ -273,6 +271,26 @@ export default async function EvaluatorEvaluationsListPage({ searchParams }: { s
                           {myScore.toFixed(1)}/10
                         </div>
                         <p className="text-xs text-muted-foreground mt-1">Your Score</p>
+                        {myEvaluation?.decision && (
+                          <div className="mt-2">
+                            <Badge
+                              variant={
+                                myEvaluation.decision === "approve"
+                                  ? "default"
+                                  : myEvaluation.decision === "reject"
+                                    ? "destructive"
+                                    : "secondary"
+                              }
+                              className="text-xs"
+                            >
+                              {myEvaluation.decision === "approve"
+                                ? "Approved"
+                                : myEvaluation.decision === "reject"
+                                  ? "Rejected"
+                                  : "Needs Improvement"}
+                            </Badge>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>

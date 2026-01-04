@@ -4,7 +4,7 @@
 @font-face {
   font-family: 'Noto Nastaliq Urdu';
   src: url('/fonts/NotoNastaliqUrdu-Regular.ttf') format('truetype'),
-       url('/fonts/NotoNastaliqUrdu.ttf') format('truetype');
+    url('/fonts/NotoNastaliqUrdu.ttf') format('truetype');
   font-weight: 400 700;
   font-style: normal;
   font-display: block;
@@ -78,10 +78,12 @@
   * {
     @apply border-border;
   }
+
   body {
     @apply bg-background text-foreground;
     font-family: 'Manrope', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-    font-size: 15px; /* Increased from 14px for better readability */
+    font-size: 15px;
+    /* Increased from 14px for better readability */
     line-height: 1.5;
     letter-spacing: -0.01em;
   }
@@ -116,6 +118,7 @@ body span[lang="ur"] {
 }
 
 @layer utilities {
+
   /* Mobile-first touch targets (44x44px minimum for WCAG) */
   .touch-target {
     @apply min-h-[44px] min-w-[44px];
@@ -204,6 +207,7 @@ body span[lang="ur"] {
   from {
     opacity: 0;
   }
+
   to {
     opacity: 1;
   }
@@ -214,6 +218,7 @@ body span[lang="ur"] {
     opacity: 0;
     transform: scale(0.98);
   }
+
   to {
     opacity: 1;
     transform: scale(1);
@@ -234,13 +239,19 @@ body[data-scroll-locked] {
 @layer base {
   :root {
     /* Bento Grid Spacing */
-    --bento-gap-desktop: 1.5rem;    /* 24px */
-    --bento-gap-tablet: 1rem;       /* 16px */
-    --bento-gap-mobile: 0.75rem;    /* 12px */
+    --bento-gap-desktop: 1.5rem;
+    /* 24px */
+    --bento-gap-tablet: 1rem;
+    /* 16px */
+    --bento-gap-mobile: 0.75rem;
+    /* 12px */
 
-    --card-padding-desktop: 1.5rem; /* 24px */
-    --card-padding-tablet: 1.25rem; /* 20px */
-    --card-padding-mobile: 1rem;    /* 16px */
+    --card-padding-desktop: 1.5rem;
+    /* 24px */
+    --card-padding-tablet: 1.25rem;
+    /* 20px */
+    --card-padding-mobile: 1rem;
+    /* 16px */
 
     /* Bento Shadows */
     --shadow-bento-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.03);
@@ -276,13 +287,20 @@ body[data-scroll-locked] {
        ======================================== */
 
     /* Ultra-Refined Typography Scale */
-    --font-size-xs: 0.6875rem;    /* 11px - micro labels */
-    --font-size-sm: 0.8125rem;    /* 13px - secondary text */
-    --font-size-base: 0.9375rem;  /* 15px - body */
-    --font-size-lg: 1.125rem;     /* 18px - subheadings */
-    --font-size-xl: 1.5rem;       /* 24px - headings */
-    --font-size-2xl: 2rem;        /* 32px - stats */
-    --font-size-3xl: 3rem;        /* 48px - hero stats */
+    --font-size-xs: 0.6875rem;
+    /* 11px - micro labels */
+    --font-size-sm: 0.8125rem;
+    /* 13px - secondary text */
+    --font-size-base: 0.9375rem;
+    /* 15px - body */
+    --font-size-lg: 1.125rem;
+    /* 18px - subheadings */
+    --font-size-xl: 1.5rem;
+    /* 24px - headings */
+    --font-size-2xl: 2rem;
+    /* 32px - stats */
+    --font-size-3xl: 3rem;
+    /* 48px - hero stats */
 
     /* Premium Weight System */
     --font-weight-light: 300;
@@ -339,6 +357,7 @@ body[data-scroll-locked] {
 }
 
 @layer utilities {
+
   /* Bento Grid Container */
   .bento-grid {
     display: grid;
@@ -364,56 +383,56 @@ body[data-scroll-locked] {
   /* Bento Gradients */
   .bento-gradient-blue {
     background: linear-gradient(135deg,
-      rgba(34, 71, 148, 0.03) 0%,
-      rgba(34, 71, 148, 0.08) 100%);
+        rgba(34, 71, 148, 0.03) 0%,
+        rgba(34, 71, 148, 0.08) 100%);
   }
 
   .bento-gradient-hero-blue {
     background: linear-gradient(135deg,
-      rgba(34, 71, 148, 0.08) 0%,
-      rgba(34, 71, 148, 0.15) 100%);
+        rgba(34, 71, 148, 0.08) 0%,
+        rgba(34, 71, 148, 0.15) 100%);
   }
 
   .bento-gradient-orange {
     background: linear-gradient(135deg,
-      rgba(247, 146, 36, 0.03) 0%,
-      rgba(247, 146, 36, 0.08) 100%);
+        rgba(247, 146, 36, 0.03) 0%,
+        rgba(247, 146, 36, 0.08) 100%);
   }
 
   .bento-gradient-hero-orange {
     background: linear-gradient(135deg,
-      rgba(247, 146, 36, 0.08) 0%,
-      rgba(247, 146, 36, 0.15) 100%);
+        rgba(247, 146, 36, 0.08) 0%,
+        rgba(247, 146, 36, 0.15) 100%);
   }
 
   .bento-gradient-green {
     background: linear-gradient(135deg,
-      rgba(16, 185, 129, 0.03) 0%,
-      rgba(16, 185, 129, 0.08) 100%);
+        rgba(16, 185, 129, 0.03) 0%,
+        rgba(16, 185, 129, 0.08) 100%);
   }
 
   .bento-gradient-hero-green {
     background: linear-gradient(135deg,
-      rgba(16, 185, 129, 0.08) 0%,
-      rgba(16, 185, 129, 0.15) 100%);
+        rgba(16, 185, 129, 0.08) 0%,
+        rgba(16, 185, 129, 0.15) 100%);
   }
 
   .bento-gradient-purple {
     background: linear-gradient(135deg,
-      rgba(139, 92, 246, 0.03) 0%,
-      rgba(139, 92, 246, 0.08) 100%);
+        rgba(139, 92, 246, 0.03) 0%,
+        rgba(139, 92, 246, 0.08) 100%);
   }
 
   .bento-gradient-red {
     background: linear-gradient(135deg,
-      rgba(239, 68, 68, 0.03) 0%,
-      rgba(239, 68, 68, 0.08) 100%);
+        rgba(239, 68, 68, 0.03) 0%,
+        rgba(239, 68, 68, 0.08) 100%);
   }
 
   .bento-gradient-gray {
     background: linear-gradient(135deg,
-      rgba(148, 163, 184, 0.02) 0%,
-      rgba(148, 163, 184, 0.06) 100%);
+        rgba(148, 163, 184, 0.02) 0%,
+        rgba(148, 163, 184, 0.06) 100%);
   }
 
   .bento-glass {
@@ -474,32 +493,39 @@ body[data-scroll-locked] {
 
   /* Bento Typography */
   .bento-card-title {
-    font-size: 0.875rem;      /* 14px */
+    font-size: 0.875rem;
+    /* 14px */
     font-weight: 600;
     line-height: 1.25;
     letter-spacing: -0.01em;
-    color: #6b7280;           /* gray-500 */
+    color: #6b7280;
+    /* gray-500 */
     text-transform: uppercase;
   }
 
   .bento-card-title-hero {
-    font-size: 1rem;          /* 16px */
+    font-size: 1rem;
+    /* 16px */
     font-weight: 600;
     line-height: 1.25;
     letter-spacing: -0.01em;
-    color: #374151;           /* gray-700 */
+    color: #374151;
+    /* gray-700 */
   }
 
   .bento-stat-value {
-    font-size: 2.25rem;       /* 36px */
+    font-size: 2.25rem;
+    /* 36px */
     font-weight: 700;
     line-height: 1;
     letter-spacing: -0.02em;
-    color: #111827;           /* gray-900 */
+    color: #111827;
+    /* gray-900 */
   }
 
   .bento-stat-value-hero {
-    font-size: 3rem;          /* 48px */
+    font-size: 3rem;
+    /* 48px */
     font-weight: 800;
     line-height: 1;
     letter-spacing: -0.025em;
@@ -511,12 +537,29 @@ body[data-scroll-locked] {
     animation: bentoFadeIn 0.4s var(--ease-out) forwards;
   }
 
-  .bento-stagger-1 { animation-delay: 0ms; }
-  .bento-stagger-2 { animation-delay: 50ms; }
-  .bento-stagger-3 { animation-delay: 100ms; }
-  .bento-stagger-4 { animation-delay: 150ms; }
-  .bento-stagger-5 { animation-delay: 200ms; }
-  .bento-stagger-6 { animation-delay: 250ms; }
+  .bento-stagger-1 {
+    animation-delay: 0ms;
+  }
+
+  .bento-stagger-2 {
+    animation-delay: 50ms;
+  }
+
+  .bento-stagger-3 {
+    animation-delay: 100ms;
+  }
+
+  .bento-stagger-4 {
+    animation-delay: 150ms;
+  }
+
+  .bento-stagger-5 {
+    animation-delay: 200ms;
+  }
+
+  .bento-stagger-6 {
+    animation-delay: 250ms;
+  }
 }
 
 /* Bento Keyframes */
@@ -525,6 +568,7 @@ body[data-scroll-locked] {
     opacity: 0;
     transform: translateY(12px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -532,9 +576,12 @@ body[data-scroll-locked] {
 }
 
 @keyframes bento-hover-wave {
-  0%, 100% {
+
+  0%,
+  100% {
     transform: translateY(0);
   }
+
   50% {
     transform: translateY(-2px);
   }
@@ -546,6 +593,7 @@ body[data-scroll-locked] {
    ================================ */
 
 @layer utilities {
+
   /* Stat Card Specific Styles */
   .stat-card {
     display: flex;
@@ -634,6 +682,7 @@ body[data-scroll-locked] {
    ======================================== */
 
 @layer utilities {
+
   /* Premium Glass Morphism */
   .luxury-glass {
     background: var(--glass-bg);
@@ -645,6 +694,7 @@ body[data-scroll-locked] {
 
   .luxury-glass-mobile {
     @apply luxury-glass;
+
     @media (max-width: 640px) {
       backdrop-filter: blur(12px) saturate(150%);
       -webkit-backdrop-filter: blur(12px) saturate(150%);
@@ -653,6 +703,7 @@ body[data-scroll-locked] {
 
   /* Glass fallback for browsers without backdrop-filter support */
   @supports not (backdrop-filter: blur(20px)) {
+
     .luxury-glass,
     .luxury-glass-mobile {
       background: rgba(255, 255, 255, 0.95);
@@ -666,7 +717,7 @@ body[data-scroll-locked] {
     border-radius: 16px;
     box-shadow: var(--shadow-sm);
     transition: transform var(--duration-normal) var(--ease-luxury),
-                box-shadow var(--duration-normal) var(--ease-luxury);
+      box-shadow var(--duration-normal) var(--ease-luxury);
   }
 
   .luxury-card:hover {
@@ -767,8 +818,8 @@ body[data-scroll-locked] {
     border-radius: inherit;
     padding: 1px;
     background: linear-gradient(135deg,
-      rgba(255, 255, 255, 0.4) 0%,
-      rgba(255, 255, 255, 0) 50%);
+        rgba(255, 255, 255, 0.4) 0%,
+        rgba(255, 255, 255, 0) 50%);
     -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
     -webkit-mask-composite: xor;
     mask-composite: exclude;

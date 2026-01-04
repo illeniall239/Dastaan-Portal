@@ -168,8 +168,15 @@ export default function ActiveProjectsPage() {
 
   return (
     <div className="container mx-auto p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6">
-      {/* Back Button */}
-      <BackButton fallbackHref="/management" variant="outline" size="sm" />
+      <div className="flex flex-col gap-4 sm:gap-6 mb-8">
+        <BackButton fallbackHref="/management" variant="outline" size="sm" className="w-fit" />
+        <div className="space-y-1">
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Active Projects</h1>
+          <p className="text-muted-foreground text-sm sm:text-base">
+            All stories currently in development
+          </p>
+        </div>
+      </div>
 
       {/* Breadcrumb */}
       <Breadcrumb>
@@ -186,14 +193,7 @@ export default function ActiveProjectsPage() {
         </BreadcrumbList>
       </Breadcrumb>
 
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="space-y-1">
-          <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Active Projects</h1>
-          <p className="text-muted-foreground">
-            All stories currently in development
-          </p>
-        </div>
+      <div className="flex items-center justify-end">
         <ExportButton
           data={exportData}
           filename="active-projects"

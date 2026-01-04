@@ -19,7 +19,8 @@ export type UserRole =
   | "executive"
   | "legal"
   | "finance"
-  | "content_creator";
+  | "content_creator"
+  | "programmer";
 
 export interface User {
   id: string;
@@ -235,7 +236,6 @@ export interface CallReport {
   working_title: string;
   logline: string;
   logline_image_url?: string;
-  usp: string;
   genre: string[] | null; // Array of genre tags - supports multiple genres
   category: "external_producer" | "writer_pitch" | "inhouse_content" | "content_head_initiative" | "given_by_management"; // Source of idea
   content_type: "Serial" | "Long Serial" | "Telefilm" | "Mini-serial" | "Ramadan Serial" | "Series Sitcom" | "Soap"; // Type/format of the content
@@ -332,6 +332,78 @@ export interface Evaluation {
   created_at: string;
 }
 
+// Evaluation Type Segregation (for management vs evaluator vs programmer tracking)
+export type EvaluationType = 'evaluator' | 'management' | 'programmer';
+
+export interface EvaluationWithType {
+  id: string;
+  form_id: string;
+  call_report_id: string;
+  evaluator_id: string;
+  evaluator_name: string;
+  evaluator_email: string;
+  evaluator_role: UserRole;
+  evaluation_type: EvaluationType;
+  // Evaluation scores
+  premise_conflict_score: number;
+  storyline_plot_score: number;
+  episodic_progression_score: number;
+  characters_score: number;
+  overall_assessment_score: number;
+  average_score: number;
+  decision: string;
+  comments: string | null;
+  submitted_at: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface EpisodicEvaluationWithType {
+  id: string;
+  episode_id: string;
+  evaluator_id: string;
+  evaluator_name: string;
+  evaluator_email: string;
+  evaluator_role: UserRole;
+  evaluation_type: EvaluationType;
+  // Episode evaluation fields
+  no_of_pages: number;
+  no_of_scenes: number;
+  conflict_of_content_score: number;
+  characterization_score: number;
+  story_progression_score: number;
+  freezes_score: number;
+  whats_next_element_score: number;
+  overall_assessment_score: number;
+  overall_average: number;
+  overall_grade: EpisodicGrade;
+  events: (string | EventItem)[];
+  summary_analysis?: string;
+  submitted_at: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SegregatedEvaluations {
+  evaluatorEvaluations: EvaluationWithType[];
+  managementEvaluations: EvaluationWithType[];
+  programmerEvaluations: EvaluationWithType[];
+  total: number;
+  evaluatorCount: number;
+  managementCount: number;
+  programmerCount: number;
+}
+
+export interface SegregatedEpisodicEvaluations {
+  evaluatorEvaluations: EpisodicEvaluationWithType[];
+  managementEvaluations: EpisodicEvaluationWithType[];
+  programmerEvaluations: EpisodicEvaluationWithType[];
+  total: number;
+  evaluatorCount: number;
+  managementCount: number;
+  programmerCount: number;
+}
+
 // Rejected Archive types
 export interface RejectedArchiveItem {
   id: string;
@@ -342,7 +414,6 @@ export interface RejectedArchiveItem {
   working_title: string;
   logline: string;
   logline_image_url?: string;
-  usp: string;
   meeting_date: string;
   average_score: number;
   total_evaluations: number;

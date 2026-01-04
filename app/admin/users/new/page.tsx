@@ -315,34 +315,10 @@ export default function NewUserPage() {
                           <SelectValue placeholder="Select a department" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="production_content_1">
+                          <SelectItem value="evaluator">
                             <div className="flex items-center gap-2">
-                              <div className="h-2 w-2 rounded-full bg-blue-500" />
-                              Production Content 1
-                            </div>
-                          </SelectItem>
-                          <SelectItem value="production_content_2">
-                            <div className="flex items-center gap-2">
-                              <div className="h-2 w-2 rounded-full bg-blue-500" />
-                              Production Content 2
-                            </div>
-                          </SelectItem>
-                          <SelectItem value="channel_content_1">
-                            <div className="flex items-center gap-2">
-                              <div className="h-2 w-2 rounded-full bg-purple-500" />
-                              Channel Content 1
-                            </div>
-                          </SelectItem>
-                          <SelectItem value="channel_content_2">
-                            <div className="flex items-center gap-2">
-                              <div className="h-2 w-2 rounded-full bg-purple-500" />
-                              Channel Content 2
-                            </div>
-                          </SelectItem>
-                          <SelectItem value="adaptation_content">
-                            <div className="flex items-center gap-2">
-                              <div className="h-2 w-2 rounded-full bg-green-500" />
-                              Adaptation Content
+                              <div className="h-2 w-2 rounded-full bg-yellow-500" />
+                              Evaluator
                             </div>
                           </SelectItem>
                           <SelectItem value="management">
@@ -351,34 +327,16 @@ export default function NewUserPage() {
                               Management
                             </div>
                           </SelectItem>
-                          <SelectItem value="content_head">
+                          <SelectItem value="content_team">
                             <div className="flex items-center gap-2">
-                              <div className="h-2 w-2 rounded-full bg-indigo-500" />
-                              Content Head (Team Leader)
+                              <div className="h-2 w-2 rounded-full bg-blue-500" />
+                              Content Team
                             </div>
                           </SelectItem>
-                          <SelectItem value="evaluator">
+                          <SelectItem value="programming_team">
                             <div className="flex items-center gap-2">
-                              <div className="h-2 w-2 rounded-full bg-yellow-500" />
-                              Evaluator
-                            </div>
-                          </SelectItem>
-                          <SelectItem value="legal">
-                            <div className="flex items-center gap-2">
-                              <div className="h-2 w-2 rounded-full bg-red-500" />
-                              Legal Department
-                            </div>
-                          </SelectItem>
-                          <SelectItem value="finance">
-                            <div className="flex items-center gap-2">
-                              <div className="h-2 w-2 rounded-full bg-emerald-500" />
-                              Finance Department
-                            </div>
-                          </SelectItem>
-                          <SelectItem value="admin">
-                            <div className="flex items-center gap-2">
-                              <div className="h-2 w-2 rounded-full bg-slate-500" />
-                              Admin
+                              <div className="h-2 w-2 rounded-full bg-purple-500" />
+                              Programming Team
                             </div>
                           </SelectItem>
                         </SelectContent>

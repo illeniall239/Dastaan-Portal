@@ -167,22 +167,27 @@ export function CharacterForm() {
   return (
     <form onSubmit={handleSubmit}>
       <div className="py-6 space-y-6 max-w-6xl mx-auto px-4 sm:px-6">
-        {/* Back Button */}
-        <BackButton fallbackHref="/evaluator" variant="outline" size="sm" />
-
         {/* Header */}
-        <div className="flex justify-between items-center">
-          <h1 className="text-xl sm:text-2xl font-bold text-gray-800">Character Development</h1>
-          <div className="flex gap-3">
-            <Button
-              type="button"
-              size="sm"
-              onClick={addCharacter}
-              className="bg-[#224794] hover:bg-[#1a3670]"
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Add Character
-            </Button>
+        <div className="flex flex-col gap-4 sm:gap-6 mb-8">
+          <div className="flex items-center justify-between">
+            <BackButton fallbackHref="/evaluator" variant="outline" size="sm" className="w-fit" />
+            <div className="flex gap-3">
+              <Button
+                type="button"
+                size="sm"
+                onClick={addCharacter}
+                className="bg-[#224794] hover:bg-[#1a3670]"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Add Character
+              </Button>
+            </div>
+          </div>
+          <div className="space-y-1">
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Character Development</h1>
+            <p className="text-muted-foreground text-sm sm:text-base">
+              Create and manage detailed character profiles for your stories
+            </p>
           </div>
         </div>
 

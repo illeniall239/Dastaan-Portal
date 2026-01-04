@@ -114,14 +114,13 @@ export default function ContentDepartmentEpisodeEditPage({ params }: EpisodeEdit
   }
 
   return (
-    <div className="container mx-auto px-4 py-6 max-w-4xl">
+    <div className="mobile-container mobile-section space-y-4 sm:space-y-6 max-w-4xl">
       {/* Header */}
-      <div className="mb-6">
-        <BackButton fallbackHref="/content-department/episodes" className="mb-4" />
-
-        <div>
-          <h1 className="text-xl sm:text-2xl font-bold mb-2">Edit Episode</h1>
-          <p className="text-muted-foreground">
+      <div className="flex flex-col gap-4 sm:gap-6 mb-8">
+        <BackButton fallbackHref="/content-department/episodes" variant="outline" size="sm" className="w-fit" />
+        <div className="space-y-1">
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Edit Episode</h1>
+          <p className="text-muted-foreground text-sm sm:text-base">
             Update episode details and information
           </p>
         </div>

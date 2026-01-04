@@ -22,19 +22,18 @@ interface CallReport {
   logline: string;
   short_synopsis?: string;
   episodic_synopsis?: string;
-  usp: string;
   category: string;
   writers?: Writer[];
 }
 
-export default async function EvaluatorEvaluatePage({ 
-  params 
-}: { 
-  params: Promise<{ callReportId: string }> 
+export default async function EvaluatorEvaluatePage({
+  params
+}: {
+  params: Promise<{ callReportId: string }>
 }) {
   const resolvedParams = await params;
   const { callReportId } = resolvedParams;
-  
+
   const user = await getCurrentUser();
 
   // Redirect if user is not authenticated

@@ -26,9 +26,9 @@ export async function POST(request: Request) {
     .eq("id", user.id)
     .single();
 
-  if (!userData || !["evaluator", "admin"].includes(userData.role)) {
+  if (!userData || !["evaluator", "programmer", "admin", "management", "executive", "content_manager"].includes(userData.role)) {
     return NextResponse.json(
-      { error: "Forbidden - Only evaluators can create episodic evaluations" },
+      { error: "Forbidden - Only evaluators and management can create episodic evaluations" },
       { status: 403 }
     );
   }
@@ -94,6 +94,7 @@ export async function POST(request: Request) {
         story_progression_score: evaluationData.story_progression_score,
         freezes_score: evaluationData.freezes_score,
         whats_next_element_score: evaluationData.whats_next_element_score,
+        overall_assessment_score: evaluationData.overall_assessment_score,
         time_spent_minutes: evaluationData.time_spent_minutes || null,
         started_at: evaluationData.started_at || null,
       })
@@ -109,9 +110,9 @@ export async function POST(request: Request) {
       .single();
 
     if (insertError) {
-      logger.error(`Error creating episodic evaluation:: ${insertError instanceof Error ? insertError.message : String(insertError)}`);
+      logger.error("Error creating episodic evaluation", { error: insertError, context: "POST /api/episodic-evaluations" });
       return NextResponse.json(
-        { error: "Failed to create episodic evaluation", details: insertError.message },
+        { error: "Failed to create episodic evaluation" },
         { status: 500 }
       );
     }
@@ -164,7 +165,7 @@ export async function GET(request: NextRequest) {
     .eq("id", user.id)
     .single();
 
-  if (!userData || !["evaluator", "content_manager", "admin"].includes(userData.role)) {
+  if (!userData || !["evaluator", "programmer", "content_manager", "admin"].includes(userData.role)) {
     return NextResponse.json(
       { error: "Forbidden - Insufficient permissions" },
       { status: 403 }
@@ -206,9 +207,24 @@ export async function GET(request: NextRequest) {
       `, { count: "exact" });
 
     // For evaluators, only show their own evaluations
+    // For programmers, show evaluations done by other programmers (team restriction)
     // For content_manager and admin, show all
     if (userData.role === "evaluator") {
       query = query.eq("evaluator_id", user.id);
+    } else if (userData.role === "programmer") {
+      // Need to re-build query with !inner join on users to filter by their role
+      query = supabase
+        .from("episodic_evaluations")
+        .select(`
+          *,
+          evaluator:users!evaluator_id!inner(name, email, role),
+          episode:episodes(
+            *,
+            call_report:call_reports(working_title, writer_name),
+            story:stories(title, status)
+          )
+        `, { count: "exact" })
+        .eq("evaluator.role", "programmer");
     }
 
     // Apply filters
@@ -222,9 +238,9 @@ export async function GET(request: NextRequest) {
     const { data: evaluations, error, count } = await query;
 
     if (error) {
-      logger.error(`Error fetching episodic evaluations: ${error instanceof Error ? error.message : String(error)}`);
+      logger.error("Error fetching episodic evaluations", { error, context: "GET /api/episodic-evaluations" });
       return NextResponse.json(
-        { error: "Failed to fetch episodic evaluations", details: error.message },
+        { error: "Failed to fetch episodic evaluations" },
         { status: 500 }
       );
     }

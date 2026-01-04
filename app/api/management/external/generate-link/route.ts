@@ -159,10 +159,9 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (linkError) {
-      logger.error(`Error creating external evaluation link:`, linkError);
-      console.error("Full linkError details:", JSON.stringify(linkError, null, 2));
+      logger.error("Error creating external evaluation link:", { error: linkError, context: "POST /api/management/external/generate-link" });
       return NextResponse.json(
-        { error: "Failed to create external evaluation link", details: linkError.message || linkError.hint || "Unknown error" },
+        { error: "Failed to create external evaluation link" },
         { status: 500 }
       );
     }
@@ -241,7 +240,7 @@ export async function POST(request: NextRequest) {
 
     if (contentsError) {
       logger.error(`Error inserting link contents:`, contentsError);
-      console.error("Full contentsError details:", JSON.stringify(contentsError, null, 2));
+      logger.error("Full contentsError details:", JSON.stringify(contentsError, null, 2));
       // Delete the link if content insertion fails (cleanup)
       await supabase
         .from("external_evaluation_links")

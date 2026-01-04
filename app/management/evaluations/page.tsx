@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { EvaluationsDashboard } from "@/components/management/evaluations/evaluations-dashboard";
+import { BackButton } from "@/components/ui/back-button";
 
 export const dynamic = "force-dynamic";
 
@@ -134,11 +135,14 @@ export default async function ManagementEvaluationsPage() {
 
   return (
     <div className="container mx-auto py-6 px-4 sm:px-6 lg:px-8">
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold">Evaluations</h1>
-        <p className="text-muted-foreground">
-          Comprehensive view of all evaluations - internal and external
-        </p>
+      <div className="flex flex-col gap-4 sm:gap-6 mb-8">
+        <BackButton fallbackHref="/management" variant="outline" size="sm" className="w-fit" />
+        <div className="space-y-1">
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Evaluations</h1>
+          <p className="text-muted-foreground text-sm sm:text-base">
+            Comprehensive view of all evaluations - internal and external
+          </p>
+        </div>
       </div>
 
       <EvaluationsDashboard

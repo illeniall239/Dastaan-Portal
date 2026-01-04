@@ -41,11 +41,11 @@ export async function POST(request: Request) {
     .eq("id", user.id)
     .single();
 
-  if (!userData || !["content_creator", "content_manager", "evaluator", "admin"].includes(userData.role)) {
+  if (!userData || !["content_creator", "content_manager", "evaluator", "programmer", "admin"].includes(userData.role)) {
     return forbiddenError();
   }
 
-  const hasGlobalAccess = userData.role && ['admin', 'management'].includes(userData.role);
+  const hasGlobalAccess = userData.role && ['admin', 'management', 'programmer'].includes(userData.role);
 
   try {
     const body = await request.json();
@@ -64,7 +64,7 @@ export async function POST(request: Request) {
         .select("id, story_id")
         .eq("id", story_id)
         .single();
-      
+
       if (storyCheckError || !storyExists) {
         return notFoundError("Story");
       }
@@ -74,7 +74,7 @@ export async function POST(request: Request) {
         .select("id, call_report_id")
         .eq("id", call_report_id)
         .single();
-      
+
       if (crCheckError || !callReportExists) {
         return notFoundError("Call report");
       }
@@ -144,7 +144,7 @@ export async function POST(request: Request) {
       logger.error(`Error creating episodes:`, error);
       logger.error(`Attempted to create episodes for story_id: ${story_id}, call_report_id: ${call_report_id}`);
       logger.error(`Episode numbers attempted: ${episodeNumbers.join(', ')}`);
-      console.error("Full Supabase error:", JSON.stringify(error, null, 2));
+      logger.error("Full Supabase error:", JSON.stringify(error, null, 2));
 
       // Handle unique constraint violation for duplicate episode numbers
       if (error.code === '23505' && (error.message.includes('unique_episode_per_call_report') || error.message.includes('unique_episode_per_story'))) {
@@ -232,11 +232,11 @@ export async function GET(request: NextRequest) {
     .eq("id", user.id)
     .single();
 
-  if (!userData || !["content_creator", "content_manager", "evaluator", "executive", "admin"].includes(userData.role)) {
+  if (!userData || !["content_creator", "content_manager", "evaluator", "programmer", "executive", "admin"].includes(userData.role)) {
     return forbiddenError();
   }
 
-  const hasGlobalAccess = userData.role && ['admin', 'management'].includes(userData.role);
+  const hasGlobalAccess = userData.role && ['admin', 'management', 'programmer'].includes(userData.role);
 
   try {
     // Parse pagination parameters (page, limit, sortBy, sortOrder)
@@ -274,7 +274,44 @@ export async function GET(request: NextRequest) {
     const projectLimit = Math.min(50, Math.max(1, parseInt(searchParams.get("project_limit") || "20", 10)));
     const projectPage = Math.max(1, parseInt(searchParams.get("project_page") || "1", 10));
 
-    let episodes: any[] = [];
+    interface EpisodeData {
+      id: string;
+      episode_number: number;
+      title: string | null;
+      call_report_id: string | null;
+      story_id: string | null;
+      attachment_url: string | null;
+      attachment_name: string | null;
+      attachment_type: string | null;
+      additional_info: string | null;
+      logged_by: string;
+      created_at: string;
+      updated_at: string;
+      logged_by_user?: {
+        name: string;
+        email: string;
+      };
+      call_report?: {
+        working_title: string;
+        writer_name: string;
+        team_id: string;
+        call_report_writers?: Array<{
+          writer_id: string;
+          display_order: number;
+          writer: {
+            name: string;
+          } | null;
+        }>;
+        writer_names?: string[];
+      };
+      story?: {
+        title: string;
+        status: string;
+      };
+      is_evaluated?: boolean;
+    }
+
+    let episodes: EpisodeData[] = [];
     let count: number | null = 0;
     let totalProjects = 0;
     let hasMoreProjects = false;
@@ -306,8 +343,12 @@ export async function GET(request: NextRequest) {
         return handleDatabaseError(countError, "counting projects");
       }
 
+      interface ProjectIdEntry {
+        call_report_id: string | null;
+      }
+
       // Get unique project IDs
-      const uniqueProjectIds = [...new Set((allProjectIds || []).map((e: any) => e.call_report_id))];
+      const uniqueProjectIds = [...new Set((allProjectIds || []).map((e: ProjectIdEntry) => e.call_report_id).filter((id): id is string => id !== null))];
       totalProjects = uniqueProjectIds.length;
 
       // Get paginated project IDs (we need to sort them somehow - by most recent episode)
@@ -446,30 +487,34 @@ export async function GET(request: NextRequest) {
     // Fetch evaluation status if requested (single batch query instead of N+1)
     let evaluationStatusMap: Record<string, boolean> = {};
     if (includeEvaluationStatus && episodes && episodes.length > 0) {
-      const episodeIds = episodes.map((ep: any) => ep.id);
+      const episodeIds = episodes.map((ep) => ep.id);
       const { data: evaluations } = await supabase
         .from("episodic_evaluations")
         .select("episode_id")
         .eq("evaluator_id", user.id)
         .in("episode_id", episodeIds);
 
+      interface EvaluationStatus {
+        episode_id: string;
+      }
+
       if (evaluations) {
-        evaluations.forEach((evaluation: any) => {
+        evaluations.forEach((evaluation: EvaluationStatus) => {
           evaluationStatusMap[evaluation.episode_id] = true;
         });
       }
     }
 
     // Transform episodes to include writer_names array for multi-writer support
-    const transformedEpisodes = (episodes || []).map((episode: any) => {
-      let transformed = episode;
+    const transformedEpisodes = (episodes || []).map((episode: EpisodeData) => {
+      let transformed: EpisodeData = episode;
 
       // Add writer_names if call_report_writers exists
       if (episode.call_report?.call_report_writers) {
         const writers = episode.call_report.call_report_writers
-          .sort((a: any, b: any) => (a.display_order ?? 0) - (b.display_order ?? 0))
-          .map((w: any) => w.writer?.name)
-          .filter((name: string | null) => !!name);
+          .sort((a, b) => (a.display_order ?? 0) - (b.display_order ?? 0))
+          .map((w) => w.writer?.name)
+          .filter((name): name is string => !!name);
 
         transformed = {
           ...transformed,

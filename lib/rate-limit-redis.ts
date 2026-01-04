@@ -14,6 +14,65 @@
 import { Ratelimit } from "@upstash/ratelimit";
 import { Redis } from "@upstash/redis";
 
+/**
+ * In-memory rate limiter fallback
+ * Used when Redis is unavailable to provide basic protection
+ */
+interface InMemoryRecord {
+  count: number;
+  resetTime: number;
+}
+
+const inMemoryStore = new Map<string, InMemoryRecord>();
+
+// Clean up expired entries every 5 minutes
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, record] of inMemoryStore.entries()) {
+    if (record.resetTime <= now) {
+      inMemoryStore.delete(key);
+    }
+  }
+}, 5 * 60 * 1000);
+
+function inMemoryRateLimit(
+  identifier: string,
+  config: RateLimitConfig
+): RateLimitResult {
+  const now = Date.now();
+  const record = inMemoryStore.get(identifier);
+
+  // If no record or expired, create new window
+  if (!record || record.resetTime <= now) {
+    const resetTime = now + config.window;
+    inMemoryStore.set(identifier, {
+      count: 1,
+      resetTime,
+    });
+
+    return {
+      success: true,
+      limit: config.limit,
+      remaining: config.limit - 1,
+      reset: resetTime,
+    };
+  }
+
+  // Increment count
+  record.count++;
+  inMemoryStore.set(identifier, record);
+
+  const remaining = Math.max(0, config.limit - record.count);
+  const success = record.count <= config.limit;
+
+  return {
+    success,
+    limit: config.limit,
+    remaining,
+    reset: record.resetTime,
+  };
+}
+
 export interface RateLimitConfig {
   /**
    * Maximum number of requests allowed in the time window
@@ -44,6 +103,7 @@ function getRedisClient(): Redis | null {
   if (redis) return redis;
 
   // Check if Redis credentials are configured
+  // Note: env validation happens at module load, but Redis is optional
   const url = process.env.UPSTASH_REDIS_REST_URL;
   const token = process.env.UPSTASH_REDIS_REST_TOKEN;
 
@@ -138,19 +198,13 @@ export async function rateLimit(
 ): Promise<RateLimitResult> {
   const limiter = getRateLimiter(config);
 
-  // Fallback: If Redis is unavailable, allow all requests (fail open)
-  // This prevents service disruption if Redis is down
-  // TODO: Consider implementing in-memory fallback for better protection
+  // Fallback: If Redis is unavailable, use in-memory rate limiting
+  // This provides basic protection even when Redis is down
   if (!limiter) {
     console.warn(
-      `[Rate Limit] Redis unavailable, allowing request for identifier: ${identifier}`
+      `[Rate Limit] Redis unavailable, using in-memory fallback for identifier: ${identifier}`
     );
-    return {
-      success: true,
-      limit: config.limit,
-      remaining: config.limit,
-      reset: Date.now() + config.window,
-    };
+    return inMemoryRateLimit(identifier, config);
   }
 
   try {
@@ -165,13 +219,11 @@ export async function rateLimit(
   } catch (error) {
     console.error("[Rate Limit] Error checking rate limit:", error);
 
-    // Fail open: Allow request if Redis operation fails
-    return {
-      success: true,
-      limit: config.limit,
-      remaining: config.limit,
-      reset: Date.now() + config.window,
-    };
+    // Fallback to in-memory rate limiting if Redis operation fails
+    console.warn(
+      `[Rate Limit] Using in-memory fallback due to Redis error for identifier: ${identifier}`
+    );
+    return inMemoryRateLimit(identifier, config);
   }
 }
 

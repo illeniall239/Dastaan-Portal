@@ -16,7 +16,6 @@ interface Meeting {
   status?: string;
   working_title: string;
   logline?: string;
-  usp?: string;
   location?: string;
   meeting_notes?: string;
   contact_email?: string;
@@ -41,14 +40,14 @@ export function MeetingPeekPanel({ meeting, onClose }: MeetingPeekPanelProps) {
   useEffect(() => {
     // Only apply on mobile (check if viewport is less than md breakpoint)
     const isMobile = window.innerWidth < 768;
-    
+
     if (meeting && isMobile) {
       // Save original overflow style
       const originalOverflow = document.body.style.overflow;
-      
+
       // Lock scroll
       document.body.style.overflow = 'hidden';
-      
+
       // Restore on cleanup
       return () => {
         document.body.style.overflow = originalOverflow;
@@ -159,7 +158,7 @@ export function MeetingPeekPanel({ meeting, onClose }: MeetingPeekPanelProps) {
         )}
 
         {/* Project Details */}
-        {(meeting.logline || meeting.usp) && (
+        {meeting.logline && (
           <div className="space-y-3">
             <h3 className="text-sm font-semibold">Project Details</h3>
 
@@ -169,15 +168,6 @@ export function MeetingPeekPanel({ meeting, onClose }: MeetingPeekPanelProps) {
                 <p className="text-sm">{meeting.logline}</p>
               </div>
             )}
-
-            {meeting.usp && (
-              <div>
-                <p className="text-xs font-medium text-muted-foreground mb-1">USP</p>
-                <p className="text-sm">{meeting.usp}</p>
-              </div>
-            )}
-
-            
           </div>
         )}
 

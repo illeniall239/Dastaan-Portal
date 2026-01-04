@@ -8,6 +8,7 @@ import {
   internalError,
   createSuccessResponse,
 } from "@/lib/api/errors";
+import { logger } from "@/lib/logger";
 
 /**
  * GET /api/call-reports/[id]/writers
@@ -45,16 +46,30 @@ export async function GET(
       .order("display_order", { ascending: true });
 
     if (error) {
-      console.error("Error fetching call report writers:", error);
+      logger.error("Error fetching call report writers:", error);
       return handleDatabaseError(error, "fetching call report writers");
     }
 
+    interface WriterData {
+      id: string;
+      call_report_id: string;
+      writer_id: string;
+      writer_email: string | null;
+      writer_phone: string | null;
+      display_order: number;
+      created_at: string;
+      updated_at: string;
+      writer: Array<{
+        name: string;
+      }>;
+    }
+
     // Transform to flatten writer name
-    const transformedWriters = writers?.map(w => ({
+    const transformedWriters = writers?.map((w: WriterData) => ({
       id: w.id,
       call_report_id: w.call_report_id,
       writer_id: w.writer_id,
-      writer_name: (w.writer as any)?.name || "",
+      writer_name: w.writer?.[0]?.name || "",
       writer_email: w.writer_email,
       writer_phone: w.writer_phone,
       display_order: w.display_order,
@@ -64,7 +79,7 @@ export async function GET(
 
     return NextResponse.json({ writers: transformedWriters });
   } catch (error) {
-    console.error("Error in GET /api/call-reports/[id]/writers:", error);
+    logger.error("Error in GET /api/call-reports/[id]/writers:", error);
     return internalError();
   }
 }
@@ -121,7 +136,7 @@ export async function POST(
       .select();
 
     if (insertError) {
-      console.error("Error inserting writers:", insertError);
+      logger.error("Error inserting writers:", insertError);
       return handleDatabaseError(insertError, "adding writers");
     }
 
@@ -130,7 +145,7 @@ export async function POST(
       { status: 201 }
     );
   } catch (error) {
-    console.error("Error in POST /api/call-reports/[id]/writers:", error);
+    logger.error("Error in POST /api/call-reports/[id]/writers:", error);
     return internalError();
   }
 }
@@ -160,8 +175,12 @@ export async function PUT(
       return validationError("Writers array with new order is required");
     }
 
+    interface WriterToReorder {
+      id: string;
+    }
+
     // Update display_order for each writer
-    const updatePromises = writers.map((writer: any, index: number) =>
+    const updatePromises = writers.map((writer: WriterToReorder, index: number) =>
       supabase
         .from("call_report_writers")
         .update({ display_order: index })
@@ -174,13 +193,13 @@ export async function PUT(
     // Check for errors
     const errors = results.filter(r => r.error);
     if (errors.length > 0) {
-      console.error("Error reordering writers:", errors);
+      logger.error("Error reordering writers:", errors);
       return handleDatabaseError(errors[0].error, "reordering writers");
     }
 
     return NextResponse.json({ message: "Writers reordered successfully" });
   } catch (error) {
-    console.error("Error in PUT /api/call-reports/[id]/writers:", error);
+    logger.error("Error in PUT /api/call-reports/[id]/writers:", error);
     return internalError();
   }
 }

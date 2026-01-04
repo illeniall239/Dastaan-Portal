@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
+import { logger } from "@/lib/logger";
 
 /**
  * PATCH /api/call-reports/[id]/writers/[writerId]
@@ -24,7 +25,10 @@ export async function PATCH(
     const { writer_email, writer_phone } = body;
 
     // Build update object
-    const updateData: any = {};
+    const updateData: {
+      writer_email?: string | null;
+      writer_phone?: string | null;
+    } = {};
     if (writer_email !== undefined) updateData.writer_email = writer_email || null;
     if (writer_phone !== undefined) updateData.writer_phone = writer_phone || null;
 
@@ -45,7 +49,7 @@ export async function PATCH(
       .single();
 
     if (error) {
-      console.error("Error updating writer:", error);
+      logger.error("Error updating writer:", error);
       return NextResponse.json(
         { error: "Failed to update writer contact info" },
         { status: 500 }
@@ -64,7 +68,7 @@ export async function PATCH(
       writer: data
     });
   } catch (error) {
-    console.error("Error in PATCH /api/call-reports/[id]/writers/[writerId]:", error);
+    logger.error("Error in PATCH /api/call-reports/[id]/writers/[writerId]:", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }
@@ -98,7 +102,7 @@ export async function DELETE(
       .eq("writer_id", writerId);
 
     if (error) {
-      console.error("Error deleting writer:", error);
+      logger.error("Error deleting writer:", error);
       return NextResponse.json(
         { error: "Failed to remove writer" },
         { status: 500 }
@@ -109,7 +113,7 @@ export async function DELETE(
       message: "Writer removed successfully"
     });
   } catch (error) {
-    console.error("Error in DELETE /api/call-reports/[id]/writers/[writerId]:", error);
+    logger.error("Error in DELETE /api/call-reports/[id]/writers/[writerId]:", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

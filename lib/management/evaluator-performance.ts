@@ -1,5 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { cachedQuery, CacheTags } from "@/lib/cache/request-cache";
+import { logger } from "@/lib/logger";
+import { EVALUATOR_ROLES, DATE_TIME } from '@/lib/constants';
 
 /**
  * Evaluator Performance Analytics for Management Dashboard
@@ -16,6 +18,7 @@ export interface EvaluatorStats {
   id: string;
   name: string;
   email: string;
+  role?: string;                     // User role (for management badge display)
   oneLinerEvaluations: number;      // One-liner evaluations (call report evaluations)
   episodicEvals: number;
   writerEngagementReports: number;  // Call reports logged by evaluator
@@ -57,21 +60,40 @@ export async function getEvaluatorOverview(): Promise<EvaluatorOverview> {
       .eq("status", "active");
 
     // Use admin client to bypass RLS
-    // Get all call report evaluations
+    // Get all call report evaluations with timestamps
     const { data: callReportEvals } = await adminClient
       .from("evaluator_forms")
-      .select("evaluator_id, created_at");
+      .select("evaluator_id, created_at, submitted_at")
+      .not("submitted_at", "is", null);
 
-    // Get all episodic evaluations
+    // Get all episodic evaluations with timestamps
     const { data: episodicEvals } = await adminClient
       .from("episodic_evaluations")
-      .select("evaluator_id, submitted_at");
+      .select("evaluator_id, created_at, submitted_at")
+      .not("submitted_at", "is", null);
 
     const totalEvaluators = evaluators?.length || 0;
     const totalEvaluations = (callReportEvals?.length || 0) + (episodicEvals?.length || 0);
 
-    // Calculate average response time (simplified - from assignment to submission)
-    const avgResponseTime = 2.3; // TODO: Calculate from actual assignment dates
+    // Calculate average response time from actual assignment to submission dates
+    const allEvaluations = [...(callReportEvals || []), ...(episodicEvals || [])];
+    let avgResponseTime = 0;
+
+    if (allEvaluations.length > 0) {
+      const responseTimes = allEvaluations
+        .filter(evaluation => evaluation.created_at && evaluation.submitted_at)
+        .map(evaluation => {
+          const created = new Date(evaluation.created_at);
+          const submitted = new Date(evaluation.submitted_at);
+          const diffMs = submitted.getTime() - created.getTime();
+          return diffMs / (1000 * 60 * 60 * 24); // Convert to days
+        });
+
+      if (responseTimes.length > 0) {
+        const totalDays = responseTimes.reduce((sum, days) => sum + days, 0);
+        avgResponseTime = Number((totalDays / responseTimes.length).toFixed(1));
+      }
+    }
 
     return {
       totalEvaluators,
@@ -80,7 +102,7 @@ export async function getEvaluatorOverview(): Promise<EvaluatorOverview> {
       avgResponseTime,
     };
   } catch (error) {
-    console.error("Error fetching evaluator overview:", error);
+    logger.error("Error fetching evaluator overview:", error);
     return {
       totalEvaluators: 0,
       activeEvaluators: 0,
@@ -116,7 +138,20 @@ export async function getAllEvaluatorStats(fromDate?: Date, toDate?: Date): Prom
           return [];
         }
 
-        return (data || []).map((row: any) => {
+        interface EvaluatorStatsRow {
+          evaluator_id: string;
+          evaluator_name: string;
+          evaluator_email: string;
+          evaluator_role: string;
+          oneliner_evaluations: number;
+          episodic_evals: number;
+          writer_engagement_reports: number;
+          total_evaluations: number;
+          total_time_spent_minutes: number;
+          active_days: number;
+        }
+
+        return (data || []).map((row: EvaluatorStatsRow) => {
           // Calculate avgTimeSpent (mins per day)
           const avgTimeSpent = row.active_days > 0
             ? parseFloat((row.total_time_spent_minutes / row.active_days).toFixed(1))
@@ -126,6 +161,7 @@ export async function getAllEvaluatorStats(fromDate?: Date, toDate?: Date): Prom
             id: row.evaluator_id,
             name: row.evaluator_name,
             email: row.evaluator_email,
+            role: row.evaluator_role,
             oneLinerEvaluations: Number(row.oneliner_evaluations),
             episodicEvals: Number(row.episodic_evals),
             writerEngagementReports: Number(row.writer_engagement_reports),
@@ -184,7 +220,7 @@ export async function getEvaluatorWorkloads(): Promise<EvaluatorWorkload[]> {
       };
     });
   } catch (error) {
-    console.error("Error fetching evaluator workloads:", error);
+    logger.error("Error fetching evaluator workloads:", error);
     return [];
   }
 }
@@ -193,63 +229,95 @@ export async function getEvaluatorWorkloads(): Promise<EvaluatorWorkload[]> {
  * Get evaluator activity heat map data (last 12 weeks)
  */
 export async function getEvaluatorActivityHeatmap(): Promise<EvaluatorActivity[]> {
-  const supabase = createAdminClient();
   const adminClient = createAdminClient();
 
   try {
-    // Get all evaluators
-    const { data: evaluators } = await supabase
+    // OPTIMIZATION: Use database to do the heavy lifting instead of JavaScript
+    // Calculate date 12 weeks ago
+    const twelveWeeksAgo = new Date();
+    twelveWeeksAgo.setDate(twelveWeeksAgo.getDate() - (DATE_TIME.HEATMAP_WEEKS * DATE_TIME.DAYS_IN_WEEK));
+    const twelveWeeksAgoISO = twelveWeeksAgo.toISOString();
+
+    // Get all active evaluators first
+    const { data: evaluators } = await adminClient
       .from("users")
       .select("id, name")
-      .eq("role", "evaluator")
+      .in("role", EVALUATOR_ROLES) // Include all evaluator types
       .eq("status", "active");
 
-    if (!evaluators) return [];
+    if (!evaluators || evaluators.length === 0) return [];
 
-    // Get evaluations from last 12 weeks
-    const twelveWeeksAgo = new Date();
-    twelveWeeksAgo.setDate(twelveWeeksAgo.getDate() - 84);
+    const evaluatorIds = evaluators.map(e => e.id);
 
-    // Use admin client to bypass RLS
+    // Fetch aggregated data using database query instead of filtering in JavaScript
+    // This reduces the data transfer and processing overhead significantly
     const { data: callReportEvals } = await adminClient
       .from("evaluator_forms")
       .select("evaluator_id, created_at")
-      .gte("created_at", twelveWeeksAgo.toISOString());
+      .gte("created_at", twelveWeeksAgoISO)
+      .in("evaluator_id", evaluatorIds); // Filter at database level
 
     const { data: episodicEvals } = await adminClient
       .from("episodic_evaluations")
       .select("evaluator_id, submitted_at")
-      .gte("submitted_at", twelveWeeksAgo.toISOString());
+      .gte("submitted_at", twelveWeeksAgoISO)
+      .in("evaluator_id", evaluatorIds); // Filter at database level
 
-    return evaluators.map(evaluator => {
-      const crEvals = callReportEvals?.filter(e => e.evaluator_id === evaluator.id) || [];
-      const epEvals = episodicEvals?.filter(e => e.evaluator_id === evaluator.id) || [];
+    // Build a map for O(1) lookup instead of O(n) filtering
+    const evaluatorDataMap = new Map<string, Array<Date>>();
 
-      // Group by week
-      const weeklyData: { [key: string]: number } = {};
+    evaluators.forEach(evaluator => {
+      evaluatorDataMap.set(evaluator.id, []);
+    });
 
-      [...crEvals, ...epEvals].forEach(evaluation => {
-        const date = new Date((evaluation as any).created_at || (evaluation as any).submitted_at);
-        // Get Monday of the week
-        const monday = new Date(date);
-        monday.setDate(date.getDate() - date.getDay() + 1);
-        const weekKey = monday.toISOString().split('T')[0];
-
-        weeklyData[weekKey] = (weeklyData[weekKey] || 0) + 1;
-      });
-
-      // Generate last 12 weeks
-      const weeklyActivity = [];
-      for (let i = 11; i >= 0; i--) {
-        const weekStart = new Date();
-        weekStart.setDate(weekStart.getDate() - (weekStart.getDay() - 1) - (i * 7));
-        const weekKey = weekStart.toISOString().split('T')[0];
-
-        weeklyActivity.push({
-          weekStart: weekKey,
-          count: weeklyData[weekKey] || 0,
-        });
+    // Process call report evaluations
+    callReportEvals?.forEach(evaluation => {
+      const dates = evaluatorDataMap.get(evaluation.evaluator_id);
+      if (dates && evaluation.created_at) {
+        dates.push(new Date(evaluation.created_at));
       }
+    });
+
+    // Process episodic evaluations
+    episodicEvals?.forEach(evaluation => {
+      const dates = evaluatorDataMap.get(evaluation.evaluator_id);
+      if (dates && evaluation.submitted_at) {
+        dates.push(new Date(evaluation.submitted_at));
+      }
+    });
+
+    // Generate week range once (reused for all evaluators)
+    const weekRanges: Array<{ weekStart: string; weekEnd: Date }> = [];
+    for (let i = DATE_TIME.HEATMAP_WEEKS - 1; i >= 0; i--) {
+      const weekStart = new Date();
+      weekStart.setDate(weekStart.getDate() - (weekStart.getDay() - 1) - (i * 7));
+      weekStart.setHours(0, 0, 0, 0);
+
+      const weekEnd = new Date(weekStart);
+      weekEnd.setDate(weekEnd.getDate() + 6);
+      weekEnd.setHours(23, 59, 59, 999);
+
+      weekRanges.push({
+        weekStart: weekStart.toISOString().split('T')[0],
+        weekEnd: weekEnd,
+      });
+    }
+
+    // Map evaluators to their weekly activity
+    return evaluators.map(evaluator => {
+      const dates = evaluatorDataMap.get(evaluator.id) || [];
+
+      const weeklyActivity = weekRanges.map(({ weekStart, weekEnd }) => {
+        const weekStartDate = new Date(weekStart);
+        const count = dates.filter(date =>
+          date >= weekStartDate && date <= weekEnd
+        ).length;
+
+        return {
+          weekStart,
+          count,
+        };
+      });
 
       return {
         evaluatorId: evaluator.id,
@@ -258,7 +326,7 @@ export async function getEvaluatorActivityHeatmap(): Promise<EvaluatorActivity[]
       };
     });
   } catch (error) {
-    console.error("Error fetching evaluator activity heatmap:", error);
+    logger.error("Error fetching evaluator activity heatmap:", error);
     return [];
   }
 }

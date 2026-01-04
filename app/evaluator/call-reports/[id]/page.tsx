@@ -119,22 +119,24 @@ export default async function CallReportDetailPage({ params }: { params: Promise
   return (
     <div className="mobile-container mobile-section space-y-4 sm:space-y-6 max-w-5xl mx-auto">
       {/* Page Header */}
-      <div className="flex items-center gap-4 mb-6">
-        <BackButton fallbackHref="/evaluator/call-reports" variant="outline" />
-        <div className="flex-1">
-          <h1 className="text-2xl font-semibold text-slate-900">{report.working_title}</h1>
-          <p className="text-sm text-slate-500 mt-0.5">
+      <div className="flex flex-col gap-4 sm:gap-6 mb-8">
+        <div className="flex items-center justify-between">
+          <BackButton fallbackHref="/evaluator/call-reports" variant="outline" size="sm" className="w-fit" />
+          {canEdit && (
+            <Button variant="default" size="sm" asChild>
+              <Link href={`/evaluator/call-reports/${resolvedParams.id}/edit`}>
+                <Pencil className="h-4 w-4 mr-2" />
+                Edit
+              </Link>
+            </Button>
+          )}
+        </div>
+        <div className="space-y-1">
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight">{report.working_title}</h1>
+          <p className="text-muted-foreground text-sm sm:text-base">
             Writer Engagement Report ID: {report.call_report_id}
           </p>
         </div>
-        {canEdit && (
-          <Button variant="default" size="sm" asChild>
-            <Link href={`/evaluator/call-reports/${resolvedParams.id}/edit`}>
-              <Pencil className="h-4 w-4 mr-2" />
-              Edit
-            </Link>
-          </Button>
-        )}
       </div>
 
       {/* Single Column Layout */}

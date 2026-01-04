@@ -33,13 +33,13 @@ export default async function EvaluatorCallReportsPage() {
   return (
     <div className="mobile-container mobile-section space-y-4 sm:space-y-6">
       {/* Page Header - Static, shows immediately */}
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+      <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between mb-8">
         {/* Left side: Back button + Heading */}
-        <div className="flex items-start gap-3 sm:gap-4">
-          <BackButton fallbackHref="/evaluator" variant="outline" size="sm" className="flex-shrink-0" />
-          <div className="min-w-0">
+        <div className="flex flex-col gap-4 sm:gap-6 w-full sm:w-auto">
+          <BackButton fallbackHref="/evaluator" variant="outline" size="sm" className="w-fit" />
+          <div className="space-y-1">
             <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Writer Engagement Reports</h1>
-            <p className="text-muted-foreground mt-1 text-sm">
+            <p className="text-muted-foreground text-sm sm:text-base">
               View all logged writer engagement reports
             </p>
           </div>

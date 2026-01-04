@@ -203,15 +203,31 @@ export default function EvaluatorCalendar() {
     <div className="flex h-screen bg-muted/10">
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Back Button */}
-        <div className="bg-white border-b p-3">
-          <BackButton fallbackHref="/evaluator" variant="outline" size="sm" />
-        </div>
-
         {/* Top Navigation Bar - Shows immediately */}
-        <div className="bg-white border-b p-3 sm:p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
-          <div className="flex items-center gap-2 sm:gap-4 w-full sm:w-auto">
-            {/* Navigation Controls */}
+        <div className="bg-white border-b p-3 sm:p-4 flex flex-col gap-4">
+          {/* Top Row: Back Button + Controls */}
+          <div className="flex items-center justify-between">
+            <BackButton fallbackHref="/evaluator" variant="outline" size="sm" className="w-fit" />
+
+            <div className="flex items-center gap-2">
+              <Button
+                size="sm"
+                variant="default"
+                onClick={fetchMeetings}
+                title="Refresh meetings"
+                disabled={loading}
+                className="touch-target"
+              >
+                <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+              </Button>
+              <div className="hidden md:block">
+                <ViewSwitcher currentView={currentView} onViewChange={setCurrentView} />
+              </div>
+            </div>
+          </div>
+
+          {/* Bottom Row: Navigation and Title */}
+          <div className="flex items-center gap-4">
             <div className="flex items-center gap-2">
               <Button variant="outline" size="icon" onClick={handlePrevious} disabled={loading} className="touch-target">
                 <ChevronLeft className="h-4 w-4" />
@@ -225,24 +241,7 @@ export default function EvaluatorCalendar() {
             </div>
 
             {/* Date Range Display */}
-            <h1 className="text-base sm:text-xl font-semibold truncate">{getDateRangeText()}</h1>
-          </div>
-
-          {/* Refresh button and View Switcher */}
-          <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-end">
-            <Button
-              size="sm"
-              variant="default"
-              onClick={fetchMeetings}
-              title="Refresh meetings"
-              disabled={loading}
-              className="touch-target"
-            >
-              <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-            </Button>
-            <div className="hidden md:block">
-              <ViewSwitcher currentView={currentView} onViewChange={setCurrentView} />
-            </div>
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight truncate">{getDateRangeText()}</h1>
           </div>
         </div>
 
@@ -276,13 +275,12 @@ export default function EvaluatorCalendar() {
               <div className="hidden md:block flex-1 p-4 overflow-auto">
                 <div
                   key={`${currentDate ? format(currentDate, 'yyyy-MM-dd') : 'unknown'}-${currentView}`}
-                  className={`transition-all duration-200 ease-in-out ${
-                    animationDirection === "forward"
-                      ? "animate-slide-in-right"
-                      : animationDirection === "backward"
-                        ? "animate-slide-in-left"
-                        : ""
-                  }`}
+                  className={`transition-all duration-200 ease-in-out ${animationDirection === "forward"
+                    ? "animate-slide-in-right"
+                    : animationDirection === "backward"
+                      ? "animate-slide-in-left"
+                      : ""
+                    }`}
                   onAnimationEnd={() => setAnimationDirection(null)}
                 >
                   {currentView === "month" ? (

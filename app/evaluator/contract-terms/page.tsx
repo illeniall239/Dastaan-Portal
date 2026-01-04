@@ -53,16 +53,17 @@ export default async function EvaluatorContractTermsPage() {
 
   return (
     <div className="mobile-container mobile-section">
-      <BackButton fallbackHref="/evaluator" variant="outline" size="sm" className="mb-4" />
-
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0 mobile-header-spacing">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-bold">Contract Terms</h1>
-          <p className="text-muted-foreground mt-2 text-sm sm:text-base">
-            Manage project contract terms and term sheets
-          </p>
+      <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between mb-8">
+        <div className="flex flex-col gap-4 sm:gap-6 w-full lg:w-auto">
+          <BackButton fallbackHref="/evaluator" variant="outline" size="sm" className="w-fit" />
+          <div className="space-y-1">
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Contract Terms</h1>
+            <p className="text-muted-foreground text-sm sm:text-base">
+              Manage project contract terms and term sheets
+            </p>
+          </div>
         </div>
-        <Button asChild>
+        <Button asChild className="w-full lg:w-auto">
           <Link href="/evaluator/contract-terms/new">
             <Plus className="h-4 w-4 mr-2" />
             New Contract Term

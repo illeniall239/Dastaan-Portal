@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { logger } from "@/lib/logger";
 import { ProjectAnalyticsService } from '@/lib/services/analytics';
+import { CACHE_DURATION, createCacheControl } from '@/lib/constants';
 
 export async function GET(request: NextRequest) {
   try {
@@ -10,10 +11,17 @@ export async function GET(request: NextRequest) {
       service.getActiveProjectsStats(),
     ]);
 
-    return NextResponse.json({
-      projects,
-      stats,
-    });
+    return NextResponse.json(
+      {
+        projects,
+        stats,
+      },
+      {
+        headers: {
+          'Cache-Control': createCacheControl(CACHE_DURATION.ANALYTICS),
+        },
+      }
+    );
   } catch (error) {
     logger.error(`Error in active-projects API: ${error instanceof Error ? error.message : String(error)}`);
     return NextResponse.json(

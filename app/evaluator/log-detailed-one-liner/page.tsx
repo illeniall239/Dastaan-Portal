@@ -384,15 +384,14 @@ export default function LogDetailedOneLinerPage() {
     <div className="mobile-container mobile-section">
       <div className="mobile-header-spacing">
         {/* Header */}
-        <div className="flex items-center gap-4 mb-6">
-          <BackButton fallbackHref="/evaluator/call-reports" variant="outline" size="sm" />
-        </div>
-
-        <div className="mb-6">
-          <h1 className="text-xl sm:text-2xl font-bold mb-2">Log Detailed One-Liner</h1>
-          <p className="text-muted-foreground">
-            Create a comprehensive one-liner analysis with narrative breakdown for a call report.
-          </p>
+        <div className="flex flex-col gap-4 sm:gap-6 mb-8">
+          <BackButton fallbackHref="/evaluator/call-reports" variant="outline" size="sm" className="w-fit" />
+          <div className="space-y-1">
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Log Detailed One-Liner</h1>
+            <p className="text-muted-foreground text-sm sm:text-base">
+              Create a comprehensive one-liner analysis with narrative breakdown for a call report.
+            </p>
+          </div>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -1038,33 +1037,33 @@ export default function LogDetailedOneLinerPage() {
             <ReactFlowProvider>
               <CharacterRelationshipGraph
                 relationships={characterRelationshipRows
-                .filter(r =>
-                  r.character_a_name.trim() && r.character_b_name.trim() &&
-                  r.character_a_role && r.character_b_role &&
-                  r.relationship_type && r.relationship_description.trim()
-                )
-                .map((r, index) => {
-                  const transformedData = {
-                    id: r.id,
-                    detailed_one_liner_id: '', // Not saved yet
-                    character_a_name: r.character_a_name.trim(),
-                    character_a_role: r.character_a_role as 'protagonist' | 'antagonist' | 'supporting' | 'minor',
-                    character_b_name: r.character_b_name.trim(),
-                    character_b_role: r.character_b_role as 'protagonist' | 'antagonist' | 'supporting' | 'minor',
-                    relationship_type: r.relationship_type as 'family' | 'romantic' | 'professional' | 'friendship' | 'rivalry' | 'mentor_mentee' | 'alliance' | 'conflict' | 'other',
-                    relationship_description: r.relationship_description,
-                    initial_state: r.initial_state || undefined,
-                    final_state: r.final_state || undefined,
-                    key_turning_points: r.key_turning_points || undefined,
-                    emotional_weight: (r.emotional_weight || undefined) as 'high' | 'medium' | 'low' | undefined,
-                    drives_plot: r.drives_plot,
-                    sort_order: index,
-                    created_at: new Date().toISOString(),
-                    updated_at: new Date().toISOString(),
-                  };
-                  console.log('Transformed relationship data:', transformedData);
-                  return transformedData;
-                })}
+                  .filter(r =>
+                    r.character_a_name.trim() && r.character_b_name.trim() &&
+                    r.character_a_role && r.character_b_role &&
+                    r.relationship_type && r.relationship_description.trim()
+                  )
+                  .map((r, index) => {
+                    const transformedData = {
+                      id: r.id,
+                      detailed_one_liner_id: '', // Not saved yet
+                      character_a_name: r.character_a_name.trim(),
+                      character_a_role: r.character_a_role as 'protagonist' | 'antagonist' | 'supporting' | 'minor',
+                      character_b_name: r.character_b_name.trim(),
+                      character_b_role: r.character_b_role as 'protagonist' | 'antagonist' | 'supporting' | 'minor',
+                      relationship_type: r.relationship_type as 'family' | 'romantic' | 'professional' | 'friendship' | 'rivalry' | 'mentor_mentee' | 'alliance' | 'conflict' | 'other',
+                      relationship_description: r.relationship_description,
+                      initial_state: r.initial_state || undefined,
+                      final_state: r.final_state || undefined,
+                      key_turning_points: r.key_turning_points || undefined,
+                      emotional_weight: (r.emotional_weight || undefined) as 'high' | 'medium' | 'low' | undefined,
+                      drives_plot: r.drives_plot,
+                      sort_order: index,
+                      created_at: new Date().toISOString(),
+                      updated_at: new Date().toISOString(),
+                    };
+                    console.log('Transformed relationship data:', transformedData);
+                    return transformedData;
+                  })}
               />
             </ReactFlowProvider>
           </DialogContent>

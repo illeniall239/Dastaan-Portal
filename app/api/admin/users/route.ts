@@ -36,22 +36,39 @@ export async function GET(request: Request) {
     const adminClient = createAdminClient();
     const { data: users, error } = await adminClient
       .from('users')
-      .select('id, name, email, role, department, position, status, team_id, created_at')
+      .select(`
+        id,
+        name,
+        email,
+        role,
+        department,
+        position,
+        status,
+        team_id,
+        created_at,
+        team:teams!team_id(
+          id,
+          name,
+          team_head:users!team_head_id(
+            name
+          )
+        )
+      `)
       .order('created_at', { ascending: false });
 
     if (error) {
-      console.error("Error fetching users:", error);
+      logger.error("Error fetching users:", { error, context: "GET /api/admin/users" });
       return NextResponse.json(
-        { error: "Failed to fetch users", message: error.message },
+        { error: "Failed to fetch users" },
         { status: 500 }
       );
     }
 
     return NextResponse.json({ users: users || [] });
   } catch (error) {
-    console.error("Error in GET /api/admin/users:", error);
+    logger.error("Error in GET /api/admin/users:", { error });
     return NextResponse.json(
-      { error: "Internal server error" },
+      { error: "An error occurred while fetching users" },
       { status: 500 }
     );
   }

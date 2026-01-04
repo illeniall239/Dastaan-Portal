@@ -142,7 +142,7 @@ export const Header = memo(function Header({ userName, userEmail, userPosition, 
                 className="object-contain"
               />
               <div className="flex flex-col leading-none">
-                <span dir="rtl" lang="ur" className="text-lg font-bold text-slate-900 font-urdu">
+                <span dir="rtl" lang="ur" className="text-lg font-bold text-orange-300 font-urdu">
                   داستان
                 </span>
               </div>

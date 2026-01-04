@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createTeamSchema } from "@/lib/validations/teams";
 import { logAdminAction, getRequestContext } from "@/lib/audit/server";
+import { logger } from "@/lib/logger";
 
 /**
  * GET /api/admin/teams
@@ -46,9 +47,9 @@ export async function GET(request: Request) {
       .order('name');
 
     if (error) {
-      console.error("Error fetching teams:", error);
+      logger.error("Error fetching teams", { error, context: "GET /api/admin/teams" });
       return NextResponse.json(
-        { error: "Failed to fetch teams", message: error.message },
+        { error: "Failed to fetch teams" },
         { status: 500 }
       );
     }
@@ -71,7 +72,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json({ teams: teamsWithCounts });
   } catch (error) {
-    console.error("Error in GET /api/admin/teams:", error);
+    logger.error("Error in GET /api/admin/teams", { error, context: "GET /api/admin/teams" });
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }
@@ -175,7 +176,7 @@ export async function POST(request: Request) {
       .single();
 
     if (createError) {
-      console.error("Error creating team:", createError);
+      logger.error("Error creating team", { error: createError, context: "POST /api/admin/teams" });
 
       // Check for unique constraint violation
       if (createError.code === '23505') {
@@ -186,7 +187,7 @@ export async function POST(request: Request) {
       }
 
       return NextResponse.json(
-        { error: "Failed to create team", message: createError.message },
+        { error: "Failed to create team" },
         { status: 500 }
       );
     }
@@ -213,13 +214,13 @@ export async function POST(request: Request) {
     // Refresh materialized views
     const { error: refreshError } = await adminClient.rpc('refresh_all_team_views');
     if (refreshError) {
-      console.error("Failed to refresh team views:", refreshError);
+      logger.error("Failed to refresh team views", { error: refreshError, context: "POST /api/admin/teams" });
       // Don't fail the request if refresh fails
     }
 
     return NextResponse.json({ team: newTeam }, { status: 201 });
   } catch (error) {
-    console.error("Error in POST /api/admin/teams:", error);
+    logger.error("Error in POST /api/admin/teams", { error, context: "POST /api/admin/teams" });
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

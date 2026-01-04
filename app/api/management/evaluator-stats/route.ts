@@ -4,6 +4,7 @@ import { applyRateLimit } from "@/lib/api-middleware";
 import { RateLimitPresets } from "@/lib/rate-limit-redis";
 import { evaluatorStatsDateSchema } from "@/lib/validations/date-filters";
 import { logger } from "@/lib/logger";
+import { CACHE_DURATION, createCacheControl } from '@/lib/constants';
 
 export async function GET(request: NextRequest) {
   // Apply rate limiting
@@ -34,14 +35,21 @@ export async function GET(request: NextRequest) {
     // Fetch evaluator stats with optional date filtering
     const stats = await getAllEvaluatorStats(fromDate, toDate);
 
-    return NextResponse.json({
-      success: true,
-      stats,
-      filter: {
-        from: fromDate ? fromDate.toISOString().split('T')[0] : null,
-        to: toDate ? toDate.toISOString().split('T')[0] : null,
+    return NextResponse.json(
+      {
+        success: true,
+        stats,
+        filter: {
+          from: fromDate ? fromDate.toISOString().split('T')[0] : null,
+          to: toDate ? toDate.toISOString().split('T')[0] : null,
+        },
       },
-    });
+      {
+        headers: {
+          'Cache-Control': createCacheControl(CACHE_DURATION.ANALYTICS),
+        },
+      }
+    );
   } catch (error) {
     logger.error(`Error fetching evaluator stats: ${error instanceof Error ? error.message : String(error)}`);
     return NextResponse.json(

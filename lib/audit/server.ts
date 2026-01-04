@@ -18,7 +18,7 @@ export interface AuditLogEntry {
   action: string;
   performed_by: string;
   timestamp: string;
-  details: Record<string, any> | null;
+  details: Record<string, unknown> | null;
 }
 
 export interface CreateAuditLogParams {
@@ -59,12 +59,12 @@ export interface CreateAuditLogParams {
     /**
      * Previous values (for updates)
      */
-    previousValues?: Record<string, any>;
+    previousValues?: Record<string, unknown>;
 
     /**
      * New values (for updates/creates)
      */
-    newValues?: Record<string, any>;
+    newValues?: Record<string, unknown>;
 
     /**
      * Reason for action (optional)
@@ -74,7 +74,7 @@ export interface CreateAuditLogParams {
     /**
      * Any additional metadata
      */
-    [key: string]: any;
+    [key: string]: unknown;
   };
 }
 
@@ -206,7 +206,7 @@ export async function getEntityAuditLogs(
 
   const { data, error } = await supabase
     .from("audit_logs")
-    .select("*")
+    .select("id, entity_type, entity_id, action, performed_by, timestamp, details")
     .eq("entity_type", entityType)
     .eq("entity_id", entityId)
     .order("timestamp", { ascending: false })
@@ -235,7 +235,7 @@ export async function getUserAuditLogs(
 
   const { data, error } = await supabase
     .from("audit_logs")
-    .select("*")
+    .select("id, entity_type, entity_id, action, performed_by, timestamp, details")
     .eq("performed_by", userId)
     .order("timestamp", { ascending: false })
     .limit(limit);
@@ -276,7 +276,7 @@ export async function getAuditLogs(options: {
 
   let query = supabase
     .from("audit_logs")
-    .select("*", { count: "exact" })
+    .select("id, entity_type, entity_id, action, performed_by, timestamp, details", { count: "exact" })
     .order("timestamp", { ascending: false });
 
   if (entityType) {

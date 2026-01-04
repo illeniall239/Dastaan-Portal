@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { v4 as uuidv4 } from "uuid";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
+import { logger } from "@/lib/logger";
 
 export const runtime = "nodejs";
 
@@ -52,7 +53,7 @@ export async function POST(request: NextRequest) {
     const entityIdValidation = uuidSchema.safeParse(entityId);
 
     if (!entityIdValidation.success) {
-      console.error("Invalid entity ID format:", entityId);
+      logger.error("Invalid entity ID format:", entityId);
       return NextResponse.json({
         error: "Invalid record identifier",
         message: "The entity ID must be a valid UUID format. Please check the ID and try again."
@@ -77,7 +78,7 @@ export async function POST(request: NextRequest) {
       });
 
     if (uploadError) {
-      console.error("Storage upload error:", uploadError);
+      logger.error("Storage upload error:", uploadError);
 
       // Provide more specific error messages based on common issues
       let userMessage = "The file could not be uploaded to storage. ";
@@ -111,7 +112,7 @@ export async function POST(request: NextRequest) {
       uploaded_by: user.id,
     };
 
-    console.log("Attempting database insert:", {
+    logger.info("Attempting database insert:", {
       entity_type: insertData.entity_type,
       entity_id: insertData.entity_id,
       file_name: insertData.file_name
@@ -124,7 +125,7 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (insertError) {
-      console.error("Database insert error:", {
+      logger.error("Database insert error:", {
         code: insertError.code,
         message: insertError.message,
         details: insertError.details,
@@ -160,25 +161,25 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error("==========================================");
-    console.error("ATTACHMENT UPLOAD ERROR");
-    console.error("==========================================");
-    console.error("Error type:", error?.constructor?.name);
-    console.error("Error message:", error instanceof Error ? error.message : String(error));
-    console.error("Error stack:", error instanceof Error ? error.stack : "No stack trace");
+    logger.error("==========================================");
+    logger.error("ATTACHMENT UPLOAD ERROR");
+    logger.error("==========================================");
+    logger.error("Error type:", error?.constructor?.name);
+    logger.error("Error message:", error instanceof Error ? error.message : String(error));
+    logger.error("Error stack:", error instanceof Error ? error.stack : "No stack trace");
 
     // Try to get form data for debugging (may fail if already consumed)
     try {
       const debugFormData = await request.clone().formData();
-      console.error("Entity Type:", debugFormData.get("entityType"));
-      console.error("Entity ID:", debugFormData.get("entityId"));
+      logger.error("Entity Type:", debugFormData.get("entityType"));
+      logger.error("Entity ID:", debugFormData.get("entityId"));
       const debugFile = debugFormData.get("file");
-      console.error("File name:", debugFile instanceof File ? debugFile.name : "N/A");
+      logger.error("File name:", debugFile instanceof File ? debugFile.name : "N/A");
     } catch (formError) {
-      console.error("Could not read form data for debugging (already consumed)");
+      logger.error("Could not read form data for debugging (already consumed)");
     }
 
-    console.error("==========================================");
+    logger.error("==========================================");
     return NextResponse.json({
       error: "Upload failed",
       message: "An unexpected error occurred while uploading the file. Please try again or contact support if the problem persists.",

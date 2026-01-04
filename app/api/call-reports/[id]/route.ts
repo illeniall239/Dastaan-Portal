@@ -47,9 +47,9 @@ export async function GET(
           { status: 404 }
         );
       }
-      logger.error(`Error fetching call report: ${error instanceof Error ? error.message : String(error)}`);
+      logger.error("Error fetching call report:", { error, callReportId: id, context: "GET /api/call-reports/[id]" });
       return NextResponse.json(
-        { error: "Failed to fetch call report", details: error.message },
+        { error: "Failed to fetch call report" },
         { status: 500 }
       );
     }

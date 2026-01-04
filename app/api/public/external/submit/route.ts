@@ -2,6 +2,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { logger } from "@/lib/logger";
 import { logAdminAction } from "@/lib/audit/server";
 import { NextRequest, NextResponse } from "next/server";
+import { rateLimit, getClientIdentifier, createRateLimitHeaders } from "@/lib/rate-limit-redis";
 
 export const dynamic = "force-dynamic";
 
@@ -17,6 +18,23 @@ interface SubmitEvaluationRequest {
 
 export async function POST(request: NextRequest) {
   try {
+    // Apply rate limiting: 10 requests per hour per IP (prevent spam/abuse)
+    const identifier = getClientIdentifier(request);
+    const rateLimitResult = await rateLimit(identifier, {
+      limit: 10,
+      window: 60 * 60 * 1000, // 1 hour in milliseconds
+    });
+
+    if (!rateLimitResult.success) {
+      return NextResponse.json(
+        { error: "Too many requests. Please try again later." },
+        {
+          status: 429,
+          headers: createRateLimitHeaders(rateLimitResult),
+        }
+      );
+    }
+
     const body: SubmitEvaluationRequest = await request.json();
 
     // Validate required fields

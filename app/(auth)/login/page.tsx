@@ -180,7 +180,7 @@ export default function LoginPage() {
               </h1>
             </div>
             <p className="text-lg xl:text-xl text-blue-100 leading-relaxed">
-              Your story development management system — where creativity meets organization.
+              Your story development management system — streamlining production and operations.
             </p>
           </div>
 
@@ -215,7 +215,7 @@ export default function LoginPage() {
                 Sign In
               </h2>
               <p className="text-gray-600 text-base sm:text-lg">
-                Access your creative workspace
+                Access your professional workspace
               </p>
             </div>
 

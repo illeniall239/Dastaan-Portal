@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { NextRequest, NextResponse } from "next/server";
+import { logger } from "@/lib/logger";
 
 export async function PATCH(
   request: NextRequest,
@@ -63,7 +64,7 @@ export async function PATCH(
       .single();
 
     if (error) {
-      console.error("Error updating status:", error);
+      logger.error("Error updating status:", error);
       return NextResponse.json(
         { error: "Failed to update status" },
         { status: 500 }
@@ -76,7 +77,7 @@ export async function PATCH(
     });
 
   } catch (error) {
-    console.error("Error in PATCH /api/call-reports/[id]/status:", error);
+    logger.error("Error in PATCH /api/call-reports/[id]/status:", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

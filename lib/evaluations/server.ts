@@ -283,3 +283,147 @@ export async function hasUserEvaluatedCallReport(userId: string, callReportId: s
 
   return !!data; // Returns true if a record exists, false otherwise
 }
+
+/**
+ * Get segregated evaluations for a call report (evaluator vs management)
+ * Uses the call_report_evaluations_with_type view created in migration
+ */
+export async function getSegregatedEvaluations(callReportId: string) {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from("call_report_evaluations_with_type")
+    .select("*")
+    .eq("call_report_id", callReportId)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    throw new Error(`Failed to fetch segregated evaluations: ${error.message}`);
+  }
+
+  const evaluations = data || [];
+
+  // Separate evaluations by type into three categories
+  const evaluatorEvaluations = evaluations.filter(e => e.evaluation_type === 'evaluator');
+  const managementEvaluations = evaluations.filter(e => e.evaluation_type === 'management');
+  const programmerEvaluations = evaluations.filter(e => e.evaluation_type === 'programmer');
+
+  return {
+    evaluatorEvaluations,
+    managementEvaluations,
+    programmerEvaluations,
+    total: evaluations.length,
+    evaluatorCount: evaluatorEvaluations.length,
+    managementCount: managementEvaluations.length,
+    programmerCount: programmerEvaluations.length,
+  };
+}
+
+/**
+ * Check if a management user has already evaluated a call report
+ */
+export async function hasManagementEvaluated(callReportId: string, userId: string) {
+  const supabase = await createClient();
+
+  // Check if user has a management role
+  const { data: userData, error: userError } = await supabase
+    .from("users")
+    .select("role")
+    .eq("id", userId)
+    .single();
+
+  if (userError) {
+    throw new Error(`Failed to check user role: ${userError.message}`);
+  }
+
+  // Only check for management roles
+  if (!['admin', 'management', 'executive'].includes(userData.role)) {
+    return false;
+  }
+
+  // Check if evaluation exists
+  const { data, error } = await supabase
+    .from("evaluator_forms")
+    .select("id")
+    .eq("evaluator_id", userId)
+    .eq("call_report_id", callReportId)
+    .single();
+
+  if (error && error.code !== 'PGRST116') {
+    throw new Error(`Failed to check evaluation status: ${error.message}`);
+  }
+
+  return !!data;
+}
+
+/**
+ * Get segregated episodic evaluations (evaluator vs management)
+ * Uses the episodic_evaluations_with_type view created in migration
+ */
+export async function getSegregatedEpisodicEvaluations(episodeId: string) {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from("episodic_evaluations_with_type")
+    .select("*")
+    .eq("episode_id", episodeId)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    throw new Error(`Failed to fetch segregated episodic evaluations: ${error.message}`);
+  }
+
+  const evaluations = data || [];
+
+  // Separate evaluations by type into three categories
+  const evaluatorEvaluations = evaluations.filter(e => e.evaluation_type === 'evaluator');
+  const managementEvaluations = evaluations.filter(e => e.evaluation_type === 'management');
+  const programmerEvaluations = evaluations.filter(e => e.evaluation_type === 'programmer');
+
+  return {
+    evaluatorEvaluations,
+    managementEvaluations,
+    programmerEvaluations,
+    total: evaluations.length,
+    evaluatorCount: evaluatorEvaluations.length,
+    managementCount: managementEvaluations.length,
+    programmerCount: programmerEvaluations.length,
+  };
+}
+
+/**
+ * Check if a management user has already evaluated an episode
+ */
+export async function hasManagementEvaluatedEpisode(episodeId: string, userId: string) {
+  const supabase = await createClient();
+
+  // Check if user has a management role
+  const { data: userData, error: userError } = await supabase
+    .from("users")
+    .select("role")
+    .eq("id", userId)
+    .single();
+
+  if (userError) {
+    throw new Error(`Failed to check user role: ${userError.message}`);
+  }
+
+  // Only check for management roles
+  if (!['admin', 'management', 'executive'].includes(userData.role)) {
+    return false;
+  }
+
+  // Check if evaluation exists
+  const { data, error } = await supabase
+    .from("episodic_evaluations")
+    .select("id")
+    .eq("evaluator_id", userId)
+    .eq("episode_id", episodeId)
+    .single();
+
+  if (error && error.code !== 'PGRST116') {
+    throw new Error(`Failed to check evaluation status: ${error.message}`);
+  }
+
+  return !!data;
+}

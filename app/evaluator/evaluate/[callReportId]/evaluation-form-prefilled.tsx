@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
 import { toast } from "sonner";
 import { createEvaluationClient, updateEvaluationClient } from "@/lib/evaluations/client";
@@ -16,6 +17,7 @@ import { ScoreCard } from "@/components/episodic-evaluations/score-card";
 import { CallReportOverallAssessment } from "@/components/evaluations/call-report-overall-assessment";
 import { DetailedOneLinerDisplay } from "@/components/evaluations/detailed-one-liner-display";
 import { useFormTimeTracking } from "@/lib/hooks/useFormTimeTracking";
+import { BackButton } from "@/components/ui/back-button";
 import {
   AlertDialog,
   AlertDialogContent,
@@ -67,6 +69,9 @@ export function EvaluatorEvaluationForm({
   attachments = [],
   progress = null,
   detailedOneLiner = null,
+  isManagementEvaluation = false,
+  existingEvaluation: propExistingEvaluation = null,
+  portalPrefix = "evaluator",
 }: {
   callReport: CallReport;
   userId: string;
@@ -74,6 +79,9 @@ export function EvaluatorEvaluationForm({
   attachments?: any[];
   progress?: any;
   detailedOneLiner?: any;
+  isManagementEvaluation?: boolean;
+  existingEvaluation?: any;
+  portalPrefix?: string;
 }) {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
@@ -113,7 +121,7 @@ export function EvaluatorEvaluationForm({
     overallAssessmentScore: 5,
     first2EpsRequired: false,
     comments: "",
-    decision: "" as "approve" | "reject" | "",
+    decision: "" as "approve" | "reject" | "needs_improvement" | "",
     decisionNotes: "",
   });
 
@@ -169,7 +177,7 @@ export function EvaluatorEvaluationForm({
 
     // Validate decision field
     if (!formData.decision) {
-      toast.error("Please select a decision (Approve or Reject)");
+      toast.error("Please select a decision (Approve, Reject, or Needs Improvement)");
       return;
     }
 
@@ -187,9 +195,14 @@ export function EvaluatorEvaluationForm({
       if (!confirmReject) return;
     }
 
-    // Validate decision notes for reject
-    if (formData.decision === "reject" && (!formData.decisionNotes || formData.decisionNotes.trim().length === 0)) {
-      toast.error("Please provide justification for your rejection");
+    // Validate decision notes for reject or needs_improvement
+    if ((formData.decision === "reject" || formData.decision === "needs_improvement") &&
+      (!formData.decisionNotes || formData.decisionNotes.trim().length === 0)) {
+      toast.error(
+        formData.decision === "reject"
+          ? "Please provide justification for your rejection"
+          : "Please explain what improvements are needed"
+      );
       return;
     }
 
@@ -211,7 +224,7 @@ export function EvaluatorEvaluationForm({
           first_2_eps_required: formData.first2EpsRequired,
           comments: formData.comments || null,
           decision: formData.decision,
-          decision_notes: formData.decision === "reject" ? formData.decisionNotes : null,
+          decision_notes: (formData.decision === "reject" || formData.decision === "needs_improvement") ? formData.decisionNotes : null,
           time_spent_minutes: timeSpentMinutes,
           started_at: new Date().toISOString(),
         });
@@ -230,7 +243,7 @@ export function EvaluatorEvaluationForm({
           first_2_eps_required: formData.first2EpsRequired,
           comments: formData.comments || undefined,
           decision: formData.decision,
-          decision_notes: formData.decision === "reject" ? formData.decisionNotes : undefined,
+          decision_notes: (formData.decision === "reject" || formData.decision === "needs_improvement") ? formData.decisionNotes : undefined,
           time_spent_minutes: timeSpentMinutes,
           started_at: new Date().toISOString(),
         });
@@ -249,7 +262,7 @@ export function EvaluatorEvaluationForm({
       }
 
       // Navigate back
-      router.push("/evaluator/evaluations");
+      router.push(`/${portalPrefix}/evaluations-list`);
     } catch (error: any) {
       console.error("Error submitting evaluation:", error);
       toast.error(`Failed to submit evaluation: ${error.message || "Please try again."}`);
@@ -349,7 +362,28 @@ export function EvaluatorEvaluationForm({
 
   // Load draft on component mount
   useEffect(() => {
-    // Fetch existing evaluation for this call report by current user
+    // If existing evaluation is provided via props (management mode), use it
+    if (propExistingEvaluation) {
+      setExistingEvaluation(propExistingEvaluation);
+      // Prefill form values for editing
+      setFormData((prev) => ({
+        ...prev,
+        perEpPriceRange: propExistingEvaluation.per_ep_price_range || "",
+        slot: propExistingEvaluation.slot || "",
+        premiseConflictScore: propExistingEvaluation.premise_conflict_score || 5,
+        storylinePlotScore: propExistingEvaluation.storyline_plot_score || 5,
+        episodicProgressionScore: propExistingEvaluation.episodic_progression_score || 5,
+        charactersScore: propExistingEvaluation.characters_score || 5,
+        overallAssessmentScore: propExistingEvaluation.overall_assessment_score || 5,
+        first2EpsRequired: !!propExistingEvaluation.first_2_eps_required,
+        comments: propExistingEvaluation.comments || "",
+        decision: propExistingEvaluation.decision || "",
+        decisionNotes: propExistingEvaluation.decision_notes || "",
+      }));
+      return; // Skip fetching for management mode
+    }
+
+    // Fetch existing evaluation for this call report by current user (evaluator mode)
     const fetchExisting = async () => {
       try {
         const res = await fetch(`/api/evaluator/forms/by-call-report/${callReport.id}`);
@@ -379,24 +413,33 @@ export function EvaluatorEvaluationForm({
     fetchExisting();
     loadDraft();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [propExistingEvaluation]);
 
   return (
     <form onSubmit={handleSubmit}>
-      <div className="py-6 space-y-6 max-w-4xl mx-auto px-4 sm:px-6">
-        {/* Back Button */}
-        <div>
-          <Button variant="outline" size="sm" asChild>
-            <Link href="/evaluator/evaluations">
-              <ArrowLeftIcon className="h-4 w-4 mr-2" />
-              Back to My Evaluations
-            </Link>
-          </Button>
+      <div className="flex flex-col gap-4 sm:gap-6 mb-8 max-w-4xl mx-auto px-4 sm:px-6 py-6">
+        <BackButton fallbackHref={`/${portalPrefix}/evaluations-list`} variant="outline" size="sm" className="w-fit" />
+        <div className="space-y-1">
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Evaluate Project</h1>
+          <div className="flex items-center gap-2">
+            <p className="text-muted-foreground text-sm sm:text-base">
+              Assessment for "{callReport.working_title}"
+            </p>
+            {isManagementEvaluation && (
+              <Badge variant="secondary" className="text-[10px] px-2 py-0 h-4">
+                Management
+              </Badge>
+            )}
+          </div>
         </div>
+      </div>
 
+      <div className="space-y-6 max-w-4xl mx-auto px-4 sm:px-6">
         {/* Call Report Information (Read-only) */}
         <Card className="p-6 bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-200">
-          <h2 className="text-2xl font-bold mb-4">Writer Engagement Report Information</h2>
+          <div className="flex items-center gap-3 mb-4">
+            <h2 className="text-xl font-bold">Writer Engagement Report Information</h2>
+          </div>
           <div className="space-y-4">
             <div className="bg-slate-50 p-4 rounded-lg space-y-3">
               <div className="grid grid-cols-2 gap-4">
@@ -463,16 +506,15 @@ export function EvaluatorEvaluationForm({
                   <span className="text-sm font-medium">Initial Assessment:</span>
                   <div className="flex items-center gap-3 mt-2">
                     <span className="text-3xl font-bold text-blue-600">{callReport.overall_rating}/10</span>
-                    <div className={`text-sm px-3 py-1 rounded-md border ${
-                      callReport.overall_rating >= 9 ? 'text-green-700 bg-green-50 border-green-300' :
+                    <div className={`text-sm px-3 py-1 rounded-md border ${callReport.overall_rating >= 9 ? 'text-green-700 bg-green-50 border-green-300' :
                       callReport.overall_rating >= 7 ? 'text-blue-700 bg-blue-50 border-blue-300' :
-                      callReport.overall_rating >= 5 ? 'text-amber-700 bg-amber-50 border-amber-300' :
-                      'text-red-700 bg-red-50 border-red-300'
-                    }`}>
+                        callReport.overall_rating >= 5 ? 'text-amber-700 bg-amber-50 border-amber-300' :
+                          'text-red-700 bg-red-50 border-red-300'
+                      }`}>
                       {callReport.overall_rating >= 9 ? 'High rating potential' :
-                       callReport.overall_rating >= 7 ? 'Rating potential audience appeal' :
-                       callReport.overall_rating >= 5 ? 'Need improvement' :
-                       'Need major re-writing'}
+                        callReport.overall_rating >= 7 ? 'Rating potential audience appeal' :
+                          callReport.overall_rating >= 5 ? 'Need improvement' :
+                            'Need major re-writing'}
                     </div>
                   </div>
                 </div>
@@ -723,11 +765,10 @@ export function EvaluatorEvaluationForm({
                 <div className="space-y-3">
                   {/* Approve Option */}
                   <label
-                    className={`flex items-start p-4 rounded-lg border-2 cursor-pointer transition-all ${
-                      formData.decision === "approve"
-                        ? "border-green-500 bg-green-50"
-                        : "border-gray-200 hover:border-green-300 hover:bg-green-50/30"
-                    }`}
+                    className={`flex items-start p-4 rounded-lg border-2 cursor-pointer transition-all ${formData.decision === "approve"
+                      ? "border-green-500 bg-green-50"
+                      : "border-gray-200 hover:border-green-300 hover:bg-green-50/30"
+                      }`}
                   >
                     <input
                       type="radio"
@@ -749,11 +790,10 @@ export function EvaluatorEvaluationForm({
 
                   {/* Reject Option */}
                   <label
-                    className={`flex items-start p-4 rounded-lg border-2 cursor-pointer transition-all ${
-                      formData.decision === "reject"
-                        ? "border-red-500 bg-red-50"
-                        : "border-gray-200 hover:border-red-300 hover:bg-red-50/30"
-                    }`}
+                    className={`flex items-start p-4 rounded-lg border-2 cursor-pointer transition-all ${formData.decision === "reject"
+                      ? "border-red-500 bg-red-50"
+                      : "border-gray-200 hover:border-red-300 hover:bg-red-50/30"
+                      }`}
                   >
                     <input
                       type="radio"
@@ -772,25 +812,61 @@ export function EvaluatorEvaluationForm({
                       </p>
                     </div>
                   </label>
+
+                  {/* Needs Improvement Option */}
+                  <label
+                    className={`flex items-start p-4 rounded-lg border-2 cursor-pointer transition-all ${formData.decision === "needs_improvement"
+                      ? "border-yellow-500 bg-yellow-50"
+                      : "border-gray-200 hover:border-yellow-300 hover:bg-yellow-50/30"
+                      }`}
+                  >
+                    <input
+                      type="radio"
+                      name="decision"
+                      value="needs_improvement"
+                      checked={formData.decision === "needs_improvement"}
+                      onChange={(e) => {
+                        setFormData({ ...formData, decision: "needs_improvement" });
+                      }}
+                      className="mt-1 h-4 w-4 text-yellow-600 focus:ring-yellow-500"
+                    />
+                    <div className="ml-3">
+                      <div className="font-semibold text-yellow-700">Needs Improvement</div>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        Project has potential but requires revisions
+                      </p>
+                    </div>
+                  </label>
                 </div>
               </div>
 
-              {/* Decision Notes (Required for Reject) */}
-              {formData.decision === "reject" && (
-                <div className="space-y-2 p-3 bg-red-50 rounded-lg border border-red-200">
-                  <Label htmlFor="decisionNotes" className="text-base font-semibold text-red-900">
-                    Justification for Rejection *
+              {/* Decision Notes (Required for Reject or Needs Improvement) */}
+              {(formData.decision === "reject" || formData.decision === "needs_improvement") && (
+                <div className={`space-y-2 p-3 rounded-lg border ${formData.decision === "reject"
+                  ? "bg-red-50 border-red-200"
+                  : "bg-yellow-50 border-yellow-200"
+                  }`}>
+                  <Label htmlFor="decisionNotes" className={`text-base font-semibold ${formData.decision === "reject" ? "text-red-900" : "text-yellow-900"
+                    }`}>
+                    {formData.decision === "reject"
+                      ? "Justification for Rejection *"
+                      : "What Improvements Are Needed? *"}
                   </Label>
                   <Textarea
                     id="decisionNotes"
                     value={formData.decisionNotes}
                     onChange={(e) => setFormData({ ...formData, decisionNotes: e.target.value })}
-                    placeholder="Please explain your reasons for rejecting this project..."
+                    placeholder={
+                      formData.decision === "reject"
+                        ? "Please explain your reasons for rejecting this project..."
+                        : "Please explain what improvements are needed for this project..."
+                    }
                     rows={4}
                     className="bg-white"
                     required
                   />
-                  <p className="text-xs text-red-700">
+                  <p className={`text-xs ${formData.decision === "reject" ? "text-red-700" : "text-yellow-700"
+                    }`}>
                     Providing detailed justification helps improve future projects
                   </p>
                 </div>
@@ -824,7 +900,7 @@ export function EvaluatorEvaluationForm({
           <div className="flex flex-col gap-2 sm:hidden">
             <div className="flex gap-2">
               <Button asChild variant="outline" type="button" className="flex-1 text-xs px-2">
-                <Link href="/evaluator/evaluations">Cancel</Link>
+                <Link href={`/${portalPrefix}/evaluations-list`}>Cancel</Link>
               </Button>
               {!existingEvaluation || isEditing ? (
                 <Button
@@ -853,7 +929,14 @@ export function EvaluatorEvaluationForm({
               disabled={isLoading || savingDraft || loadingDraft}
               className="w-full bg-[#10b981] hover:bg-[#059669] text-sm"
             >
-              {isLoading ? "Saving..." : existingEvaluation && isEditing ? "Save Changes" : "Submit Evaluation"}
+              {isLoading
+                ? "Saving..."
+                : existingEvaluation && isEditing
+                  ? "Update Evaluation"
+                  : isManagementEvaluation
+                    ? "Submit Management Evaluation"
+                    : "Submit Evaluation"
+              }
             </Button>
             {existingEvaluation && !isEditing && (
               <Button type="button" variant="outline" onClick={() => setIsEditing(true)} className="w-full">
@@ -866,7 +949,7 @@ export function EvaluatorEvaluationForm({
           <div className="hidden sm:flex justify-between items-center gap-3">
             <div className="flex gap-3">
               <Button asChild variant="outline" type="button">
-                <Link href="/evaluator/evaluations">Cancel</Link>
+                <Link href={`/${portalPrefix}/evaluations-list`}>Cancel</Link>
               </Button>
             </div>
             <div className="flex gap-3">
@@ -896,7 +979,14 @@ export function EvaluatorEvaluationForm({
                 disabled={isLoading || savingDraft || loadingDraft}
                 className="bg-[#10b981] hover:bg-[#059669]"
               >
-                {isLoading ? "Saving..." : existingEvaluation && isEditing ? "Save Changes" : "Submit Evaluation"}
+                {isLoading
+                  ? "Saving..."
+                  : existingEvaluation && isEditing
+                    ? "Update Evaluation"
+                    : isManagementEvaluation
+                      ? "Submit Management Evaluation"
+                      : "Submit Evaluation"
+                }
               </Button>
               {existingEvaluation && !isEditing && (
                 <Button type="button" variant="outline" onClick={() => setIsEditing(true)}>
@@ -909,33 +999,33 @@ export function EvaluatorEvaluationForm({
 
         {/* Draft Found Dialog */}
         <Suspense fallback={null}>
-        <AlertDialog open={showDraftDialog} onOpenChange={setShowDraftDialog}>
-          <AlertDialogContent className="max-w-md">
-            <AlertDialogHeader>
-              <div className="flex items-center gap-3 mb-2">
-                <div className="p-3 bg-blue-100 rounded-full">
-                  <FilePenLine className="h-6 w-6 text-[#224794]" />
+          <AlertDialog open={showDraftDialog} onOpenChange={setShowDraftDialog}>
+            <AlertDialogContent className="max-w-md">
+              <AlertDialogHeader>
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="p-3 bg-blue-100 rounded-full">
+                    <FilePenLine className="h-6 w-6 text-[#224794]" />
+                  </div>
+                  <AlertDialogTitle className="text-xl">Draft Found</AlertDialogTitle>
                 </div>
-                <AlertDialogTitle className="text-xl">Draft Found</AlertDialogTitle>
-              </div>
-              <AlertDialogDescription className="text-base">
-                A draft was found for this evaluation. Would you like to load it and continue where you left off, or start fresh?
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter className="gap-2 sm:gap-2">
-              <AlertDialogCancel onClick={handleStartFresh} className="sm:w-auto">
-                Start Fresh
-              </AlertDialogCancel>
-              <AlertDialogAction
-                onClick={handleLoadDraft}
-                className="bg-[#224794] hover:bg-[#1a3670] sm:w-auto"
-              >
-                <FilePenLine className="mr-2 h-4 w-4" />
-                Load Draft
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+                <AlertDialogDescription className="text-base">
+                  A draft was found for this evaluation. Would you like to load it and continue where you left off, or start fresh?
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter className="gap-2 sm:gap-2">
+                <AlertDialogCancel onClick={handleStartFresh} className="sm:w-auto">
+                  Start Fresh
+                </AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={handleLoadDraft}
+                  className="bg-[#224794] hover:bg-[#1a3670] sm:w-auto"
+                >
+                  <FilePenLine className="mr-2 h-4 w-4" />
+                  Load Draft
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </Suspense>
       </div>
     </form>

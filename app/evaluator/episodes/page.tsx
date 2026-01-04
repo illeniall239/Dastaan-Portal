@@ -888,15 +888,14 @@ export default function EvaluatorEpisodesPage() {
 
   return (
     <div className="mobile-container mobile-section">
-      <div className="mb-6">
-        <BackButton fallbackHref="/evaluator" variant="outline" size="sm" />
-      </div>
-
-      <div className="mb-4 sm:mb-6 md:mb-8">
-        <h1 className="text-xl sm:text-2xl font-bold mb-2 whitespace-nowrap">Episodes</h1>
-        <p className="text-muted-foreground text-sm sm:text-base">
-          View, log, and evaluate episodes
-        </p>
+      <div className="flex flex-col gap-4 sm:gap-6 mb-8">
+        <BackButton fallbackHref="/evaluator" variant="outline" size="sm" className="w-fit" />
+        <div className="space-y-1">
+          <h1 className="text-xl sm:text-2xl font-bold whitespace-nowrap">Episodes</h1>
+          <p className="text-muted-foreground text-sm sm:text-base">
+            View, log, and evaluate episodes
+          </p>
+        </div>
       </div>
 
       <Tabs

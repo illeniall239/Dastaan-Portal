@@ -88,6 +88,7 @@ export function BackButton({
 
     // Extract portal from path
     if (path.startsWith("/evaluator")) return "/evaluator";
+    if (path.startsWith("/programmer")) return "/programmer";
     if (path.startsWith("/content-department")) return "/content-department";
     if (path.startsWith("/management")) return "/management";
     if (path.startsWith("/admin")) return "/admin";

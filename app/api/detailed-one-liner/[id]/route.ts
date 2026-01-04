@@ -106,9 +106,9 @@ export async function GET(
           { status: 404 }
         );
       }
-      logger.error(`Error fetching detailed one-liner: ${error instanceof Error ? error.message : String(error)}`);
+      logger.error("Error fetching detailed one-liner", { error, context: "GET /api/detailed-one-liner/[id]" });
       return NextResponse.json(
-        { error: "Failed to fetch detailed one-liner", details: error.message },
+        { error: "Failed to fetch detailed one-liner" },
         { status: 500 }
       );
     }
@@ -129,9 +129,9 @@ export async function GET(
 
     return NextResponse.json({ data }, { status: 200 });
   } catch (error) {
-    logger.error(`Unexpected error fetching detailed one-liner: ${error instanceof Error ? error.message : String(error)}`);
+    logger.error("Unexpected error fetching detailed one-liner", { error, context: "GET /api/detailed-one-liner/[id]" });
     return NextResponse.json(
-      { error: "Internal server error", details: error instanceof Error ? error.message : "Unknown error" },
+      { error: "Internal server error" },
       { status: 500 }
     );
   }
@@ -191,9 +191,9 @@ export async function PATCH(
           { status: 404 }
         );
       }
-      logger.error(`Error fetching detailed one-liner: ${fetchError instanceof Error ? fetchError.message : String(fetchError)}`);
+      logger.error("Error fetching detailed one-liner for update", { error: fetchError, context: "PATCH /api/detailed-one-liner/[id]" });
       return NextResponse.json(
-        { error: "Failed to fetch detailed one-liner", details: fetchError.message },
+        { error: "Failed to fetch detailed one-liner" },
         { status: 500 }
       );
     }
@@ -243,9 +243,9 @@ export async function PATCH(
         .eq("id", id);
 
       if (updateError) {
-        logger.error(`Error updating detailed one-liner: ${updateError instanceof Error ? updateError.message : String(updateError)}`);
+        logger.error("Error updating detailed one-liner", { error: updateError, context: "PATCH /api/detailed-one-liner/[id]" });
         return NextResponse.json(
-          { error: "Failed to update detailed one-liner", details: updateError.message },
+          { error: "Failed to update detailed one-liner" },
           { status: 500 }
         );
       }
@@ -260,9 +260,9 @@ export async function PATCH(
         .eq("detailed_one_liner_id", id);
 
       if (deleteNarrativeError) {
-        logger.error(`Error deleting narrative breakdown items: ${deleteNarrativeError instanceof Error ? deleteNarrativeError.message : String(deleteNarrativeError)}`);
+        logger.error("Error deleting narrative breakdown items", { error: deleteNarrativeError, context: "PATCH /api/detailed-one-liner/[id]" });
         return NextResponse.json(
-          { error: "Failed to update narrative breakdown items", details: deleteNarrativeError.message },
+          { error: "Failed to update narrative breakdown items" },
           { status: 500 }
         );
       }
@@ -282,9 +282,9 @@ export async function PATCH(
           .insert(narrativeItems);
 
         if (insertNarrativeError) {
-          logger.error(`Error inserting narrative breakdown items: ${insertNarrativeError instanceof Error ? insertNarrativeError.message : String(insertNarrativeError)}`);
+          logger.error("Error inserting narrative breakdown items", { error: insertNarrativeError, context: "PATCH /api/detailed-one-liner/[id]" });
           return NextResponse.json(
-            { error: "Failed to insert narrative breakdown items", details: insertNarrativeError.message },
+            { error: "Failed to insert narrative breakdown items" },
             { status: 500 }
           );
         }
@@ -300,9 +300,9 @@ export async function PATCH(
         .eq("detailed_one_liner_id", id);
 
       if (deleteEventError) {
-        logger.error(`Error deleting event planning items: ${deleteEventError instanceof Error ? deleteEventError.message : String(deleteEventError)}`);
+        logger.error("Error deleting event planning items", { error: deleteEventError, context: "PATCH /api/detailed-one-liner/[id]" });
         return NextResponse.json(
-          { error: "Failed to update event planning items", details: deleteEventError.message },
+          { error: "Failed to update event planning items" },
           { status: 500 }
         );
       }
@@ -324,9 +324,9 @@ export async function PATCH(
           .insert(eventItems);
 
         if (insertEventError) {
-          logger.error(`Error inserting event planning items: ${insertEventError instanceof Error ? insertEventError.message : String(insertEventError)}`);
+          logger.error("Error inserting event planning items", { error: insertEventError, context: "PATCH /api/detailed-one-liner/[id]" });
           return NextResponse.json(
-            { error: "Failed to insert event planning items", details: insertEventError.message },
+            { error: "Failed to insert event planning items" },
             { status: 500 }
           );
         }
@@ -342,9 +342,9 @@ export async function PATCH(
         .eq("detailed_one_liner_id", id);
 
       if (deleteRiskError) {
-        logger.error(`Error deleting potential weaknesses/risks items: ${deleteRiskError instanceof Error ? deleteRiskError.message : String(deleteRiskError)}`);
+        logger.error("Error deleting potential weaknesses/risks items", { error: deleteRiskError, context: "PATCH /api/detailed-one-liner/[id]" });
         return NextResponse.json(
-          { error: "Failed to update potential weaknesses/risks items", details: deleteRiskError.message },
+          { error: "Failed to update potential weaknesses/risks items" },
           { status: 500 }
         );
       }
@@ -364,9 +364,9 @@ export async function PATCH(
           .insert(riskItems);
 
         if (insertRiskError) {
-          logger.error(`Error inserting potential weaknesses/risks items: ${insertRiskError instanceof Error ? insertRiskError.message : String(insertRiskError)}`);
+          logger.error("Error inserting potential weaknesses/risks items", { error: insertRiskError, context: "PATCH /api/detailed-one-liner/[id]" });
           return NextResponse.json(
-            { error: "Failed to insert potential weaknesses/risks items", details: insertRiskError.message },
+            { error: "Failed to insert potential weaknesses/risks items" },
             { status: 500 }
           );
         }
@@ -382,9 +382,9 @@ export async function PATCH(
         .eq("detailed_one_liner_id", id);
 
       if (deleteCharacterError) {
-        logger.error(`Error deleting character relationships: ${deleteCharacterError instanceof Error ? deleteCharacterError.message : String(deleteCharacterError)}`);
+        logger.error("Error deleting character relationships", { error: deleteCharacterError, context: "PATCH /api/detailed-one-liner/[id]" });
         return NextResponse.json(
-          { error: "Failed to update character relationships", details: deleteCharacterError.message },
+          { error: "Failed to update character relationships" },
           { status: 500 }
         );
       }
@@ -412,9 +412,9 @@ export async function PATCH(
           .insert(characterItems);
 
         if (insertCharacterError) {
-          logger.error(`Error inserting character relationships: ${insertCharacterError instanceof Error ? insertCharacterError.message : String(insertCharacterError)}`);
+          logger.error("Error inserting character relationships", { error: insertCharacterError, context: "PATCH /api/detailed-one-liner/[id]" });
           return NextResponse.json(
-            { error: "Failed to insert character relationships", details: insertCharacterError.message },
+            { error: "Failed to insert character relationships" },
             { status: 500 }
           );
         }
@@ -487,9 +487,9 @@ export async function PATCH(
       .single();
 
     if (fetchUpdatedError) {
-      logger.error(`Error fetching updated detailed one-liner: ${fetchUpdatedError instanceof Error ? fetchUpdatedError.message : String(fetchUpdatedError)}`);
+      logger.error("Error fetching updated detailed one-liner", { error: fetchUpdatedError, context: "PATCH /api/detailed-one-liner/[id]" });
       return NextResponse.json(
-        { error: "Failed to fetch updated detailed one-liner", details: fetchUpdatedError.message },
+        { error: "Failed to fetch updated detailed one-liner" },
         { status: 500 }
       );
     }
@@ -517,9 +517,9 @@ export async function PATCH(
       data: updated
     }, { status: 200 });
   } catch (error) {
-    logger.error(`Unexpected error updating detailed one-liner: ${error instanceof Error ? error.message : String(error)}`);
+    logger.error("Unexpected error updating detailed one-liner", { error, context: "PATCH /api/detailed-one-liner/[id]" });
     return NextResponse.json(
-      { error: "Internal server error", details: error instanceof Error ? error.message : "Unknown error" },
+      { error: "Internal server error" },
       { status: 500 }
     );
   }

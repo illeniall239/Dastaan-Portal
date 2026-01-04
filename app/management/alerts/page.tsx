@@ -197,8 +197,15 @@ export default function AlertsPage() {
 
   return (
     <div className="container mx-auto p-6 space-y-6">
-      {/* Back Button */}
-      <BackButton fallbackHref="/management" variant="outline" size="sm" />
+      <div className="flex flex-col gap-4 sm:gap-6 mb-8">
+        <BackButton fallbackHref="/management" variant="outline" size="sm" className="w-fit" />
+        <div className="space-y-1">
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Critical Alerts</h1>
+          <p className="text-muted-foreground text-sm sm:text-base">
+            System-wide alerts requiring attention
+          </p>
+        </div>
+      </div>
 
       {/* Breadcrumb */}
       <Breadcrumb>
@@ -215,14 +222,7 @@ export default function AlertsPage() {
         </BreadcrumbList>
       </Breadcrumb>
 
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="space-y-1">
-          <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Critical Alerts</h1>
-          <p className="text-muted-foreground">
-            System-wide alerts requiring attention
-          </p>
-        </div>
+      <div className="flex items-center justify-end">
         <ExportButton
           data={exportData}
           filename="critical-alerts"

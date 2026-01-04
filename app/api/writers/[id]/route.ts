@@ -1,5 +1,8 @@
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
+import { logger } from "@/lib/logger";
+import { updateWriterSchema } from "@/lib/validations/writers";
+import { idParamSchema } from "@/lib/validations/uuid-params";
 
 // PATCH /api/writers/[id] - Update a writer
 export async function PATCH(
@@ -8,20 +11,33 @@ export async function PATCH(
 ) {
   try {
     const supabase = await createClient();
-    const body = await request.json();
     const { id } = await params;
 
-    const { name, email, phone, status } = body;
+    // Validate UUID format
+    const paramValidation = idParamSchema.safeParse({ id });
+    if (!paramValidation.success) {
+      return NextResponse.json(
+        { error: "Invalid ID format", details: paramValidation.error.issues },
+        { status: 400 }
+      );
+    }
 
-    // Build update object with only provided fields
-    const updateData: any = {};
-    if (name !== undefined) updateData.name = name.trim();
-    if (email !== undefined) updateData.email = email?.trim() || null;
-    if (phone !== undefined) updateData.phone = phone?.trim() || null;
-    if (status !== undefined) updateData.status = status;
+    const body = await request.json();
+
+    // Validate request body
+    const validation = updateWriterSchema.safeParse(body);
+
+    if (!validation.success) {
+      return NextResponse.json(
+        { error: "Invalid request", details: validation.error.issues },
+        { status: 400 }
+      );
+    }
+
+    const validatedData = validation.data;
 
     // Validate at least one field is being updated
-    if (Object.keys(updateData).length === 0) {
+    if (Object.keys(validatedData).length === 0) {
       return NextResponse.json(
         { error: "No fields to update" },
         { status: 400 }
@@ -43,11 +59,11 @@ export async function PATCH(
     }
 
     // If updating name, check for duplicates
-    if (name) {
+    if (validatedData.name) {
       const { data: duplicate } = await supabase
         .from("writers")
         .select("id")
-        .eq("name", name.trim())
+        .eq("name", validatedData.name)
         .neq("id", id)
         .single();
 
@@ -59,6 +75,18 @@ export async function PATCH(
       }
     }
 
+    // Prepare update data (convert empty strings to null for optional fields)
+    const updateData: {
+      name?: string;
+      email?: string | null;
+      phone?: string | null;
+      status?: 'active' | 'inactive';
+    } = {};
+    if (validatedData.name !== undefined) updateData.name = validatedData.name;
+    if (validatedData.email !== undefined) updateData.email = validatedData.email || null;
+    if (validatedData.phone !== undefined) updateData.phone = validatedData.phone || null;
+    if (validatedData.status !== undefined) updateData.status = validatedData.status;
+
     // Update writer
     const { data: updatedWriter, error } = await supabase
       .from("writers")
@@ -68,7 +96,7 @@ export async function PATCH(
       .single();
 
     if (error) {
-      console.error("Error updating writer:", error);
+      logger.error("Error updating writer:", error);
       return NextResponse.json(
         { error: "Failed to update writer" },
         { status: 500 }
@@ -77,7 +105,7 @@ export async function PATCH(
 
     return NextResponse.json(updatedWriter);
   } catch (error) {
-    console.error("Error in PATCH /api/writers/[id]:", error);
+    logger.error("Error in PATCH /api/writers/[id]:", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }
@@ -115,7 +143,7 @@ export async function DELETE(
       .eq("id", id);
 
     if (error) {
-      console.error("Error deleting writer:", error);
+      logger.error("Error deleting writer:", error);
       return NextResponse.json(
         { error: "Failed to delete writer" },
         { status: 500 }
@@ -124,7 +152,7 @@ export async function DELETE(
 
     return NextResponse.json({ success: true }, { status: 200 });
   } catch (error) {
-    console.error("Error in DELETE /api/writers/[id]:", error);
+    logger.error("Error in DELETE /api/writers/[id]:", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

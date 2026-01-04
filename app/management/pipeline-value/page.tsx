@@ -226,21 +226,22 @@ export default function PipelineValuePage() {
       </Breadcrumb>
 
       {/* Header */}
-      <div className="flex items-center justify-between">
+      {/* Header */}
+      <div className="flex flex-col gap-4 sm:gap-6 mb-8">
+        <div className="flex items-center justify-between">
+          <BackButton fallbackHref="/management" variant="outline" size="sm" className="w-fit" />
+          <ExportButton
+            data={exportData}
+            filename="pipeline-value"
+            disabled={filteredItems.length === 0}
+          />
+        </div>
         <div className="space-y-1">
-          <div className="flex items-center gap-2">
-            <BackButton fallbackHref="/management" variant="ghost" size="sm" className="gap-1" />
-          </div>
           <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Pipeline Value</h1>
-          <p className="text-muted-foreground">
+          <p className="text-muted-foreground text-sm sm:text-base">
             Combined value of active contracts and ongoing negotiations
           </p>
         </div>
-        <ExportButton
-          data={exportData}
-          filename="pipeline-value"
-          disabled={filteredItems.length === 0}
-        />
       </div>
 
       {/* Stats Cards */}

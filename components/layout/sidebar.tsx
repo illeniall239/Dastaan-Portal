@@ -80,7 +80,7 @@ export const Sidebar = memo(function Sidebar({
       {/* Sidebar */}
       <aside
         className={cn(
-          "fixed top-0 left-0 h-full bg-white border-r border-gray-200 z-50 flex flex-col transition-transform duration-300 ease-in-out",
+          "fixed top-0 left-0 h-full bg-white z-50 flex flex-col transition-transform duration-300 ease-in-out",
           // Desktop - always visible
           "lg:w-70 lg:translate-x-0",
           // Mobile - slide in/out
@@ -89,7 +89,7 @@ export const Sidebar = memo(function Sidebar({
         )}
       >
         {/* Header Section */}
-        <div className="h-16 flex items-center justify-center px-4 border-b border-gray-200 flex-shrink-0 relative">
+        <div className="h-14 flex items-center justify-center px-4 border-b border-[#1a3670] bg-[#224794] flex-shrink-0 relative">
           {/* Logo - Centered */}
           <Link
             href={navItems[0]?.href || "/content-department"}
@@ -99,7 +99,7 @@ export const Sidebar = memo(function Sidebar({
             <span
               dir="rtl"
               lang="ur"
-              className="font-urdu font-bold text-[#f79224] text-2xl"
+              className="font-urdu font-bold text-orange-300 text-xl"
             >
               داستان
             </span>
@@ -110,7 +110,7 @@ export const Sidebar = memo(function Sidebar({
             variant="ghost"
             size="icon"
             onClick={closeMobile}
-            className="lg:hidden h-8 w-8 absolute right-4"
+            className="lg:hidden h-8 w-8 absolute right-4 text-white hover:bg-white/10"
             aria-label="Close sidebar"
           >
             <X className="h-5 w-5" />
@@ -118,7 +118,7 @@ export const Sidebar = memo(function Sidebar({
         </div>
 
         {/* Navigation Section (scrollable) */}
-        <nav className="flex-1 overflow-y-auto py-4 px-2">
+        <nav className="flex-1 overflow-y-auto py-4 px-2 border-r border-gray-200">
           <ul className="space-y-1">
             {navItems.map((item) => {
               const Icon = getIconComponent(item.icon);

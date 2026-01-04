@@ -61,22 +61,24 @@ export default async function MeetingDetailPage({ params }: { params: Promise<{ 
   return (
     <div className="p-6 space-y-6">
       {/* Page Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <BackButton fallbackHref="/content-department/calendar" variant="outline" />
-          <div>
+      <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between mb-8">
+        <div className="flex flex-col gap-4 sm:gap-6 w-full sm:w-auto">
+          <BackButton fallbackHref="/content-department/calendar" variant="outline" size="sm" className="w-fit" />
+          <div className="space-y-1">
             <h1 className="text-xl sm:text-2xl font-bold tracking-tight">{meeting.working_title}</h1>
-            <p className="text-muted-foreground mt-1">
+            <p className="text-muted-foreground text-sm sm:text-base">
               Scheduled Meeting
             </p>
           </div>
         </div>
-        <Button asChild className="bg-[#10b981] hover:bg-[#059669]">
-          <Link href="/content-department/log-call-report">
-            <FileTextIcon className="h-4 w-4 mr-2" />
-            Log Writer Engagement Report
-          </Link>
-        </Button>
+        <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto lg:flex-shrink-0">
+          <Button asChild className="bg-[#10b981] hover:bg-[#059669]">
+            <Link href="/content-department/log-call-report">
+              <FileTextIcon className="h-4 w-4 mr-2" />
+              Log Writer Engagement Report
+            </Link>
+          </Button>
+        </div>
       </div>
 
       {/* Main Content Grid */}
@@ -204,14 +206,9 @@ export default async function MeetingDetailPage({ params }: { params: Promise<{ 
                 </div>
               )}
 
-              {meeting.usp && (
-                <div>
-                  <h3 className="text-sm font-semibold mb-2">USP (Unique Selling Point)</h3>
-                  <p className="text-sm text-muted-foreground">{meeting.usp}</p>
-                </div>
-              )}
 
-              
+
+
             </CardContent>
           </Card>
 
