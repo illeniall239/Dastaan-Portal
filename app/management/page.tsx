@@ -14,6 +14,8 @@ import {
 import { ManagementHeader } from "@/components/management/management-header";
 import { ExportButton } from "@/components/management/export-button";
 import { getExecutiveSummary, getDepartmentWorkload } from "@/lib/management/server";
+import { ProductionMetricsCards } from "@/components/dashboard/production-metrics-cards";
+import { getProductionMetrics } from "@/lib/production-metrics/server";
 import {
   CriticalAlertsSection,
   TeamPerformanceSection,
@@ -54,9 +56,10 @@ export default async function ManagementDashboard({
 
   // Fetch ONLY critical above-the-fold data
   // Other sections will stream in via Suspense
-  const [summary, workload] = await Promise.all([
+  const [summary, workload, productionMetrics] = await Promise.all([
     getExecutiveSummary(),
     getDepartmentWorkload(),
+    getProductionMetrics(), // No team filter - global access for management
   ]);
 
   // Format currency helper
@@ -192,6 +195,24 @@ export default async function ManagementDashboard({
             </Card>
           </Link>
         </div>
+      </div>
+
+      {/* Production Pipeline Metrics */}
+      <div id="production-pipeline" className="mb-6 sm:mb-8">
+        <div className="flex items-center justify-between mb-3 sm:mb-4">
+          <h2 className="text-base sm:text-lg lg:text-xl font-bold text-gray-900">
+            Production Pipeline Overview
+          </h2>
+          <div className="no-print">
+            <ExportButton
+              elementId="production-pipeline"
+              filename="production-pipeline"
+              formats={["png", "pdf"]}
+              compact
+            />
+          </div>
+        </div>
+        <ProductionMetricsCards metrics={productionMetrics} showAllMetrics={true} />
       </div>
 
       {/* Below-the-fold sections - Stream in progressively */}

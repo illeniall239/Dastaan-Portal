@@ -35,6 +35,11 @@ export default async function AdminLayout({
       href: "/admin/audit-logs",
       icon: "fileText",
     },
+    {
+      title: "Settings",
+      href: "/admin/settings",
+      icon: "settings",
+    },
   ];
 
   return (

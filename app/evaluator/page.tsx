@@ -18,6 +18,9 @@ import { ModernStatCard } from "@/components/dashboard/modern-stat-card";
 import { ModernContentCard } from "@/components/dashboard/modern-content-card";
 import { Badge } from "@/components/ui/badge";
 import { formatDateTime, formatDate } from "@/lib/utils/format-date";
+import { ProductionMetricsCards } from "@/components/dashboard/production-metrics-cards";
+import { getProductionMetrics } from "@/lib/production-metrics/server";
+import { TeamBadge } from "@/components/shared/team-badge";
 
 // Add Next.js caching - revalidate every 5 minutes (300 seconds)
 // This significantly improves navigation speed by caching dashboard data
@@ -77,7 +80,7 @@ async function DashboardContent({ userId }: { userId: string }) {
   const hasGlobalAccess = ["admin", "management"].includes(currentUser.role);
 
   // Fetch ALL data in parallel for maximum performance
-  const [statsData, pendingData, completedData] = await Promise.all([
+  const [statsData, pendingData, completedData, productionMetrics] = await Promise.all([
     // Stats data - WITH TEAM FILTERS
     Promise.all([
       // Total call reports count
@@ -190,13 +193,18 @@ async function DashboardContent({ userId }: { userId: string }) {
           call_report_id,
           working_title,
           writer_name,
-          meeting_date
+          meeting_date,
+          team_id,
+          team:teams(id, name, team_type)
         )
       `
       )
       .eq("evaluator_id", userId)
       .order("created_at", { ascending: false })
       .limit(5),
+
+    // Production metrics - WITH TEAM FILTER (evaluators see only their team)
+    getProductionMetrics(currentUser.team_id, currentUser.role),
   ]);
 
   // Extract counts from stats data
@@ -270,6 +278,12 @@ async function DashboardContent({ userId }: { userId: string }) {
         />
       </div>
 
+      {/* Production Pipeline Metrics */}
+      <div className="space-y-2">
+        <h2 className="text-lg font-semibold text-gray-900">Production Pipeline</h2>
+        <ProductionMetricsCards metrics={productionMetrics} showAllMetrics={true} />
+      </div>
+
       {/* Content Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Quick Actions */}
@@ -312,9 +326,12 @@ async function DashboardContent({ userId }: { userId: string }) {
                   href="/evaluator/evaluations-list?view=pending"
                   className="block p-3 rounded-lg hover:bg-gray-50 transition-colors border border-transparent hover:border-gray-200"
                 >
-                  <p className="text-sm font-medium text-gray-900 line-clamp-1">
-                    {report.working_title || "Untitled Project"}
-                  </p>
+                  <div className="flex items-center gap-2 mb-1 flex-wrap">
+                    <p className="text-sm font-medium text-gray-900 line-clamp-1">
+                      {report.working_title || "Untitled Project"}
+                    </p>
+                    {report.team && <TeamBadge team={report.team} size="sm" />}
+                  </div>
                   <p className="text-xs text-gray-500 mt-1">
                     {report.writer_names && report.writer_names.length > 1
                       ? `Writers: ${report.writer_names.join(", ")}`
@@ -352,9 +369,14 @@ async function DashboardContent({ userId }: { userId: string }) {
                   className="flex items-start justify-between p-3 rounded-lg border border-gray-200"
                 >
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-900 line-clamp-1">
-                      {evaluation.call_report?.working_title || "Untitled Project"}
-                    </p>
+                    <div className="flex items-center gap-2 mb-1 flex-wrap">
+                      <p className="text-sm font-medium text-gray-900 line-clamp-1">
+                        {evaluation.call_report?.working_title || "Untitled Project"}
+                      </p>
+                      {evaluation.call_report?.team && (
+                        <TeamBadge team={evaluation.call_report.team} size="sm" />
+                      )}
+                    </div>
                     <p className="text-xs text-gray-500 mt-1">
                       Writer: {evaluation.call_report?.writer_name}
                     </p>

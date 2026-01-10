@@ -3,6 +3,8 @@
 import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ExportButton } from "./export-button";
+import { createPortal } from "react-dom";
+import { TeamBadge } from "@/components/shared/team-badge";
 
 export interface DrillDownData {
   title: string;
@@ -20,6 +22,9 @@ interface DrillDownModalProps {
 
 export function DrillDownModal({ isOpen, onClose, data }: DrillDownModalProps) {
   if (!isOpen || !data) return null;
+
+  // Prevent SSR issues - only render portal on client side
+  if (typeof window === 'undefined') return null;
 
   const renderTable = () => {
     if (!data.columns || data.data.length === 0) {
@@ -53,7 +58,16 @@ export function DrillDownModal({ isOpen, onClose, data }: DrillDownModalProps) {
               >
                 {data.columns!.map((col) => (
                   <td key={col.key} className="px-4 py-3 text-sm text-slate-700">
-                    {col.format ? col.format(row[col.key]) : row[col.key]}
+                    {/* Render team badge if column is for team */}
+                    {(col.key === 'team' || col.key === 'team_name') ? (
+                      row.team ? (
+                        <TeamBadge team={row.team} size="sm" />
+                      ) : (
+                        <span className="text-gray-400 text-xs">Unknown</span>
+                      )
+                    ) : (
+                      col.format ? col.format(row[col.key]) : row[col.key]
+                    )}
                   </td>
                 ))}
               </tr>
@@ -115,16 +129,16 @@ export function DrillDownModal({ isOpen, onClose, data }: DrillDownModalProps) {
     );
   };
 
-  return (
+  return createPortal(
     <>
       {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-black/50 z-50 animate-in fade-in duration-200"
+        className="fixed inset-0 bg-black/50 z-[70] animate-in fade-in duration-200"
         onClick={onClose}
       />
 
       {/* Modal */}
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
+      <div className="fixed inset-0 z-[71] flex items-center justify-center p-4 pointer-events-none">
         <div
           className="bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-[85vh] flex flex-col pointer-events-auto animate-in zoom-in-95 duration-200"
           onClick={(e) => e.stopPropagation()}
@@ -175,6 +189,7 @@ export function DrillDownModal({ isOpen, onClose, data }: DrillDownModalProps) {
           </div>
         </div>
       </div>
-    </>
+    </>,
+    document.body
   );
 }

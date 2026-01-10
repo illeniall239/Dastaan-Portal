@@ -363,6 +363,11 @@ export async function getAllCallReports() {
     .from("call_reports")
     .select(`
       *,
+      team:teams (
+        id,
+        name,
+        team_type
+      ),
       detailed_one_liners (
         id
       ),

@@ -6,6 +6,7 @@ import { Card } from "@/components/ui/card";
 import { ExternalEvaluationsTab } from "./external-evaluations-tab";
 import { InternalEvaluationsTab } from "./internal-evaluations-tab";
 import { OverviewTab } from "./overview-tab";
+import { OverallEvaluationsTab } from "./overall-evaluations-tab";
 
 interface EvaluationsDashboardProps {
   externalLinks: any[];
@@ -33,9 +34,10 @@ export function EvaluationsDashboard({
   return (
     <div className="space-y-6">
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="internal">Internal Evaluations</TabsTrigger>
+          <TabsTrigger value="overall">Overall</TabsTrigger>
           <TabsTrigger value="external">External Evaluations</TabsTrigger>
         </TabsList>
 
@@ -49,6 +51,10 @@ export function EvaluationsDashboard({
 
         <TabsContent value="internal" className="mt-6">
           <InternalEvaluationsTab currentUser={currentUser} />
+        </TabsContent>
+
+        <TabsContent value="overall" className="mt-6">
+          <OverallEvaluationsTab />
         </TabsContent>
 
         <TabsContent value="external" className="mt-6">

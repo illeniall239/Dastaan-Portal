@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { EyeIcon, FilePenLine, TrendingUp, TrendingDown, Minus } from "lucide-react";
 import Link from "next/link";
 import { EvaluationProgressBar } from "@/components/evaluations/evaluation-progress-bar";
+import { TeamBadge } from "@/components/shared/team-badge";
 
 interface CallReportCardProps {
   report: any;
@@ -71,8 +72,11 @@ export function CallReportCard({ report, portalPrefix = "evaluator" }: CallRepor
         <CardHeader>
           <div className="flex items-start justify-between">
             <div className="flex-1">
-              <div className="flex items-center gap-2 mb-1">
+              <div className="flex items-center gap-2 mb-1 flex-wrap">
                 <CardTitle className="text-xl">{report.title}</CardTitle>
+                {report.team && (
+                  <TeamBadge team={report.team} size="sm" />
+                )}
                 {evalStatus && (
                   <Badge
                     variant={

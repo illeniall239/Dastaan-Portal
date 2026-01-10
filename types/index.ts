@@ -270,6 +270,10 @@ export interface CallReport {
   created_by: string;
   created_at: string;
   updated_at: string;
+
+  // Team information
+  team_id?: string; // Team that created this call report
+  team?: Team; // Populated when joining with teams table
 }
 
 // Call Report Writer types (for multiple writers per call report)
@@ -711,4 +715,92 @@ export interface PipelineStory {
 
   // Progress Notes
   notes: PipelineNote[];
+}
+
+// Production Metrics Types
+// Used for dashboard production lifecycle metrics across Programmer, Evaluator, and Management dashboards
+
+/**
+ * Production metrics data structure
+ * Contains 7 key metrics for tracking production lifecycle
+ */
+export interface ProductionMetrics {
+  uniqueWritersCount: number;
+  uniqueWriters: Array<{ // Detailed list of unique writers with their projects
+    id: string;
+    name: string;
+    working_title: string;
+    team?: Team; // Team information for the project
+  }>;
+  storiesInDiscussion: number;
+  storiesInDiscussionDetails?: Array<{ // Detailed list of stories in discussion
+    id: string;
+    working_title: string;
+    writer_name: string;
+    target_slot: string;
+    created_at: string;
+    team?: Team; // Team information for the project
+  }>;
+  scriptsInWriting: {
+    total: number;
+    bySlot: Record<string, number>; // e.g., {"7 pm": 3, "8 pm": 5, "Unassigned": 2}
+    details?: Array<{ // Detailed list of scripts in writing
+      id: string;
+      working_title: string;
+      writer_name: string;
+      target_slot: string;
+      status: string;
+      team?: Team; // Team information for the project
+    }>;
+  };
+  scriptsCompleted: {
+    total: number;
+    bySlot: Record<string, number>;
+    details?: Array<{ // Detailed list of completed scripts
+      id: string;
+      working_title: string;
+      writer_name: string;
+      target_slot: string;
+      status: string;
+      team?: Team; // Team information for the project
+    }>;
+  };
+  projectsOnShoot: number;
+  projectsOnShootDetails?: Array<{ // Detailed list of projects currently on shoot
+    id: string;
+    working_title: string;
+    writer_name: string;
+    target_slot: string;
+    status: string;
+    team?: Team; // Team information for the project
+  }>;
+  projectsOnAir: number;
+  projectsOnAirDetails?: Array<{ // Detailed list of projects currently on air
+    id: string;
+    working_title: string;
+    on_air_title: string;
+    target_slot: string;
+    status: string;
+    team?: Team; // Team information for the project
+  }>;
+  projectsAired: {
+    total: number;
+    projects: Array<{
+      working_title: string;
+      on_air_title: string;
+      aired_date: string;
+      slot: string;
+      team?: Team; // Team information for the project
+    }>;
+  };
+}
+
+/**
+ * Aired project details for historical tracking
+ */
+export interface AiredProject {
+  working_title: string;
+  on_air_title: string;
+  aired_date: string;
+  slot: string;
 }
