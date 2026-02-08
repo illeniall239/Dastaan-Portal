@@ -11,24 +11,14 @@ const managementNavItems = [
     icon: "home",
   },
   {
-    title: "What's Cooking",
-    href: "/management/whats-cooking",
-    icon: "chefHat",
-  },
-  {
-    title: "Evaluations",
-    href: "/management/evaluations",
-    icon: "clipboardCheck",
-  },
-  {
-    title: "Project Status",
-    href: "/management/status-updater",
-    icon: "listChecks",
-  },
-  {
     title: "Calendar",
     href: "/management/calendar",
     icon: "calendar",
+  },
+  {
+    title: "What's Cooking",
+    href: "/management/whats-cooking",
+    icon: "chefHat",
   },
   {
     title: "Script Bank",
@@ -36,9 +26,19 @@ const managementNavItems = [
     icon: "fileText",
   },
   {
-    title: "Teams",
-    href: "/management/teams",
-    icon: "users",
+    title: "Idea Roadmap",
+    href: "/management/roadmap",
+    icon: "map",
+  },
+  {
+    title: "Project Status",
+    href: "/management/status-updater",
+    icon: "listChecks",
+  },
+  {
+    title: "Evaluations",
+    href: "/management/evaluations",
+    icon: "clipboardCheck",
   },
   {
     title: "Writers Summary",
@@ -46,14 +46,14 @@ const managementNavItems = [
     icon: "userCheck",
   },
   {
-    title: "Idea Roadmap",
-    href: "/management/roadmap",
-    icon: "map",
-  },
-  {
     title: "Evaluation Requests",
     href: "/management/cross-team-shares",
     icon: "share2",
+  },
+  {
+    title: "Teams",
+    href: "/management/teams",
+    icon: "users",
   },
 ];
 

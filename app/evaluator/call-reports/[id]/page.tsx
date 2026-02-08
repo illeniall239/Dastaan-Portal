@@ -80,12 +80,19 @@ export default async function CallReportDetailPage({ params }: { params: Promise
       .single();
     isTeamHead = team?.team_head_id === user.id;
   }
-  const { data: report, error } = await supabase
+  // Build query with team isolation
+  let reportQuery = supabase
     .from("call_reports")
     .select("*")
     .eq("id", resolvedParams.id)
-    .eq("meeting_type", "call_report")
-    .single();
+    .eq("meeting_type", "call_report");
+
+  // TEAM ISOLATION: Restrict to own team's reports
+  if (userTeamId) {
+    reportQuery = reportQuery.eq("team_id", userTeamId);
+  }
+
+  const { data: report, error } = await reportQuery.single();
 
   if (error || !report) {
     redirect("/evaluator/call-reports");

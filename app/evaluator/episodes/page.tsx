@@ -254,6 +254,26 @@ export default function EvaluatorEpisodesPage() {
   const fetchCallReports = useCallback(async () => {
     setFetchingData(true);
     try {
+      // Get current user's team context for team isolation
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setFetchingData(false);
+        return;
+      }
+
+      const { data: currentUser } = await supabase
+        .from("users")
+        .select("team_id, role")
+        .eq("id", user.id)
+        .single();
+
+      // If user has no team, show nothing
+      if (!currentUser?.team_id) {
+        setCallReports([]);
+        setFetchingData(false);
+        return;
+      }
+
       const { data: callReportsData, error: crError } = await supabase
         .from("call_reports")
         .select(`
@@ -271,6 +291,7 @@ export default function EvaluatorEpisodesPage() {
           )
         `)
         .eq("meeting_type", "call_report")
+        .eq("team_id", currentUser.team_id)
         .order("created_at", { ascending: false })
         .limit(100);
 

@@ -191,7 +191,7 @@ export async function POST(request: Request) {
       }
     } else {
       // For non-GCM users, update team_id if explicitly provided and not auto-created
-      if (team_id && role !== 'evaluator') {
+      if (team_id) {
         const { error: updateError } = await adminClient
           .from('users')
           .update({ team_id })

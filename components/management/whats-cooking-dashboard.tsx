@@ -511,15 +511,6 @@ export function WhatsCookingDashboard({ ideas }: WhatsCookingDashboardProps) {
     <Card className="border border-gray-200 shadow-sm">
       <CardHeader className="pb-4">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-          <div>
-            <CardTitle className="text-lg font-semibold text-gray-900">
-              Project Pipeline
-            </CardTitle>
-            <CardDescription className="mt-1 text-gray-500">
-              {stats.total} projects • {stats.highPriority} high priority • Avg rating: {stats.avgRating > 0 ? stats.avgRating.toFixed(1) : 'N/A'}
-            </CardDescription>
-          </div>
-          
           {/* Grouping Controls */}
           <div className="flex gap-2 items-center flex-wrap">
             {groupByLevels.map((level, index) => (

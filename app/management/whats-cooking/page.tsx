@@ -1,6 +1,5 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { WhatsCookingDashboard } from "@/components/management/whats-cooking-dashboard";
 import { getActiveIdeasDetails, calculateEpisodeMetrics } from "@/lib/management/active-ideas-details";
 import { FileVideo, CheckCircle2, FolderOpen, TrendingUp } from "lucide-react";
 import { TopPicks } from "@/components/management/whats-cooking/top-picks";
@@ -139,8 +138,6 @@ export default async function WhatsCookingPage() {
         <RatingTiers ideas={activeIdeasDetails.details} />
       </div>
 
-      {/* Detailed Project Table */}
-      <WhatsCookingDashboard ideas={activeIdeasDetails.details} />
     </div>
   );
 }

@@ -60,11 +60,25 @@ export default async function EvaluatorEvaluatePage({
     const { createClient } = await import("@/lib/supabase/server");
     const supabase = await createClient();
 
-    const { data, error } = await supabase
+    // Get user's team_id for team isolation
+    const { data: userProfile } = await supabase
+      .from("users")
+      .select("team_id")
+      .eq("id", user.id)
+      .single();
+
+    // Build query with team isolation
+    let reportQuery = supabase
       .from("call_reports")
       .select("*")
-      .eq("id", callReportId)
-      .single();
+      .eq("id", callReportId);
+
+    // TEAM ISOLATION: Restrict to own team's reports (unless cross-team share)
+    if (!crossTeamShareId && userProfile?.team_id) {
+      reportQuery = reportQuery.eq("team_id", userProfile.team_id);
+    }
+
+    const { data, error } = await reportQuery.single();
 
     if (error) {
       console.error("Error fetching call report:", error);

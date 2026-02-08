@@ -70,8 +70,22 @@ export default function LogEpisodesPage() {
       setFetchingData(true);
 
       try {
-        // Fetch call reports with writers in a single query using JOIN (eliminates N+1)
-        const { data: callReportsData, error: crError } = await supabase
+        // Get current user's team context for team isolation
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+          toast.error("Not authenticated");
+          setFetchingData(false);
+          return;
+        }
+
+        const { data: currentUser } = await supabase
+          .from("users")
+          .select("team_id, role")
+          .eq("id", user.id)
+          .single();
+
+        // Build query with team filter - always filter by team for episode logging
+        let callReportsQuery = supabase
           .from("call_reports")
           .select(`
             id,
@@ -91,6 +105,16 @@ export default function LogEpisodesPage() {
           .eq("meeting_type", "call_report")
           .order("created_at", { ascending: false })
           .limit(100);
+
+        // TEAM ISOLATION: Always filter by team for episode logging
+        if (!currentUser?.team_id) {
+          setCallReports([]);
+          setFetchingData(false);
+          return;
+        }
+        callReportsQuery = callReportsQuery.eq("team_id", currentUser.team_id);
+
+        const { data: callReportsData, error: crError } = await callReportsQuery;
 
         if (crError) {
           console.error("Error fetching call reports:", crError);
