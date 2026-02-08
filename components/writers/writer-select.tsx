@@ -41,7 +41,7 @@ export function WriterSelect({
   const fetchWriters = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch("/api/writers");
+      const response = await fetch("/api/writers/list");
       if (!response.ok) {
         throw new Error("Failed to fetch writers");
       }
