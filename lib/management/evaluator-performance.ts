@@ -1,6 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { cachedQuery, CacheTags } from "@/lib/cache/request-cache";
-import { logger } from "@/lib/logger";
+import { handleError } from "@/lib/errors";
 import { EVALUATOR_ROLES, DATE_TIME } from '@/lib/constants';
 
 /**
@@ -102,13 +102,16 @@ export async function getEvaluatorOverview(): Promise<EvaluatorOverview> {
       avgResponseTime,
     };
   } catch (error) {
-    logger.error("Error fetching evaluator overview:", error);
-    return {
-      totalEvaluators: 0,
-      activeEvaluators: 0,
-      totalEvaluations: 0,
-      avgResponseTime: 0,
-    };
+    return handleError(error, {
+      context: "getEvaluatorOverview",
+      fallbackValue: {
+        totalEvaluators: 0,
+        activeEvaluators: 0,
+        totalEvaluations: 0,
+        avgResponseTime: 0,
+      },
+      userMessage: "Failed to fetch evaluator overview statistics",
+    });
   }
 }
 
@@ -135,7 +138,11 @@ export async function getAllEvaluatorStats(fromDate?: Date, toDate?: Date): Prom
         });
 
         if (error) {
-          return [];
+          return handleError(error, {
+            context: 'getAllEvaluatorStats:rpc',
+            fallbackValue: [],
+            userMessage: 'Failed to fetch evaluator performance metrics',
+          });
         }
 
         interface EvaluatorStatsRow {
@@ -170,7 +177,11 @@ export async function getAllEvaluatorStats(fromDate?: Date, toDate?: Date): Prom
           };
         });
       } catch (error) {
-        return [];
+        return handleError(error, {
+          context: 'getAllEvaluatorStats:catch',
+          fallbackValue: [],
+          userMessage: 'Failed to fetch evaluator performance metrics',
+        });
       }
     },
     cacheKey,
@@ -220,8 +231,11 @@ export async function getEvaluatorWorkloads(): Promise<EvaluatorWorkload[]> {
       };
     });
   } catch (error) {
-    logger.error("Error fetching evaluator workloads:", error);
-    return [];
+    return handleError(error, {
+      context: "getEvaluatorWorkloads",
+      fallbackValue: [],
+      userMessage: "Failed to fetch evaluator workloads",
+    });
   }
 }
 
@@ -326,7 +340,10 @@ export async function getEvaluatorActivityHeatmap(): Promise<EvaluatorActivity[]
       };
     });
   } catch (error) {
-    logger.error("Error fetching evaluator activity heatmap:", error);
-    return [];
+    return handleError(error, {
+      context: "getEvaluatorActivityHeatmap",
+      fallbackValue: [],
+      userMessage: "Failed to fetch evaluator activity heatmap",
+    });
   }
 }

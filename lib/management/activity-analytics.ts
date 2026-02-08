@@ -1,4 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/admin';
+import { handleError } from '@/lib/errors';
 
 export interface RecentActivity {
   id: string;
@@ -146,8 +147,12 @@ export async function getRecentActivity(limit: number = 15): Promise<RecentActiv
       .slice(0, limit);
 
   } catch (error) {
-    console.error('Error fetching recent activity:', error);
-    return [];
+    return handleError(error, {
+      context: 'getRecentActivity',
+      fallbackValue: [],
+      userMessage: 'Failed to fetch recent activity feed',
+      metadata: { limit },
+    });
   }
 }
 

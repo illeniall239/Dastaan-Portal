@@ -12,6 +12,7 @@ const protectedRoutes: Record<string, string[]> = {
   "/finance/payments": ["finance", "admin"],
   "/content-department/call-reports": ["content_manager", "content_creator", "evaluator"],
   "/content-department": ["content_manager", "content_creator"],
+  "/gcm": ["gcm"],
   "/programmer": ["programmer", "admin"],
   "/evaluator": ["evaluator", "admin"],
   // /stakeholder-demo is intentionally not listed here to make it publicly accessible
@@ -168,6 +169,8 @@ export async function proxy(request: NextRequest) {
         case "content_manager":
         case "content_creator":
           return NextResponse.redirect(new URL("/content-department", request.url));
+        case "gcm":
+          return NextResponse.redirect(new URL("/gcm", request.url));
         case "evaluator":
           return NextResponse.redirect(new URL("/evaluator", request.url));
         case "programmer":
@@ -186,6 +189,8 @@ export async function proxy(request: NextRequest) {
         case "content_manager":
         case "content_creator":
           return NextResponse.redirect(new URL("/content-department", request.url));
+        case "gcm":
+          return NextResponse.redirect(new URL("/gcm", request.url));
         case "evaluator":
           return NextResponse.redirect(new URL("/evaluator", request.url));
         case "programmer":

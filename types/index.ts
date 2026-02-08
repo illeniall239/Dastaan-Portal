@@ -15,6 +15,7 @@ export type UserRole =
   | "management"
   | "content_manager"
   | "content_head"
+  | "gcm"
   | "evaluator"
   | "executive"
   | "legal"
@@ -455,6 +456,13 @@ export interface Episode {
   logged_by: string;
   created_at: string;
   updated_at: string;
+  // Versioning
+  version: number;
+  is_current: boolean;
+  approval_status?: 'approved' | 'rejected' | 'needs_revision' | null;
+  approved_by?: string | null;
+  approved_at?: string | null;
+  supersedes_id?: string | null;
 }
 
 export interface EpisodeWithDetails extends Episode {
@@ -726,11 +734,13 @@ export interface PipelineStory {
  */
 export interface ProductionMetrics {
   uniqueWritersCount: number;
-  uniqueWriters: Array<{ // Detailed list of unique writers with their projects
-    id: string;
-    name: string;
-    working_title: string;
-    team?: Team; // Team information for the project
+  uniqueWriters: Array<{ // Detailed list of writer engagements (last 30 days)
+    id: string;           // engagement id
+    writer_name: string;
+    date_engaged: string;
+    time_slot?: string;
+    notes?: string;
+    created_by_name?: string;
   }>;
   storiesInDiscussion: number;
   storiesInDiscussionDetails?: Array<{ // Detailed list of stories in discussion
@@ -803,4 +813,180 @@ export interface AiredProject {
   on_air_title: string;
   aired_date: string;
   slot: string;
+}
+
+// Feedback Timeline Types
+// Used for monitoring evaluation feedback timelines across teams in the Programmer's Portal
+
+/**
+ * Represents a single item in the feedback timeline
+ * Joins data from evaluator_forms, call_reports, users, and teams
+ */
+export interface FeedbackTimelineItem {
+  id: string;
+  formId: string;
+  callReportId: string;
+  projectTitle: string;
+  teamName: string | null;
+  teamType: TeamType | null;
+
+  // Timeline timestamps
+  callReportCreatedAt: string | null;  // When the call report/idea was logged
+  submittedAt: string | null;          // When evaluation was submitted
+  daysToReview: number | null;         // Days between call report creation and evaluation submission
+
+  // Delay tracking
+  isLate: boolean;
+  delayReason: string | null;
+
+  // Evaluation details
+  evaluatorName: string | null;
+  evaluatorRole: UserRole | null;
+  decision: 'approve' | 'reject' | 'needs_improvement' | null;
+  averageScore: number | null;
+
+  // Cross-team sharing
+  isCrossTeam: boolean;
+  crossTeamShareId?: string | null;
+}
+
+/**
+ * Aggregated statistics for the feedback timeline
+ * Used in stats cards on the Feedback Timeline page
+ */
+export interface FeedbackTimelineStats {
+  totalEvaluations: number;
+  pendingReview: number;
+  reviewed: number;
+  lateCount: number;
+  averageReviewDays: number;
+  onTimePercentage: number;
+}
+
+// ============================================================================
+// Visual Idea Roadmap Types
+// Used for tracking ideas through the complete workflow journey
+// ============================================================================
+
+/**
+ * The 8 stages an idea/call report goes through
+ */
+export type RoadmapStage =
+  | 'submission'
+  | 'evaluation'
+  | 'approval'
+  | 'contract_terms'
+  | 'legal_review'
+  | 'contract'
+  | 'payment'
+  | 'completed';
+
+/**
+ * Status of a stage in the roadmap
+ */
+export type RoadmapStageStatus = 'completed' | 'in_progress' | 'pending' | 'skipped';
+
+/**
+ * Actor who performed an action in a stage
+ */
+export interface RoadmapActor {
+  id: string;
+  name: string;
+  role: UserRole;
+}
+
+/**
+ * Single stage in the roadmap with all relevant data
+ */
+export interface RoadmapStageData {
+  stage: RoadmapStage;
+  stageNumber: number;
+  title: string;
+  status: RoadmapStageStatus;
+  startedAt: string | null;
+  completedAt: string | null;
+  daysInStage: number | null;
+  actor: RoadmapActor | null;
+  actors?: RoadmapActor[]; // For evaluations (multiple evaluators)
+  outcome: string | null;
+  outcomeDetails?: Record<string, any>;
+}
+
+/**
+ * Complete roadmap data for a call report/idea
+ * Used in the detail view modal
+ */
+export interface RoadmapData {
+  id: string;
+  callReportId: string;
+  workingTitle: string;
+  teamName: string | null;
+  teamType: TeamType | null;
+  writers: string[];
+  loggedAt: string;
+  loggedBy: RoadmapActor;
+  lastActivityAt: string | null;
+  currentStage: RoadmapStage;
+  currentStageNumber: number;
+  overallProgress: number; // 0-100
+  stages: RoadmapStageData[];
+  totalDays: number;
+  daysInCurrentStage: number;
+}
+
+/**
+ * List item for the roadmap list page
+ * Lightweight version of RoadmapData for list display
+ */
+export interface RoadmapListItem {
+  id: string;
+  callReportId: string;
+  workingTitle: string;
+  teamName: string | null;
+  teamType: TeamType | null;
+  currentStage: RoadmapStage;
+  currentStageNumber: number;
+  overallProgress: number;
+  loggedAt: string;
+  lastActivityAt: string | null;
+  totalDays: number;
+}
+
+/**
+ * Stats for roadmap dashboard
+ */
+export interface RoadmapStats {
+  totalIdeas: number;
+  byStage: Record<RoadmapStage, number>;
+  avgDaysToApproval: number;
+  stuckIdeas: number; // In same stage > 14 days
+}
+
+// ============================================================================
+// Cross-Team Sharing Types
+// Used for sharing call reports between teams for evaluation
+// ============================================================================
+
+export type CrossTeamShareStatus = 'pending' | 'in_progress' | 'completed' | 'cancelled';
+
+export interface CrossTeamShare {
+  id: string;
+  call_report_id: string;
+  call_report?: CallReport;
+  from_team_id: string;
+  from_team?: Team;
+  to_team_id: string;
+  to_team?: Team;
+  shared_by: string;
+  shared_by_user?: User;
+  status: CrossTeamShareStatus;
+  shared_at: string;
+  first_evaluation_at: string | null;
+  completed_at: string | null;
+  notes: string | null;
+  evaluation_deadline: string | null;
+  required_evaluations: number;
+  completed_evaluations: number;
+  created_at: string;
+  updated_at: string;
 }

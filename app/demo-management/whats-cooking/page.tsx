@@ -114,7 +114,22 @@ function generateDummyActiveIdeas() {
       },
       management_member_name: writerNamesList[Math.floor(Math.random() * writerNamesList.length)],
       idea_by: writerNamesList[Math.floor(Math.random() * writerNamesList.length)],
-      developed_by: writerNamesList[Math.floor(Math.random() * writerNamesList.length)]
+      developed_by: writerNamesList[Math.floor(Math.random() * writerNamesList.length)],
+      person_in_charge: writerNamesList[Math.floor(Math.random() * writerNamesList.length)],
+      one_liner_approved: ['approved', 'pending', 'rejected', 'needs_improvement', null][Math.floor(Math.random() * 5)] as string | null,
+      one_liner_summary: Math.random() > 0.5 ? 'Sample one-liner summary' : null,
+      approval_count: Math.floor(Math.random() * 5),
+      rejection_count: Math.floor(Math.random() * 3),
+      needs_improvement_count: Math.floor(Math.random() * 2),
+      total_evaluators: Math.floor(Math.random() * 5) + 3,
+      remarks: Math.random() > 0.5 ? 'Sample remarks' : null,
+      actual_received_episodes: Math.floor(Math.random() * 20),
+      first_episode_received_at: Math.random() > 0.3 ? new Date(Date.now() - Math.floor(Math.random() * 90) * 24 * 60 * 60 * 1000).toISOString() : null,
+      last_episode_received_at: Math.random() > 0.3 ? new Date(Date.now() - Math.floor(Math.random() * 30) * 24 * 60 * 60 * 1000).toISOString() : null,
+      revised_episode_count: Math.random() > 0.5 ? Math.floor(Math.random() * 5) : 0,
+      monthly_episode_receipts: Math.random() > 0.3 ? { '2026-01': Math.floor(Math.random() * 5) + 1, '2026-02': Math.floor(Math.random() * 3) + 1 } : null,
+      days_since_first_episode: Math.random() > 0.3 ? Math.floor(Math.random() * 90) : null,
+      days_since_last_episode: Math.random() > 0.3 ? Math.floor(Math.random() * 60) : null
     };
   });
 

@@ -115,6 +115,7 @@ export function ChangeRoleDialog({
               <SelectContent>
                 <SelectItem value="content_creator">Content Creator</SelectItem>
                 <SelectItem value="content_manager">Content Manager</SelectItem>
+                <SelectItem value="gcm">GCM</SelectItem>
                 <SelectItem value="evaluator">Evaluator</SelectItem>
                 <SelectItem value="executive">Executive</SelectItem>
                 <SelectItem value="legal">Legal</SelectItem>

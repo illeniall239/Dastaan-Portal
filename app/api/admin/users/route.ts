@@ -120,6 +120,8 @@ export async function POST(request: Request) {
       role = "admin";
     } else if (department === "content_head") {
       role = "content_head";
+    } else if (department === "gcm") {
+      role = "gcm";
     } else {
       role = departmentToRole(department);
     }
@@ -157,20 +159,52 @@ export async function POST(request: Request) {
     // Team creation happens via trigger (users_auto_create_team_trigger) for evaluators
     // Both triggers run automatically, errors will be captured in auth creation response
 
-    // Optional: Update team_id if explicitly provided and not auto-created
-    if (team_id && role !== 'evaluator') {
-      const { error: updateError } = await adminClient
-        .from('users')
-        .update({ team_id })
-        .eq('id', newUser.user.id);
+    // Special handling for GCM users: always assign to shared GCM team, overriding any selection
+    if (role === 'gcm') {
+      // Get the shared GCM team
+      const { data: gcmTeam, error: teamError } = await adminClient
+        .from('teams')
+        .select('id')
+        .eq('name', 'GCM Team')
+        .single();
 
-      if (updateError) {
-        logger.dbError('team_assignment', updateError, {
+      if (gcmTeam?.id) {
+        const { error: updateError } = await adminClient
+          .from('users')
+          .update({ team_id: gcmTeam.id })
+          .eq('id', newUser.user.id);
+
+        if (updateError) {
+          logger.dbError('gcm_team_assignment', updateError, {
+            userId: newUser.user.id,
+            teamId: gcmTeam.id,
+            email,
+          });
+          // Don't fail - user created successfully
+        }
+      } else {
+        logger.warn('Shared GCM team not found for user assignment', {
           userId: newUser.user.id,
-          teamId: team_id,
           email,
+          role: 'gcm',
         });
-        // Don't fail - user created successfully
+      }
+    } else {
+      // For non-GCM users, update team_id if explicitly provided and not auto-created
+      if (team_id && role !== 'evaluator') {
+        const { error: updateError } = await adminClient
+          .from('users')
+          .update({ team_id })
+          .eq('id', newUser.user.id);
+
+        if (updateError) {
+          logger.dbError('team_assignment', updateError, {
+            userId: newUser.user.id,
+            teamId: team_id,
+            email,
+          });
+          // Don't fail - user created successfully
+        }
       }
     }
 

@@ -1,4 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/admin';
+import { handleError } from '@/lib/errors';
 
 export type AlertSeverity = 'critical' | 'warning' | 'info';
 export type AlertType = 'bottleneck' | 'stuck_story' | 'evaluation_delay' | 'payment_overdue' | 'long_negotiation';
@@ -165,8 +166,11 @@ export async function getCriticalAlerts(): Promise<CriticalAlert[]> {
     });
 
   } catch (error) {
-    console.error('Error fetching critical alerts:', error);
-    return [];
+    return handleError(error, {
+      context: 'getCriticalAlerts',
+      fallbackValue: [],
+      userMessage: 'Failed to fetch critical alerts',
+    });
   }
 }
 

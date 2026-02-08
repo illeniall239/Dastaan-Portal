@@ -1,4 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/admin';
+import { handleError } from '@/lib/errors';
 
 export interface PipelineItem {
   id: string;
@@ -15,8 +16,7 @@ export interface PipelineItem {
 export async function getPipelineValue() {
   const supabase = createAdminClient();
 
-  // Get contracts
-  const { data: contracts } = await supabase
+  const { data: contracts, error: contractsError } = await supabase
     .from('contracts')
     .select(`
       id,
@@ -32,8 +32,16 @@ export async function getPipelineValue() {
     `)
     .in('status', ['active', 'pending', 'in_progress']);
 
+  if (contractsError) {
+    return handleError(contractsError, {
+      context: 'getPipelineValue:contracts',
+      fallbackValue: [],
+      userMessage: 'Failed to fetch contract values',
+    });
+  }
+
   // Get negotiations
-  const { data: contractTerms } = await supabase
+  const { data: contractTerms, error: negotiationsError } = await supabase
     .from('negotiations')
     .select(`
       id,
@@ -48,6 +56,14 @@ export async function getPipelineValue() {
       )
     `)
     .in('status', ['pending', 'in_progress', 'counter_offer']);
+
+  if (negotiationsError) {
+    return handleError(negotiationsError, {
+      context: 'getPipelineValue:negotiations',
+      fallbackValue: [],
+      userMessage: 'Failed to fetch negotiation values',
+    });
+  }
 
   const items: PipelineItem[] = [];
 

@@ -13,6 +13,8 @@ export const departmentToRole = (department: string): UserRole => {
       return "management";
     case "content_team":
       return "content_creator";
+    case "gcm":
+      return "gcm";
     case "programming_team":
       return "programmer";
     case "admin":
@@ -168,6 +170,7 @@ export const adminCreateUserSchema = z.object({
     "evaluator",
     "management",
     "content_team",
+    "gcm",
     "programming_team",
   ], {
     required_error: "Department is required",

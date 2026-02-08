@@ -180,7 +180,7 @@ export default function LoginPage() {
               </h1>
             </div>
             <p className="text-lg xl:text-xl text-blue-100 leading-relaxed">
-              Your story development management system — streamlining production and operations.
+              Your story development management system — from pitch to script, tracked at every step.
             </p>
           </div>
 

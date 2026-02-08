@@ -34,6 +34,8 @@ import {
   ContractTermsSkeleton,
   WriterFinancialSkeleton,
 } from "@/components/management/skeletons";
+import { ErrorBoundary } from "@/components/errors/error-boundary";
+import { SectionErrorFallback } from "@/components/errors/section-error-fallback";
 
 // Add Next.js caching
 export const revalidate = 300; // 5 minutes for better performance
@@ -216,33 +218,47 @@ export default async function ManagementDashboard({
       </div>
 
       {/* Below-the-fold sections - Stream in progressively */}
-      <Suspense fallback={<CriticalAlertsSkeleton />}>
-        <CriticalAlertsSection />
-      </Suspense>
+      <ErrorBoundary fallback={<SectionErrorFallback title="Critical Alerts" />}>
+        <Suspense fallback={<CriticalAlertsSkeleton />}>
+          <CriticalAlertsSection />
+        </Suspense>
+      </ErrorBoundary>
 
-      <Suspense fallback={<TeamPerformanceSkeleton />}>
-        <TeamPerformanceSection />
-      </Suspense>
+      <ErrorBoundary fallback={<SectionErrorFallback title="Team Performance" />}>
+        <Suspense fallback={<TeamPerformanceSkeleton />}>
+          <TeamPerformanceSection />
+        </Suspense>
+      </ErrorBoundary>
 
-      <Suspense fallback={<ScriptingPhaseSkeleton />}>
-        <ScriptingEpisodeSection />
-      </Suspense>
+      <ErrorBoundary fallback={<SectionErrorFallback title="Scripting & Episode Evaluation" />}>
+        <Suspense fallback={<ScriptingPhaseSkeleton />}>
+          <ScriptingEpisodeSection />
+        </Suspense>
+      </ErrorBoundary>
 
-      <Suspense fallback={<PipelineOverviewSkeleton />}>
-        <PipelineOverviewSection />
-      </Suspense>
+      <ErrorBoundary fallback={<SectionErrorFallback title="Pipeline Overview" />}>
+        <Suspense fallback={<PipelineOverviewSkeleton />}>
+          <PipelineOverviewSection />
+        </Suspense>
+      </ErrorBoundary>
 
-      <Suspense fallback={<EvaluatorPerformanceSkeleton />}>
-        <EvaluatorPerformanceSection />
-      </Suspense>
+      <ErrorBoundary fallback={<SectionErrorFallback title="Evaluator Performance" />}>
+        <Suspense fallback={<EvaluatorPerformanceSkeleton />}>
+          <EvaluatorPerformanceSection />
+        </Suspense>
+      </ErrorBoundary>
 
-      <Suspense fallback={<ContractTermsSkeleton />}>
-        <ContractTermsSection />
-      </Suspense>
+      <ErrorBoundary fallback={<SectionErrorFallback title="Contract Terms" />}>
+        <Suspense fallback={<ContractTermsSkeleton />}>
+          <ContractTermsSection />
+        </Suspense>
+      </ErrorBoundary>
 
-      <Suspense fallback={<WriterFinancialSkeleton />}>
-        <WriterFinancialSection />
-      </Suspense>
+      <ErrorBoundary fallback={<SectionErrorFallback title="Writer Financials" />}>
+        <Suspense fallback={<WriterFinancialSkeleton />}>
+          <WriterFinancialSection />
+        </Suspense>
+      </ErrorBoundary>
     </div>
   );
 }

@@ -136,6 +136,7 @@ export const updateEpisodeSchema = z.object({
     .optional()
     .nullable()
     .transform((val) => (val ? val.trim() : val)),
+  approval_status: z.enum(['approved', 'rejected', 'needs_revision']).optional().nullable(),
 });
 
 /**
@@ -146,6 +147,8 @@ export const episodesQuerySchema = z.object({
   story_id: z.string().uuid().optional(),
   logged_by: z.string().uuid().optional(),
   episode_number: z.number().int().positive().optional(),
+  current_only: z.boolean().default(true).optional(),
+  approval_status: z.enum(['approved', 'rejected', 'needs_revision']).optional(),
   limit: z.number().int().positive().max(100).default(50).optional(),
   offset: z.number().int().min(0).default(0).optional(),
   sort_by: z.enum(["created_at", "episode_number", "updated_at"]).default("created_at").optional(),

@@ -15,12 +15,13 @@ import { STATUS_CATEGORIES, isStatusInCategory } from './status-mappings';
  */
 export interface ProductionMetrics {
   uniqueWritersCount: number;
-  uniqueWriters: Array<{ // Detailed list of unique writers
-    id: string;
-    name: string;
-    working_title: string;
-    team_name?: string;
-    team?: import('@/types').Team;
+  uniqueWriters: Array<{ // Detailed list of writer engagements (last 30 days)
+    id: string;           // engagement id
+    writer_name: string;
+    date_engaged: string;
+    time_slot?: string;
+    notes?: string;
+    created_by_name?: string;
   }>;
   storiesInDiscussion: number;
   storiesInDiscussionDetails?: Array<{ // Detailed list of stories in discussion
@@ -159,13 +160,63 @@ export async function getProductionMetrics(
       return getEmptyMetrics();
     }
 
+    // --- Metric 1: Writers Engaged (from writer_engagements table, last 30 days) ---
+    // This is independent of call_reports, so it runs even if there are no call reports.
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+    const { data: engagements } = await supabase
+      .from('writer_engagements')
+      .select('id, writer_id, date_engaged, time_slot, notes, created_by')
+      .gte('date_engaged', thirtyDaysAgo.toISOString().split('T')[0])
+      .order('date_engaged', { ascending: false });
+
+    // Batch-fetch writer names for all engagements
+    const writerIds = [...new Set((engagements || []).map((e: any) => e.writer_id).filter(Boolean))];
+    const creatorIds = [...new Set((engagements || []).map((e: any) => e.created_by).filter(Boolean))];
+
+    let writerNameMap: Record<string, string> = {};
+    let creatorNameMap: Record<string, string> = {};
+
+    if (writerIds.length > 0) {
+      const { data: writers } = await supabase
+        .from('writers')
+        .select('id, name')
+        .in('id', writerIds);
+      if (writers) {
+        writerNameMap = Object.fromEntries(writers.map((w: any) => [w.id, w.name]));
+      }
+    }
+
+    if (creatorIds.length > 0) {
+      const { data: creators } = await supabase
+        .from('users')
+        .select('id, full_name')
+        .in('id', creatorIds);
+      if (creators) {
+        creatorNameMap = Object.fromEntries(creators.map((u: any) => [u.id, u.full_name || 'Unknown']));
+      }
+    }
+
+    const uniqueWriterIdsInEngagements = new Set(writerIds);
+    const uniqueWritersDetailed: ProductionMetrics['uniqueWriters'] = (engagements || []).map((e: any) => ({
+      id: e.id,
+      writer_name: writerNameMap[e.writer_id] || 'Unknown',
+      date_engaged: e.date_engaged,
+      time_slot: e.time_slot || undefined,
+      notes: e.notes || undefined,
+      created_by_name: e.created_by ? (creatorNameMap[e.created_by] || 'Unknown') : undefined,
+    }));
+
     if (!callReports || callReports.length === 0) {
-      return getEmptyMetrics();
+      return {
+        ...getEmptyMetrics(),
+        uniqueWritersCount: uniqueWriterIdsInEngagements.size,
+        uniqueWriters: uniqueWritersDetailed,
+      };
     }
 
     // Initialize aggregation variables
-    const uniqueWritersSet = new Set<string>();
-    const uniqueWritersDetailed: ProductionMetrics['uniqueWriters'] = [];
     let storiesInDiscussion = 0;
     const storiesInDiscussionDetails: ProductionMetrics['storiesInDiscussionDetails'] = [];
     const scriptsInWritingBySlot: Record<string, number> = {};
@@ -185,27 +236,6 @@ export async function getProductionMetrics(
       const writerName = report.writer_name ||
         (report.call_report_writers && Array.isArray(report.call_report_writers) && report.call_report_writers[0]?.writer?.name) ||
         'Unknown';
-
-      // Metric 1: Count unique writers and collect detailed info with projects
-      if (report.call_report_writers && Array.isArray(report.call_report_writers)) {
-        report.call_report_writers.forEach((crw: any) => {
-          if (crw.writer?.name && crw.writer?.id) {
-            // Track unique writers for count metric
-            const writerKey = `${crw.writer.id}-${crw.writer.name}`;
-            if (!uniqueWritersSet.has(writerKey)) {
-              uniqueWritersSet.add(writerKey);
-            }
-
-            // Add one entry per writer-project combination for detail view
-            uniqueWritersDetailed.push({
-              id: crw.writer.id,
-              name: crw.writer.name,
-              working_title: report.working_title || 'Untitled',
-              team: report.team || undefined,
-            });
-          }
-        });
-      }
 
       // Metric 2: Stories in discussion with details
       if (isStatusInCategory(status, 'STORIES_IN_DISCUSSION')) {
@@ -292,7 +322,7 @@ export async function getProductionMetrics(
     });
 
     return {
-      uniqueWritersCount: uniqueWritersDetailed.length,
+      uniqueWritersCount: uniqueWriterIdsInEngagements.size,
       uniqueWriters: uniqueWritersDetailed,
       storiesInDiscussion,
       storiesInDiscussionDetails,

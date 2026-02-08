@@ -7,13 +7,16 @@ import { EyeIcon, FilePenLine, TrendingUp, TrendingDown, Minus } from "lucide-re
 import Link from "next/link";
 import { EvaluationProgressBar } from "@/components/evaluations/evaluation-progress-bar";
 import { TeamBadge } from "@/components/shared/team-badge";
+import { ShareCrossTeamButton } from "@/components/call-report/share-cross-team-button";
 
 interface CallReportCardProps {
   report: any;
   portalPrefix?: string; // e.g., "evaluator" or "programmer"
+  isTeamHead?: boolean;
+  currentTeamId?: string;
 }
 
-export function CallReportCard({ report, portalPrefix = "evaluator" }: CallReportCardProps) {
+export function CallReportCard({ report, portalPrefix = "evaluator", isTeamHead = false, currentTeamId }: CallReportCardProps) {
   // Format timestamp
 
   // Format timestamp
@@ -196,6 +199,12 @@ export function CallReportCard({ report, portalPrefix = "evaluator" }: CallRepor
             </div>
           </div>
           <div className="mt-4 pt-4 border-t flex justify-end gap-2">
+            {isTeamHead && (
+              <ShareCrossTeamButton
+                callReportId={report.id}
+                currentTeamId={currentTeamId}
+              />
+            )}
             <Button variant="outline" size="sm" asChild>
               <Link href={`/${portalPrefix}/call-reports/${report.id}`}>
                 <EyeIcon className="h-4 w-4 mr-2" />

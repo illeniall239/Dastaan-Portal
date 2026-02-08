@@ -1,4 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/admin';
+import { handleError } from '@/lib/errors';
 
 export interface IdeasByGenreData {
   genre: string;
@@ -19,8 +20,11 @@ export async function getIdeasByGenre(): Promise<IdeasByGenreData[]> {
     .is('archived_at', null); // Only active ideas (not archived)
 
   if (error) {
-    console.error('Error fetching ideas by genre:', error);
-    return [];
+    return handleError(error, {
+      context: 'getIdeasByGenre',
+      fallbackValue: [],
+      userMessage: 'Failed to fetch ideas count by genre',
+    });
   }
 
   // Group by genre and count
@@ -69,8 +73,11 @@ export async function getTotalActiveIdeas(): Promise<number> {
     .is('archived_at', null);
 
   if (error) {
-    console.error('Error fetching total active ideas:', error);
-    return 0;
+    return handleError(error, {
+      context: 'getTotalActiveIdeas',
+      fallbackValue: 0,
+      userMessage: 'Failed to fetch total active ideas count',
+    });
   }
 
   return count || 0;
@@ -88,12 +95,15 @@ export async function getIdeasByStatus() {
     .is('archived_at', null);
 
   if (error) {
-    console.error('Error fetching ideas by status:', error);
-    return {
-      draft: 0,
-      ready_for_evaluation: 0,
-      in_review: 0,
-    };
+    return handleError(error, {
+      context: 'getIdeasByStatus',
+      fallbackValue: {
+        draft: 0,
+        ready_for_evaluation: 0,
+        in_review: 0,
+      },
+      userMessage: 'Failed to fetch ideas status breakdown',
+    });
   }
 
   const statusCounts = {

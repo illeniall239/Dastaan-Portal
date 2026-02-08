@@ -1,4 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
+import { handleError } from "@/lib/errors";
 
 /**
  * Episodes & Episodic Evaluations Analytics for Management Dashboard
@@ -96,15 +97,18 @@ export async function getEpisodeOverview(): Promise<EpisodeOverview> {
       avgScenes: Math.round(avgScenes * 10) / 10,
     };
   } catch (error) {
-    console.error("Error fetching episode overview:", error);
-    return {
-      totalEpisodes: 0,
-      episodesBySource: { callReports: 0, stories: 0 },
-      pendingEvaluation: 0,
-      evaluated: 0,
-      avgPages: 0,
-      avgScenes: 0,
-    };
+    return handleError(error, {
+      context: "getEpisodeOverview",
+      fallbackValue: {
+        totalEpisodes: 0,
+        episodesBySource: { callReports: 0, stories: 0 },
+        pendingEvaluation: 0,
+        evaluated: 0,
+        avgPages: 0,
+        avgScenes: 0,
+      },
+      userMessage: "Failed to fetch episode overview statistics",
+    });
   }
 }
 
@@ -184,20 +188,23 @@ export async function getEpisodicEvaluationOverview(): Promise<EpisodicEvaluatio
       },
     };
   } catch (error) {
-    console.error("Error fetching episodic evaluation overview:", error);
-    return {
-      totalEvaluations: 0,
-      avgOverallScore: 0,
-      completionRate: 0,
-      gradeDistribution: { "A+": 0, "A": 0, "B+": 0, "B": 0, "C": 0 },
-      criteriaAverages: {
-        conflict: 0,
-        characterization: 0,
-        progression: 0,
-        freezes: 0,
-        whatsNext: 0,
+    return handleError(error, {
+      context: "getEpisodicEvaluationOverview",
+      fallbackValue: {
+        totalEvaluations: 0,
+        avgOverallScore: 0,
+        completionRate: 0,
+        gradeDistribution: { "A+": 0, "A": 0, "B+": 0, "B": 0, "C": 0 },
+        criteriaAverages: {
+          conflict: 0,
+          characterization: 0,
+          progression: 0,
+          freezes: 0,
+          whatsNext: 0,
+        },
       },
-    };
+      userMessage: "Failed to fetch episodic evaluation statistics",
+    });
   }
 }
 
@@ -248,8 +255,12 @@ export async function getEpisodeProductionTrends(days: number = 90): Promise<Epi
         total: weeklyData[date].callReport + weeklyData[date].story,
       }));
   } catch (error) {
-    console.error("Error fetching episode production trends:", error);
-    return [];
+    return handleError(error, {
+      context: "getEpisodeProductionTrends",
+      fallbackValue: [],
+      userMessage: "Failed to fetch production trends",
+      metadata: { days },
+    });
   }
 }
 
@@ -300,20 +311,23 @@ export async function getQualityDistribution(): Promise<QualityDistribution> {
       scenesDistribution,
     };
   } catch (error) {
-    console.error("Error fetching quality distribution:", error);
-    return {
-      pagesDistribution: {
-        belowStandard: 0,
-        nearStandard: 0,
-        standard: 0,
-        aboveStandard: 0,
+    return handleError(error, {
+      context: "getQualityDistribution",
+      fallbackValue: {
+        pagesDistribution: {
+          belowStandard: 0,
+          nearStandard: 0,
+          standard: 0,
+          aboveStandard: 0,
+        },
+        scenesDistribution: {
+          belowStandard: 0,
+          nearStandard: 0,
+          standard: 0,
+          aboveStandard: 0,
+        },
       },
-      scenesDistribution: {
-        belowStandard: 0,
-        nearStandard: 0,
-        standard: 0,
-        aboveStandard: 0,
-      },
-    };
+      userMessage: "Failed to fetch quality distribution data",
+    });
   }
 }

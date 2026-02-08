@@ -1,4 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/admin';
+import { handleError } from '@/lib/errors';
 
 export interface EvaluatorScores {
   nadeem?: number | null;
@@ -34,6 +35,49 @@ export interface ActiveIdeaDetail {
   management_member_name: string | null;
   idea_by: string | null;
   developed_by: string | null;
+  person_in_charge: string | null;
+  one_liner_approved: string | null; // "approved" | "rejected" | "needs_improvement" | "pending" | null
+  one_liner_summary: string | null;
+  approval_count?: number | null;
+  rejection_count?: number | null;
+  needs_improvement_count?: number | null;
+  total_evaluators?: number | null;
+  remarks: string | null;
+  // Episode Aging (from consolidated_cms_view)
+  actual_received_episodes: number | null;
+  first_episode_received_at: string | null;
+  last_episode_received_at: string | null;
+  revised_episode_count: number | null;
+  monthly_episode_receipts: Record<string, number> | null;
+  days_since_first_episode: number | null;
+  days_since_last_episode: number | null;
+  // Episode Approval Counts (from consolidated_cms_view)
+  approved_episode_count?: number | null;
+  rejected_episode_count?: number | null;
+  needs_revision_episode_count?: number | null;
+  // Aggregated Team Scores (from consolidated_cms_view)
+  content_conflict?: number | null;
+  content_characters?: number | null;
+  content_progression?: number | null;
+  content_freezes?: number | null;
+  content_whats_next?: number | null;
+  content_overall?: number | null;
+  programming_conflict?: number | null;
+  programming_characters?: number | null;
+  programming_progression?: number | null;
+  programming_freezes?: number | null;
+  programming_whats_next?: number | null;
+  programming_overall?: number | null;
+  management_conflict?: number | null;
+  management_characters?: number | null;
+  management_progression?: number | null;
+  management_freezes?: number | null;
+  management_whats_next?: number | null;
+  management_overall?: number | null;
+  // Per-group evaluator counts
+  content_eval_count?: number | null;
+  programming_eval_count?: number | null;
+  management_eval_count?: number | null;
 }
 
 /**
@@ -54,157 +98,59 @@ export async function getActiveIdeasByGenre(
     const hasGlobalAccess = userRole && ['admin', 'management'].includes(userRole);
 
     let query = supabase
-      .from('call_reports')
-      .select(`
-        id,
-        call_report_id,
-        working_title,
-        writer_name,
-        director,
-        genre,
-        category,
-        status,
-        meeting_date,
-        logline,
-        created_at,
-        overall_rating,
-        target_slot,
-        content_type,
-        theme,
-        average_score,
-        evaluation_deadline,
-        total_episodes,
-        received_episodes,
-        completion_percentage,
-        team_id,
-        management_member_name,
-        idea_by,
-        developed_by
-      `)
-      .eq('meeting_type', 'call_report')
-      .is('archived_at', null)
-      .order('created_at', { ascending: true });
+      .from('consolidated_cms_view')
+      .select('*')
+      .order('created_at', { ascending: false });
 
-    // TEAM ISOLATION: Apply filter unless admin/management
+    // TEAM ISOLATION: Apply filter unless admin/management/programmer
     if (!hasGlobalAccess && teamId) {
       query = query.eq('team_id', teamId);
     }
 
-    // Filter by genre if provided (genre is now an array)
+    // Filter by genre if provided
     if (genre && genre !== 'all') {
       query = query.contains('genre', [genre]);
     }
 
-    const { data: callReports, error } = await query;
+    const { data: results, error } = await query;
 
     if (error) {
-      console.error('Error fetching active ideas:', error);
-      return [];
+      return handleError(error, {
+        context: 'getActiveIdeasByGenre',
+        fallbackValue: [],
+        userMessage: 'Unable to load active ideas',
+        metadata: { genre, teamId, userRole },
+      });
     }
-
-    // Fetch all evaluator scores for these call reports
-    const callReportIds = (callReports || []).map((r: any) => r.id);
-    const { data: evaluatorScoresData } = callReportIds.length > 0
-      ? await supabase
-          .from('evaluator_scores')
-          .select('call_report_id, evaluator_name, score')
-          .in('call_report_id', callReportIds)
-      : { data: [] };
-
-    // Fetch all writers for these call reports from call_report_writers junction table
-    const { data: callReportWritersData } = callReportIds.length > 0
-      ? await supabase
-          .from('call_report_writers')
-          .select('call_report_id, writers(id, name)')
-          .in('call_report_id', callReportIds)
-      : { data: [] };
-
-    // Group writers by call_report_id
-    const writersByCallReport: Record<string, string[]> = {};
-    (callReportWritersData || []).forEach((crw: any) => {
-      if (!writersByCallReport[crw.call_report_id]) {
-        writersByCallReport[crw.call_report_id] = [];
-      }
-      if (crw.writers?.name) {
-        writersByCallReport[crw.call_report_id].push(crw.writers.name);
-      }
-    });
-
-    // Group evaluator scores by call_report_id
-    const scoresByCallReport: Record<string, EvaluatorScores> = {};
-    (evaluatorScoresData || []).forEach((score: any) => {
-      if (!scoresByCallReport[score.call_report_id]) {
-        scoresByCallReport[score.call_report_id] = {};
-      }
-      const evaluatorKey = score.evaluator_name.toLowerCase();
-      scoresByCallReport[score.call_report_id][evaluatorKey] = score.score;
-    });
 
     const now = new Date();
 
-    return (callReports || []).map((report: any) => {
-      const createdAt = new Date(report.created_at);
-      const daysActive = Math.floor((now.getTime() - createdAt.getTime()) / (1000 * 60 * 60 * 24));
+    const msPerDay = 1000 * 60 * 60 * 24;
 
-      // Get writers from junction table, fallback to writer_name if none found
-      const writersFromJunction = writersByCallReport[report.id] || [];
-      
-      // Determine writer names based on category
-      let writerNames: string[] = [];
-      if (writersFromJunction.length > 0) {
-        // Use writers from junction table if available
-        writerNames = writersFromJunction;
-      } else if (report.category === 'given_by_management' && report.management_member_name) {
-        // For "Given by Management", show the management member name
-        writerNames = [`Mgmt: ${report.management_member_name}`];
-      } else if (report.category === 'content_head_initiative') {
-        // For "Content Head Initiative", show idea_by or developed_by
-        if (report.idea_by) {
-          writerNames = [report.idea_by];
-        } else if (report.developed_by) {
-          writerNames = [report.developed_by];
-        } else {
-          writerNames = ['In-house'];
-        }
-      } else if (report.category === 'inhouse_content') {
-        writerNames = ['In-house Content'];
-      } else if (report.writer_name && report.writer_name !== 'In-house Content') {
-        // Only use writer_name if it's not the default placeholder
-        writerNames = [report.writer_name];
-      }
+    return (results || []).map((report: any) => {
+      const createdAt = new Date(report.created_at);
+      const daysActive = Math.floor((now.getTime() - createdAt.getTime()) / msPerDay);
+
+      const firstEpDate = report.first_episode_received_at ? new Date(report.first_episode_received_at) : null;
+      const lastEpDate = report.last_episode_received_at ? new Date(report.last_episode_received_at) : null;
 
       return {
-        id: report.id,
-        call_report_id: report.call_report_id,
-        working_title: report.working_title,
-        writer_name: report.writer_name,
-        writer_names: writerNames,
-        director: report.director,
-        genre: Array.isArray(report.genre) ? report.genre : (report.genre ? [report.genre] : ['Other']),
-        category: report.category || 'N/A',
-        status: report.status || 'draft',
-        meeting_date: report.meeting_date,
+        ...report,
         days_active: daysActive,
-        logline: report.logline,
-        created_at: report.created_at,
-        overall_rating: report.overall_rating,
-        slot: report.target_slot,
-        content_type: report.content_type,
-        theme: report.theme,
-        average_score: report.average_score,
-        evaluation_deadline: report.evaluation_deadline,
-        total_episodes: report.total_episodes,
-        received_episodes: report.received_episodes,
-        completion_percentage: report.completion_percentage,
-        evaluator_scores: scoresByCallReport[report.id] || null,
-        management_member_name: report.management_member_name,
-        idea_by: report.idea_by,
-        developed_by: report.developed_by,
+        days_since_first_episode: firstEpDate ? Math.floor((now.getTime() - firstEpDate.getTime()) / msPerDay) : null,
+        days_since_last_episode: lastEpDate ? Math.floor((now.getTime() - lastEpDate.getTime()) / msPerDay) : null,
+        writer_names: report.writer_name ? [report.writer_name] : [],
+        genre: Array.isArray(report.genre) ? report.genre : (report.genre ? [report.genre] : ['Other']),
+        evaluator_scores: null, // Aggregated scores are top-level
       };
     });
   } catch (error) {
-    console.error('Error fetching active ideas:', error);
-    return [];
+    return handleError(error, {
+      context: 'getActiveIdeasByGenre',
+      fallbackValue: [],
+      userMessage: 'Unable to load active ideas',
+      metadata: { genre, teamId, userRole },
+    });
   }
 }
 

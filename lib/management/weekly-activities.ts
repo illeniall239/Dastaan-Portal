@@ -1,4 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/admin';
+import { handleError } from '@/lib/errors';
 
 export type ActivityType = 'story' | 'evaluation' | 'approval' | 'contract' | 'payment' | 'contractTerm';
 
@@ -254,8 +255,11 @@ export async function getWeeklyActivities(): Promise<WeeklyActivity[]> {
     );
 
   } catch (error) {
-    console.error('Error fetching weekly activities:', error);
-    return [];
+    return handleError(error, {
+      context: 'getWeeklyActivities',
+      fallbackValue: [],
+      userMessage: 'Failed to fetch weekly activities',
+    });
   }
 }
 
@@ -339,16 +343,19 @@ export async function getWeeklyActivityStats(): Promise<ActivityStats> {
       comparisonToPreviousWeek,
     };
   } catch (error) {
-    console.error('Error calculating activity stats:', error);
-    return {
-      total: 0,
-      byType: { story: 0, evaluation: 0, approval: 0, contract: 0, payment: 0, contractTerm: 0 },
-      byDay: {},
-      topPerformers: [],
-      mostActiveDay: 'N/A',
-      topActivityType: 'story',
-      comparisonToPreviousWeek: 0,
-    };
+    return handleError(error, {
+      context: 'getWeeklyActivityStats',
+      fallbackValue: {
+        total: 0,
+        byType: { story: 0, evaluation: 0, approval: 0, contract: 0, payment: 0, contractTerm: 0 },
+        byDay: {},
+        topPerformers: [],
+        mostActiveDay: 'N/A',
+        topActivityType: 'story',
+        comparisonToPreviousWeek: 0,
+      },
+      userMessage: 'Failed to calculate activity statistics',
+    });
   }
 }
 

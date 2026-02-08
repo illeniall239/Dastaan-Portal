@@ -140,6 +140,11 @@ export default function EvaluatorEpisodesPage() {
   const [activeTab, setActiveTab] = useState("list");
   const logSectionRef = useRef<HTMLDivElement | null>(null);
 
+  // AbortController refs for cancelling in-flight requests
+  const episodesAbortRef = useRef<AbortController | null>(null);
+  const evaluationsAbortRef = useRef<AbortController | null>(null);
+  const existingEpisodesAbortRef = useRef<AbortController | null>(null);
+
   // Log episodes state
   const [logLoading, setLogLoading] = useState(false);
   const [fetchingData, setFetchingData] = useState(true);
@@ -162,6 +167,11 @@ export default function EvaluatorEpisodesPage() {
   const [evaluationsLoading, setEvaluationsLoading] = useState(false);
 
   const fetchEpisodesAndStatus = useCallback(async (page: number = 1, append: boolean = false) => {
+    // Cancel any in-flight request
+    episodesAbortRef.current?.abort();
+    const controller = new AbortController();
+    episodesAbortRef.current = controller;
+
     if (page === 1) {
       setLoading(true);
     } else {
@@ -171,7 +181,7 @@ export default function EvaluatorEpisodesPage() {
     try {
       // Fetch user info first (needed for evaluation status)
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user || controller.signal.aborted) return;
 
       setCurrentUserId(user.id);
 
@@ -189,7 +199,7 @@ export default function EvaluatorEpisodesPage() {
       // Fetch episodes with project-based pagination (20 projects at a time, all their episodes)
       const response = await fetch(
         `/api/episodes?group_by_project=true&project_limit=20&project_page=${page}&include_evaluation_status=true`,
-        { cache: 'no-store' }
+        { cache: 'no-store', signal: controller.signal }
       );
       const data = await response.json();
 
@@ -223,11 +233,14 @@ export default function EvaluatorEpisodesPage() {
       setHasMoreProjects(data.pagination?.hasMoreProjects || false);
       setTotalProjects(data.pagination?.totalProjects || 0);
     } catch (error: any) {
+      if (error.name === 'AbortError') return;
       console.error("Error fetching episodes:", error);
       toast.error(error.message || "Failed to load episodes");
     } finally {
-      setLoading(false);
-      setLoadingMore(false);
+      if (!controller.signal.aborted) {
+        setLoading(false);
+        setLoadingMore(false);
+      }
     }
   }, []); // supabase client is stable, no need to include in dependencies
 
@@ -301,6 +314,13 @@ export default function EvaluatorEpisodesPage() {
   // Initial load - only fetch episodes, call reports loaded when Log tab is active
   useEffect(() => {
     fetchEpisodesAndStatus();
+
+    return () => {
+      // Cleanup all in-flight requests on unmount
+      episodesAbortRef.current?.abort();
+      evaluationsAbortRef.current?.abort();
+      existingEpisodesAbortRef.current?.abort();
+    };
   }, [fetchEpisodesAndStatus]);
 
   // Lazy load call reports only when Log tab is active
@@ -360,11 +380,16 @@ export default function EvaluatorEpisodesPage() {
       return;
     }
 
+    // Cancel any in-flight request
+    existingEpisodesAbortRef.current?.abort();
+    const controller = new AbortController();
+    existingEpisodesAbortRef.current = controller;
+
     setExistingEpisodesLoading(true);
     try {
       const response = await fetch(
         `/api/episodes?call_report_id=${selectedSource}&limit=100`,
-        { cache: 'no-store' }
+        { cache: 'no-store', signal: controller.signal }
       );
       const data = await response.json();
       if (!response.ok) {
@@ -390,6 +415,7 @@ export default function EvaluatorEpisodesPage() {
 
       setExistingEpisodesForSource(episodesList);
     } catch (error) {
+      if ((error as Error).name === 'AbortError') return;
       console.error("Error fetching existing episodes:", error);
       toast.error("Failed to fetch existing episodes");
       setExistingEpisodesForSource([]);
@@ -403,7 +429,9 @@ export default function EvaluatorEpisodesPage() {
         },
       ]);
     } finally {
-      setExistingEpisodesLoading(false);
+      if (!controller.signal.aborted) {
+        setExistingEpisodesLoading(false);
+      }
     }
   }, [selectedSource]);
 
@@ -412,9 +440,16 @@ export default function EvaluatorEpisodesPage() {
   }, [loadExistingEpisodes]);
 
   const fetchMyEvaluations = async () => {
+    // Cancel any in-flight request
+    evaluationsAbortRef.current?.abort();
+    const controller = new AbortController();
+    evaluationsAbortRef.current = controller;
+
     setEvaluationsLoading(true);
     try {
-      const response = await fetch("/api/episodic-evaluations");
+      const response = await fetch("/api/episodic-evaluations", {
+        signal: controller.signal,
+      });
       const data = await response.json();
 
       if (!response.ok) {
@@ -423,10 +458,13 @@ export default function EvaluatorEpisodesPage() {
 
       setMyEvaluations(data.evaluations || []);
     } catch (error: any) {
+      if (error.name === 'AbortError') return;
       console.error("Error fetching evaluations:", error);
       toast.error(error.message || "Failed to load evaluations");
     } finally {
-      setEvaluationsLoading(false);
+      if (!controller.signal.aborted) {
+        setEvaluationsLoading(false);
+      }
     }
   };
 
@@ -1018,7 +1056,23 @@ export default function EvaluatorEpisodesPage() {
                               return (
                                 <TableRow key={episode.id} className="hover:bg-slate-50">
                                   <TableCell className="pl-12">
-                                    <Badge variant="outline">EP {episode.episode_number}</Badge>
+                                    <div className="flex items-center gap-1.5">
+                                      <Badge variant="outline">EP {episode.episode_number}</Badge>
+                                      {episode.version > 1 && (
+                                        <Badge variant="secondary" className="text-[10px] px-1 py-0 h-4 bg-blue-100 text-blue-700">
+                                          v{episode.version}
+                                        </Badge>
+                                      )}
+                                      {episode.approval_status && (
+                                        <Badge className={
+                                          episode.approval_status === "approved" ? "bg-emerald-100 text-emerald-700 text-[10px] px-1 py-0 h-4" :
+                                          episode.approval_status === "needs_revision" ? "bg-amber-100 text-amber-700 text-[10px] px-1 py-0 h-4" :
+                                          "bg-rose-100 text-rose-700 text-[10px] px-1 py-0 h-4"
+                                        }>
+                                          {episode.approval_status === "approved" ? "Approved" : episode.approval_status === "needs_revision" ? "Needs Revision" : "Rejected"}
+                                        </Badge>
+                                      )}
+                                    </div>
                                   </TableCell>
                                   <TableCell>
                                     {episode.attachment_url ? (
@@ -1162,6 +1216,20 @@ export default function EvaluatorEpisodesPage() {
                                   <div className="flex items-center justify-between gap-2">
                                     <div className="flex items-center gap-2 flex-1 min-w-0">
                                       <Badge variant="outline" className="flex-shrink-0">EP {episode.episode_number}</Badge>
+                                      {episode.version > 1 && (
+                                        <Badge variant="secondary" className="text-[10px] px-1 py-0 h-4 bg-blue-100 text-blue-700 flex-shrink-0">
+                                          v{episode.version}
+                                        </Badge>
+                                      )}
+                                      {episode.approval_status && (
+                                        <Badge className={`flex-shrink-0 ${
+                                          episode.approval_status === "approved" ? "bg-emerald-100 text-emerald-700 text-[10px] px-1 py-0 h-4" :
+                                          episode.approval_status === "needs_revision" ? "bg-amber-100 text-amber-700 text-[10px] px-1 py-0 h-4" :
+                                          "bg-rose-100 text-rose-700 text-[10px] px-1 py-0 h-4"
+                                        }`}>
+                                          {episode.approval_status === "approved" ? "Approved" : episode.approval_status === "needs_revision" ? "Needs Revision" : "Rejected"}
+                                        </Badge>
+                                      )}
                                       <span className="font-medium text-sm truncate">
                                         {episode.title || (
                                           <span className="text-muted-foreground italic">Untitled</span>

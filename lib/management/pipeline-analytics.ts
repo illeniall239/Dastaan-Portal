@@ -1,5 +1,6 @@
 import { createAdminClient } from '@/lib/supabase/admin';
 import { cachedQuery, CacheTags } from '@/lib/cache/request-cache';
+import { handleError } from '@/lib/errors';
 
 export interface PipelineStageData {
   stage: string;
@@ -48,7 +49,19 @@ export async function getPipelineOverview(): Promise<PipelineOverview> {
         .select('status, created_at, updated_at')
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        return handleError(error, {
+          context: 'getPipelineOverview:fetch',
+          fallbackValue: {
+            totalStories: 0,
+            activePipeline: 0,
+            completedThisMonth: 0,
+            avgTimeToCompletion: 0,
+            stages: [],
+          },
+          userMessage: 'Failed to fetch pipeline overview data',
+        });
+      }
 
       const totalStories = stories?.length || 0;
 
@@ -74,11 +87,11 @@ export async function getPipelineOverview(): Promise<PipelineOverview> {
       const completedStories = stories?.filter(s => s.status === 'completed') || [];
       const avgTimeToCompletion = completedStories.length > 0
         ? completedStories.reduce((sum, story) => {
-            const start = new Date(story.created_at);
-            const end = new Date(story.updated_at);
-            const days = Math.floor((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
-            return sum + days;
-          }, 0) / completedStories.length
+          const start = new Date(story.created_at);
+          const end = new Date(story.updated_at);
+          const days = Math.floor((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+          return sum + days;
+        }, 0) / completedStories.length
         : 0;
 
       // Build stage data
@@ -91,11 +104,11 @@ export async function getPipelineOverview(): Promise<PipelineOverview> {
           const storiesInStage = stories?.filter(s => s.status === status) || [];
           const avgTimeInStage = storiesInStage.length > 0
             ? storiesInStage.reduce((sum, story) => {
-                const now = new Date();
-                const updated = new Date(story.updated_at);
-                const days = Math.floor((now.getTime() - updated.getTime()) / (1000 * 60 * 60 * 24));
-                return sum + days;
-              }, 0) / storiesInStage.length
+              const now = new Date();
+              const updated = new Date(story.updated_at);
+              const days = Math.floor((now.getTime() - updated.getTime()) / (1000 * 60 * 60 * 24));
+              return sum + days;
+            }, 0) / storiesInStage.length
             : 0;
 
           // Mark as bottleneck if avg time > 7 days or count is unusually high
@@ -142,7 +155,14 @@ export async function getStageDetails(stage: string) {
     .eq('status', stage)
     .order('updated_at', { ascending: true });
 
-  if (error) throw error;
+  if (error) {
+    return handleError(error, {
+      context: 'getStageDetails',
+      fallbackValue: [],
+      userMessage: `Failed to fetch details for stage: ${stage}`,
+      metadata: { stage },
+    });
+  }
 
   return stories || [];
 }
@@ -185,14 +205,14 @@ export async function getStageTimeBreakdown() {
     .select('*')
     .in('status', ['completed', 'in_payment']);
 
-  // This would be more accurate with a status_history table
-  // For now, return estimated data
+  // Accurate calculation requires a status_history table (not yet implemented)
+  // Return zeros to avoid displaying fake data
   return Object.entries(STAGE_MAPPING)
     .filter(([status]) => !['completed', 'rejected', 'archived'].includes(status))
     .map(([_, displayName]) => ({
       stage: displayName,
-      avgDays: Math.floor(Math.random() * 10) + 1, // Placeholder
-      minDays: 1,
-      maxDays: 30,
+      avgDays: 0,
+      minDays: 0,
+      maxDays: 0,
     }));
 }

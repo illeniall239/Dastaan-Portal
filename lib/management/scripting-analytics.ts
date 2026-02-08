@@ -1,5 +1,6 @@
 import { createAdminClient } from '@/lib/supabase/admin';
 import { cachedQuery, CacheTags } from '@/lib/cache/request-cache';
+import { handleError } from '@/lib/errors';
 
 export interface ScriptingPhaseData {
   id: string;
@@ -56,7 +57,11 @@ export async function getScriptingPhaseData(): Promise<ScriptingPhaseData[]> {
         .order('created_at', { ascending: false });
 
       if (error) {
-        return [];
+        return handleError(error, {
+          context: 'getScriptingPhaseData:fetch',
+          fallbackValue: [],
+          userMessage: 'Failed to fetch scripting phase data',
+        });
       }
 
       // Calculate progress for each call report that has contracts

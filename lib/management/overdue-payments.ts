@@ -1,4 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/admin';
+import { handleError } from '@/lib/errors';
 
 export interface OverduePayment {
   id: string;
@@ -42,8 +43,11 @@ export async function getOverduePayments() {
     .order('due_date', { ascending: true });
 
   if (error) {
-    console.error('Error fetching overdue payments:', error);
-    return [];
+    return handleError(error, {
+      context: 'getOverduePayments',
+      fallbackValue: [],
+      userMessage: 'Failed to fetch overdue payments',
+    });
   }
 
   const overduePayments: OverduePayment[] = (payments || []).map(payment => {

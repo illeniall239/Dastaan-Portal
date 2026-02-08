@@ -1,4 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/admin';
+import { handleError } from '@/lib/errors';
 
 export interface ArchiveDetail {
   id: string;
@@ -50,8 +51,12 @@ export async function getArchiveStoriesByGenre(genre?: string): Promise<ArchiveD
     const { data: archives, error } = await query;
 
     if (error) {
-      console.error('Error fetching archive stories:', error);
-      return [];
+      return handleError(error, {
+        context: 'getArchiveStoriesByGenre',
+        fallbackValue: [],
+        userMessage: 'Failed to fetch archive stories',
+        metadata: { genre },
+      });
     }
 
     return (archives || []).map((archive: any) => ({
@@ -67,8 +72,12 @@ export async function getArchiveStoriesByGenre(genre?: string): Promise<ArchiveD
       category: archive.story?.category,
     }));
   } catch (error) {
-    console.error('Error fetching archive stories:', error);
-    return [];
+    return handleError(error, {
+      context: 'getArchiveStoriesByGenre:catch',
+      fallbackValue: [],
+      userMessage: 'Failed to fetch archive stories',
+      metadata: { genre },
+    });
   }
 }
 
@@ -101,8 +110,12 @@ export async function getRejectedCallReportsByGenre(genre?: string): Promise<Arc
     const { data: rejectedReports, error } = await query;
 
     if (error) {
-      console.error('Error fetching rejected call reports:', error);
-      return [];
+      return handleError(error, {
+        context: 'getRejectedCallReportsByGenre',
+        fallbackValue: [],
+        userMessage: 'Failed to fetch rejected call reports',
+        metadata: { genre },
+      });
     }
 
     // Calculate days in system for rejected call reports
@@ -127,8 +140,12 @@ export async function getRejectedCallReportsByGenre(genre?: string): Promise<Arc
       };
     });
   } catch (error) {
-    console.error('Error fetching rejected call reports:', error);
-    return [];
+    return handleError(error, {
+      context: 'getRejectedCallReportsByGenre:catch',
+      fallbackValue: [],
+      userMessage: 'Failed to fetch rejected call reports',
+      metadata: { genre },
+    });
   }
 }
 
@@ -148,10 +165,10 @@ export async function getCombinedArchiveDetails(genre?: string): Promise<Archive
   // Filter by genre if specified (for rejected reports which don't have genre in DB)
   const filtered = genre && genre !== 'all'
     ? combined.filter(item => {
-        // For story archives, genre is already filtered in query
-        // For call report rejections, we can't filter by genre as it's not in the table
-        return item.type === 'story_archive' || item.genre === 'N/A';
-      })
+      // For story archives, genre is already filtered in query
+      // For call report rejections, we can't filter by genre as it's not in the table
+      return item.type === 'story_archive' || item.genre === 'N/A';
+    })
     : combined;
 
   // Sort by rejection date (most recent first)

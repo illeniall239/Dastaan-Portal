@@ -9,6 +9,7 @@ import {
   Clock,
   CalendarIcon,
   Users,
+  Share2,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { PendingEvaluationsNotification } from "@/components/evaluations/pending-evaluations-notification";
@@ -80,7 +81,7 @@ async function DashboardContent({ userId }: { userId: string }) {
   const hasGlobalAccess = ["admin", "management"].includes(currentUser.role);
 
   // Fetch ALL data in parallel for maximum performance
-  const [statsData, pendingData, completedData, productionMetrics] = await Promise.all([
+  const [statsData, pendingData, completedData, productionMetrics, crossTeamSharesData] = await Promise.all([
     // Stats data - WITH TEAM FILTERS
     Promise.all([
       // Total call reports count
@@ -205,6 +206,43 @@ async function DashboardContent({ userId }: { userId: string }) {
 
     // Production metrics - WITH TEAM FILTER (evaluators see only their team)
     getProductionMetrics(currentUser.team_id, currentUser.role),
+
+    // Cross-team shares for this user's team
+    (async () => {
+      if (!currentUser.team_id) return [];
+      const { data: shares } = await supabase
+        .from("cross_team_shares")
+        .select(`
+          id,
+          call_report_id,
+          status,
+          shared_at,
+          required_evaluations,
+          completed_evaluations,
+          notes,
+          call_report:call_reports (id, call_report_id, working_title, writer_name, logline),
+          from_team:teams!cross_team_shares_from_team_id_fkey (id, name)
+        `)
+        .eq("to_team_id", currentUser.team_id)
+        .neq("status", "cancelled")
+        .order("shared_at", { ascending: false });
+
+      if (!shares || shares.length === 0) return [];
+
+      // Check which shares the current user has already evaluated
+      const shareIds = shares.map((s) => s.id);
+      const { data: myEvals } = await supabase
+        .from("evaluator_forms")
+        .select("cross_team_share_id")
+        .eq("evaluator_id", userId)
+        .in("cross_team_share_id", shareIds);
+
+      const evaluatedShareIds = new Set(
+        myEvals?.map((e) => e.cross_team_share_id) || []
+      );
+
+      return shares.filter((s) => !evaluatedShareIds.has(s.id));
+    })(),
   ]);
 
   // Extract counts from stats data
@@ -276,6 +314,16 @@ async function DashboardContent({ userId }: { userId: string }) {
           icon={CalendarIcon}
           href="/evaluator/calendar"
         />
+
+        {crossTeamSharesData.length > 0 && (
+          <ModernStatCard
+            title="Evaluation Requests"
+            value={crossTeamSharesData.length}
+            icon={Share2}
+            href="/evaluator/evaluations-list"
+            accent={true}
+          />
+        )}
       </div>
 
       {/* Production Pipeline Metrics */}
@@ -283,6 +331,55 @@ async function DashboardContent({ userId }: { userId: string }) {
         <h2 className="text-lg font-semibold text-gray-900">Production Pipeline</h2>
         <ProductionMetricsCards metrics={productionMetrics} showAllMetrics={true} />
       </div>
+
+      {/* Evaluation Requests Section */}
+      {crossTeamSharesData.length > 0 && (
+        <div className="space-y-2">
+          <h2 className="text-lg font-semibold text-gray-900">Evaluation Requests</h2>
+          <div className="bg-purple-50 border border-purple-200 rounded-2xl p-4 space-y-3">
+            <div className="flex items-center gap-2 mb-2">
+              <Share2 className="h-5 w-5 text-purple-600" />
+              <p className="text-sm font-medium text-purple-800">
+                {crossTeamSharesData.length} evaluation request{crossTeamSharesData.length !== 1 ? "s" : ""} from other teams
+              </p>
+            </div>
+            {crossTeamSharesData.slice(0, 5).map((share: any) => (
+              <Link
+                key={share.id}
+                href={`/evaluator/evaluate/${share.call_report_id}?crossTeamShareId=${share.id}`}
+                className="block p-3 bg-white rounded-lg border border-purple-100 hover:border-purple-300 hover:shadow-sm transition-all"
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-900 line-clamp-1">
+                      {share.call_report?.working_title || "Untitled Project"}
+                    </p>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      Writer: {share.call_report?.writer_name || "Unknown"}
+                    </p>
+                    <p className="text-xs text-purple-600 mt-0.5">
+                      From {share.from_team?.name || "Unknown team"} &middot; {formatDate(share.shared_at)}
+                    </p>
+                  </div>
+                  <Badge variant="outline" className="ml-2 border-purple-300 text-purple-700 text-xs shrink-0">
+                    Evaluate
+                  </Badge>
+                </div>
+              </Link>
+            ))}
+            {crossTeamSharesData.length > 5 && (
+              <div className="text-center pt-1">
+                <Link
+                  href="/evaluator/evaluations-list"
+                  className="text-sm text-purple-700 hover:underline font-medium"
+                >
+                  View all {crossTeamSharesData.length} evaluation requests →
+                </Link>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Content Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

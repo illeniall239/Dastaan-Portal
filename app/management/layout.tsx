@@ -21,6 +21,11 @@ const managementNavItems = [
     icon: "clipboardCheck",
   },
   {
+    title: "Project Status",
+    href: "/management/status-updater",
+    icon: "listChecks",
+  },
+  {
     title: "Calendar",
     href: "/management/calendar",
     icon: "calendar",
@@ -34,6 +39,21 @@ const managementNavItems = [
     title: "Teams",
     href: "/management/teams",
     icon: "users",
+  },
+  {
+    title: "Writers Summary",
+    href: "/management/writers-summary",
+    icon: "userCheck",
+  },
+  {
+    title: "Idea Roadmap",
+    href: "/management/roadmap",
+    icon: "map",
+  },
+  {
+    title: "Evaluation Requests",
+    href: "/management/cross-team-shares",
+    icon: "share2",
   },
 ];
 

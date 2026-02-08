@@ -14,6 +14,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getAttachmentsForEntityServer } from "@/lib/attachments/server";
 import { BackButton } from "@/components/ui/back-button";
 import { formatDateTimeLong, formatDate } from "@/lib/utils/format-date";
+import { ShareCrossTeamButton } from "@/components/call-report/share-cross-team-button";
 
 // Helper to convert stored image path to secure proxy URL
 function getSecureImageUrl(value: string | null | undefined): string | null {
@@ -59,8 +60,26 @@ export default async function CallReportDetailPage({ params }: { params: Promise
     redirect("/evaluator");
   }
 
-  // Fetch the call report
+  // Fetch the call report and user's team info
   const supabase = await createClient();
+
+  // Get user's team_id and check if they're a team head
+  const { data: userProfile } = await supabase
+    .from("users")
+    .select("team_id")
+    .eq("id", user.id)
+    .single();
+  const userTeamId = userProfile?.team_id;
+
+  let isTeamHead = false;
+  if (userTeamId) {
+    const { data: team } = await supabase
+      .from("teams")
+      .select("team_head_id")
+      .eq("id", userTeamId)
+      .single();
+    isTeamHead = team?.team_head_id === user.id;
+  }
   const { data: report, error } = await supabase
     .from("call_reports")
     .select("*")
@@ -122,14 +141,22 @@ export default async function CallReportDetailPage({ params }: { params: Promise
       <div className="flex flex-col gap-4 sm:gap-6 mb-8">
         <div className="flex items-center justify-between">
           <BackButton fallbackHref="/evaluator/call-reports" variant="outline" size="sm" className="w-fit" />
-          {canEdit && (
-            <Button variant="default" size="sm" asChild>
-              <Link href={`/evaluator/call-reports/${resolvedParams.id}/edit`}>
-                <Pencil className="h-4 w-4 mr-2" />
-                Edit
-              </Link>
-            </Button>
-          )}
+          <div className="flex items-center gap-2">
+            {isTeamHead && (
+              <ShareCrossTeamButton
+                callReportId={resolvedParams.id}
+                currentTeamId={userTeamId}
+              />
+            )}
+            {canEdit && (
+              <Button variant="default" size="sm" asChild>
+                <Link href={`/evaluator/call-reports/${resolvedParams.id}/edit`}>
+                  <Pencil className="h-4 w-4 mr-2" />
+                  Edit
+                </Link>
+              </Button>
+            )}
+          </div>
         </div>
         <div className="space-y-1">
           <h1 className="text-xl sm:text-2xl font-bold tracking-tight">{report.working_title}</h1>

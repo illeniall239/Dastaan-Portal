@@ -1,4 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/admin';
+import { handleError } from '@/lib/errors';
 
 export interface PendingApproval {
   id: string;
@@ -40,8 +41,11 @@ export async function getPendingApprovals() {
     .order('updated_at', { ascending: true });
 
   if (error) {
-    console.error('Error fetching pending approvals:', error);
-    return [];
+    return handleError(error, {
+      context: 'getPendingApprovals',
+      fallbackValue: [],
+      userMessage: 'Failed to fetch pending approvals',
+    });
   }
 
   const now = new Date();

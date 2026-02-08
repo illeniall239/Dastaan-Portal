@@ -18,6 +18,7 @@ export const USER_ROLES = {
   CONTENT_MANAGER: 'content_manager',
   CONTENT_CREATOR: 'content_creator',
   CONTENT_HEAD: 'content_head',
+  GCM: 'gcm',
   LEGAL: 'legal',
   FINANCE: 'finance',
 } as const;

@@ -1,99 +1,141 @@
-import { createClient } from "@/lib/supabase/server";
-import { NextResponse } from "next/server";
-import { revalidatePath } from 'next/cache';
-import { logger } from "@/lib/logger";
-import { createWriterSchema } from "@/lib/validations/writers";
+import { NextRequest, NextResponse } from 'next/server';
+import { createClient } from '@/lib/supabase/server';
+import { requireApiAuth } from '@/lib/api/auth';
+import { createWriterEngagementSchema } from '@/lib/validations/writer-engagements';
+import { applyRateLimit, addRateLimitHeaders } from '@/lib/api-middleware';
+import { RateLimitPresets } from '@/lib/rate-limit-redis';
 
-// GET /api/writers - Fetch all active writers
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const rate = await applyRateLimit(request, RateLimitPresets.relaxed);
+    if (!rate.success) return rate.response!;
+
+    const auth = await requireApiAuth();
+    if (!auth.success) return auth.response;
+
     const supabase = await createClient();
 
-    const { data: writers, error } = await supabase
-      .from("writers")
-      .select("id, name, email, phone, status, created_at, updated_at")
-      .eq("status", "active")
-      .order("name", { ascending: true });
+    // Get query parameters
+    const { searchParams } = new URL(request.url);
+    const writerId = searchParams.get('writerId');
+    const dateFrom = searchParams.get('dateFrom');
+    const dateTo = searchParams.get('dateTo');
 
-    if (error) {
-      logger.error("Error fetching writers:", error);
-      return NextResponse.json(
-        { error: "Failed to fetch writers" },
-        { status: 500 }
-      );
+    let query = supabase
+      .from('writer_engagements')
+      .select(`
+        id,
+        writer_id,
+        date_engaged,
+        time_slot,
+        notes,
+        created_by,
+        created_at,
+        updated_at,
+        writer:writers (id, name)
+      `)
+      .order('date_engaged', { ascending: false })
+      .order('time_slot', { ascending: true });
+
+    if (writerId) {
+      query = query.eq('writer_id', writerId);
     }
 
-    return NextResponse.json(writers);
+    if (dateFrom) {
+      query = query.gte('date_engaged', dateFrom);
+    }
+
+    if (dateTo) {
+      query = query.lte('date_engaged', dateTo);
+    }
+
+    const { data, error } = await query;
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    // Batch-fetch creator names (avoids PostgREST FK dependency on users table)
+    const createdByIds = [...new Set(
+      (data || []).map(d => d.created_by).filter(Boolean)
+    )] as string[];
+
+    let creatorsMap: Record<string, { id: string; name: string }> = {};
+    if (createdByIds.length > 0) {
+      const { data: usersData } = await supabase
+        .from('users')
+        .select('id, name')
+        .in('id', createdByIds);
+      if (usersData) {
+        creatorsMap = Object.fromEntries(
+          usersData.map((u: { id: string; name: string }) => [u.id, { id: u.id, name: u.name }])
+        );
+      }
+    }
+
+    const result = (data || []).map(d => ({
+      ...d,
+      creator: d.created_by ? creatorsMap[d.created_by] || null : null,
+    }));
+
+    return addRateLimitHeaders(
+      NextResponse.json(result),
+      rate.result
+    );
   } catch (error) {
-    logger.error("Error in GET /api/writers:", error);
+    console.error('Error fetching writer engagements:', error);
     return NextResponse.json(
-      { error: "Internal server error" },
+      { error: 'Failed to fetch writer engagements' },
       { status: 500 }
     );
   }
 }
 
-// POST /api/writers - Create a new writer
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
+    const rate = await applyRateLimit(request, RateLimitPresets.standard);
+    if (!rate.success) return rate.response!;
+
+    const auth = await requireApiAuth();
+    if (!auth.success) return auth.response;
+    const { user } = auth;
+
     const supabase = await createClient();
     const body = await request.json();
 
-    // Validate request body
-    const validation = createWriterSchema.safeParse(body);
-
+    const validation = createWriterEngagementSchema.safeParse(body);
     if (!validation.success) {
       return NextResponse.json(
-        { error: "Invalid request", details: validation.error.issues },
+        { error: 'Validation failed', details: validation.error.format() },
         { status: 400 }
       );
     }
 
-    const { name, email, phone } = validation.data;
+    const { writer_id, date_engaged, time_slot, notes } = validation.data;
 
-    // Check if writer already exists
-    const { data: existingWriter } = await supabase
-      .from("writers")
-      .select("id, name")
-      .eq("name", name)
-      .single();
-
-    if (existingWriter) {
-      return NextResponse.json(
-        { error: "A writer with this name already exists" },
-        { status: 409 }
-      );
-    }
-
-    // Insert new writer
-    const { data: newWriter, error } = await supabase
-      .from("writers")
-      .insert({
-        name,
-        email: email || null,
-        phone: phone || null,
-        status: "active",
-      })
-      .select("id, name, email, phone, status, created_at, updated_at")
-      .single();
+    const { data, error } = await supabase
+      .from('writer_engagements')
+      .insert([{
+        writer_id,
+        date_engaged,
+        time_slot: time_slot || null,
+        notes: notes || null,
+        created_by: user.id,
+      }])
+      .select();
 
     if (error) {
-      logger.error("Error creating writer:", error);
-      return NextResponse.json(
-        { error: "Failed to create writer" },
-        { status: 500 }
-      );
+      throw new Error(error.message);
     }
 
-    // Revalidate pages that display writers list
-    revalidatePath('/content-department/log-call-report');
-    revalidatePath('/evaluator/log-call-report');
-
-    return NextResponse.json(newWriter, { status: 201 });
+    return addRateLimitHeaders(
+      NextResponse.json(data[0], { status: 201 }),
+      rate.result
+    );
   } catch (error) {
-    logger.error("Error in POST /api/writers:", error);
+    console.error('Error creating writer engagement:', error);
     return NextResponse.json(
-      { error: "Internal server error" },
+      { error: 'Failed to create writer engagement' },
       { status: 500 }
     );
   }

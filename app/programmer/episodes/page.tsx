@@ -949,7 +949,25 @@ export default function ProgrammerEpisodesPage() {
                                                         const isEvaluated = evaluationStatus[episode.id];
                                                         return (
                                                             <TableRow key={episode.id} className="hover:bg-slate-50">
-                                                                <TableCell className="pl-12"><Badge variant="outline">EP {episode.episode_number}</Badge></TableCell>
+                                                                <TableCell className="pl-12">
+                                                                    <div className="flex items-center gap-1.5">
+                                                                        <Badge variant="outline">EP {episode.episode_number}</Badge>
+                                                                        {episode.version > 1 && (
+                                                                            <Badge variant="secondary" className="text-[10px] px-1 py-0 h-4 bg-blue-100 text-blue-700">
+                                                                                v{episode.version}
+                                                                            </Badge>
+                                                                        )}
+                                                                        {episode.approval_status && (
+                                                                            <Badge className={
+                                                                                episode.approval_status === "approved" ? "bg-emerald-100 text-emerald-700 text-[10px] px-1 py-0 h-4" :
+                                                                                episode.approval_status === "needs_revision" ? "bg-amber-100 text-amber-700 text-[10px] px-1 py-0 h-4" :
+                                                                                "bg-rose-100 text-rose-700 text-[10px] px-1 py-0 h-4"
+                                                                            }>
+                                                                                {episode.approval_status === "approved" ? "Approved" : episode.approval_status === "needs_revision" ? "Needs Revision" : "Rejected"}
+                                                                            </Badge>
+                                                                        )}
+                                                                    </div>
+                                                                </TableCell>
                                                                 <TableCell>
                                                                     {episode.attachment_url ? (
                                                                         <button onClick={() => handleDownload(episode)} className="text-blue-600 hover:text-blue-800 hover:underline text-sm flex items-center gap-1">
@@ -1031,6 +1049,20 @@ export default function ProgrammerEpisodesPage() {
                                                                 <div className="flex items-center justify-between gap-2">
                                                                     <div className="flex items-center gap-2 flex-1 min-w-0">
                                                                         <Badge variant="outline">EP {episode.episode_number}</Badge>
+                                                                        {episode.version > 1 && (
+                                                                            <Badge variant="secondary" className="text-[10px] px-1 py-0 h-4 bg-blue-100 text-blue-700">
+                                                                                v{episode.version}
+                                                                            </Badge>
+                                                                        )}
+                                                                        {episode.approval_status && (
+                                                                            <Badge className={
+                                                                                episode.approval_status === "approved" ? "bg-emerald-100 text-emerald-700 text-[10px] px-1 py-0 h-4" :
+                                                                                episode.approval_status === "needs_revision" ? "bg-amber-100 text-amber-700 text-[10px] px-1 py-0 h-4" :
+                                                                                "bg-rose-100 text-rose-700 text-[10px] px-1 py-0 h-4"
+                                                                            }>
+                                                                                {episode.approval_status === "approved" ? "Approved" : episode.approval_status === "needs_revision" ? "Needs Revision" : "Rejected"}
+                                                                            </Badge>
+                                                                        )}
                                                                         <span className="font-medium text-sm truncate">{episode.title || <span className="text-muted-foreground italic">Untitled</span>}</span>
                                                                     </div>
                                                                     {isEvaluated ? <Badge className="bg-green-100 text-green-800 border-green-300 text-xs">Done</Badge> : <Badge variant="outline" className="text-amber-700 border-amber-300 text-xs">Pending</Badge>}

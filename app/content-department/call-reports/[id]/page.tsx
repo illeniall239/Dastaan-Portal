@@ -18,6 +18,7 @@ import type { User } from "@/types";
 import { formatDateTimeLong } from "@/lib/utils/format-date";
 import { getSegregatedEvaluations } from "@/lib/evaluations/server";
 import { SegregatedEvaluationsDisplay } from "@/components/evaluations/segregated-evaluations-display";
+import { ShareCrossTeamButton } from "@/components/call-report/share-cross-team-button";
 
 // Helper to convert stored image path to secure proxy URL
 function getSecureImageUrl(value: string | null | undefined): string | null {
@@ -72,6 +73,18 @@ export default async function CallReportDetailPage({ params }: { params: Promise
     .single();
 
   const hasGlobalAccess = currentUser?.role && ['admin', 'management'].includes(currentUser.role);
+
+  // Check if user is team head (for share button)
+  let isTeamHead = false;
+  if (currentUser?.team_id) {
+    const { data: teamData } = await supabase
+      .from("teams")
+      .select("team_head_id")
+      .eq("id", currentUser.team_id)
+      .single();
+    isTeamHead = teamData?.team_head_id === user.id;
+  }
+  const canShare = isTeamHead || hasGlobalAccess;
 
   // STEP 2: Fetch call report with team verification
   let query = supabase
@@ -159,14 +172,22 @@ export default async function CallReportDetailPage({ params }: { params: Promise
             Writer Engagement Report ID: {report.call_report_id}
           </p>
         </div>
-        {canEdit && (
-          <Button variant="default" size="sm" asChild>
-            <Link href={`/content-department/call-reports/${resolvedParams.id}/edit`}>
-              <Pencil className="h-4 w-4 mr-2" />
-              Edit
-            </Link>
-          </Button>
-        )}
+        <div className="flex items-center gap-2">
+          {canShare && (
+            <ShareCrossTeamButton
+              callReportId={resolvedParams.id}
+              currentTeamId={currentUser?.team_id}
+            />
+          )}
+          {canEdit && (
+            <Button variant="default" size="sm" asChild>
+              <Link href={`/content-department/call-reports/${resolvedParams.id}/edit`}>
+                <Pencil className="h-4 w-4 mr-2" />
+                Edit
+              </Link>
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Single Column Layout */}

@@ -41,7 +41,7 @@ export async function POST(request: Request) {
     .eq("id", user.id)
     .single();
 
-  if (!userData || !["content_creator", "content_manager", "evaluator", "programmer", "admin"].includes(userData.role)) {
+  if (!userData || !["content_creator", "content_manager", "gcm", "evaluator", "programmer", "admin"].includes(userData.role)) {
     return forbiddenError();
   }
 
@@ -232,7 +232,7 @@ export async function GET(request: NextRequest) {
     .eq("id", user.id)
     .single();
 
-  if (!userData || !["content_creator", "content_manager", "evaluator", "programmer", "executive", "admin"].includes(userData.role)) {
+  if (!userData || !["content_creator", "content_manager", "gcm", "evaluator", "programmer", "executive", "admin"].includes(userData.role)) {
     return forbiddenError();
   }
 
@@ -257,6 +257,9 @@ export async function GET(request: NextRequest) {
 
     // Check if client wants evaluation status included (for performance optimization)
     const includeEvaluationStatus = searchParams.get("include_evaluation_status") === "true";
+
+    // Version filtering: default to current versions only
+    const currentOnly = searchParams.get("current_only") !== "false";
 
     // Validate query parameters
     const validation = episodesQuerySchema.safeParse(rawFilters);
@@ -451,6 +454,9 @@ export async function GET(request: NextRequest) {
         `, { count: "exact" });
 
       // Apply filters
+      if (currentOnly) {
+        query = query.eq("is_current", true);
+      }
       if (filters.call_report_id) {
         query = query.eq("call_report_id", filters.call_report_id);
       }

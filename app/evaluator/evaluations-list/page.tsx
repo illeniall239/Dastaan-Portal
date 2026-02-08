@@ -11,7 +11,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import Link from "next/link";
-import { ClipboardListIcon, FileTextIcon, CalendarIcon, UserIcon, CheckCircle2, TrendingUp, TrendingDown, Minus } from "lucide-react";
+import { ClipboardListIcon, FileTextIcon, CalendarIcon, UserIcon, CheckCircle2, TrendingUp, TrendingDown, Minus, Share2 } from "lucide-react";
 import { getAllCallReports } from "@/lib/meetings/server";
 import { getEvaluationsByEvaluator } from "@/lib/evaluations/server";
 import { format, parseISO } from "date-fns";
@@ -91,6 +91,51 @@ export default async function EvaluatorEvaluationsListPage({ searchParams }: { s
     })
   );
 
+  // Fetch cross-team shared call reports for this evaluator's team
+  let crossTeamShares: any[] = [];
+  if (currentUser?.team_id) {
+    try {
+      const { data: shares } = await supabase
+        .from('cross_team_shares')
+        .select(`
+          id,
+          call_report_id,
+          from_team_id,
+          status,
+          shared_at,
+          notes,
+          required_evaluations,
+          completed_evaluations,
+          from_team:teams!cross_team_shares_from_team_id_fkey (id, name),
+          call_report:call_reports (
+            id,
+            call_report_id,
+            working_title,
+            writer_name,
+            logline,
+            category,
+            created_at
+          )
+        `)
+        .eq('to_team_id', currentUser.team_id)
+        .in('status', ['pending', 'in_progress']);
+
+      if (shares) {
+        // Filter out shares where this evaluator already submitted
+        const { data: myShareEvals } = await supabase
+          .from('evaluator_forms')
+          .select('cross_team_share_id')
+          .eq('evaluator_id', user.id)
+          .not('cross_team_share_id', 'is', null);
+
+        const evaluatedShareIds = new Set((myShareEvals || []).map((e: any) => e.cross_team_share_id));
+        crossTeamShares = shares.filter((s: any) => !evaluatedShareIds.has(s.id));
+      }
+    } catch (error) {
+      console.error('Error fetching cross-team shares:', error);
+    }
+  }
+
   // Determine view based on query parameter
   const currentView = resolvedSearchParams.view === 'completed' ? 'completed' : 'pending';
 
@@ -146,6 +191,77 @@ export default async function EvaluatorEvaluationsListPage({ searchParams }: { s
         <Suspense fallback={<div className="h-24" />}>
           <PendingEvaluationsNotificationEvaluator userId={user.id} userName={user.name} />
         </Suspense>
+      )}
+
+      {/* Evaluation Requests from Other Teams */}
+      {currentView === "pending" && crossTeamShares.length > 0 && (
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <Share2 className="h-5 w-5 text-purple-600" />
+            <h2 className="text-lg font-semibold text-purple-900">Evaluation Requests</h2>
+            <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">
+              {crossTeamShares.length}
+            </Badge>
+          </div>
+          <div className="grid gap-3">
+            {crossTeamShares.map((share: any) => (
+              <Card key={share.id} className="border-purple-200 bg-purple-50/30 hover:shadow-md transition-shadow">
+                <CardHeader className="pb-2">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <CardTitle className="text-lg">{share.call_report?.working_title || 'Untitled'}</CardTitle>
+                        <Badge variant="outline" className="bg-purple-100 text-purple-700 border-purple-300 text-xs">
+                          Requested by {share.from_team?.name || 'Unknown Team'}
+                        </Badge>
+                      </div>
+                      <div className="text-sm text-muted-foreground space-y-1">
+                        <div className="flex items-center gap-2">
+                          <UserIcon className="h-4 w-4" />
+                          <span>Writer: {share.call_report?.writer_name || 'N/A'}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <FileTextIcon className="h-4 w-4" />
+                          <span>Call Report: {share.call_report?.call_report_id || '—'}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <CalendarIcon className="h-4 w-4" />
+                          <span>Shared: {new Date(share.shared_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-xs text-gray-500">
+                        {share.completed_evaluations}/{share.required_evaluations} evaluations
+                      </div>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="pt-2">
+                  {share.notes && (
+                    <div className="mb-3 text-sm text-purple-700 bg-purple-50 p-2 rounded border border-purple-200">
+                      {share.notes}
+                    </div>
+                  )}
+                  {share.call_report?.logline && (
+                    <div className="mb-3">
+                      <p className="text-sm font-medium text-muted-foreground">Logline:</p>
+                      <p className="text-sm line-clamp-2">{share.call_report.logline}</p>
+                    </div>
+                  )}
+                  <div className="flex justify-end pt-3 border-t">
+                    <Button size="sm" asChild className="bg-purple-600 hover:bg-purple-700">
+                      <Link href={`/evaluator/evaluate/${share.call_report?.id}?crossTeamShareId=${share.id}`}>
+                        <ClipboardListIcon className="h-4 w-4 mr-2" />
+                        Evaluate
+                      </Link>
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
       )}
 
       {/* Call Reports List */}

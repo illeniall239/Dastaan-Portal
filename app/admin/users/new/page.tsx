@@ -33,6 +33,7 @@ export default function NewUserPage() {
     register,
     handleSubmit,
     control,
+    watch,
     formState: { errors, isValid },
   } = useForm<AdminCreateUserFormData>({
     resolver: zodResolver(adminCreateUserSchema),
@@ -333,6 +334,12 @@ export default function NewUserPage() {
                               Content Team
                             </div>
                           </SelectItem>
+                          <SelectItem value="gcm">
+                            <div className="flex items-center gap-2">
+                              <div className="h-2 w-2 rounded-full bg-teal-500" />
+                              GCM
+                            </div>
+                          </SelectItem>
                           <SelectItem value="programming_team">
                             <div className="flex items-center gap-2">
                               <div className="h-2 w-2 rounded-full bg-purple-500" />
@@ -366,31 +373,41 @@ export default function NewUserPage() {
                       <Select
                         onValueChange={field.onChange}
                         defaultValue={field.value}
-                        disabled={teamsLoading}
+                        disabled={teamsLoading || watch("department") === "gcm"}
                       >
-                        <SelectTrigger className={`touch-target ${errors.team_id ? 'border-red-500' : ''}`}>
-                          <SelectValue placeholder={teamsLoading ? "Loading teams..." : "Select a team (optional)"} />
+                        <SelectTrigger className={`touch-target ${errors.team_id ? 'border-red-500' : ''} ${(watch("department") === "gcm") ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                          <SelectValue placeholder={
+                            watch("department") === "gcm"
+                              ? "GCM users auto-assigned to shared team"
+                              : (teamsLoading ? "Loading teams..." : "Select a team (optional)")
+                          } />
                         </SelectTrigger>
                         <SelectContent>
-                          {teams.length === 0 && !teamsLoading ? (
+                          {watch("department") === "gcm" ? (
                             <div className="px-2 py-3 text-sm text-muted-foreground">
-                              No teams available. Create teams first.
+                              GCM users are automatically assigned to the shared GCM team
                             </div>
                           ) : (
-                            teams.map((team) => (
-                              <SelectItem key={team.id} value={team.id}>
-                                <div className="flex items-center gap-2">
-                                  <div className={`h-2 w-2 rounded-full ${
-                                    team.team_type === 'production' ? 'bg-blue-500' :
-                                    team.team_type === 'channel' ? 'bg-purple-500' :
-                                    team.team_type === 'adaptation' ? 'bg-green-500' :
-                                    team.team_type === 'evaluator' ? 'bg-yellow-500' :
-                                    'bg-slate-500'
-                                  }`} />
-                                  {formatTeamName(team)}
-                                </div>
-                              </SelectItem>
-                            ))
+                            teams.length === 0 && !teamsLoading ? (
+                              <div className="px-2 py-3 text-sm text-muted-foreground">
+                                No teams available. Create teams first.
+                              </div>
+                            ) : (
+                              teams.map((team) => (
+                                <SelectItem key={team.id} value={team.id}>
+                                  <div className="flex items-center gap-2">
+                                    <div className={`h-2 w-2 rounded-full ${
+                                      team.team_type === 'production' ? 'bg-blue-500' :
+                                      team.team_type === 'channel' ? 'bg-purple-500' :
+                                      team.team_type === 'adaptation' ? 'bg-green-500' :
+                                      team.team_type === 'evaluator' ? 'bg-yellow-500' :
+                                      'bg-slate-500'
+                                    }`} />
+                                    {formatTeamName(team)}
+                                  </div>
+                                </SelectItem>
+                              ))
+                            )
                           )}
                         </SelectContent>
                       </Select>
@@ -401,9 +418,15 @@ export default function NewUserPage() {
                       {errors.team_id.message}
                     </p>
                   )}
-                  <p className="text-xs text-muted-foreground">
-                    Assign the user to a team for performance tracking
-                  </p>
+                  {watch("department") === "gcm" ? (
+                    <p className="text-xs text-muted-foreground">
+                      GCM users are automatically assigned to the shared GCM team for proper isolation
+                    </p>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">
+                      Assign the user to a team for performance tracking
+                    </p>
+                  )}
                 </div>
               </div>
 

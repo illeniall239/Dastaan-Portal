@@ -55,6 +55,11 @@ const evaluatorNavItems = [
     href: "/evaluator/contract-terms",
     icon: "handshake",
   },
+  {
+    title: "Writers",
+    href: "/evaluator/writers",
+    icon: "userPen",
+  },
 ];
 
 export default async function EvaluatorLayout({

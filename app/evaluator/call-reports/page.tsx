@@ -12,6 +12,7 @@ import { Suspense } from "react";
 import { CallReportCardsGridSkeleton } from "@/components/skeletons/call-report-card-skeleton";
 import { BackButton } from "@/components/ui/back-button";
 import { CallReportCard } from "@/components/evaluator/call-report-card";
+import { createClient } from "@/lib/supabase/server";
 
 // Add Next.js caching - revalidate every 5 minutes (300 seconds)
 // This significantly improves navigation speed by caching call reports list
@@ -82,6 +83,32 @@ async function CallReportsList() {
     console.error("Error fetching call reports:", error);
   }
 
+  // Check if current user is a team head
+  let isTeamHead = false;
+  let currentTeamId: string | undefined;
+  try {
+    const user = await getCurrentUser();
+    if (user) {
+      const supabase = await createClient();
+      const { data: userProfile } = await supabase
+        .from("users")
+        .select("team_id")
+        .eq("id", user.id)
+        .single();
+      currentTeamId = userProfile?.team_id;
+      if (currentTeamId) {
+        const { data: team } = await supabase
+          .from("teams")
+          .select("team_head_id")
+          .eq("id", currentTeamId)
+          .single();
+        isTeamHead = team?.team_head_id === user.id;
+      }
+    }
+  } catch {
+    // Non-critical, continue without share button
+  }
+
   return (
     <div className="grid gap-4">
       {callReports.length === 0 ? (
@@ -102,7 +129,12 @@ async function CallReportsList() {
         </Card>
       ) : (
         callReports.map((report: any) => (
-          <CallReportCard key={report.id} report={report} />
+          <CallReportCard
+            key={report.id}
+            report={report}
+            isTeamHead={isTeamHead}
+            currentTeamId={currentTeamId}
+          />
         ))
       )}
     </div>

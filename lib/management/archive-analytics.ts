@@ -1,5 +1,6 @@
 import { createAdminClient } from '@/lib/supabase/admin';
 import { cachedQuery, CacheTags } from '@/lib/cache/request-cache';
+import { handleError } from '@/lib/errors';
 
 export interface GenreArchiveData {
   genre: string;
@@ -26,7 +27,11 @@ export async function getArchiveByGenre(): Promise<GenreArchiveData[]> {
         `);
 
       if (error) {
-        return [];
+        return handleError(error, {
+          context: 'getArchiveByGenre',
+          fallbackValue: [],
+          userMessage: 'Failed to fetch archived stories by genre',
+        });
       }
 
       // Group by genre and count
@@ -80,8 +85,11 @@ export async function getTotalArchivedStories(): Promise<number> {
     .select('*', { count: 'exact', head: true });
 
   if (error) {
-    console.error('Error fetching archived stories count:', error);
-    return 0;
+    return handleError(error, {
+      context: 'getTotalArchivedStories',
+      fallbackValue: 0,
+      userMessage: 'Failed to fetch archived stories count',
+    });
   }
 
   return count || 0;

@@ -1,4 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/admin';
+import { handleError } from '@/lib/errors';
 
 export interface ActiveProject {
   id: string;
@@ -42,8 +43,11 @@ export async function getActiveProjects() {
     .order('updated_at', { ascending: false });
 
   if (error) {
-    console.error('Error fetching active projects:', error);
-    return [];
+    return handleError(error, {
+      context: 'getActiveProjects',
+      fallbackValue: [],
+      userMessage: 'Failed to fetch active projects',
+    });
   }
 
   const now = new Date();

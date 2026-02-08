@@ -1,6 +1,9 @@
 import { createClient } from "@/lib/supabase/server";
 import { NextRequest, NextResponse } from "next/server";
 import { logger } from "@/lib/logger";
+import { requireApiAuth } from "@/lib/api/auth";
+import { applyRateLimit, addRateLimitHeaders } from "@/lib/api-middleware";
+import { RateLimitPresets } from "@/lib/rate-limit-redis";
 
 export async function PATCH(
   request: NextRequest,
@@ -8,57 +11,37 @@ export async function PATCH(
 ) {
   const { id } = await params;
   try {
-    const supabase = await createClient();
+    const rate = await applyRateLimit(request, RateLimitPresets.standard);
+    if (!rate.success) return rate.response!;
 
-    // Check authentication
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      );
-    }
-
-    // Get user role
-    const { data: userData, error: userError } = await supabase
-      .from("users")
-      .select("role")
-      .eq("id", user.id)
-      .single();
-
-    if (userError || !userData) {
-      return NextResponse.json(
-        { error: "User not found" },
-        { status: 404 }
-      );
-    }
-
-    // Check if user has permission (content_manager, evaluator, management, executive, or admin)
-    if (!["content_manager", "evaluator", "management", "executive", "admin"].includes(userData.role)) {
-      return NextResponse.json(
-        { error: "Forbidden: You don't have permission to update status" },
-        { status: 403 }
-      );
-    }
+    const auth = await requireApiAuth([
+      "content_manager", "evaluator", "programmer", "management", "executive"
+    ]);
+    if (!auth.success) return auth.response;
 
     // Parse request body
     const body = await request.json();
-    const { status } = body;
+    const { status, remarks } = body;
 
-    if (!status) {
+    if (!status && remarks === undefined) {
       return NextResponse.json(
-        { error: "Status is required" },
+        { error: "Status or remarks is required" },
         { status: 400 }
       );
     }
 
-    // Update the call report status
+    // Build update object
+    const updateData: Record<string, string> = {
+      updated_at: new Date().toISOString()
+    };
+    if (status) updateData.status = status;
+    if (remarks !== undefined) updateData.remarks = remarks;
+
+    // Update the call report using server client (RLS allows updates for authenticated users with correct role)
+    const supabase = await createClient();
     const { data, error } = await supabase
       .from("call_reports")
-      .update({
-        status,
-        updated_at: new Date().toISOString()
-      })
+      .update(updateData)
       .eq("id", id)
       .select()
       .single();
@@ -71,10 +54,10 @@ export async function PATCH(
       );
     }
 
-    return NextResponse.json({
-      success: true,
-      data
-    });
+    return addRateLimitHeaders(
+      NextResponse.json({ success: true, data }),
+      rate.result
+    );
 
   } catch (error) {
     logger.error("Error in PATCH /api/call-reports/[id]/status:", error);

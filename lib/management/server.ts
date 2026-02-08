@@ -1,5 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getActiveIdeasByGenre } from "./active-ideas-details";
 import { cachedQuery, CacheTags } from "@/lib/cache/request-cache";
+import { handleError } from "@/lib/errors";
 import type { CriticalAlert } from "./critical-alerts";
 
 /**
@@ -157,14 +159,18 @@ export async function getExecutiveSummary(): Promise<ExecutiveSummary> {
           weeklyActivities: auditRes.count || 0
         };
       } catch (error) {
-        return {
-          totalActiveProjects: 0,
-          pipelineValue: 0,
-          pendingApprovals: 0,
-          activeContracts: 0,
-          overduePayments: 0,
-          weeklyActivities: 0
-        };
+        return handleError(error, {
+          context: "getExecutiveSummary",
+          fallbackValue: {
+            totalActiveProjects: 0,
+            pipelineValue: 0,
+            pendingApprovals: 0,
+            activeContracts: 0,
+            overduePayments: 0,
+            weeklyActivities: 0
+          },
+          userMessage: "Failed to fetch executive summary",
+        });
       }
     },
     ['executive-summary'],
@@ -219,18 +225,21 @@ export async function getPipelineFunnel(): Promise<PipelineFunnel> {
 
     return counts;
   } catch (error) {
-    console.error("Error fetching pipeline funnel:", error);
-    return {
-      submitted: 0,
-      in_evaluation: 0,
-      approved: 0,
-      in_contractTerm: 0,
-      in_legal_review: 0,
-      contracted: 0,
-      in_payment: 0,
-      completed: 0,
-      archived: 0
-    };
+    return handleError(error, {
+      context: "getPipelineFunnel",
+      fallbackValue: {
+        submitted: 0,
+        in_evaluation: 0,
+        approved: 0,
+        in_contractTerm: 0,
+        in_legal_review: 0,
+        contracted: 0,
+        in_payment: 0,
+        completed: 0,
+        archived: 0
+      },
+      userMessage: "Failed to fetch pipeline funnel data",
+    });
   }
 }
 
@@ -333,10 +342,10 @@ export async function getPerformanceMetrics(): Promise<PerformanceMetrics> {
     const completedEvaluations = evaluations.filter((e: any) => e.submitted_at);
     const avgEvaluationTurnaround = completedEvaluations.length > 0
       ? completedEvaluations.reduce((sum: number, e: any) => {
-          const created = new Date(e.created_at);
-          const submitted = new Date(e.submitted_at);
-          return sum + Math.floor((submitted.getTime() - created.getTime()) / (1000 * 60 * 60 * 24));
-        }, 0) / completedEvaluations.length
+        const created = new Date(e.created_at);
+        const submitted = new Date(e.submitted_at);
+        return sum + Math.floor((submitted.getTime() - created.getTime()) / (1000 * 60 * 60 * 24));
+      }, 0) / completedEvaluations.length
       : 0;
 
     // Approval rate (approved stories / total evaluated stories)
@@ -495,9 +504,9 @@ export async function getCriticalAlerts(): Promise<CriticalAlert[]> {
           const daysSinceUpdate = Math.floor((Date.now() - new Date(story.updated_at).getTime()) / (1000 * 60 * 60 * 24));
           if (daysSinceUpdate > 30) {
             alerts.push({
-              id: `stuck-${story.id}`,
+              id: `stuck - ${story.id} `,
               type: "stuck_story",
-              title: `Story stuck in ${story.status}`,
+              title: `Story stuck in ${story.status} `,
               description: `"${story.title}" has been in ${story.status} for ${daysSinceUpdate} days`,
               severity: daysSinceUpdate > 60 ? "critical" : "warning",
               affectedEntity: story.title,
@@ -517,7 +526,7 @@ export async function getCriticalAlerts(): Promise<CriticalAlert[]> {
         (payments || []).forEach((payment: any) => {
           if (payment.overdue_days && payment.overdue_days > 7) {
             alerts.push({
-              id: `payment-${payment.id}`,
+              id: `payment - ${payment.id} `,
               type: "payment_overdue",
               title: "Payment Overdue",
               description: `Payment "${payment.milestone_name}" is ${payment.overdue_days} days overdue`,
@@ -539,7 +548,7 @@ export async function getCriticalAlerts(): Promise<CriticalAlert[]> {
         (legalReviews || []).forEach((review: any) => {
           if (review.days_in_review && review.days_in_review > 14) {
             alerts.push({
-              id: `legal-${review.id}`,
+              id: `legal - ${review.id} `,
               type: "evaluation_delay",
               title: "Legal Review Delayed",
               description: `Review ${review.legal_review_id} has been pending for ${review.days_in_review} days`,
@@ -563,7 +572,7 @@ export async function getCriticalAlerts(): Promise<CriticalAlert[]> {
             const daysUntilExpiry = Math.floor((new Date(contract.contract_end_date).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
             if (daysUntilExpiry < 30 && daysUntilExpiry > 0) {
               alerts.push({
-                id: `contract-${contract.id}`,
+                id: `contract - ${contract.id} `,
                 type: "long_negotiation",
                 title: "Contract Expiring Soon",
                 description: `Contract ${contract.contract_id} for "${contract.project_title}" expires in ${daysUntilExpiry} days`,
@@ -598,3 +607,5 @@ export async function getCriticalAlerts(): Promise<CriticalAlert[]> {
   // Wrap with instrumentation if available
   return instrumentFn ? instrumentFn('getCriticalAlerts', wrappedQuery) : wrappedQuery();
 }
+
+// Obsolete function removed in favor of getActiveIdeasByGenre

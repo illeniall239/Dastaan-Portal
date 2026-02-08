@@ -56,15 +56,27 @@ export function ProductionMetricsCards({
 
     // Show modal even if no data
     setDrillDownData({
-      title: "Writers Engaged - List of Active Writers",
-      subtitle: `${metrics.uniqueWritersCount} unique ${metrics.uniqueWritersCount === 1 ? 'writer' : 'writers'} currently engaged across ${metrics.uniqueWriters.length} ${metrics.uniqueWriters.length === 1 ? 'project' : 'projects'}`,
+      title: "Writers Engaged - Last 30 Days",
+      subtitle: `${metrics.uniqueWritersCount} unique ${metrics.uniqueWritersCount === 1 ? 'writer' : 'writers'} engaged in the last 30 days (${metrics.uniqueWriters.length} ${metrics.uniqueWriters.length === 1 ? 'engagement' : 'engagements'})`,
       type: "table",
       data: metrics.uniqueWriters || [],
       columns: [
-        { key: "name", label: "Writer Name" },
-        { key: "working_title", label: "Project" },
-        { key: "team_name", label: "Team" },
-        { key: "id", label: "Writer ID" },
+        { key: "writer_name", label: "Writer Name" },
+        {
+          key: "date_engaged",
+          label: "Date Engaged",
+          format: (val) =>
+            val
+              ? new Date(val).toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric',
+              })
+              : '-',
+        },
+        { key: "time_slot", label: "Time Slot" },
+        { key: "notes", label: "Notes" },
+        { key: "created_by_name", label: "Logged By" },
       ],
     });
     setIsModalOpen(true);

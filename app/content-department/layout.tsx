@@ -43,6 +43,11 @@ export default async function ContentDepartmentLayout({
       href: "/content-department/episodes",
       icon: "film",
     },
+    {
+      title: "Writers",
+      href: "/content-department/writers",
+      icon: "userPen",
+    },
   ];
 
   return (

@@ -1,4 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/admin';
+import { handleError } from '@/lib/errors';
 
 export interface ActiveContract {
   id: string;
@@ -46,8 +47,11 @@ export async function getActiveContracts() {
     .order('signed_date', { ascending: false });
 
   if (error) {
-    console.error('Error fetching active contracts:', error);
-    return [];
+    return handleError(error, {
+      context: 'getActiveContracts',
+      fallbackValue: [],
+      userMessage: 'Failed to fetch active contracts',
+    });
   }
 
   const activeContracts: ActiveContract[] = (contracts || []).map(contract => {

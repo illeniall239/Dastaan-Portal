@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -12,7 +12,7 @@ import { toast } from "sonner";
 import { createEvaluationClient, updateEvaluationClient } from "@/lib/evaluations/client";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense } from "react";
-import { ArrowLeftIcon, PaperclipIcon, Loader2, FilePenLine } from "lucide-react";
+import { ArrowLeftIcon, PaperclipIcon, Loader2, FilePenLine, AlertTriangle, Share2 as Share2Icon } from "lucide-react";
 import { ScoreCard } from "@/components/episodic-evaluations/score-card";
 import { CallReportOverallAssessment } from "@/components/evaluations/call-report-overall-assessment";
 import { DetailedOneLinerDisplay } from "@/components/evaluations/detailed-one-liner-display";
@@ -60,6 +60,7 @@ interface CallReport {
   content_type?: string;
   overall_rating?: number;
   writers?: CallReportWriter[];
+  created_at?: string; // When the call report was logged
 }
 
 export function EvaluatorEvaluationForm({
@@ -72,6 +73,8 @@ export function EvaluatorEvaluationForm({
   isManagementEvaluation = false,
   existingEvaluation: propExistingEvaluation = null,
   portalPrefix = "evaluator",
+  crossTeamShareId,
+  crossTeamFromTeamName,
 }: {
   callReport: CallReport;
   userId: string;
@@ -82,6 +85,8 @@ export function EvaluatorEvaluationForm({
   isManagementEvaluation?: boolean;
   existingEvaluation?: any;
   portalPrefix?: string;
+  crossTeamShareId?: string;
+  crossTeamFromTeamName?: string;
 }) {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
@@ -123,7 +128,25 @@ export function EvaluatorEvaluationForm({
     comments: "",
     decision: "" as "approve" | "reject" | "needs_improvement" | "",
     decisionNotes: "",
+    delayReason: "", // Required if evaluation is submitted > 3 days after call report creation
   });
+
+  // Check if evaluation is late (> 3 days since call report was created)
+  const isEvaluationLate = useMemo(() => {
+    if (!callReport?.created_at) return false;
+    const createdDate = new Date(callReport.created_at);
+    const now = new Date();
+    const diffDays = Math.floor((now.getTime() - createdDate.getTime()) / (1000 * 60 * 60 * 24));
+    return diffDays > 3;
+  }, [callReport?.created_at]);
+
+  // Calculate days since call report was created
+  const daysSinceCreation = useMemo(() => {
+    if (!callReport?.created_at) return 0;
+    const createdDate = new Date(callReport.created_at);
+    const now = new Date();
+    return Math.floor((now.getTime() - createdDate.getTime()) / (1000 * 60 * 60 * 24));
+  }, [callReport?.created_at]);
 
   // Calculate average score
   const [averageScore, setAverageScore] = useState(5);
@@ -206,6 +229,12 @@ export function EvaluatorEvaluationForm({
       return;
     }
 
+    // Validate delay reason is provided when evaluation is late
+    if (isEvaluationLate && (!formData.delayReason || formData.delayReason.trim().length === 0)) {
+      toast.error("Please provide a reason for the late evaluation");
+      return;
+    }
+
     setIsLoading(true);
 
     try {
@@ -227,11 +256,14 @@ export function EvaluatorEvaluationForm({
           decision_notes: (formData.decision === "reject" || formData.decision === "needs_improvement") ? formData.decisionNotes : null,
           time_spent_minutes: timeSpentMinutes,
           started_at: new Date().toISOString(),
+          is_late: isEvaluationLate,
+          delay_reason: isEvaluationLate ? formData.delayReason : null,
         });
       } else {
         await createEvaluationClient({
           call_report_id: callReport.id,
           evaluator_id: userId,
+          cross_team_share_id: crossTeamShareId || undefined,
           target_writer: selectedWriter?.name || undefined,
           per_ep_price_range: formData.perEpPriceRange || undefined,
           slot: formData.slot || undefined,
@@ -246,6 +278,8 @@ export function EvaluatorEvaluationForm({
           decision_notes: (formData.decision === "reject" || formData.decision === "needs_improvement") ? formData.decisionNotes : undefined,
           time_spent_minutes: timeSpentMinutes,
           started_at: new Date().toISOString(),
+          is_late: isEvaluationLate,
+          delay_reason: isEvaluationLate ? formData.delayReason : undefined,
         });
       }
 
@@ -344,6 +378,7 @@ export function EvaluatorEvaluationForm({
         comments: pendingDraftData.comments || "",
         decision: "",
         decisionNotes: "",
+        delayReason: "",
       });
 
       // Load accumulated time from draft
@@ -435,6 +470,16 @@ export function EvaluatorEvaluationForm({
       </div>
 
       <div className="space-y-6 max-w-4xl mx-auto px-4 sm:px-6">
+        {/* Evaluation Request Banner */}
+        {crossTeamShareId && crossTeamFromTeamName && (
+          <div className="p-3 bg-purple-50 border border-purple-200 rounded-lg flex items-center gap-2">
+            <Share2Icon className="h-4 w-4 text-purple-600 shrink-0" />
+            <p className="text-sm text-purple-800">
+              Evaluation requested by <span className="font-semibold">{crossTeamFromTeamName}</span>
+            </p>
+          </div>
+        )}
+
         {/* Call Report Information (Read-only) */}
         <Card className="p-6 bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-200">
           <div className="flex items-center gap-3 mb-4">
@@ -893,6 +938,44 @@ export function EvaluatorEvaluationForm({
         </div>
 
         {/* Evaluation Progress card removed */}
+
+        {/* Late Evaluation Warning & Delay Reason */}
+        {isEvaluationLate && (
+          <Card className="p-4 border-2 border-amber-300 bg-amber-50">
+            <div className="space-y-4">
+              <div className="flex items-start gap-3">
+                <div className="p-2 bg-amber-100 rounded-full">
+                  <AlertTriangle className="h-5 w-5 text-amber-600" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-amber-800">Late Evaluation</h3>
+                  <p className="text-sm text-amber-700 mt-1">
+                    This call report was logged {daysSinceCreation} days ago (more than 3 days).
+                    Please provide a reason for the delay in submitting your evaluation.
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="delayReason" className="text-amber-900 font-semibold">
+                  Reason for Delay *
+                </Label>
+                <Textarea
+                  id="delayReason"
+                  placeholder="Please explain why this evaluation is being submitted late..."
+                  value={formData.delayReason}
+                  onChange={(e) => setFormData(prev => ({ ...prev, delayReason: e.target.value }))}
+                  rows={3}
+                  className="bg-white border-amber-300 focus:border-amber-500"
+                  required
+                />
+                <p className="text-xs text-amber-700">
+                  This information helps track evaluation timelines and improve processes.
+                </p>
+              </div>
+            </div>
+          </Card>
+        )}
 
         {/* Form Actions - sticky on mobile, responsive layout */}
         <div className="sticky bottom-0 bg-white/80 backdrop-blur supports-[backdrop-filter]:bg-white/60 p-3 border-t md:static md:p-0 md:border-0 safe-bottom">

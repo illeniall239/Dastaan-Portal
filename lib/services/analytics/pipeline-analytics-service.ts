@@ -345,15 +345,15 @@ export class PipelineAnalyticsService extends BaseAnalyticsService {
             },
           });
 
-          // TODO: Implement accurate calculation with status_history table
-          // For now, return estimated data based on current stage times
+          // Accurate calculation requires a status_history table (not yet implemented)
+          // Return zeros to avoid displaying fake data
           const breakdown: StageTimeBreakdown[] = Object.entries(STAGE_MAPPING)
             .filter(([status]) => !['rejected', 'archived'].includes(status))
             .map(([_, displayName]) => ({
               stage: displayName,
-              avgDays: Math.floor(Math.random() * 10) + 1, // Placeholder
-              minDays: 1,
-              maxDays: 30,
+              avgDays: 0,
+              minDays: 0,
+              maxDays: 0,
             }));
 
           logger.info('Stage time breakdown calculated (placeholder data)');

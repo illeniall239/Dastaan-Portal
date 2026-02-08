@@ -11,6 +11,7 @@ import { getDramasWithEpisodesAndDetails } from "@/lib/management/episode-pipeli
 import { getArchiveByGenre } from "@/lib/management/archive-analytics";
 import { getPipelineOverview } from "@/lib/management/pipeline-analytics";
 import { getAllEvaluatorStats } from "@/lib/management/evaluator-performance";
+import { getRecentActivity } from "@/lib/management/activity-analytics";
 import { createClient } from "@/lib/supabase/server";
 import { ExportButton } from "@/components/management/export-button";
 
@@ -155,7 +156,10 @@ export async function ScriptingEpisodeSection() {
  * Pipeline Overview Section - Async Component
  */
 export async function PipelineOverviewSection() {
-  const pipelineData = await getPipelineOverview();
+  const [pipelineData, recentActivities] = await Promise.all([
+    getPipelineOverview(),
+    getRecentActivity(10), // Fetch 10 most recent activities
+  ]);
 
   return (
     <div id="pipeline-section" className="mb-6 sm:mb-8">
@@ -184,7 +188,7 @@ export async function PipelineOverviewSection() {
         />
       </div>
 
-      <DynamicRecentActivityCard activities={[]} />
+      <DynamicRecentActivityCard activities={recentActivities} />
     </div>
   );
 }

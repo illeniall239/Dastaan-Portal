@@ -174,7 +174,7 @@ export async function POST(request: Request) {
 
   if (
     !userData ||
-    !["content_manager", "content_creator", "evaluator", "admin"].includes(userData.role)
+    !["content_manager", "content_creator", "gcm", "evaluator", "admin"].includes(userData.role)
   ) {
     return NextResponse.json(
       { error: "Forbidden - Insufficient permissions" },

@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/client";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { handleError } from "@/lib/errors";
 import type { TeamPerformance, TeamType } from "@/types";
 import { cachedQuery, CacheTags } from "@/lib/cache/request-cache";
 
@@ -53,8 +54,11 @@ export async function getAllTeamPerformance(): Promise<TeamPerformance[]> {
     .order("team_name");
 
   if (error) {
-    console.error("Error fetching team performance:", error);
-    throw new Error("Failed to fetch team performance data");
+    return handleError(error, {
+      context: "getAllTeamPerformance",
+      fallbackValue: [],
+      userMessage: "Failed to fetch team performance data",
+    });
   }
 
   return data || [];
@@ -72,8 +76,11 @@ export async function getAllTeamPerformanceServer(): Promise<TeamPerformance[]> 
     .order("team_name");
 
   if (error) {
-    console.error("Error fetching team performance:", error);
-    throw new Error("Failed to fetch team performance data");
+    return handleError(error, {
+      context: "getAllTeamPerformanceServer",
+      fallbackValue: [],
+      userMessage: "Failed to fetch team performance data",
+    });
   }
 
   return data || [];
@@ -95,8 +102,12 @@ export async function getTeamPerformance(teamId: string): Promise<TeamPerformanc
     if (error.code === 'PGRST116') {
       return null; // Team not found
     }
-    console.error("Error fetching team performance:", error);
-    throw new Error("Failed to fetch team performance data");
+    return handleError(error, {
+      context: "getTeamPerformance",
+      fallbackValue: null,
+      userMessage: "Failed to fetch team performance data",
+      metadata: { teamId },
+    });
   }
 
   return data;
@@ -115,8 +126,12 @@ export async function getTeamPerformanceByType(teamType: TeamType): Promise<Team
     .order("team_name");
 
   if (error) {
-    console.error("Error fetching team performance by type:", error);
-    throw new Error("Failed to fetch team performance data");
+    return handleError(error, {
+      context: "getTeamPerformanceByType",
+      fallbackValue: [],
+      userMessage: "Failed to fetch team performance data",
+      metadata: { teamType },
+    });
   }
 
   return data || [];
@@ -139,8 +154,12 @@ export async function getTeamComparison(teamType?: TeamType): Promise<TeamCompar
   const { data, error } = await query.order("call_reports_created", { ascending: false });
 
   if (error) {
-    console.error("Error fetching team comparison:", error);
-    throw new Error("Failed to fetch team comparison data");
+    return handleError(error, {
+      context: "getTeamComparison",
+      fallbackValue: [],
+      userMessage: "Failed to fetch team comparison data",
+      metadata: { teamType },
+    });
   }
 
   // Calculate rankings and percentiles
@@ -180,7 +199,12 @@ export async function getTopPerformingTeams(limit: number = 5): Promise<TeamPerf
         .limit(limit);
 
       if (error) {
-        return []; // Gracefully return empty array instead of throwing
+        return handleError(error, {
+          context: "getTopPerformingTeams",
+          fallbackValue: [],
+          notifyUser: false, // Don't show toast for background cached fetch
+          metadata: { limit },
+        });
       }
 
       return data || [];
@@ -204,8 +228,22 @@ export async function getTeamPerformanceSummary() {
     .select("*");
 
   if (error) {
-    console.error("Error fetching team performance summary:", error);
-    throw new Error("Failed to fetch team performance summary");
+    return handleError(error, {
+      context: "getTeamPerformanceSummary",
+      fallbackValue: {
+        total_teams: 0,
+        total_call_reports: 0,
+        total_evaluations: 0,
+        total_one_liners: 0,
+        total_stories_approved: 0,
+        total_stories_rejected: 0,
+        avg_evaluation_score: 0,
+        avg_call_reports_per_team: 0,
+        avg_evaluations_per_team: 0,
+        teams_by_type: {},
+      } as any,
+      userMessage: "Failed to fetch team performance summary",
+    });
   }
 
   const teams = data || [];
@@ -259,8 +297,12 @@ export async function getTeamPerformanceTrends(
     .eq("team_id", teamId);
 
   if (membersError) {
-    console.error("Error fetching team members:", membersError);
-    throw new Error("Failed to fetch team members");
+    return handleError(membersError, {
+      context: "getTeamPerformanceTrends",
+      fallbackValue: [],
+      userMessage: "Failed to fetch team members",
+      metadata: { teamId },
+    });
   }
 
   const memberIds = members?.map(m => m.id) || [];
@@ -337,8 +379,11 @@ export async function refreshTeamPerformanceViews(): Promise<void> {
   const { error } = await adminClient.rpc("refresh_all_team_views");
 
   if (error) {
-    console.error("Error refreshing team performance views:", error);
-    throw new Error("Failed to refresh team performance views");
+    return handleError(error, {
+      context: "refreshTeamPerformanceViews",
+      fallbackValue: undefined,
+      userMessage: "Failed to refresh team performance views",
+    });
   }
 }
 
@@ -354,8 +399,12 @@ export async function getTeamHierarchyWithPerformance(rootTeamId?: string) {
     .select("*");
 
   if (hierarchyError) {
-    console.error("Error fetching team hierarchy:", hierarchyError);
-    throw new Error("Failed to fetch team hierarchy");
+    return handleError(hierarchyError, {
+      context: "getTeamHierarchyWithPerformance",
+      fallbackValue: [],
+      userMessage: "Failed to fetch team hierarchy",
+      metadata: { rootTeamId },
+    });
   }
 
   // Fetch performance data
@@ -364,8 +413,12 @@ export async function getTeamHierarchyWithPerformance(rootTeamId?: string) {
     .select("*");
 
   if (performanceError) {
-    console.error("Error fetching team performance:", performanceError);
-    throw new Error("Failed to fetch team performance");
+    return handleError(performanceError, {
+      context: "getTeamHierarchyWithPerformance:performance",
+      fallbackValue: [],
+      userMessage: "Failed to fetch team performance",
+      metadata: { rootTeamId },
+    });
   }
 
   // Merge hierarchy with performance data
@@ -398,8 +451,12 @@ export async function compareTeamToTypeAverage(teamId: string) {
     .single();
 
   if (teamError) {
-    console.error("Error fetching team performance:", teamError);
-    throw new Error("Failed to fetch team performance");
+    return handleError(teamError, {
+      context: "compareTeamToTypeAverage:team",
+      fallbackValue: null as any,
+      userMessage: "Failed to fetch team performance",
+      metadata: { teamId },
+    });
   }
 
   // Get all teams of same type
@@ -409,8 +466,12 @@ export async function compareTeamToTypeAverage(teamId: string) {
     .eq("team_type", teamPerf.team_type);
 
   if (typeError) {
-    console.error("Error fetching type teams:", typeError);
-    throw new Error("Failed to fetch type teams");
+    return handleError(typeError, {
+      context: "compareTeamToTypeAverage:type",
+      fallbackValue: null as any,
+      userMessage: "Failed to fetch type teams",
+      metadata: { teamId, teamType: teamPerf.team_type },
+    });
   }
 
   const typeCount = typeTeams?.length || 0;

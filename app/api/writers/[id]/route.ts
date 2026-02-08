@@ -1,160 +1,144 @@
-import { createClient } from "@/lib/supabase/server";
-import { NextResponse } from "next/server";
-import { logger } from "@/lib/logger";
-import { updateWriterSchema } from "@/lib/validations/writers";
-import { idParamSchema } from "@/lib/validations/uuid-params";
+import { NextRequest, NextResponse } from 'next/server';
+import { createClient } from '@/lib/supabase/server';
+import { requireApiAuth } from '@/lib/api/auth';
+import { updateWriterEngagementSchema } from '@/lib/validations/writer-engagements';
+import { applyRateLimit, addRateLimitHeaders } from '@/lib/api-middleware';
+import { RateLimitPresets } from '@/lib/rate-limit-redis';
 
-// PATCH /api/writers/[id] - Update a writer
-export async function PATCH(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const rate = await applyRateLimit(request, RateLimitPresets.relaxed);
+    if (!rate.success) return rate.response!;
+
+    const auth = await requireApiAuth();
+    if (!auth.success) return auth.response;
+
     const supabase = await createClient();
     const { id } = await params;
 
-    // Validate UUID format
-    const paramValidation = idParamSchema.safeParse({ id });
-    if (!paramValidation.success) {
-      return NextResponse.json(
-        { error: "Invalid ID format", details: paramValidation.error.issues },
-        { status: 400 }
-      );
-    }
-
-    const body = await request.json();
-
-    // Validate request body
-    const validation = updateWriterSchema.safeParse(body);
-
-    if (!validation.success) {
-      return NextResponse.json(
-        { error: "Invalid request", details: validation.error.issues },
-        { status: 400 }
-      );
-    }
-
-    const validatedData = validation.data;
-
-    // Validate at least one field is being updated
-    if (Object.keys(validatedData).length === 0) {
-      return NextResponse.json(
-        { error: "No fields to update" },
-        { status: 400 }
-      );
-    }
-
-    // Check if writer exists
-    const { data: existingWriter } = await supabase
-      .from("writers")
-      .select("id")
-      .eq("id", id)
-      .single();
-
-    if (!existingWriter) {
-      return NextResponse.json(
-        { error: "Writer not found" },
-        { status: 404 }
-      );
-    }
-
-    // If updating name, check for duplicates
-    if (validatedData.name) {
-      const { data: duplicate } = await supabase
-        .from("writers")
-        .select("id")
-        .eq("name", validatedData.name)
-        .neq("id", id)
-        .single();
-
-      if (duplicate) {
-        return NextResponse.json(
-          { error: "A writer with this name already exists" },
-          { status: 409 }
-        );
-      }
-    }
-
-    // Prepare update data (convert empty strings to null for optional fields)
-    const updateData: {
-      name?: string;
-      email?: string | null;
-      phone?: string | null;
-      status?: 'active' | 'inactive';
-    } = {};
-    if (validatedData.name !== undefined) updateData.name = validatedData.name;
-    if (validatedData.email !== undefined) updateData.email = validatedData.email || null;
-    if (validatedData.phone !== undefined) updateData.phone = validatedData.phone || null;
-    if (validatedData.status !== undefined) updateData.status = validatedData.status;
-
-    // Update writer
-    const { data: updatedWriter, error } = await supabase
-      .from("writers")
-      .update(updateData)
-      .eq("id", id)
-      .select("id, name, email, phone, status, created_at, updated_at")
+    const { data, error } = await supabase
+      .from('writer_engagements')
+      .select(`
+        id,
+        writer_id,
+        date_engaged,
+        time_slot,
+        notes,
+        created_by,
+        created_at,
+        updated_at,
+        writer:writers (id, name)
+      `)
+      .eq('id', id)
       .single();
 
     if (error) {
-      logger.error("Error updating writer:", error);
-      return NextResponse.json(
-        { error: "Failed to update writer" },
-        { status: 500 }
-      );
+      throw new Error(error.message);
     }
 
-    return NextResponse.json(updatedWriter);
+    // Fetch creator name separately (avoids PostgREST FK dependency on users table)
+    let creator = null;
+    if (data.created_by) {
+      const { data: userData } = await supabase
+        .from('users')
+        .select('id, name')
+        .eq('id', data.created_by)
+        .single();
+      creator = userData || null;
+    }
+
+    return addRateLimitHeaders(
+      NextResponse.json({ ...data, creator }),
+      rate.result
+    );
   } catch (error) {
-    logger.error("Error in PATCH /api/writers/[id]:", error);
+    console.error('Error fetching writer engagement:', error);
     return NextResponse.json(
-      { error: "Internal server error" },
+      { error: 'Failed to fetch writer engagement' },
       { status: 500 }
     );
   }
 }
 
-// DELETE /api/writers/[id] - Soft delete a writer (set status to inactive)
-export async function DELETE(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const rate = await applyRateLimit(request, RateLimitPresets.standard);
+    if (!rate.success) return rate.response!;
+
+    const auth = await requireApiAuth();
+    if (!auth.success) return auth.response;
+
+    const supabase = await createClient();
+    const { id } = await params;
+    const body = await request.json();
+
+    const validation = updateWriterEngagementSchema.safeParse(body);
+    if (!validation.success) {
+      return NextResponse.json(
+        { error: 'Validation failed', details: validation.error.format() },
+        { status: 400 }
+      );
+    }
+
+    const { writer_id, date_engaged, time_slot, notes } = validation.data;
+
+    const { data, error } = await supabase
+      .from('writer_engagements')
+      .update({
+        writer_id,
+        date_engaged,
+        time_slot: time_slot || null,
+        notes: notes || null,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', id)
+      .select();
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    return addRateLimitHeaders(
+      NextResponse.json(data[0]),
+      rate.result
+    );
+  } catch (error) {
+    console.error('Error updating writer engagement:', error);
+    return NextResponse.json(
+      { error: 'Failed to update writer engagement' },
+      { status: 500 }
+    );
+  }
+}
+
+export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  try {
+    const rate = await applyRateLimit(request, RateLimitPresets.strict);
+    if (!rate.success) return rate.response!;
+
+    const auth = await requireApiAuth();
+    if (!auth.success) return auth.response;
+
     const supabase = await createClient();
     const { id } = await params;
 
-    // Check if writer exists
-    const { data: existingWriter } = await supabase
-      .from("writers")
-      .select("id")
-      .eq("id", id)
-      .single();
-
-    if (!existingWriter) {
-      return NextResponse.json(
-        { error: "Writer not found" },
-        { status: 404 }
-      );
-    }
-
-    // Soft delete by setting status to inactive
     const { error } = await supabase
-      .from("writers")
-      .update({ status: "inactive" })
-      .eq("id", id);
+      .from('writer_engagements')
+      .delete()
+      .eq('id', id);
 
     if (error) {
-      logger.error("Error deleting writer:", error);
-      return NextResponse.json(
-        { error: "Failed to delete writer" },
-        { status: 500 }
-      );
+      throw new Error(error.message);
     }
 
-    return NextResponse.json({ success: true }, { status: 200 });
+    return addRateLimitHeaders(
+      NextResponse.json({ success: true }),
+      rate.result
+    );
   } catch (error) {
-    logger.error("Error in DELETE /api/writers/[id]:", error);
+    console.error('Error deleting writer engagement:', error);
     return NextResponse.json(
-      { error: "Internal server error" },
+      { error: 'Failed to delete writer engagement' },
       { status: 500 }
     );
   }

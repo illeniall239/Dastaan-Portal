@@ -22,6 +22,8 @@ export interface Evaluation {
   comments?: string;
   decision?: "approve" | "reject" | "needs_improvement";
   decision_notes?: string;
+  is_late?: boolean;
+  delay_reason?: string;
   created_at: string;
   submitted_at?: string;
 }
@@ -29,6 +31,7 @@ export interface Evaluation {
 export interface CreateEvaluationInput {
   call_report_id: string;
   evaluator_id: string;
+  cross_team_share_id?: string;
   target_writer?: string;
   per_ep_price_range?: string;
   genre?: string;
@@ -46,6 +49,8 @@ export interface CreateEvaluationInput {
   decision_notes?: string;
   time_spent_minutes?: number;
   started_at?: string;
+  is_late?: boolean;
+  delay_reason?: string;
 }
 
 export interface UpdateEvaluationInput {
@@ -67,6 +72,8 @@ export interface UpdateEvaluationInput {
   decision_notes?: string | null;
   time_spent_minutes?: number;
   started_at?: string;
+  is_late?: boolean;
+  delay_reason?: string | null;
 }
 
 /**
@@ -90,6 +97,7 @@ export async function createEvaluationClient(evaluationData: CreateEvaluationInp
       form_id,
       call_report_id: evaluationData.call_report_id,
       evaluator_id: evaluationData.evaluator_id,
+      cross_team_share_id: evaluationData.cross_team_share_id || null,
       target_writer: evaluationData.target_writer || null,
       per_ep_price_range: evaluationData.per_ep_price_range || null,
       genre: evaluationData.genre || null,
@@ -108,6 +116,8 @@ export async function createEvaluationClient(evaluationData: CreateEvaluationInp
       time_spent_minutes: evaluationData.time_spent_minutes || null,
       started_at: evaluationData.started_at || null,
       submitted_at: new Date().toISOString(),
+      is_late: evaluationData.is_late || false,
+      delay_reason: evaluationData.delay_reason || null,
     })
     .select()
     .single();
@@ -218,6 +228,8 @@ export async function updateEvaluationClient(evaluationData: UpdateEvaluationInp
     comments,
     time_spent_minutes,
     started_at,
+    is_late,
+    delay_reason,
   } = evaluationData;
 
   const updatePayload = {
@@ -238,6 +250,8 @@ export async function updateEvaluationClient(evaluationData: UpdateEvaluationInp
     decision_notes: evaluationData.decision_notes ?? null,
     time_spent_minutes: time_spent_minutes ?? null,
     started_at: started_at ?? null,
+    is_late: is_late ?? false,
+    delay_reason: delay_reason ?? null,
     updated_at: new Date().toISOString(),
   };
 

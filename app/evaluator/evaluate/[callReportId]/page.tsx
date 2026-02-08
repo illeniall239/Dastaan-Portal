@@ -27,12 +27,16 @@ interface CallReport {
 }
 
 export default async function EvaluatorEvaluatePage({
-  params
+  params,
+  searchParams,
 }: {
-  params: Promise<{ callReportId: string }>
+  params: Promise<{ callReportId: string }>;
+  searchParams: Promise<{ crossTeamShareId?: string }>;
 }) {
   const resolvedParams = await params;
+  const resolvedSearchParams = await searchParams;
   const { callReportId } = resolvedParams;
+  const crossTeamShareId = resolvedSearchParams.crossTeamShareId;
 
   const user = await getCurrentUser();
 
@@ -126,6 +130,23 @@ export default async function EvaluatorEvaluatePage({
     redirect("/evaluator/evaluations");
   }
 
+  // Fetch cross-team share info if applicable
+  let crossTeamFromTeamName: string | undefined;
+  if (crossTeamShareId) {
+    try {
+      const { createClient: createServerClient } = await import("@/lib/supabase/server");
+      const supabaseServer = await createServerClient();
+      const { data: share } = await supabaseServer
+        .from('cross_team_shares')
+        .select('from_team:teams!cross_team_shares_from_team_id_fkey (name)')
+        .eq('id', crossTeamShareId)
+        .single();
+      crossTeamFromTeamName = (share as any)?.from_team?.name;
+    } catch {
+      // Non-critical, continue without team name
+    }
+  }
+
   return (
     <div className="mobile-container mobile-section space-y-4 sm:space-y-6">
       <EvaluatorEvaluationForm
@@ -135,6 +156,8 @@ export default async function EvaluatorEvaluatePage({
         attachments={attachments}
         progress={progress}
         detailedOneLiner={detailedOneLiner}
+        crossTeamShareId={crossTeamShareId}
+        crossTeamFromTeamName={crossTeamFromTeamName}
       />
     </div>
   );

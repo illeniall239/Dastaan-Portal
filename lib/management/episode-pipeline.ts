@@ -1,5 +1,6 @@
 import { createAdminClient } from '@/lib/supabase/admin';
 import { cachedQuery, CacheTags } from '@/lib/cache/request-cache';
+import { handleError } from '@/lib/errors';
 
 export interface DramaWithEpisodes {
   callReportId: string;
@@ -73,8 +74,11 @@ export async function getDramasWithEpisodes(): Promise<DramaWithEpisodes[]> {
     .order('created_at', { ascending: false });
 
   if (callReportsError) {
-    console.error('Error fetching call reports:', callReportsError);
-    return [];
+    return handleError(callReportsError, {
+      context: 'getDramasWithEpisodes',
+      fallbackValue: [],
+      userMessage: 'Failed to fetch dramas list',
+    });
   }
 
   if (!callReports || callReports.length === 0) {
@@ -171,8 +175,12 @@ export async function getEpisodesForDrama(callReportId: string): Promise<Episode
     .order('episode_number', { ascending: true });
 
   if (error) {
-    console.error('Error fetching episodes for drama:', error);
-    return [];
+    return handleError(error, {
+      context: 'getEpisodesForDrama',
+      fallbackValue: [],
+      userMessage: 'Failed to fetch episodes for drama',
+      metadata: { callReportId },
+    });
   }
 
   // Get total evaluator count (all evaluators in the system)
@@ -233,7 +241,7 @@ export async function getAllEpisodesAndEvaluatorsBatch(
     .from('episodes')
     .select('id, episode_number, call_report_id')
     .in('call_report_id', dramaIds)
-    .order('episode_number', { ascending: true});
+    .order('episode_number', { ascending: true });
 
   if (episodesError) {
     // Error fetching episodes - return empty results
@@ -473,8 +481,12 @@ export async function getEventAnalysisForDrama(callReportId: string): Promise<Ev
     .order('episode_number', { ascending: true });
 
   if (error) {
-    console.error('Error fetching event analysis data:', error);
-    return [];
+    return handleError(error, {
+      context: 'getEventAnalysisForDrama',
+      fallbackValue: [],
+      userMessage: 'Failed to fetch event analysis data',
+      metadata: { callReportId },
+    });
   }
 
   if (!episodes || episodes.length === 0) {

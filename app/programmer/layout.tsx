@@ -39,6 +39,26 @@ const programmerNavItems = [
     href: "/programmer/contract-terms",
     icon: "handshake",
   },
+  {
+    title: "Feedback Timeline",
+    href: "/programmer/feedback-timeline",
+    icon: "clock",
+  },
+  {
+    title: "Writers",
+    href: "/programmer/writers",
+    icon: "userPen",
+  },
+  {
+    title: "Idea Roadmap",
+    href: "/programmer/roadmap",
+    icon: "map",
+  },
+  {
+    title: "Evaluation Requests",
+    href: "/programmer/cross-team-shares",
+    icon: "share2",
+  },
 ];
 
 export default async function ProgrammerLayout({

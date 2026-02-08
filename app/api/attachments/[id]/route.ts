@@ -5,6 +5,8 @@ import { getAttachmentById, getSignedUrlServer } from '@/lib/attachments/server'
 import { idParamSchema } from '@/lib/validations/uuid-params';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
+import { applyRateLimit } from '@/lib/api-middleware';
+import { RateLimitPresets } from '@/lib/rate-limit-redis';
 
 /**
  * Check if a user has access to a specific entity
@@ -90,7 +92,7 @@ async function checkEntityAccess(
         if (story && story.created_by === userId) return true;
 
         // Management, executive, programmer, and content roles can access stories
-        if (['management', 'executive', 'content_manager', 'content_head', 'content_creator', 'programmer'].includes(userRole)) {
+        if (['management', 'executive', 'content_manager', 'gcm', 'content_head', 'content_creator', 'programmer'].includes(userRole)) {
           return true;
         }
 
@@ -122,6 +124,9 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const rate = await applyRateLimit(request, RateLimitPresets.relaxed);
+    if (!rate.success) return rate.response!;
+
     // Verify user authentication
     const user = await getCurrentUser();
     if (!user) {

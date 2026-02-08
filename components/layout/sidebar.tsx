@@ -16,7 +16,13 @@ import {
   Users,
   DollarSign,
   AlertTriangle,
-  Activity
+  Activity,
+  Share2,
+  Clock,
+  UserPen,
+  UserCheck,
+  ListChecks,
+  Map,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useSidebar } from "@/lib/providers/sidebar-provider";
@@ -50,6 +56,12 @@ function getIconComponent(iconName: string) {
     dollarSign: DollarSign,
     alertTriangle: AlertTriangle,
     activity: Activity,
+    share2: Share2,
+    clock: Clock,
+    userPen: UserPen,
+    userCheck: UserCheck,
+    listChecks: ListChecks,
+    map: Map,
   };
   return icons[iconName] || HomeIcon;
 }
@@ -89,7 +101,7 @@ export const Sidebar = memo(function Sidebar({
         )}
       >
         {/* Header Section */}
-        <div className="h-14 flex items-center justify-center px-4 border-b border-[#1a3670] bg-[#224794] flex-shrink-0 relative">
+        <div className="h-14 flex items-center justify-center px-4 border-b border-gray-200 bg-white flex-shrink-0 relative">
           {/* Logo - Centered */}
           <Link
             href={navItems[0]?.href || "/content-department"}
@@ -99,7 +111,7 @@ export const Sidebar = memo(function Sidebar({
             <span
               dir="rtl"
               lang="ur"
-              className="font-urdu font-bold text-orange-300 text-xl"
+              className="font-urdu font-bold text-orange-500 text-xl"
             >
               داستان
             </span>
@@ -110,7 +122,7 @@ export const Sidebar = memo(function Sidebar({
             variant="ghost"
             size="icon"
             onClick={closeMobile}
-            className="lg:hidden h-8 w-8 absolute right-4 text-white hover:bg-white/10"
+            className="lg:hidden h-8 w-8 absolute right-4 text-gray-700 hover:bg-gray-100"
             aria-label="Close sidebar"
           >
             <X className="h-5 w-5" />
