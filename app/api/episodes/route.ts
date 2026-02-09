@@ -18,6 +18,9 @@ import {
   internalError,
 } from "@/lib/api/errors";
 
+// Force dynamic rendering - prevent Vercel/Next.js from caching GET responses
+export const dynamic = 'force-dynamic';
+
 /**
  * POST /api/episodes
  * Create one or multiple episodes

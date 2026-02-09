@@ -198,7 +198,7 @@ export default function EvaluatorEpisodesPage() {
 
       // Fetch episodes with project-based pagination (20 projects at a time, all their episodes)
       const response = await fetch(
-        `/api/episodes?group_by_project=true&project_limit=20&project_page=${page}&include_evaluation_status=true`,
+        `/api/episodes?group_by_project=true&project_limit=20&project_page=${page}&include_evaluation_status=true&_t=${Date.now()}`,
         { cache: 'no-store', signal: controller.signal }
       );
       const data = await response.json();

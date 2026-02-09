@@ -157,7 +157,7 @@ export default function ContentDepartmentEpisodesPage() {
 
       // Fetch episodes with project-based pagination (20 projects at a time, all their episodes)
       const response = await fetch(
-        `/api/episodes?group_by_project=true&project_limit=20&project_page=${page}`,
+        `/api/episodes?group_by_project=true&project_limit=20&project_page=${page}&_t=${Date.now()}`,
         { cache: 'no-store' }
       );
       const data = await response.json();
