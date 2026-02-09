@@ -3,7 +3,6 @@
 import { useState, useRef, useEffect, KeyboardEvent } from "react";
 import { Input } from "@/components/ui/input";
 import { UserBadge } from "@/components/ui/user-badge";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Loader2 } from "lucide-react";
 import { useSearchUsers } from "@/lib/hooks/queries/useSearchUsers";
 
@@ -126,26 +125,18 @@ export function MentionInput({
 
   return (
     <div className={className}>
-      <Popover open={showDropdown} onOpenChange={setShowDropdown}>
-        <PopoverTrigger asChild>
-          <div>
-            <Input
-              ref={inputRef}
-              value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder={placeholder}
-              disabled={disabled}
-              className="w-full"
-            />
-          </div>
-        </PopoverTrigger>
+      <div className="relative">
+        <Input
+          ref={inputRef}
+          value={inputValue}
+          onChange={(e) => setInputValue(e.target.value)}
+          onKeyDown={handleKeyDown}
+          placeholder={placeholder}
+          disabled={disabled}
+          className="w-full"
+        />
         {showDropdown && inputValue.includes("@") && (
-          <PopoverContent
-            className="w-[var(--radix-popover-trigger-width)] p-0"
-            align="start"
-            onOpenAutoFocus={(e) => e.preventDefault()}
-          >
+          <div className="absolute top-full left-0 w-full mt-1 z-[200] rounded-md border bg-popover text-popover-foreground shadow-md">
             <div className="max-h-60 overflow-y-auto">
               {isSearching ? (
                 <div className="flex items-center justify-center p-4">
@@ -186,9 +177,9 @@ export function MentionInput({
                 </div>
               )}
             </div>
-          </PopoverContent>
+          </div>
         )}
-      </Popover>
+      </div>
 
       {/* Selected users badges */}
       {selectedUsers.length > 0 && (

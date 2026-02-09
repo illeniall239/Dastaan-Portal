@@ -123,13 +123,19 @@ export function ClientScheduleMeetingForm({ userId }: { userId: string }) {
       const [hours, minutes] = selectedTime.split(":").map(Number);
       meetingDateTime.setHours(hours, minutes, 0, 0);
 
-      // Format as local datetime string (no timezone conversion)
+      // Format as local datetime string with timezone offset
       const year = meetingDateTime.getFullYear();
       const month = String(meetingDateTime.getMonth() + 1).padStart(2, '0');
       const day = String(meetingDateTime.getDate()).padStart(2, '0');
       const hour = String(meetingDateTime.getHours()).padStart(2, '0');
       const minute = String(meetingDateTime.getMinutes()).padStart(2, '0');
-      const localDateTimeString = `${year}-${month}-${day}T${hour}:${minute}:00`;
+
+      // Include timezone offset so Supabase stores the correct local time
+      const tzOffset = -meetingDateTime.getTimezoneOffset();
+      const tzSign = tzOffset >= 0 ? "+" : "-";
+      const tzHours = String(Math.floor(Math.abs(tzOffset) / 60)).padStart(2, "0");
+      const tzMinutes = String(Math.abs(tzOffset) % 60).padStart(2, "0");
+      const localDateTimeString = `${year}-${month}-${day}T${hour}:${minute}:00${tzSign}${tzHours}:${tzMinutes}`;
 
       // Map selected attendees - use email if available, otherwise use name for writers
       const attendeeIdentifiers = selectedAttendees.map(user =>

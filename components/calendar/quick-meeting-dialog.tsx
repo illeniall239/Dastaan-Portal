@@ -158,8 +158,7 @@ export function QuickMeetingDialog({
         category = "inhouse_content";
       }
 
-      // Format datetime as local time string (no timezone conversion)
-      // Parse the selected time
+      // Format datetime as local time string with timezone offset
       const [hours, minutes] = selectedTime.split(":").map(Number);
 
       const year = selectedDateTime.getFullYear();
@@ -167,7 +166,13 @@ export function QuickMeetingDialog({
       const day = String(selectedDateTime.getDate()).padStart(2, "0");
       const hour = String(hours).padStart(2, "0");
       const minute = String(minutes).padStart(2, "0");
-      const localDateTimeString = `${year}-${month}-${day}T${hour}:${minute}:00`;
+
+      // Include timezone offset so Supabase stores the correct local time
+      const tzOffset = -selectedDateTime.getTimezoneOffset();
+      const tzSign = tzOffset >= 0 ? "+" : "-";
+      const tzHours = String(Math.floor(Math.abs(tzOffset) / 60)).padStart(2, "0");
+      const tzMinutes = String(Math.abs(tzOffset) % 60).padStart(2, "0");
+      const localDateTimeString = `${year}-${month}-${day}T${hour}:${minute}:00${tzSign}${tzHours}:${tzMinutes}`;
 
       // Map selected attendees - use email if available, otherwise use name for writers
       const attendeeIdentifiers = selectedAttendees.map(user =>
