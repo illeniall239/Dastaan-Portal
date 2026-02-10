@@ -2,9 +2,14 @@ import { NextRequest } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getCurrentUser } from '@/lib/auth';
 import { NotificationRepository } from '@/lib/repositories/notification-repository';
+import { applyRateLimit } from '@/lib/api-middleware';
+import { RateLimitPresets } from '@/lib/rate-limit-redis';
 
 export async function GET(request: NextRequest) {
   try {
+    const rate = await applyRateLimit(request, RateLimitPresets.relaxed);
+    if (!rate.success) return rate.response!;
+
     const user = await getCurrentUser();
     if (!user) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
@@ -79,6 +84,9 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const rate = await applyRateLimit(request, RateLimitPresets.standard);
+    if (!rate.success) return rate.response!;
+
     const user = await getCurrentUser();
     if (!user) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {

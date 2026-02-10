@@ -1,9 +1,11 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { logger } from "@/lib/logger";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { idParamSchema } from "@/lib/validations/uuid-params";
 import { z } from "zod";
+import { applyRateLimit } from '@/lib/api-middleware';
+import { RateLimitPresets } from '@/lib/rate-limit-redis';
 
 const approvalSchema = z.object({
   approval_status: z.enum(["approved", "rejected", "needs_revision"]),
@@ -14,9 +16,12 @@ const approvalSchema = z.object({
  * Set the approval status of an episode
  */
 export async function PATCH(
-  request: Request,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const rate = await applyRateLimit(request, RateLimitPresets.standard);
+  if (!rate.success) return rate.response!;
+
   const { id } = await params;
 
   const paramValidation = idParamSchema.safeParse({ id });

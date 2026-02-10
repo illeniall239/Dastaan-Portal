@@ -10,7 +10,6 @@ import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import type { Writer, CallReportWriter } from "@/types";
 import { WriterContactModal } from "./writer-contact-modal";
-import { AddWriterDialog } from "./add-writer-dialog";
 
 interface WriterMultiSelectProps {
   value: Array<{
@@ -57,10 +56,6 @@ export function WriterMultiSelect({
     phone?: string;
   } | null>(null);
 
-  // Add writer dialog state
-  const [addWriterDialogOpen, setAddWriterDialogOpen] = useState(false);
-  const [newWriterInitialName, setNewWriterInitialName] = useState("");
-
   // Fetch writers from database
   useEffect(() => {
     fetchWriters();
@@ -100,11 +95,42 @@ export function WriterMultiSelect({
   ];
 
   // Add writer to selection
-  const addWriter = (writer: Writer | { id: string; name: string; isAddNew?: boolean }) => {
+  const addWriter = async (writer: Writer | { id: string; name: string; isAddNew?: boolean }) => {
     if ('isAddNew' in writer && writer.isAddNew) {
-      // Open add writer dialog with initial name
-      setNewWriterInitialName(inputValue.trim());
-      setAddWriterDialogOpen(true);
+      const newName = inputValue.trim();
+      try {
+        const { data, error } = await supabase
+          .from("writers")
+          .insert({ name: newName })
+          .select("id, name")
+          .single();
+
+        if (error) {
+          if (error.code === "23505") {
+            toast.error("Writer already exists");
+          } else {
+            throw error;
+          }
+          return;
+        }
+
+        await fetchWriters();
+        const addedWriter = {
+          writer_id: data.id,
+          writer_name: data.name,
+          writer_email: undefined,
+          writer_phone: undefined,
+          display_order: value.length,
+        };
+        onChange([...value, addedWriter]);
+        toast.success(`Writer "${newName}" added`);
+      } catch (error) {
+        console.error("Error adding writer:", error);
+        toast.error("Failed to add writer");
+      }
+      setInputValue("");
+      setShowDropdown(false);
+      setHighlightedIndex(0);
       return;
     }
 
@@ -155,15 +181,6 @@ export function WriterMultiSelect({
     );
     onChange(updated);
     setEditingWriter(null);
-  };
-
-  // Handle writer added from dialog
-  const handleWriterAdded = (newWriter: Writer) => {
-    // Refresh writers list
-    fetchWriters();
-    // Add to selection
-    addWriter(newWriter);
-    setInputValue("");
   };
 
   // Handle keyboard navigation
@@ -334,13 +351,6 @@ export function WriterMultiSelect({
         />
       )}
 
-      {/* Add Writer Dialog */}
-      <AddWriterDialog
-        open={addWriterDialogOpen}
-        onOpenChange={setAddWriterDialogOpen}
-        onWriterAdded={handleWriterAdded}
-        initialName={newWriterInitialName}
-      />
     </div>
   );
 }

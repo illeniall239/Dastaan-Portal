@@ -1,4 +1,33 @@
-<!-- ddac734f-f946-42c0-9f3f-ecb513c514a1 2a75d1ca-3c3a-41e4-a3ec-d66967f8120b -->
+---
+name: Evaluation Approval System Implementation
+overview: ""
+todos:
+  - id: bfd29bfb-2e3a-400b-b0fd-488f61f79cac
+    content: Create and run migration to add decision field to evaluator_forms
+    status: pending
+  - id: 364b9753-747e-480a-9cae-1c2f90951e16
+    content: Create migration for evaluation_logs table and decision calculation functions
+    status: pending
+  - id: 8d8ae398-3abd-4fb9-8444-b61f9d5259f8
+    content: Add decision radio buttons and validation to evaluation form component
+    status: pending
+  - id: 401abf62-f2b8-4c1a-a5f8-2656a5438029
+    content: Update evaluation API and client functions to handle decision field
+    status: pending
+  - id: 2f834b7c-fe79-4f4b-9e07-034db0eda087
+    content: Add evaluation decision status display to management dashboard
+    status: pending
+  - id: 4f2906a0-148e-48f5-bc62-10440d9d055f
+    content: Create notification service for evaluation decisions
+    status: pending
+  - id: bcbbadd0-ba3c-4403-be17-219a32f4774b
+    content: Test complete evaluation-to-negotiation workflow with all decision scenarios
+    status: pending
+  - id: 2657be7a-8afe-41a7-9e6b-816d38e041f9
+    content: Verify negotiations only show approved stories
+    status: pending
+---
+
 # Evaluation Approval System Implementation
 
 ## Overview
@@ -541,14 +570,3 @@ export async function sendEvaluationDecisionNotifications(
 6. Create notification service
 7. Test end-to-end workflow
 8. Deploy and monitor
-
-### To-dos
-
-- [ ] Create and run migration to add decision field to evaluator_forms
-- [ ] Create migration for evaluation_logs table and decision calculation functions
-- [ ] Add decision radio buttons and validation to evaluation form component
-- [ ] Update evaluation API and client functions to handle decision field
-- [ ] Add evaluation decision status display to management dashboard
-- [ ] Create notification service for evaluation decisions
-- [ ] Test complete evaluation-to-negotiation workflow with all decision scenarios
-- [ ] Verify negotiations only show approved stories

@@ -1,14 +1,19 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { logger } from "@/lib/logger";
 import { createClient } from "@/lib/supabase/server";
 import { detailedOneLinerSchema } from "@/lib/validations/detailed-one-liner";
 import { revalidatePath } from 'next/cache';
+import { applyRateLimit } from '@/lib/api-middleware';
+import { RateLimitPresets } from '@/lib/rate-limit-redis';
 
 /**
  * POST /api/detailed-one-liner
  * Create a new detailed one-liner with narrative breakdown
  */
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
+  const rate = await applyRateLimit(request, RateLimitPresets.standard);
+  if (!rate.success) return rate.response!;
+
   const supabase = await createClient();
 
   // Check authentication

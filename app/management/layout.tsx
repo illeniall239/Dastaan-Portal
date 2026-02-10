@@ -55,6 +55,11 @@ const managementNavItems = [
     href: "/management/teams",
     icon: "users",
   },
+  {
+    title: "Writer Engagement",
+    href: "/management/writers",
+    icon: "penTool",
+  },
 ];
 
 export default async function ManagementLayout({

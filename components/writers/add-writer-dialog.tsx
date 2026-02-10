@@ -81,8 +81,8 @@ export function AddWriterDialog({
     }
   };
 
-  const handleClose = () => {
-    if (!isLoading) {
+  const handleClose = (open: boolean) => {
+    if (!open && !isLoading) {
       reset();
       onOpenChange(false);
     }
@@ -150,7 +150,7 @@ export function AddWriterDialog({
             <Button
               type="button"
               variant="outline"
-              onClick={handleClose}
+              onClick={() => handleClose(false)}
               disabled={isLoading}
             >
               Cancel

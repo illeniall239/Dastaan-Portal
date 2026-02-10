@@ -6,11 +6,10 @@ import { cn } from '@/lib/utils';
 
 interface Meeting {
   id: string;
-  writer_name: string;
-  working_title: string;
+  contact_name?: string;
+  title: string;
   meeting_date: string;
   status?: string;
-  logline?: string;
 }
 
 interface TeamsMobileCalendarProps {

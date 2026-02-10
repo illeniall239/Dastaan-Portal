@@ -2,6 +2,8 @@ import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { logger } from "@/lib/logger";
+import { applyRateLimit } from '@/lib/api-middleware';
+import { RateLimitPresets } from '@/lib/rate-limit-redis';
 
 const createGenreSchema = z.object({
   name: z.string().min(1, "Genre name is required").max(100, "Genre name too long"),
@@ -11,10 +13,14 @@ const createGenreSchema = z.object({
  * GET /api/genres
  * Fetch all active genres (predefined + custom user-created)
  */
-export async function GET() {
-  const supabase = await createClient();
+export async function GET(request: Request) {
+  try {
+    const rate = await applyRateLimit(request, RateLimitPresets.relaxed);
+    if (!rate.success) return rate.response!;
 
-  const { data: genres, error } = await supabase
+    const supabase = await createClient();
+
+    const { data: genres, error } = await supabase
     .from("genres")
     .select("id, name, is_predefined")
     .eq("status", "active")
@@ -30,6 +36,13 @@ export async function GET() {
   }
 
   return NextResponse.json({ genres });
+  } catch (error) {
+    logger.error("Unexpected error in GET /api/genres:", error);
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 }
+    );
+  }
 }
 
 /**
@@ -37,7 +50,11 @@ export async function GET() {
  * Create a new custom genre
  */
 export async function POST(request: Request) {
-  const supabase = await createClient();
+  try {
+    const rate = await applyRateLimit(request, RateLimitPresets.standard);
+    if (!rate.success) return rate.response!;
+
+    const supabase = await createClient();
 
   // Check authentication
   const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -49,7 +66,6 @@ export async function POST(request: Request) {
     );
   }
 
-  try {
     // Parse and validate request body
     const body = await request.json();
     const validation = createGenreSchema.safeParse(body);

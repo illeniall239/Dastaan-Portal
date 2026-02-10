@@ -23,7 +23,7 @@ import {
 } from "@/lib/validations/episodic-evaluations";
 import type { Episode, EpisodicEvaluation, EpisodicGrade } from "@/types";
 import { toast } from "sonner";
-import { Loader2, Save, FilePenLine } from "lucide-react";
+import { Loader2, Save, FilePenLine, Download, FileText, Paperclip } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogContent,
@@ -45,6 +45,7 @@ interface DraftData {
   progressionScore: number;
   freezesScore: number;
   whatsNextScore: number;
+  remarks?: string;
   savedAt: string;
   episodeId: string;
 }
@@ -83,6 +84,9 @@ export function EpisodicEvaluationForm({
   );
   const [summaryAnalysis, setSummaryAnalysis] = useState(
     existingEvaluation?.summary_analysis || ""
+  );
+  const [remarks, setRemarks] = useState(
+    existingEvaluation?.remarks || ""
   );
 
   // Score state
@@ -157,6 +161,7 @@ export function EpisodicEvaluationForm({
         freezesScore,
         whatsNextScore,
         overallAssessmentScore,
+        remarks,
         accumulatedTimeMinutes: timeSpentMinutes,
       };
 
@@ -195,6 +200,7 @@ export function EpisodicEvaluationForm({
       setFreezesScore(pendingDraftData.freezesScore);
       setWhatsNextScore(pendingDraftData.whatsNextScore);
       setOverallAssessmentScore(pendingDraftData.overallAssessmentScore || 5);
+      setRemarks(pendingDraftData.remarks || "");
 
       // Load accumulated time from draft
       setInitialTimeFromDraft(pendingDraftData.accumulatedTimeMinutes || 0);
@@ -251,6 +257,7 @@ export function EpisodicEvaluationForm({
       freezes_score: freezesScore,
       whats_next_element_score: whatsNextScore,
       overall_assessment_score: overallAssessmentScore,
+      remarks: remarks,
       time_spent_minutes: timeSpentMinutes,
       started_at: new Date().toISOString(),
     };
@@ -302,6 +309,32 @@ export function EpisodicEvaluationForm({
             </div>
           )}
         </div>
+
+        {/* Episode Attachment */}
+        {episode.attachment_url ? (
+          <div className="mt-4 pt-4 border-t border-blue-200">
+            <span className="text-sm font-medium text-muted-foreground flex items-center gap-1.5 mb-2">
+              <Paperclip className="h-3.5 w-3.5" />
+              Attachment
+            </span>
+            <button
+              type="button"
+              onClick={() => window.open(`/api/episodes/download/${episode.id}`, "_blank")}
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-white border border-blue-200 hover:bg-blue-50 hover:border-blue-300 transition-colors text-sm font-medium text-blue-700 shadow-sm"
+            >
+              <FileText className="h-4 w-4" />
+              <span className="truncate max-w-[300px]">{episode.attachment_name || "Download File"}</span>
+              <Download className="h-4 w-4 ml-1 opacity-60" />
+            </button>
+          </div>
+        ) : (
+          <div className="mt-4 pt-4 border-t border-blue-200">
+            <span className="text-sm font-medium text-muted-foreground flex items-center gap-1.5">
+              <Paperclip className="h-3.5 w-3.5" />
+              No attachment uploaded for this episode
+            </span>
+          </div>
+        )}
       </Card>
 
       {/* Section 1: Episode Metrics */}
@@ -494,9 +527,28 @@ export function EpisodicEvaluationForm({
         </div>
       </div>
 
-      {/* Section 5: Overall Assessment */}
+      {/* Section 5: Remarks */}
       <div className="space-y-4">
-        <h3 className="text-xl font-bold">Section 5: Overall Assessment</h3>
+        <h3 className="text-xl font-bold">Section 5: Comments/Remarks</h3>
+        <p className="text-sm text-muted-foreground">
+          Any additional comments or remarks about the episode?
+        </p>
+        <div className="space-y-2">
+          <Label htmlFor="remarks">Remarks (Optional)</Label>
+          <Textarea
+            id="remarks"
+            placeholder="Enter any additional remarks..."
+            rows={4}
+            value={remarks}
+            onChange={(e) => setRemarks(e.target.value)}
+            disabled={isReadOnly}
+          />
+        </div>
+      </div>
+
+      {/* Section 6: Overall Assessment */}
+      <div className="space-y-4">
+        <h3 className="text-xl font-bold">Section 6: Overall Assessment</h3>
         <OverallAssessment average={overallAverage} grade={overallGrade} />
       </div>
 

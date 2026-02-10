@@ -1,9 +1,11 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { logger } from "@/lib/logger";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { idParamSchema } from "@/lib/validations/uuid-params";
 import { revalidatePath } from "next/cache";
+import { applyRateLimit } from '@/lib/api-middleware';
+import { RateLimitPresets } from '@/lib/rate-limit-redis';
 
 /**
  * POST /api/episodes/[id]/revise
@@ -11,9 +13,12 @@ import { revalidatePath } from "next/cache";
  * Keeps the old version (is_current=false) and creates a new current version
  */
 export async function POST(
-  request: Request,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const rate = await applyRateLimit(request, RateLimitPresets.standard);
+  if (!rate.success) return rate.response!;
+
   const { id } = await params;
 
   const paramValidation = idParamSchema.safeParse({ id });

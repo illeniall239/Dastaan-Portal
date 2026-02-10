@@ -3,6 +3,8 @@ import { logger } from "@/lib/logger";
 import { getContentDeliveryItemsPaginated, getContentDeliveryStats } from '@/lib/content-delivery/server';
 import { parsePaginationParams, createPaginatedResponse } from '@/lib/utils/pagination';
 import { contentDeliveryQuerySchema } from '@/lib/validations/query-params';
+import { applyRateLimit } from '@/lib/api-middleware';
+import { RateLimitPresets } from '@/lib/rate-limit-redis';
 
 /**
  * GET /api/content-delivery
@@ -21,6 +23,9 @@ import { contentDeliveryQuerySchema } from '@/lib/validations/query-params';
  */
 export async function GET(request: NextRequest) {
   try {
+    const rate = await applyRateLimit(request, RateLimitPresets.relaxed);
+    if (!rate.success) return rate.response!;
+
     // Parse pagination parameters
     const paginationParams = parsePaginationParams(request);
 

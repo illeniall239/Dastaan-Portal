@@ -82,23 +82,20 @@ async function DashboardContent() {
   try {
     // STEP 2: Build queries with team filters
     let meetingsQuery = supabase
-      .from("call_reports")
-      .select("id", { count: "exact", head: true })
-      .eq("meeting_type", "scheduled_meeting");
+      .from("meetings")
+      .select("id", { count: "exact", head: true });
 
     let callReportsQuery = supabase
       .from("call_reports")
-      .select("id", { count: "exact", head: true })
-      .eq("meeting_type", "call_report");
+      .select("id", { count: "exact", head: true });
 
     let episodesQuery = supabase
       .from("episodes")
       .select("id", { count: "exact", head: true });
 
     let upcomingMeetingsQuery = supabase
-      .from("call_reports")
-      .select("id, working_title, meeting_date, writer_name")
-      .eq("meeting_type", "scheduled_meeting")
+      .from("meetings")
+      .select("id, title, meeting_date, contact_name")
       .gte("meeting_date", new Date().toISOString())
       .order("meeting_date", { ascending: true })
       .limit(5);
@@ -248,10 +245,10 @@ async function DashboardContent() {
                   className="block p-3 rounded-lg hover:bg-gray-50 transition-colors border border-transparent hover:border-gray-200"
                 >
                   <p className="text-sm font-medium text-gray-900 line-clamp-1">
-                    {meeting.working_title || "Untitled Meeting"}
+                    {meeting.title || "Untitled Meeting"}
                   </p>
                   <p className="text-xs text-gray-500 mt-1">
-                    {meeting.writer_name ? `With: ${meeting.writer_name}` : "No writer specified"}
+                    {meeting.contact_name ? `With: ${meeting.contact_name}` : "No contact specified"}
                   </p>
                   <p className="text-xs text-gray-400 mt-0.5">
                     {formatDateTime(meeting.meeting_date)}

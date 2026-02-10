@@ -1,6 +1,6 @@
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
-import * as XLSX from "xlsx";
+import ExcelJS from "exceljs";
 
 /**
  * Export a DOM element as PNG image
@@ -139,12 +139,54 @@ export async function exportAsPDF(element: HTMLElement, filename: string) {
 /**
  * Export data as Excel file
  */
-export function exportAsExcel(data: any[], filename: string, sheetName: string = "Data") {
+export async function exportAsExcel(data: any[], filename: string, sheetName: string = "Data") {
   try {
-    const worksheet = XLSX.utils.json_to_sheet(data);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
-    XLSX.writeFile(workbook, `${filename}.xlsx`);
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet(sheetName);
+
+    if (data.length === 0) {
+      throw new Error("No data to export");
+    }
+
+    // Add header row
+    const headers = Object.keys(data[0]);
+    worksheet.addRow(headers);
+
+    // Style header row
+    const headerRow = worksheet.getRow(1);
+    headerRow.font = { bold: true };
+    headerRow.eachCell((cell) => {
+      cell.fill = {
+        type: "pattern",
+        pattern: "solid",
+        fgColor: { argb: "FFE2E8F0" },
+      };
+    });
+
+    // Add data rows
+    for (const item of data) {
+      worksheet.addRow(headers.map((key) => item[key] ?? ""));
+    }
+
+    // Auto-fit column widths
+    worksheet.columns.forEach((column) => {
+      let maxLength = 10;
+      column.eachCell?.({ includeEmpty: true }, (cell) => {
+        const cellLength = cell.value ? String(cell.value).length : 0;
+        if (cellLength > maxLength) maxLength = Math.min(cellLength, 50);
+      });
+      column.width = maxLength + 2;
+    });
+
+    // Generate and download
+    const buffer = await workbook.xlsx.writeBuffer();
+    const blob = new Blob([buffer], {
+      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = `${filename}.xlsx`;
+    link.click();
   } catch (error) {
     console.error("Error exporting Excel:", error);
     throw new Error("Failed to export as Excel");
@@ -156,9 +198,29 @@ export function exportAsExcel(data: any[], filename: string, sheetName: string =
  */
 export function exportAsCSV(data: any[], filename: string) {
   try {
-    const worksheet = XLSX.utils.json_to_sheet(data);
-    const csv = XLSX.utils.sheet_to_csv(worksheet);
+    if (data.length === 0) {
+      throw new Error("No data to export");
+    }
 
+    const headers = Object.keys(data[0]);
+    const csvRows = [
+      headers.join(","),
+      ...data.map((item) =>
+        headers
+          .map((key) => {
+            const val = item[key] ?? "";
+            // Escape values containing commas, quotes, or newlines
+            const str = String(val);
+            if (str.includes(",") || str.includes('"') || str.includes("\n")) {
+              return `"${str.replace(/"/g, '""')}"`;
+            }
+            return str;
+          })
+          .join(",")
+      ),
+    ];
+
+    const csv = csvRows.join("\n");
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const link = document.createElement("a");
     link.href = URL.createObjectURL(blob);

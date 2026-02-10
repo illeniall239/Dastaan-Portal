@@ -6,13 +6,13 @@ import { MeetingBlock } from "./meeting-block";
 
 interface Meeting {
   id: string;
-  writer_name: string;
+  contact_name?: string;
   organizer_name?: string;
   meeting_date: string;
   duration_minutes?: number;
-  meeting_attendees?: string[];
+  attendees?: string[];
   status?: string;
-  working_title: string;
+  title: string;
 }
 
 interface CalendarGridProps {

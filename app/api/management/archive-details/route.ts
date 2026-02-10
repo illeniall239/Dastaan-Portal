@@ -1,9 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { logger } from "@/lib/logger";
 import { getCombinedArchiveDetails, getArchiveDetailsStats } from '@/lib/management/archive-details';
+import { applyRateLimit } from '@/lib/api-middleware';
+import { RateLimitPresets } from '@/lib/rate-limit-redis';
 
 export async function GET(request: NextRequest) {
   try {
+    const rate = await applyRateLimit(request, RateLimitPresets.relaxed);
+    if (!rate.success) return rate.response!;
+
     const searchParams = request.nextUrl.searchParams;
     const genre = searchParams.get('genre') || undefined;
 

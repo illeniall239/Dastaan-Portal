@@ -140,7 +140,7 @@ export default async function CallReportDetailPage({ params }: { params: Promise
   // Check if user can edit (owner or manager/admin)
   const canEdit =
     report.created_by === user.id ||
-    ["content_manager", "admin"].includes(user.role);
+    ["content_manager", "admin", "evaluator"].includes(user.role);
 
   return (
     <div className="mobile-container mobile-section space-y-4 sm:space-y-6 max-w-5xl mx-auto">

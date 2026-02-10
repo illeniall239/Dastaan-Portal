@@ -17,18 +17,20 @@ import { BackButton } from "@/components/ui/back-button";
 
 interface Meeting {
     id: string;
-    writer_name: string;
+    meeting_id?: string;
+    title: string;
+    contact_name?: string;
     organizer_name?: string;
     meeting_date: string;
     duration_minutes?: number;
-    meeting_attendees?: string[];
+    attendees?: string[];
     status?: string;
-    working_title: string;
-    logline?: string;
-
-    meeting_notes?: string;
+    notes?: string;
     contact_email?: string;
     contact_phone?: string;
+    category?: string;
+    location?: string;
+    agenda?: string;
 }
 
 export default function ProgrammerCalendar() {
@@ -74,22 +76,24 @@ export default function ProgrammerCalendar() {
 
             // Build query with team filter
             let query = supabase
-                .from("call_reports")
+                .from("meetings")
                 .select(`
           id,
-          writer_name,
+          meeting_id,
+          title,
+          contact_name,
           meeting_date,
           duration_minutes,
-          meeting_attendees,
+          attendees,
           status,
-          working_title,
-          logline,
-          meeting_notes,
+          notes,
           contact_email,
           contact_phone,
+          category,
+          location,
+          agenda,
           organizer:users!created_by(name)
-        `)
-                .eq("meeting_type", "scheduled_meeting");
+        `);
 
             // TEAM ISOLATION: Apply team filter unless admin/management/programmer
             if (!hasGlobalAccess && currentUser?.team_id) {

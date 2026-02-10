@@ -5,6 +5,8 @@ import { idParamSchema } from "@/lib/validations/uuid-params";
 import { updateCallReportSchema } from "@/lib/validations/call-reports";
 import { sanitizeCallReportForUser } from "@/lib/call-reports/privacy";
 import { revalidatePath } from 'next/cache';
+import { applyRateLimit } from '@/lib/api-middleware';
+import { RateLimitPresets } from '@/lib/rate-limit-redis';
 
 /**
  * GET /api/call-reports/[id]
@@ -34,6 +36,8 @@ export async function GET(
   }
 
   try {
+    const rate = await applyRateLimit(request, RateLimitPresets.relaxed);
+    if (!rate.success) return rate.response!;
     const { data: callReport, error } = await supabase
       .from("call_reports")
       .select("*")
@@ -90,7 +94,7 @@ export async function GET(
       id: w.id,
       call_report_id: w.call_report_id,
       writer_id: w.writer_id,
-      writer_name: (w.writer as any)?.name || "",
+      writer_name: Array.isArray(w.writer) ? w.writer[0]?.name : (w.writer as any)?.name || "",
       writer_email: w.writer_email,
       writer_phone: w.writer_phone,
       display_order: w.display_order,
@@ -152,6 +156,8 @@ export async function PATCH(
   }
 
   try {
+    const rate = await applyRateLimit(request, RateLimitPresets.standard);
+    if (!rate.success) return rate.response!;
     // First, check if call report exists and get owner + team
     const { data: existing, error: fetchError } = await supabase
       .from("call_reports")
@@ -173,8 +179,8 @@ export async function PATCH(
       );
     }
 
-    // TEAM ISOLATION: Check team access first (unless admin/management)
-    const isGlobalUser = ["admin", "management"].includes(userData.role);
+    // TEAM ISOLATION: Check team access first (unless admin/management/programmer)
+    const isGlobalUser = ["admin", "management", "programmer"].includes(userData.role);
     const isSameTeam = existing.team_id === userData.team_id;
 
     if (!isGlobalUser && !isSameTeam) {
@@ -184,10 +190,10 @@ export async function PATCH(
       );
     }
 
-    // Check permissions: owner or manager/admin or content_head (same team)
+    // Check permissions: owner or manager/admin or content_head/creator/evaluator (same team)
     const canEdit =
       existing.created_by === user.id ||
-      ["content_manager", "admin", "content_head"].includes(userData.role) ||
+      ["content_manager", "admin", "content_head", "content_creator", "evaluator"].includes(userData.role) ||
       isGlobalUser;
 
     if (!canEdit) {

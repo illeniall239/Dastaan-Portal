@@ -52,7 +52,22 @@
       "Bash(ls:*)",
       "Bash(wc:*)",
       "Bash(git diff:*)",
-      "Bash(taskkill:*)"
+      "Bash(taskkill:*)",
+      "Bash(xargs:*)",
+      "Bash(powershell:*)",
+      "Bash(printf:*)",
+      "Bash(del \"C:\\\\Users\\\\Hamza\\\\Downloads\\\\Content-Portal\\\\Content-Portal\\\\_replace.ps1\")",
+      "Bash(del:*)",
+      "Bash(npx skills:*)",
+      "Bash(npx next build:*)",
+      "Bash(npm run lint)",
+      "Bash(npx next lint --dir app --dir components --dir lib)",
+      "Bash(npx next lint)",
+      "Bash(npx eslint app/ components/ lib/ --ext .ts,.tsx --max-warnings 0)",
+      "Bash(npx vitest:*)",
+      "Bash(npm outdated:*)",
+      "Bash(npm audit:*)",
+      "Bash(npm ls:*)"
     ],
     "deny": [],
     "ask": []

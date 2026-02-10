@@ -10,14 +10,13 @@ import { useEffect } from "react";
 
 interface Meeting {
   id: string;
-  writer_name: string;
+  contact_name?: string;
   meeting_date: string;
-  meeting_attendees?: string[];
+  attendees?: string[];
   status?: string;
-  working_title: string;
-  logline?: string;
+  title: string;
   location?: string;
-  meeting_notes?: string;
+  notes?: string;
   contact_email?: string;
   contact_phone?: string;
 }
@@ -68,7 +67,7 @@ export function MeetingPeekPanel({ meeting, onClose }: MeetingPeekPanelProps) {
       <div className="p-3 sm:p-4 border-b bg-muted/10 flex items-start justify-between sticky top-0 z-10 bg-white rounded-t-2xl md:rounded-none">
         <div className="flex-1">
           <h2 className="text-lg font-semibold line-clamp-2">
-            {meeting.working_title}
+            {meeting.title}
           </h2>
           {showStatusBadge && (
             <Badge className={statusColors[status as keyof typeof statusColors] || statusColors.scheduled}>
@@ -121,8 +120,8 @@ export function MeetingPeekPanel({ meeting, onClose }: MeetingPeekPanelProps) {
           <div className="flex items-start gap-3 mb-2">
             <User className="h-5 w-5 text-muted-foreground mt-0.5" />
             <div>
-              <p className="text-sm font-medium">Writer/Originator</p>
-              <p className="text-sm text-muted-foreground">{meeting.writer_name}</p>
+              <p className="text-sm font-medium">Contact</p>
+              <p className="text-sm text-muted-foreground">{meeting.contact_name}</p>
               {meeting.contact_email && (
                 <p className="text-xs text-muted-foreground">{meeting.contact_email}</p>
               )}
@@ -134,14 +133,14 @@ export function MeetingPeekPanel({ meeting, onClose }: MeetingPeekPanelProps) {
         </div>
 
         {/* Attendees */}
-        {meeting.meeting_attendees && meeting.meeting_attendees.length > 0 && (
+        {meeting.attendees && meeting.attendees.length > 0 && (
           <div>
             <div className="flex items-start gap-3">
               <Users className="h-5 w-5 text-muted-foreground mt-0.5" />
               <div className="flex-1">
-                <p className="text-sm font-medium mb-2">Attendees ({meeting.meeting_attendees.length})</p>
+                <p className="text-sm font-medium mb-2">Attendees ({meeting.attendees.length})</p>
                 <div className="space-y-2">
-                  {meeting.meeting_attendees.map((attendee: string, idx: number) => (
+                  {meeting.attendees.map((attendee: string, idx: number) => (
                     <div key={idx} className="flex items-center gap-2">
                       <Avatar className="h-7 w-7">
                         <AvatarFallback className="text-xs">
@@ -157,29 +156,15 @@ export function MeetingPeekPanel({ meeting, onClose }: MeetingPeekPanelProps) {
           </div>
         )}
 
-        {/* Project Details */}
-        {meeting.logline && (
-          <div className="space-y-3">
-            <h3 className="text-sm font-semibold">Project Details</h3>
-
-            {meeting.logline && (
-              <div>
-                <p className="text-xs font-medium text-muted-foreground mb-1">Logline</p>
-                <p className="text-sm">{meeting.logline}</p>
-              </div>
-            )}
-          </div>
-        )}
-
         {/* Meeting Agenda */}
-        {meeting.meeting_notes && (
+        {meeting.notes && (
           <div>
             <div className="flex items-start gap-3">
               <FileText className="h-5 w-5 text-muted-foreground mt-0.5" />
               <div className="flex-1">
                 <p className="text-sm font-medium mb-2">Meeting Agenda</p>
                 <p className="text-sm text-muted-foreground whitespace-pre-wrap">
-                  {meeting.meeting_notes}
+                  {meeting.notes}
                 </p>
               </div>
             </div>

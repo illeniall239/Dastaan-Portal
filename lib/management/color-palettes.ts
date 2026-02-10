@@ -45,6 +45,16 @@ export const GENRE_COLORS: Record<string, string> = {
   'Historical': '#d97706',   // amber-600
   'Family': '#0ea5e9',       // sky-500
   'Mystery': '#7c3aed',      // violet-600
+  // New Genres
+  'Spiritual Drama': '#7e22ce',      // purple-700
+  'Women Centric Drama': '#be185d',  // pink-700
+  'Class Conflict Drama': '#b91c1c', // red-700
+  'Feudal': '#854d0e',               // yellow-800
+  'Rural Drama': '#15803d',          // green-700
+  'Siblings Rivalry': '#ea580c',     // orange-600
+  'Inheritance Drama': '#0f766e',    // teal-700
+  'Tragedy': '#1e1b4b',              // indigo-950
+  'Religious': '#5b21b6',            // violet-800
   'Other': '#6b7280'         // gray-500
 };
 
@@ -286,20 +296,20 @@ export function getScriptStage(status: string): ScriptStageKey {
 
   // Completed: Script final, script completed
   if (normalizedStatus.includes('script completed') ||
-      normalizedStatus.includes('script final')) {
+    normalizedStatus.includes('script final')) {
     return 'completed';
   }
 
   // Development: Story under discussion/development
   if (normalizedStatus.includes('story under discussion') ||
-      normalizedStatus.includes('development') ||
-      normalizedStatus.includes('contract done')) {
+    normalizedStatus.includes('development') ||
+    normalizedStatus.includes('contract done')) {
     return 'development';
   }
 
   // Planning: Production planning stages
   if (normalizedStatus.includes('production planning') ||
-      normalizedStatus.includes('feedback needed')) {
+    normalizedStatus.includes('feedback needed')) {
     return 'planning';
   }
 

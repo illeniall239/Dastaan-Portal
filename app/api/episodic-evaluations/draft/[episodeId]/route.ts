@@ -3,6 +3,8 @@ import { logger } from "@/lib/logger";
 import { createClient } from "@/lib/supabase/server";
 import { episodeIdParamSchema } from "@/lib/validations/uuid-params";
 import { z } from "zod";
+import { applyRateLimit } from '@/lib/api-middleware';
+import { RateLimitPresets } from '@/lib/rate-limit-redis';
 
 // Schema for validating draft data
 const draftDataSchema = z.object({
@@ -21,7 +23,11 @@ export async function GET(
   request: Request,
   { params }: { params: Promise<{ episodeId: string }> }
 ) {
-  const { episodeId } = await params;
+  try {
+    const rate = await applyRateLimit(request, RateLimitPresets.relaxed);
+    if (!rate.success) return rate.response!;
+
+    const { episodeId } = await params;
 
   // Validate UUID format
   const paramValidation = episodeIdParamSchema.safeParse({ episodeId });
@@ -40,7 +46,6 @@ export async function GET(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  try {
     // Fetch draft evaluation data
     const { data, error } = await supabase
       .from("episodic_evaluation_drafts")
@@ -76,7 +81,11 @@ export async function POST(
   request: Request,
   { params }: { params: Promise<{ episodeId: string }> }
 ) {
-  const { episodeId } = await params;
+  try {
+    const rate = await applyRateLimit(request, RateLimitPresets.standard);
+    if (!rate.success) return rate.response!;
+
+    const { episodeId } = await params;
 
   // Validate UUID format
   const paramValidation = episodeIdParamSchema.safeParse({ episodeId });
@@ -109,7 +118,6 @@ export async function POST(
     );
   }
 
-  try {
     const body = await request.json();
 
     // Validate draft data
@@ -180,7 +188,11 @@ export async function DELETE(
   request: Request,
   { params }: { params: Promise<{ episodeId: string }> }
 ) {
-  const { episodeId } = await params;
+  try {
+    const rate = await applyRateLimit(request, RateLimitPresets.standard);
+    if (!rate.success) return rate.response!;
+
+    const { episodeId } = await params;
 
   // Validate UUID format
   const paramValidation = episodeIdParamSchema.safeParse({ episodeId });
@@ -199,7 +211,6 @@ export async function DELETE(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  try {
     // Check if draft exists and get owner
     const { data: draft, error: fetchError } = await supabase
       .from("episodic_evaluation_drafts")

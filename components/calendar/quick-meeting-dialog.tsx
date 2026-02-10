@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
 import {
@@ -23,9 +23,11 @@ import {
 } from "@/components/ui/select";
 import { MentionInput } from "@/components/ui/mention-input";
 import { toast } from "sonner";
-import { createMeetingClient } from "@/lib/meetings/client";
+import { createSimpleMeetingClient } from "@/lib/meetings/client";
 import { WriterSelect } from "@/components/writers/writer-select";
 import type { Writer } from "@/types";
+import { useFormAutosave } from "@/lib/hooks/useFormAutosave";
+import { DraftRestoreBanner } from "@/components/ui/draft-restore-banner";
 
 interface User {
   id: string;
@@ -65,6 +67,15 @@ export function QuickMeetingDialog({
     duration: "60", // Duration in minutes
   });
 
+  // Autosave
+  const { hasDraft, draftLoaded, draftUpdatedAt, saveDraft, loadDraft, clearDraft } = useFormAutosave({
+    formType: "quick_meeting",
+    entityId: "_new",
+    enabled: open,
+  });
+
+  const [draftDismissed, setDraftDismissed] = useState(false);
+
   // Reset form when dialog opens with new date
   useEffect(() => {
     if (open && selectedDateTime) {
@@ -83,8 +94,42 @@ export function QuickMeetingDialog({
         duration: "60",
       });
       setSelectedAttendees([]);
+      setDraftDismissed(false);
     }
   }, [open, selectedDateTime]);
+
+  // Autosave on form state changes
+  useEffect(() => {
+    if (!open) return;
+    saveDraft({
+      ...formData,
+      selectedTime,
+    });
+  }, [formData, selectedTime, saveDraft, open]);
+
+  const handleRestoreDraft = useCallback(async () => {
+    const data = await loadDraft();
+    if (data) {
+      const d = data as Record<string, any>;
+      setFormData({
+        sourceOfIdea: d.sourceOfIdea || "",
+        writerId: d.writerId || "",
+        pocName: d.pocName || "",
+        title: d.title || "",
+        notes: d.notes || "",
+        location: d.location || "",
+        duration: d.duration || "60",
+      });
+      if (d.selectedTime) setSelectedTime(d.selectedTime);
+      setDraftDismissed(true);
+      toast.success("Draft restored");
+    }
+  }, [loadDraft]);
+
+  const handleDiscardDraft = useCallback(async () => {
+    await clearDraft();
+    setDraftDismissed(true);
+  }, [clearDraft]);
 
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
@@ -180,26 +225,20 @@ export function QuickMeetingDialog({
       );
 
       // Create meeting
-      await createMeetingClient({
-        meeting_type: "scheduled_meeting",
-        logged_by: "",
-        category: category,
-        writer_name: contactName,
-        writer_email: contactEmail,
-        contact_type: contactType,
-        working_title: formData.title,
-        logline: formData.notes,
-        // keep deprecated fields empty to satisfy legacy not-null until migration
-        // target_audience removed
+      await createSimpleMeetingClient({
+        title: formData.title,
         meeting_date: localDateTimeString,
-        duration_minutes: parseInt(formData.duration), // Teams-style duration support
-        attendees: contactEmail ? [contactEmail, ...attendeeIdentifiers] : attendeeIdentifiers,
+        duration_minutes: parseInt(formData.duration),
         location: formData.location,
         notes: formData.notes,
-        status: "draft",
-        created_by: userId,
+        contact_name: contactName,
+        contact_email: contactEmail,
+        contact_type: contactType,
+        attendees: contactEmail ? [contactEmail, ...attendeeIdentifiers] : attendeeIdentifiers,
+        category: category,
       });
 
+      await clearDraft();
       toast.success("Meeting scheduled successfully!");
 
       // Close dialog and refresh calendar
@@ -228,6 +267,17 @@ export function QuickMeetingDialog({
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4 py-3 sm:py-4">
+          {/* Draft restore banner */}
+          {!draftDismissed && (
+            <DraftRestoreBanner
+              hasDraft={hasDraft}
+              draftLoaded={draftLoaded}
+              onRestore={handleRestoreDraft}
+              onDiscard={handleDiscardDraft}
+              lastUpdated={draftUpdatedAt}
+            />
+          )}
+
           {/* Time Picker */}
           <div className="space-y-2">
             <Label htmlFor="time">

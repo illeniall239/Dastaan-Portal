@@ -18,19 +18,20 @@ import { BackButton } from "@/components/ui/back-button";
 
 interface Meeting {
   id: string;
-  writer_name: string;
+  meeting_id?: string;
+  title: string;
+  contact_name?: string;
   organizer_name?: string;
   meeting_date: string;
   duration_minutes?: number;
-  meeting_attendees?: string[];
+  attendees?: string[];
   status?: string;
-  working_title: string;
-  logline?: string;
-  category?: string;
-
-  meeting_notes?: string;
+  notes?: string;
   contact_email?: string;
   contact_phone?: string;
+  category?: string;
+  location?: string;
+  agenda?: string;
 }
 
 export default function ContentDepartmentCalendar() {
@@ -80,9 +81,8 @@ export default function ContentDepartmentCalendar() {
 
       // Build query with team filter
       let query = supabase
-        .from("call_reports")
-        .select("*")
-        .eq("meeting_type", "scheduled_meeting");
+        .from("meetings")
+        .select("*");
 
       // TEAM ISOLATION: Apply team filter unless admin/management
       if (!hasGlobalAccess && currentUser?.team_id) {

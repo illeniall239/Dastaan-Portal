@@ -6,12 +6,11 @@ import { Badge } from '@/components/ui/badge';
 
 interface Meeting {
   id: string;
-  writer_name: string;
-  working_title: string;
+  contact_name?: string;
+  title: string;
   meeting_date: string;
   duration_minutes?: number;
   status?: string;
-  logline?: string;
 }
 
 interface TimeSlotProps {
@@ -131,23 +130,16 @@ function MeetingSlot({
 
       {/* Meeting Title */}
       <h4 className="text-sm font-semibold text-foreground mb-1 line-clamp-2">
-        {meeting.working_title}
+        {meeting.title}
       </h4>
 
-      {/* Writer Info */}
+      {/* Contact Info */}
       <div className="flex items-center gap-1.5">
         <User className="h-3 w-3 text-muted-foreground flex-shrink-0" />
         <span className="text-xs text-muted-foreground truncate">
-          {meeting.writer_name}
+          {meeting.contact_name}
         </span>
       </div>
-
-      {/* Logline (if available and space permits) */}
-      {meeting.logline && (
-        <p className="text-xs text-muted-foreground mt-1.5 line-clamp-1">
-          {meeting.logline}
-        </p>
-      )}
     </div>
   );
 }

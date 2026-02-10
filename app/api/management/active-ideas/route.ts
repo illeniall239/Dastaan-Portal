@@ -1,9 +1,14 @@
 import { NextRequest } from 'next/server';
 import { getActiveIdeasDetails } from '@/lib/management/active-ideas-details';
 import { getCurrentUser } from '@/lib/auth';
+import { applyRateLimit } from '@/lib/api-middleware';
+import { RateLimitPresets } from '@/lib/rate-limit-redis';
 
 export async function GET(request: NextRequest) {
   try {
+    const rate = await applyRateLimit(request, RateLimitPresets.relaxed);
+    if (!rate.success) return rate.response!;
+
     // Check if user is authenticated and has management role
     const user = await getCurrentUser();
     

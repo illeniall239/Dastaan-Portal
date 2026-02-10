@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -17,6 +17,8 @@ import { uploadEpisodeFile } from "@/lib/episodes/upload-client";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 import { BackButton } from "@/components/ui/back-button";
+import { useFormAutosave } from "@/lib/hooks/useFormAutosave";
+import { DraftRestoreBanner } from "@/components/ui/draft-restore-banner";
 
 interface CallReportWriter {
   id: string;
@@ -63,6 +65,40 @@ export default function LogEpisodesPage() {
 
   // Upload progress tracking (episode number to progress percentage)
   const [uploadProgress, setUploadProgress] = useState<Record<number, number>>({});
+
+  // Autosave
+  const { hasDraft, draftLoaded, draftUpdatedAt, saveDraft, loadDraft, clearDraft } = useFormAutosave({
+    formType: "log_episodes",
+    entityId: selectedSource || "_new",
+  });
+
+  const [draftDismissed, setDraftDismissed] = useState(false);
+
+  // Autosave on form state changes (strip file objects — can't serialize)
+  useEffect(() => {
+    saveDraft({
+      selectedSource,
+      episodes: episodes.map(({ file, ...rest }) => rest),
+    });
+  }, [selectedSource, episodes, saveDraft]);
+
+  const handleRestoreDraft = useCallback(async () => {
+    const data = await loadDraft();
+    if (data) {
+      const d = data as Record<string, any>;
+      if (d.selectedSource) setSelectedSource(d.selectedSource);
+      if (d.episodes) {
+        setEpisodes(d.episodes.map((ep: any) => ({ ...ep, file: null })));
+      }
+      setDraftDismissed(true);
+      toast.success("Draft restored (files must be re-selected)");
+    }
+  }, [loadDraft]);
+
+  const handleDiscardDraft = useCallback(async () => {
+    await clearDraft();
+    setDraftDismissed(true);
+  }, [clearDraft]);
 
   // Fetch logged call reports
   useEffect(() => {
@@ -324,6 +360,7 @@ export default function LogEpisodesPage() {
         throw new Error(errorMessage);
       }
 
+      await clearDraft();
       toast.success(`Successfully logged ${episodes.length} episode(s)`);
 
       // Reset form
@@ -366,6 +403,17 @@ export default function LogEpisodesPage() {
           </p>
         </div>
       </div>
+
+      {/* Draft restore banner */}
+      {!draftDismissed && (
+        <DraftRestoreBanner
+          hasDraft={hasDraft}
+          draftLoaded={draftLoaded}
+          onRestore={handleRestoreDraft}
+          onDiscard={handleDiscardDraft}
+          lastUpdated={draftUpdatedAt}
+        />
+      )}
 
       <form onSubmit={handleSubmit} className="space-y-8">
         {/* Select a story (backed by logged call reports) */}

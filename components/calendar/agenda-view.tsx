@@ -7,14 +7,13 @@ import { cn } from '@/lib/utils';
 
 interface Meeting {
   id: string;
-  writer_name: string;
+  contact_name?: string;
   organizer_name?: string;
   meeting_date: string;
-  meeting_attendees?: string[];
+  attendees?: string[];
   status?: string;
-  working_title: string;
-  logline?: string;
-  meeting_notes?: string;
+  title: string;
+  notes?: string;
   contact_email?: string;
   contact_phone?: string;
 }
@@ -191,24 +190,17 @@ function MeetingCard({
           )}
         </div>
 
-        {/* Working Title */}
+        {/* Title */}
         <h4 className="font-semibold text-base text-foreground mb-1 line-clamp-2">
-          {meeting.working_title}
+          {meeting.title}
         </h4>
 
-        {/* Logline (if available) */}
-        {meeting.logline && (
-          <p className="text-sm text-muted-foreground mb-2 line-clamp-2">
-            {meeting.logline}
-          </p>
-        )}
-
-        {/* Writer and Organizer Info */}
+        {/* Contact and Organizer Info */}
         <div className="space-y-1">
           <div className="flex items-center gap-2">
             <User className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
             <span className="text-xs text-muted-foreground">
-              Writer: <span className="text-foreground font-medium">{meeting.writer_name}</span>
+              Contact: <span className="text-foreground font-medium">{meeting.contact_name}</span>
             </span>
           </div>
           {meeting.organizer_name && (
@@ -222,10 +214,10 @@ function MeetingCard({
         </div>
 
         {/* Attendees count (if available) */}
-        {meeting.meeting_attendees && meeting.meeting_attendees.length > 0 && (
+        {meeting.attendees && meeting.attendees.length > 0 && (
           <div className="mt-2 pt-2 border-t border-muted">
             <span className="text-xs text-muted-foreground">
-              {meeting.meeting_attendees.length} {meeting.meeting_attendees.length === 1 ? 'attendee' : 'attendees'}
+              {meeting.attendees.length} {meeting.attendees.length === 1 ? 'attendee' : 'attendees'}
             </span>
           </div>
         )}

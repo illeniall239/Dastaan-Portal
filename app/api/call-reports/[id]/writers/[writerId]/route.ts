@@ -1,6 +1,8 @@
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 import { logger } from "@/lib/logger";
+import { applyRateLimit } from '@/lib/api-middleware';
+import { RateLimitPresets } from '@/lib/rate-limit-redis';
 
 /**
  * PATCH /api/call-reports/[id]/writers/[writerId]
@@ -11,6 +13,9 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string; writerId: string }> }
 ) {
   try {
+    const rate = await applyRateLimit(request, RateLimitPresets.standard);
+    if (!rate.success) return rate.response!;
+
     const supabase = await createClient();
     const { id, writerId } = await params;
     const body = await request.json();
@@ -85,6 +90,9 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string; writerId: string }> }
 ) {
   try {
+    const rate = await applyRateLimit(request, RateLimitPresets.standard);
+    if (!rate.success) return rate.response!;
+
     const supabase = await createClient();
     const { id, writerId } = await params;
 

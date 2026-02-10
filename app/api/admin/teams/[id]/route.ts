@@ -4,6 +4,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { updateTeamSchema } from "@/lib/validations/teams";
 import { logAdminAction, getRequestContext } from "@/lib/audit/server";
 import { logger } from "@/lib/logger";
+import { applyRateLimit } from '@/lib/api-middleware';
+import { RateLimitPresets } from '@/lib/rate-limit-redis';
 
 /**
  * GET /api/admin/teams/[id]
@@ -14,6 +16,9 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const rate = await applyRateLimit(request, RateLimitPresets.relaxed);
+    if (!rate.success) return rate.response!;
+
     const { id } = await params;
     // Verify admin authentication
     const supabase = await createClient();
@@ -107,6 +112,9 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const rate = await applyRateLimit(request, RateLimitPresets.strict);
+    if (!rate.success) return rate.response!;
+
     const { id } = await params;
     // Verify admin authentication
     const supabase = await createClient();
@@ -304,6 +312,9 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const rate = await applyRateLimit(request, RateLimitPresets.strict);
+    if (!rate.success) return rate.response!;
+
     const { id } = await params;
     // Verify admin authentication
     const supabase = await createClient();

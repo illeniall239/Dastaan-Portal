@@ -2,7 +2,8 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { logger } from "@/lib/logger";
 import { NextRequest, NextResponse } from "next/server";
-import { rateLimit, getClientIdentifier, createRateLimitHeaders } from "@/lib/rate-limit-redis";
+import { applyRateLimit } from '@/lib/api-middleware';
+import { RateLimitPresets } from '@/lib/rate-limit-redis';
 
 export const dynamic = "force-dynamic";
 
@@ -200,22 +201,8 @@ export async function GET(
   { params }: { params: Promise<{ token: string }> }
 ) {
   try {
-    // Apply rate limiting: 10 requests per hour per IP (prevent token enumeration attacks)
-    const identifier = getClientIdentifier(request);
-    const rateLimitResult = await rateLimit(identifier, {
-      limit: 10,
-      window: 60 * 60 * 1000, // 1 hour in milliseconds
-    });
-
-    if (!rateLimitResult.success) {
-      return NextResponse.json(
-        { error: "Too many requests. Please try again later." },
-        {
-          status: 429,
-          headers: createRateLimitHeaders(rateLimitResult),
-        }
-      );
-    }
+    const rate = await applyRateLimit(request, RateLimitPresets.standard);
+    if (!rate.success) return rate.response!;
 
     const resolvedParams = await params;
     const token = resolvedParams.token;

@@ -1,6 +1,8 @@
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
+import { applyRateLimit } from '@/lib/api-middleware';
+import { RateLimitPresets } from '@/lib/rate-limit-redis';
 
 export const dynamic = "force-dynamic";
 
@@ -10,8 +12,11 @@ export const dynamic = "force-dynamic";
  *
  * @returns {Promise<NextResponse>} JSON response with settings array or error
  */
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    const rate = await applyRateLimit(request, RateLimitPresets.relaxed);
+    if (!rate.success) return rate.response!;
+
     const user = await getCurrentUser();
 
     // Only admins can access settings
@@ -49,6 +54,9 @@ export async function GET() {
  */
 export async function PUT(request: Request) {
   try {
+    const rate = await applyRateLimit(request, RateLimitPresets.strict);
+    if (!rate.success) return rate.response!;
+
     const user = await getCurrentUser();
 
     // Only admins can modify settings

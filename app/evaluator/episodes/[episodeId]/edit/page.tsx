@@ -44,10 +44,10 @@ export default function EvaluatorEpisodeEditPage({ params }: EpisodeEditPageProp
         return;
       }
 
-      // Get user role
+      // Get user role and team
       const { data: userData } = await supabase
         .from("users")
-        .select("role")
+        .select("role, team_id")
         .eq("id", user.id)
         .single();
 
@@ -61,10 +61,22 @@ export default function EvaluatorEpisodeEditPage({ params }: EpisodeEditPageProp
       const episodeData = await getEpisodeClient(episodeId);
       setEpisode(episodeData);
 
-      // Check permissions: owner or manager/admin
+      // Get the team_id from the linked call report
+      let episodeTeamId: string | null = null;
+      if (episodeData.call_report_id) {
+        const { data: crData } = await supabase
+          .from("call_reports")
+          .select("team_id")
+          .eq("id", episodeData.call_report_id)
+          .single();
+        episodeTeamId = crData?.team_id || null;
+      }
+
+      // Check permissions: owner, manager/admin, or same team
       const hasEditPermission =
         episodeData.logged_by === user.id ||
-        ["content_manager", "admin"].includes(userData.role);
+        ["content_manager", "admin"].includes(userData.role) ||
+        (episodeTeamId && userData.team_id && episodeTeamId === userData.team_id);
 
       if (!hasEditPermission) {
         toast.error("You don't have permission to edit this episode");

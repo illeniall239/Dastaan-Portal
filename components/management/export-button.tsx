@@ -45,7 +45,7 @@ export function ExportButton({
           break;
         case "excel":
           if (data) {
-            exportAsExcel(data, filename);
+            await exportAsExcel(data, filename);
           }
           break;
         case "csv":

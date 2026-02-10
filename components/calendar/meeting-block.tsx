@@ -7,13 +7,13 @@ import { Badge } from "@/components/ui/badge";
 
 interface Meeting {
   id: string;
-  writer_name: string;
+  contact_name?: string;
   organizer_name?: string;
   meeting_date: string;
   duration_minutes?: number;
-  meeting_attendees?: string[];
+  attendees?: string[];
   status?: string;
-  working_title: string;
+  title: string;
 }
 
 interface MeetingBlockProps {
@@ -76,7 +76,7 @@ export function MeetingBlock({ meeting, onClick, style, className }: MeetingBloc
       {isMini ? (
         <>
           <div className="flex items-center gap-1.5">
-            <span className="font-semibold truncate flex-1">{meeting.working_title}</span>
+            <span className="font-semibold truncate flex-1">{meeting.title}</span>
             <span className="whitespace-nowrap text-[10px] font-medium shrink-0">
               {format(meetingDate, "h:mm a")}
             </span>
@@ -85,7 +85,7 @@ export function MeetingBlock({ meeting, onClick, style, className }: MeetingBloc
       ) : isCompact ? (
         <>
           <div className="font-semibold truncate text-[10px] leading-none pb-1">
-            {meeting.working_title}
+            {meeting.title}
           </div>
           <div className="flex items-center gap-1 text-[9px] leading-none">
             <Clock className="h-2 w-2 text-white/80 shrink-0" />
@@ -95,7 +95,7 @@ export function MeetingBlock({ meeting, onClick, style, className }: MeetingBloc
       ) : isMedium ? (
         <>
           <div className="font-semibold truncate text-xs leading-tight pb-0.5">
-            {meeting.working_title}
+            {meeting.title}
           </div>
           <div className="flex items-center gap-1 text-[10px] leading-tight">
             <Clock className="h-2.5 w-2.5 text-white/80 shrink-0" />
@@ -105,7 +105,7 @@ export function MeetingBlock({ meeting, onClick, style, className }: MeetingBloc
       ) : (
         <>
           <div className="font-semibold truncate text-sm">
-            {meeting.working_title}
+            {meeting.title}
           </div>
 
           <div className="flex items-center gap-1 text-xs truncate">
@@ -115,7 +115,7 @@ export function MeetingBlock({ meeting, onClick, style, className }: MeetingBloc
 
           <div className="flex items-center gap-1 text-xs truncate">
             <User className="h-3 w-3" />
-            <span className="truncate">{meeting.organizer_name || meeting.writer_name}</span>
+            <span className="truncate">{meeting.organizer_name || meeting.contact_name}</span>
           </div>
         </>
       )}

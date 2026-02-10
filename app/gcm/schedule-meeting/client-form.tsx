@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
@@ -18,10 +18,12 @@ import {
 import { CalendarPicker } from "@/components/ui/calendar-picker";
 import { MentionInput } from "@/components/ui/mention-input";
 import { toast } from "sonner";
-import { createMeetingClient } from "@/lib/meetings/client";
+import { createSimpleMeetingClient } from "@/lib/meetings/client";
 import { WriterSelect } from "@/components/writers/writer-select";
 import { Clock, FileText, MapPin, Users } from "lucide-react";
 import type { Writer } from "@/types";
+import { useFormAutosave } from "@/lib/hooks/useFormAutosave";
+import { DraftRestoreBanner } from "@/components/ui/draft-restore-banner";
 
 interface User {
   id: string;
@@ -50,6 +52,48 @@ export function ClientScheduleMeetingForm({ userId }: { userId: string }) {
     location: "",
     duration: "60"
   });
+
+  // Autosave
+  const { hasDraft, draftLoaded, draftUpdatedAt, saveDraft, loadDraft, clearDraft } = useFormAutosave({
+    formType: "schedule_meeting",
+    entityId: "_new",
+  });
+
+  const [draftDismissed, setDraftDismissed] = useState(false);
+
+  // Autosave on form state changes
+  useEffect(() => {
+    saveDraft({
+      ...formData,
+      selectedDate: selectedDate?.toISOString(),
+      selectedTime,
+    });
+  }, [formData, selectedDate, selectedTime, saveDraft]);
+
+  const handleRestoreDraft = useCallback(async () => {
+    const data = await loadDraft();
+    if (data) {
+      const d = data as Record<string, any>;
+      setFormData({
+        sourceOfIdea: d.sourceOfIdea || "",
+        writerId: d.writerId || "",
+        pocName: d.pocName || "",
+        title: d.title || "",
+        notes: d.notes || "",
+        location: d.location || "",
+        duration: d.duration || "60",
+      });
+      if (d.selectedDate) setSelectedDate(new Date(d.selectedDate));
+      if (d.selectedTime) setSelectedTime(d.selectedTime);
+      setDraftDismissed(true);
+      toast.success("Draft restored");
+    }
+  }, [loadDraft]);
+
+  const handleDiscardDraft = useCallback(async () => {
+    await clearDraft();
+    setDraftDismissed(true);
+  }, [clearDraft]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { id, value } = e.target;
@@ -143,24 +187,20 @@ export function ClientScheduleMeetingForm({ userId }: { userId: string }) {
       );
 
       // Create meeting
-      await createMeetingClient({
-        meeting_type: "scheduled_meeting",
-        logged_by: "",
-        category: category,
-        writer_name: contactName,
-        writer_email: contactEmail,
-        contact_type: contactType,
-        working_title: formData.title,
-        logline: formData.notes,
+      await createSimpleMeetingClient({
+        title: formData.title,
         meeting_date: localDateTimeString,
         duration_minutes: parseInt(formData.duration),
-        attendees: contactEmail ? [contactEmail, ...attendeeIdentifiers] : attendeeIdentifiers,
         location: formData.location,
         notes: formData.notes,
-        status: "draft",
-        created_by: userId
+        contact_name: contactName,
+        contact_email: contactEmail,
+        contact_type: contactType,
+        attendees: contactEmail ? [contactEmail, ...attendeeIdentifiers] : attendeeIdentifiers,
+        category: category,
       });
 
+      await clearDraft();
       toast.success("Meeting scheduled successfully!");
       router.push("/gcm/calendar");
     } catch (error: any) {
@@ -180,6 +220,19 @@ export function ClientScheduleMeetingForm({ userId }: { userId: string }) {
 
   return (
     <form onSubmit={handleSubmit}>
+      {/* Draft restore banner */}
+      {!draftDismissed && (
+        <div className="mb-6">
+          <DraftRestoreBanner
+            hasDraft={hasDraft}
+            draftLoaded={draftLoaded}
+            onRestore={handleRestoreDraft}
+            onDiscard={handleDiscardDraft}
+            lastUpdated={draftUpdatedAt}
+          />
+        </div>
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left Column - Date & Time */}
         <Card className="lg:col-span-1">

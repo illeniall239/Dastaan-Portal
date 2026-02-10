@@ -96,10 +96,11 @@ export default function EvaluatorCallReportEditPage({ params }: CallReportEditPa
         setAttachments(attachmentsWithUrl);
         console.log("📎 EDIT PAGE - Attachments fetched:", attachmentsWithUrl);
 
-        // Check permissions: owner or manager/admin
+        // Check permissions: owner, manager/admin, or same team
         const hasEditPermission =
           callReportData.created_by === user.id ||
-          ["content_manager", "admin"].includes(userData.role);
+          ["content_manager", "admin"].includes(userData.role) ||
+          (callReportData.team_id && userData.team_id && callReportData.team_id === userData.team_id);
 
         if (!hasEditPermission) {
           toast.error("You don't have permission to edit this call report");

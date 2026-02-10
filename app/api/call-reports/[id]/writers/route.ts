@@ -9,6 +9,8 @@ import {
   createSuccessResponse,
 } from "@/lib/api/errors";
 import { logger } from "@/lib/logger";
+import { applyRateLimit } from '@/lib/api-middleware';
+import { RateLimitPresets } from '@/lib/rate-limit-redis';
 
 /**
  * GET /api/call-reports/[id]/writers
@@ -19,6 +21,9 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const rate = await applyRateLimit(request, RateLimitPresets.relaxed);
+    if (!rate.success) return rate.response!;
+
     const supabase = await createClient();
     const { id } = await params;
 
@@ -93,6 +98,9 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const rate = await applyRateLimit(request, RateLimitPresets.standard);
+    if (!rate.success) return rate.response!;
+
     const supabase = await createClient();
     const { id } = await params;
     const body = await request.json();
@@ -159,6 +167,9 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const rate = await applyRateLimit(request, RateLimitPresets.standard);
+    if (!rate.success) return rate.response!;
+
     const supabase = await createClient();
     const { id } = await params;
     const body = await request.json();

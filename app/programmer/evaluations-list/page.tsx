@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/card";
 import Link from "next/link";
 import { ClipboardListIcon, FileTextIcon, CalendarIcon, UserIcon, CheckCircle2, TrendingUp, TrendingDown, Minus, Globe } from "lucide-react";
-import { getAllCallReports } from "@/lib/meetings/server";
+import { getAllCallReports, type CallReportWithRelations } from "@/lib/meetings/server";
 import { getEvaluationsByEvaluator } from "@/lib/evaluations/server";
 import { format, parseISO } from "date-fns";
 import { EvaluationProgressBar } from "@/components/evaluations/evaluation-progress-bar";
@@ -38,27 +38,6 @@ export default async function ProgrammerEvaluationsListPage({ searchParams }: { 
     redirect("/unauthorized");
   }
 
-  interface CallReportData {
-    id: string;
-    call_report_id?: string;
-    title?: string;
-    working_title?: string;
-    writer_name: string;
-    writer_names?: string[];
-    logline?: string;
-    category?: string;
-    logged_at?: string;
-    created_at: string;
-    meeting_date?: string;
-    updated_at?: string;
-    inserted_at?: string;
-    completed_evaluations?: number;
-    required_evaluations?: number;
-    current_average_score?: number;
-    evaluation_status?: string;
-    final_decision_made_at?: string;
-  }
-
   interface EvaluationData {
     id: string;
     call_report_id: string;
@@ -67,7 +46,7 @@ export default async function ProgrammerEvaluationsListPage({ searchParams }: { 
   }
 
   // Fetch all call reports (programmers see ALL teams)
-  let callReports: CallReportData[] = [];
+  let callReports: CallReportWithRelations[] = [];
   try {
     callReports = await getAllCallReports();
   } catch (error) {
@@ -181,7 +160,7 @@ export default async function ProgrammerEvaluationsListPage({ searchParams }: { 
           </Card>
         ) : (
           filteredReports
-            .map((report: CallReportData) => {
+            .map((report: CallReportWithRelations) => {
               const loggedTimestamp =
                 report.logged_at ||
                 report.created_at ||

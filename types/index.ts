@@ -143,6 +143,15 @@ export type Genre =
   | "sci-fi"
   | "fantasy"
   | "documentary"
+  | "religious"
+  | "spiritual-drama"
+  | "women-centric-drama"
+  | "class-conflict-drama"
+  | "feudal"
+  | "rural-drama"
+  | "siblings-rivalry"
+  | "inheritance-drama"
+  | "tragedy"
   | "other";
 
 export interface Story {
@@ -203,6 +212,34 @@ export type EvaluationStatus =
  * const displayName = getWriterDisplayName(report);
  * ```
  */
+/**
+ * Represents a calendar meeting (stored in `meetings` table).
+ * Meetings are simple calendar events — no story pipeline involvement.
+ */
+export interface Meeting {
+  id: string;
+  meeting_id: string; // MTG-YYYY-NNNN
+  title: string;
+  meeting_date: string;
+  duration_minutes: number;
+  location: string | null;
+  notes: string | null;
+  agenda: string | null;
+  contact_name: string | null;
+  contact_email: string | null;
+  contact_phone: string | null;
+  contact_type: string | null;
+  attendees: string[];
+  category: string | null;
+  status: string;
+  team_id: string;
+  created_by: string;
+  created_at: string;
+  updated_at: string;
+  // Populated via join
+  organizer_name?: string;
+}
+
 export interface CallReport {
   id: string;
   call_report_id: string; // CR-YYYY-NNNN
@@ -384,6 +421,7 @@ export interface EpisodicEvaluationWithType {
   overall_grade: EpisodicGrade;
   events: (string | EventItem)[];
   summary_analysis?: string;
+  remarks?: string;
   submitted_at: string;
   created_at: string;
   updated_at: string;
@@ -515,6 +553,7 @@ export interface EpisodicEvaluation {
   overall_average: number;
   overall_grade: EpisodicGrade;
   // Metadata
+  remarks?: string;
   submitted_at: string;
   created_at: string;
   updated_at: string;

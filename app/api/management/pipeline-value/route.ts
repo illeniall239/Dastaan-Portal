@@ -2,9 +2,14 @@ import { NextRequest, NextResponse } from 'next/server';
 import { logger } from "@/lib/logger";
 import { getPipelineValue, getPipelineValueStats } from '@/lib/management/pipeline-value';
 import { CACHE_DURATION, createCacheControl } from '@/lib/constants';
+import { applyRateLimit } from '@/lib/api-middleware';
+import { RateLimitPresets } from '@/lib/rate-limit-redis';
 
 export async function GET(request: NextRequest) {
   try {
+    const rate = await applyRateLimit(request, RateLimitPresets.relaxed);
+    if (!rate.success) return rate.response!;
+
     const [items, stats] = await Promise.all([
       getPipelineValue(),
       getPipelineValueStats(),

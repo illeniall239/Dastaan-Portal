@@ -13,15 +13,14 @@ import { CalendarSkeleton } from "@/components/skeletons/calendar-skeleton";
 
 interface Meeting {
   id: string;
-  writer_name: string;
+  contact_name?: string;
   organizer_name?: string;
   meeting_date: string;
   duration_minutes?: number;
-  meeting_attendees?: string[];
+  attendees?: string[];
   status?: string;
-  working_title: string;
-  logline?: string;
-  meeting_notes?: string;
+  title: string;
+  notes?: string;
   contact_email?: string;
   contact_phone?: string;
 }
@@ -81,15 +80,14 @@ export default function DemoCalendarPage() {
 
         meetings.push({
           id: `meeting_${i}_${Date.now()}`,
-          writer_name: writerName,
+          contact_name: writerName,
           organizer_name: writerNames[Math.floor(Math.random() * writerNames.length)],
           meeting_date: new Date(date).toISOString(),
           duration_minutes: Math.floor(Math.random() * 180) + 30, // 30 min to 3 hours
-          meeting_attendees: attendees,
+          attendees: attendees,
           status: status,
-          working_title: dramaName,
-          logline: `Discussion about ${dramaName} plot development and character arcs`,
-          meeting_notes: `Discussed progress on ${dramaName} and next steps for production`,
+          title: dramaName,
+          notes: `Discussed progress on ${dramaName} and next steps for production`,
           contact_email: `${writerName.replace(/\s+/g, '.').toLowerCase()}@drama.com`,
           contact_phone: `+92-${Math.floor(100000000 + Math.random() * 900000000)}`,
         });

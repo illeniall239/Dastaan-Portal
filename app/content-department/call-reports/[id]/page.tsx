@@ -156,7 +156,7 @@ export default async function CallReportDetailPage({ params }: { params: Promise
   // Check if user can edit (owner or manager/admin)
   const canEdit =
     report.created_by === user.id ||
-    ["content_manager", "admin"].includes(user.role);
+    ["content_manager", "admin", "content_creator"].includes(user.role);
 
   // Check if user can view private fields
   const canViewPrivate = canViewPrivateFields(user as User, report.created_by);

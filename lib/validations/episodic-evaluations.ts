@@ -37,6 +37,9 @@ export const episodicEvaluationSchema = z.object({
   // Summary and Analysis (optional free-form text)
   summary_analysis: z.string().optional(),
 
+  // Remarks (optional free-form text)
+  remarks: z.string().optional(),
+
   // Evaluation Scores (1-10 scale)
   conflict_of_content_score: z
     .number()
@@ -120,6 +123,9 @@ export const updateEpisodicEvaluationSchema = z.object({
 
   // Summary and Analysis (optional free-form text)
   summary_analysis: z.string().optional(),
+
+  // Remarks (optional free-form text)
+  remarks: z.string().optional(),
 
   // Evaluation Scores (1-10 scale, all optional for updates)
   conflict_of_content_score: z

@@ -15,17 +15,20 @@ import { createClient } from "@/lib/supabase/client";
 
 interface Meeting {
   id: string;
-  writer_name: string;
+  meeting_id?: string;
+  title: string;
+  contact_name?: string;
   organizer_name?: string;
   meeting_date: string;
   duration_minutes?: number;
-  meeting_attendees?: string[];
+  attendees?: string[];
   status?: string;
-  working_title: string;
-  logline?: string;
-  meeting_notes?: string;
+  notes?: string;
   contact_email?: string;
   contact_phone?: string;
+  category?: string;
+  location?: string;
+  agenda?: string;
 }
 
 export default function ManagementCalendar() {
@@ -52,21 +55,23 @@ export default function ManagementCalendar() {
 
       const supabase = createClient();
       const { data, error: fetchError } = await supabase
-        .from("call_reports")
+        .from("meetings")
         .select(`
           id,
-          writer_name,
+          meeting_id,
+          title,
+          contact_name,
           meeting_date,
           duration_minutes,
-          meeting_attendees,
+          attendees,
           status,
-          working_title,
-          logline,
-          meeting_notes,
+          notes,
           contact_email,
-          contact_phone
+          contact_phone,
+          category,
+          location,
+          agenda
         `)
-        .eq("meeting_type", "scheduled_meeting")
         .order("meeting_date", { ascending: true })
         .limit(200);
 

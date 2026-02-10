@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -24,7 +24,10 @@ import { formatFileSize } from "@/lib/validations/episodes";
 import { GenreMultiSelect } from "@/components/ui/genre-multi-select";
 import { WriterMultiSelect } from "@/components/writers/writer-multi-select";
 import { LoglineImageUpload } from "@/components/ui/logline-image-upload";
+import { DirectorSelect } from "@/components/directors/director-select";
 import type { Writer, CallReportWriter } from "@/types";
+import { useFormAutosave } from "@/lib/hooks/useFormAutosave";
+import { DraftRestoreBanner } from "@/components/ui/draft-restore-banner";
 
 interface User {
   id: string;
@@ -79,7 +82,6 @@ export function CallReportForm({
     display_order: number;
   }>>([]);
   const [loglineImageUrl, setLoglineImageUrl] = useState<string | null>(null);
-
   // Track time spent on form (only for new reports)
   const timeSpentMinutes = useFormTimeTracking({
     enabled: mode === "create",
@@ -93,6 +95,7 @@ export function CallReportForm({
     contactPhone: "",
     contactAddress: "",
     workingTitle: "",
+    director: "",
     totalEpisodes: "",
     receivedEpisodes: "",
     logline: "",
@@ -111,6 +114,66 @@ export function CallReportForm({
     overallRating: 0
   });
 
+
+  // Autosave
+  const { hasDraft, draftLoaded, draftUpdatedAt, saveDraft, loadDraft, clearDraft } = useFormAutosave({
+    formType: "call_report",
+    entityId: callReportId || "_new",
+    enabled: mode === "create",
+  });
+
+  const [draftDismissed, setDraftDismissed] = useState(false);
+
+  // Autosave on form state changes
+  useEffect(() => {
+    if (mode !== "create") return;
+    saveDraft({
+      ...formData,
+      writers,
+      loglineImageUrl,
+    });
+  }, [formData, writers, loglineImageUrl, saveDraft, mode]);
+
+  const handleRestoreDraft = useCallback(async () => {
+    const data = await loadDraft();
+    if (data) {
+      const d = data as Record<string, any>;
+      setFormData({
+        category: d.category || "",
+        writerId: d.writerId || "",
+        suggestedWriter: d.suggestedWriter || "",
+        contactPhone: d.contactPhone || "",
+        contactAddress: d.contactAddress || "",
+        workingTitle: d.workingTitle || "",
+        director: d.director || "",
+        totalEpisodes: d.totalEpisodes || "",
+        receivedEpisodes: d.receivedEpisodes || "",
+        logline: d.logline || "",
+        shortSynopsis: d.shortSynopsis || "",
+        episodicSynopsis: d.episodicSynopsis || "",
+        genre: d.genre || [],
+        theme: d.theme || "",
+        targetSlot: d.targetSlot || "",
+        contentType: d.contentType || "",
+        notes: d.notes || "",
+        nextSteps: d.nextSteps || "",
+        status: d.status || "ready_for_evaluation",
+        ideaBy: d.ideaBy || "",
+        developedBy: d.developedBy || "",
+        managementMemberName: d.managementMemberName || "",
+        overallRating: d.overallRating || 0,
+      });
+      if (d.writers) setWriters(d.writers);
+      if (d.loglineImageUrl) setLoglineImageUrl(d.loglineImageUrl);
+      setDraftDismissed(true);
+      toast.success("Draft restored");
+    }
+  }, [loadDraft]);
+
+  const handleDiscardDraft = useCallback(async () => {
+    await clearDraft();
+    setDraftDismissed(true);
+  }, [clearDraft]);
 
   // File upload state
   const [filesToUpload, setFilesToUpload] = useState<File[]>([]);
@@ -156,6 +219,7 @@ export function CallReportForm({
         contactPhone: initialData.contact_phone || "",
         contactAddress: initialData.contact_address || "",
         workingTitle: initialData.working_title || "",
+        director: initialData.director || "",
         totalEpisodes: initialData.total_episodes?.toString() || "",
         receivedEpisodes: initialData.received_episodes?.toString() || "",
         logline: initialData.logline || "",
@@ -239,6 +303,7 @@ export function CallReportForm({
           contact_phone: formData.contactPhone || undefined,
           contact_address: formData.contactAddress || undefined,
           working_title: formData.workingTitle || undefined,
+          director: formData.director || undefined,
           total_episodes: formData.totalEpisodes ? parseInt(formData.totalEpisodes) : undefined,
           received_episodes: formData.receivedEpisodes ? parseInt(formData.receivedEpisodes) : undefined,
           logline: formData.logline || undefined,
@@ -345,7 +410,6 @@ export function CallReportForm({
       } else {
         // Create new meeting/call report
         const result = await createMeetingClient({
-          meeting_type: "call_report",
           logged_by: userName,
           category: formData.category,
           writer_name: writers.length > 0 ? writers[0].writer_name : (formData.suggestedWriter || "In-house Content"), // Deprecated field
@@ -354,6 +418,7 @@ export function CallReportForm({
           contact_phone: formData.contactPhone,
           contact_address: formData.contactAddress,
           working_title: formData.workingTitle,
+          director: formData.director || undefined,
           total_episodes: formData.totalEpisodes ? parseInt(formData.totalEpisodes) : undefined,
           received_episodes: formData.receivedEpisodes ? parseInt(formData.receivedEpisodes) : undefined,
           logline: formData.logline,
@@ -425,6 +490,9 @@ export function CallReportForm({
           toast.success("Writer Engagement Report logged successfully!");
         }
 
+        // Clear autosave draft on success
+        await clearDraft();
+
         // Redirect to call reports list with fresh data
         router.push("/evaluator/call-reports");
         router.refresh(); // Force cache revalidation to show new report
@@ -437,6 +505,7 @@ export function CallReportForm({
           contactPhone: "",
           contactAddress: "",
           workingTitle: "",
+          director: "",
           totalEpisodes: "",
           receivedEpisodes: "",
           logline: "",
@@ -468,6 +537,17 @@ export function CallReportForm({
   return (
     <form onSubmit={handleSubmit}>
       <div className="space-y-6 max-w-4xl mx-auto px-4 sm:px-0">
+        {/* Draft restore banner */}
+        {!draftDismissed && (
+          <DraftRestoreBanner
+            hasDraft={hasDraft}
+            draftLoaded={draftLoaded}
+            onRestore={handleRestoreDraft}
+            onDiscard={handleDiscardDraft}
+            lastUpdated={draftUpdatedAt}
+          />
+        )}
+
         {/* Section 1: Basic Information */}
         <Card>
           <CardHeader>
@@ -606,13 +686,19 @@ export function CallReportForm({
             <CardTitle>Story Details (One-Liner)</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="workingTitle">Working Title</Label>
-              <Input
-                id="workingTitle"
-                placeholder="Story working title"
-                value={formData.workingTitle}
-                onChange={handleInputChange}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="workingTitle">Working Title</Label>
+                <Input
+                  id="workingTitle"
+                  placeholder="Story working title"
+                  value={formData.workingTitle}
+                  onChange={handleInputChange}
+                />
+              </div>
+              <DirectorSelect
+                value={formData.director}
+                onChange={(val) => setFormData(prev => ({ ...prev, director: val }))}
               />
             </div>
 

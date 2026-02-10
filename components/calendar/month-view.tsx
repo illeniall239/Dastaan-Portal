@@ -15,12 +15,12 @@ import { cn } from "@/lib/utils";
 
 interface Meeting {
   id: string;
-  writer_name: string;
+  contact_name?: string;
   organizer_name?: string;
   meeting_date: string;
-  meeting_attendees?: string[];
+  attendees?: string[];
   status?: string;
-  working_title: string;
+  title: string;
 }
 
 interface MonthViewProps {
@@ -118,7 +118,7 @@ export function MonthView({
                       {format(parseISO(meeting.meeting_date), "h:mm a")}
                     </div>
                     <div className="truncate text-muted-foreground">
-                      {meeting.working_title}
+                      {meeting.title}
                     </div>
                   </div>
                 ))}

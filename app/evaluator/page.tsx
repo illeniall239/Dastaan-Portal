@@ -110,9 +110,8 @@ async function DashboardContent({ userId }: { userId: string }) {
       (async () => {
         const today = new Date().toISOString();
         let query = supabase
-          .from("call_reports")
+          .from("meetings")
           .select("id", { count: "exact", head: true })
-          .eq("meeting_type", "scheduled_meeting")
           .gte("meeting_date", today);
 
         if (!hasGlobalAccess && currentUser.team_id) {

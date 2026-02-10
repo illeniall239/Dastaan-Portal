@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useId } from "react";
+import { useState, useEffect, useId, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -25,6 +25,8 @@ import { Loader2, Plus, X, Network } from "lucide-react";
 import { createDetailedOneLinerClient, getAvailableCallReportsClient } from "@/lib/detailed-one-liner/client";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { useFormAutosave } from "@/lib/hooks/useFormAutosave";
+import { DraftRestoreBanner } from "@/components/ui/draft-restore-banner";
 import { BackButton } from "@/components/ui/back-button";
 import type { NarrativeBreakdownItemFormData, EventPlanningItemFormData, CharacterRelationshipItemFormData } from "@/lib/validations/detailed-one-liner";
 import { CharacterRelationshipGraph } from "@/components/character-relationship-graph";
@@ -120,6 +122,67 @@ export default function LogDetailedOneLinerPage() {
     }
   ]);
   const [conclusionRecommendation, setConclusionRecommendation] = useState("");
+
+  // Autosave
+  const { hasDraft, draftLoaded, draftUpdatedAt, saveDraft, loadDraft, clearDraft } = useFormAutosave({
+    formType: "detailed_one_liner",
+    entityId: callReportId || "_new",
+  });
+
+  const [draftDismissed, setDraftDismissed] = useState(false);
+
+  // Autosave on form state changes
+  useEffect(() => {
+    saveDraft({
+      callReportId,
+      preamble,
+      plot,
+      emotionalArena,
+      creedConflict,
+      newElement,
+      emotionalCoreResolution,
+      narrativeRows,
+      eventPlanningRows,
+      productionOptimizationNotes,
+      netOutcome,
+      weaknessRiskRows,
+      characterRelationshipRows,
+      conclusionRecommendation,
+    });
+  }, [
+    callReportId, preamble, plot, emotionalArena, creedConflict, newElement,
+    emotionalCoreResolution, narrativeRows, eventPlanningRows,
+    productionOptimizationNotes, netOutcome, weaknessRiskRows,
+    characterRelationshipRows, conclusionRecommendation, saveDraft,
+  ]);
+
+  const handleRestoreDraft = useCallback(async () => {
+    const data = await loadDraft();
+    if (data) {
+      const d = data as Record<string, any>;
+      if (d.callReportId) setCallReportId(d.callReportId);
+      if (d.preamble) setPreamble(d.preamble);
+      if (d.plot) setPlot(d.plot);
+      if (d.emotionalArena) setEmotionalArena(d.emotionalArena);
+      if (d.creedConflict) setCreedConflict(d.creedConflict);
+      if (d.newElement) setNewElement(d.newElement);
+      if (d.emotionalCoreResolution) setEmotionalCoreResolution(d.emotionalCoreResolution);
+      if (d.narrativeRows) setNarrativeRows(d.narrativeRows);
+      if (d.eventPlanningRows) setEventPlanningRows(d.eventPlanningRows);
+      if (d.productionOptimizationNotes) setProductionOptimizationNotes(d.productionOptimizationNotes);
+      if (d.netOutcome) setNetOutcome(d.netOutcome);
+      if (d.weaknessRiskRows) setWeaknessRiskRows(d.weaknessRiskRows);
+      if (d.characterRelationshipRows) setCharacterRelationshipRows(d.characterRelationshipRows);
+      if (d.conclusionRecommendation) setConclusionRecommendation(d.conclusionRecommendation);
+      setDraftDismissed(true);
+      toast.success("Draft restored");
+    }
+  }, [loadDraft]);
+
+  const handleDiscardDraft = useCallback(async () => {
+    await clearDraft();
+    setDraftDismissed(true);
+  }, [clearDraft]);
 
   // Fetch available call reports on mount
   useEffect(() => {
@@ -367,6 +430,9 @@ export default function LogDetailedOneLinerPage() {
 
       const result = await createDetailedOneLinerClient(formData);
 
+      // Clear autosave draft on success
+      await clearDraft();
+
       toast.success("Detailed One-Liner created successfully!");
 
       // Redirect to view page
@@ -393,6 +459,17 @@ export default function LogDetailedOneLinerPage() {
             </p>
           </div>
         </div>
+
+        {/* Draft restore banner */}
+        {!draftDismissed && (
+          <DraftRestoreBanner
+            hasDraft={hasDraft}
+            draftLoaded={draftLoaded}
+            onRestore={handleRestoreDraft}
+            onDiscard={handleDiscardDraft}
+            lastUpdated={draftUpdatedAt}
+          />
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Call Report Selection */}

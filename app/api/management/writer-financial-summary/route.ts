@@ -1,6 +1,8 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+import { applyRateLimit } from '@/lib/api-middleware';
+import { RateLimitPresets } from '@/lib/rate-limit-redis';
 
 export const dynamic = "force-dynamic";
 
@@ -19,8 +21,11 @@ export const dynamic = "force-dynamic";
  * - 10-20x faster than previous implementation
  * - Refresh view with: SELECT refresh_writer_financial_summary();
  */
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const rate = await applyRateLimit(request, RateLimitPresets.relaxed);
+    if (!rate.success) return rate.response!;
+
     const supabase = await createClient();
 
     // Check authentication

@@ -1,18 +1,23 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { logger } from "@/lib/logger";
 import { createClient } from "@/lib/supabase/server";
 import { idParamSchema } from "@/lib/validations/uuid-params";
 import { updateDetailedOneLinerSchema } from "@/lib/validations/detailed-one-liner";
 import { revalidatePath } from 'next/cache';
+import { applyRateLimit } from '@/lib/api-middleware';
+import { RateLimitPresets } from '@/lib/rate-limit-redis';
 
 /**
  * GET /api/detailed-one-liner/[id]
  * Fetch a detailed one-liner by ID with narrative breakdown items
  */
 export async function GET(
-  request: Request,
+  request: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
+  const rate = await applyRateLimit(request, RateLimitPresets.relaxed);
+  if (!rate.success) return rate.response!;
+
   const supabase = await createClient();
   const params = await context.params;
 
@@ -142,9 +147,12 @@ export async function GET(
  * Update a detailed one-liner
  */
 export async function PATCH(
-  request: Request,
+  request: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
+  const rate = await applyRateLimit(request, RateLimitPresets.standard);
+  if (!rate.success) return rate.response!;
+
   const supabase = await createClient();
   const params = await context.params;
 

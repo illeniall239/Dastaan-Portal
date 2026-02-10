@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -22,6 +22,8 @@ import Link from "next/link";
 import { BackButton } from "@/components/ui/back-button";
 import { createClient } from "@/lib/supabase/client";
 import type { Team } from "@/types";
+import { useFormAutosave } from "@/lib/hooks/useFormAutosave";
+import { DraftRestoreBanner } from "@/components/ui/draft-restore-banner";
 
 export default function NewUserPage() {
   const [loading, setLoading] = useState(false);
@@ -34,6 +36,7 @@ export default function NewUserPage() {
     handleSubmit,
     control,
     watch,
+    reset,
     formState: { errors, isValid },
   } = useForm<AdminCreateUserFormData>({
     resolver: zodResolver(adminCreateUserSchema),
@@ -47,6 +50,46 @@ export default function NewUserPage() {
       team_id: undefined,
     },
   });
+
+  // Autosave
+  const { hasDraft, draftLoaded, draftUpdatedAt, saveDraft, loadDraft, clearDraft } = useFormAutosave({
+    formType: "admin_create_user",
+    entityId: "_new",
+  });
+
+  const [draftDismissed, setDraftDismissed] = useState(false);
+
+  // Autosave on form state changes via React Hook Form watch
+  useEffect(() => {
+    const subscription = watch((data) => {
+      // Don't save password in draft
+      const { password, ...safeData } = data;
+      saveDraft(safeData as Record<string, unknown>);
+    });
+    return () => subscription.unsubscribe();
+  }, [watch, saveDraft]);
+
+  const handleRestoreDraft = useCallback(async () => {
+    const data = await loadDraft();
+    if (data) {
+      const d = data as Record<string, any>;
+      reset({
+        name: d.name || "",
+        email: d.email || "",
+        password: "",
+        position: d.position || "",
+        department: d.department || undefined,
+        team_id: d.team_id || undefined,
+      });
+      setDraftDismissed(true);
+      toast.success("Draft restored (password must be re-entered)");
+    }
+  }, [loadDraft, reset]);
+
+  const handleDiscardDraft = useCallback(async () => {
+    await clearDraft();
+    setDraftDismissed(true);
+  }, [clearDraft]);
 
   // Format team name for display
   const formatTeamName = (team: Team): string => {
@@ -153,6 +196,7 @@ export default function NewUserPage() {
       }
 
       // Success
+      await clearDraft();
       toast.success("User created successfully", {
         description: `User ${data.email} has been created and can now log in.`,
       });
@@ -186,6 +230,17 @@ export default function NewUserPage() {
           </div>
         </div>
       </div>
+
+      {/* Draft restore banner */}
+      {!draftDismissed && (
+        <DraftRestoreBanner
+          hasDraft={hasDraft}
+          draftLoaded={draftLoaded}
+          onRestore={handleRestoreDraft}
+          onDiscard={handleDiscardDraft}
+          lastUpdated={draftUpdatedAt}
+        />
+      )}
 
       {/* Form Card */}
       <Card className="shadow-lg border-0">

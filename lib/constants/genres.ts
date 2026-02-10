@@ -55,6 +55,14 @@ export const PREDEFINED_GENRES = [
   "Social Issues",
   "Cultural",
   "Religious",
+  "Spiritual Drama", // New
+  "Women Centric Drama", // New
+  "Class Conflict Drama", // New
+  "Feudal", // New
+  "Rural Drama", // New
+  "Siblings Rivalry", // New
+  "Inheritance Drama", // New
+  "Tragedy", // New
   "Historical",
 
   // Catch-all

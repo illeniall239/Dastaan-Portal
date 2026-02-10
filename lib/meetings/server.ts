@@ -13,23 +13,51 @@ export interface MeetingWriter {
   display_order: number;
 }
 
+/**
+ * Server Meeting type — used for calendar meetings from the `meetings` table.
+ * For call report data with writers/evaluations, use CallReportWithRelations instead.
+ */
 export interface Meeting {
   id: string;
+  meeting_id?: string;
   title: string;
-  writer_name: string;
   meeting_date: string;
+  duration_minutes?: number;
+  location?: string | null;
+  notes?: string | null;
+  agenda?: string | null;
+  contact_name?: string | null;
+  contact_email?: string | null;
+  contact_phone?: string | null;
+  contact_type?: string | null;
   attendees: string[];
-  location: string;
-  notes: string;
+  category?: string | null;
+  status?: string;
+  team_id?: string;
   created_by: string;
   created_at: string;
+  updated_at?: string;
+}
+
+/**
+ * Extended call report data with related writers & evaluations (used in call reports list)
+ */
+export interface CallReportWithRelations extends Meeting {
   call_report_id?: string;
-  category?: string;
+  working_title?: string;
   logline?: string;
   detailed_one_liner_id?: string | null;
   has_detailed_one_liner?: boolean;
+  writer_name?: string;
   writer_names?: string[];
   writers?: MeetingWriter[];
+  logged_at?: string;
+  inserted_at?: string;
+  completed_evaluations?: number;
+  required_evaluations?: number;
+  current_average_score?: number;
+  evaluation_status?: string;
+  final_decision_made_at?: string;
   evaluation_log?: {
     final_decision: 'approved' | 'rejected' | 'needs_improvement' | 'pending';
     approval_count: number;
@@ -40,7 +68,6 @@ export interface Meeting {
 }
 
 export interface CreateMeetingInput {
-  meeting_type: 'scheduled_meeting' | 'call_report';
   logged_by: string;
   category: string;
   writer_name: string;
@@ -50,7 +77,6 @@ export interface CreateMeetingInput {
   contact_address?: string;
   working_title: string;
   logline: string;
-  // removed: target_audience
   genre?: string;
   theme?: string;
   target_slot?: string;
@@ -119,7 +145,7 @@ export async function createMeeting(meetingData: CreateMeetingInput) {
 
   const callReportData = {
     call_report_id: call_report_id,
-    meeting_type: meetingData.meeting_type,
+    meeting_type: "call_report",
     team_id: teamId,
     created_at: loggedAt,
     logged_by: meetingData.logged_by,
@@ -272,15 +298,12 @@ export async function createMeeting(meetingData: CreateMeetingInput) {
       hour12: true,
     });
 
-    const isScheduledMeeting = meetingData.meeting_type === 'scheduled_meeting';
     await createNotifications(
       recipientIds,
       "info",
-      isScheduledMeeting
-        ? `New meeting scheduled: ${meetingData.working_title}`
-        : `New call report logged: ${meetingData.working_title}`,
+      `New call report logged: ${meetingData.working_title}`,
       `Meeting with ${meetingData.writer_name} on ${formattedDate} at ${formattedTime}`,
-      isScheduledMeeting ? "meeting_scheduled" : "call_report_logged",
+      "call_report_logged",
       data.id,
       meetingData.created_by // Track who created this
     );
@@ -293,48 +316,22 @@ export async function createMeeting(meetingData: CreateMeetingInput) {
 }
 
 /**
- * Get all scheduled meetings for the content department (excludes call reports)
- * This function should be called from server components
- * Returns all meetings visible to the entire content department
+ * Get all scheduled meetings from the `meetings` table.
+ * This function should be called from server components.
  */
 export async function getAllMeetings() {
   const supabase = await createClient();
 
   const { data, error } = await supabase
-    .from("call_reports")
-    .select("id, working_title, writer_name, meeting_date, meeting_attendees, meeting_notes, created_by, created_at, meeting_type")
-    .eq("meeting_type", "scheduled_meeting")
+    .from("meetings")
+    .select("*")
     .order("meeting_date", { ascending: true });
 
   if (error) {
     throw new Error(`Failed to fetch meetings: ${error.message}`);
   }
 
-  interface CallReportData {
-    id: string;
-    working_title: string;
-    writer_name: string;
-    meeting_date: string;
-    meeting_attendees: string[] | null;
-    meeting_notes: string;
-    created_by: string;
-    created_at: string;
-  }
-
-  // Transform call reports to meeting format
-  const meetings: Meeting[] = data.map((report: CallReportData) => ({
-    id: report.id,
-    title: report.working_title,
-    writer_name: report.writer_name,
-    meeting_date: report.meeting_date,
-    attendees: report.meeting_attendees || [],
-    location: "", // Not directly stored in call_reports
-    notes: report.meeting_notes,
-    created_by: report.created_by,
-    created_at: report.created_at,
-  }));
-
-  return meetings;
+  return (data || []) as Meeting[];
 }
 
 /**
@@ -386,8 +383,6 @@ export async function getAllCallReports() {
         decision_reason
       )
     `)
-    .eq("meeting_type", "call_report");
-
   // TEAM ISOLATION: Apply filter unless admin/management/programmer
   const hasGlobalAccess = currentUser?.role && ['admin', 'management', 'programmer'].includes(currentUser.role);
   if (!hasGlobalAccess && currentUser?.team_id) {
@@ -418,7 +413,7 @@ export async function getAllCallReports() {
     decision_reason: string;
   }
 
-  interface CallReportWithRelations {
+  interface CallReportQueryResult {
     id: string;
     call_report_id: string;
     working_title: string;
@@ -436,7 +431,7 @@ export async function getAllCallReports() {
   }
 
   // Transform call reports to meeting format
-  const meetings: Meeting[] = data.map((report: CallReportWithRelations) => {
+  const meetings: CallReportWithRelations[] = data.map((report: CallReportQueryResult) => {
     const writers: MeetingWriter[] =
       report.call_report_writers?.map((writer: CallReportWriterData) => ({
         writer_id: writer.writer_id,
@@ -478,16 +473,15 @@ export async function getAllCallReports() {
 }
 
 /**
- * Get all meetings for the content department within a specific date range
- * This function should be called from server components
- * Returns all meetings visible to the entire content department
+ * Get all meetings within a specific date range from the `meetings` table.
+ * This function should be called from server components.
  */
 export async function getAllMeetingsByDateRange(startDate: string, endDate: string) {
   const supabase = await createClient();
 
   const { data, error } = await supabase
-    .from("call_reports")
-    .select("id, working_title, writer_name, meeting_date, meeting_attendees, meeting_notes, created_by, created_at, meeting_type")
+    .from("meetings")
+    .select("*")
     .gte("meeting_date", startDate)
     .lte("meeting_date", endDate)
     .order("meeting_date", { ascending: true });
@@ -496,29 +490,5 @@ export async function getAllMeetingsByDateRange(startDate: string, endDate: stri
     throw new Error(`Failed to fetch meetings: ${error.message}`);
   }
 
-  interface CallReportByDateData {
-    id: string;
-    working_title: string;
-    writer_name: string;
-    meeting_date: string;
-    meeting_attendees: string[] | null;
-    meeting_notes: string;
-    created_by: string;
-    created_at: string;
-  }
-
-  // Transform call reports to meeting format
-  const meetings: Meeting[] = data.map((report: CallReportByDateData) => ({
-    id: report.id,
-    title: report.working_title,
-    writer_name: report.writer_name,
-    meeting_date: report.meeting_date,
-    attendees: report.meeting_attendees || [],
-    location: "", // Not directly stored in call_reports
-    notes: report.meeting_notes,
-    created_by: report.created_by,
-    created_at: report.created_at,
-  }));
-
-  return meetings;
+  return (data || []) as Meeting[];
 }

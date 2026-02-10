@@ -41,6 +41,7 @@ export interface EpisodicEvaluationCreateData {
   story_progression_score: number;
   freezes_score: number;
   whats_next_element_score: number;
+  remarks?: string;
 }
 
 /**

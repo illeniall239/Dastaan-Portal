@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { logger } from "@/lib/logger";
 import { createClient } from "@/lib/supabase/server";
 import { episodeIdParamSchema } from "@/lib/validations/uuid-params";
+import { applyRateLimit } from '@/lib/api-middleware';
+import { RateLimitPresets } from '@/lib/rate-limit-redis';
 
 /**
  * GET /api/episodic-evaluations/episode/[episodeId]
@@ -12,7 +14,11 @@ export async function GET(
   request: Request,
   { params }: { params: Promise<{ episodeId: string }> }
 ) {
-  const { episodeId } = await params;
+  try {
+    const rate = await applyRateLimit(request, RateLimitPresets.relaxed);
+    if (!rate.success) return rate.response!;
+
+    const { episodeId } = await params;
 
   // Validate UUID format
   const paramValidation = episodeIdParamSchema.safeParse({ episodeId });
@@ -45,7 +51,6 @@ export async function GET(
     );
   }
 
-  try {
     // Check if episode exists
     const { data: episode, error: episodeError } = await supabase
       .from("episodes")

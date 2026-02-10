@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -21,6 +21,8 @@ import { toast } from "sonner";
 import { Users, Loader2, Building2, FileText, Shield, User } from "lucide-react";
 import { BackButton } from "@/components/ui/back-button";
 import { createClient } from "@/lib/supabase/client";
+import { useFormAutosave } from "@/lib/hooks/useFormAutosave";
+import { DraftRestoreBanner } from "@/components/ui/draft-restore-banner";
 
 interface Team {
   id: string;
@@ -46,6 +48,8 @@ export default function NewTeamPage() {
     register,
     handleSubmit,
     control,
+    watch,
+    reset,
     formState: { errors, isValid },
   } = useForm<CreateTeamInput>({
     resolver: zodResolver(createTeamSchema),
@@ -58,6 +62,43 @@ export default function NewTeamPage() {
       team_head_id: undefined,
     },
   });
+
+  // Autosave
+  const { hasDraft, draftLoaded, draftUpdatedAt, saveDraft, loadDraft, clearDraft } = useFormAutosave({
+    formType: "admin_create_team",
+    entityId: "_new",
+  });
+
+  const [draftDismissed, setDraftDismissed] = useState(false);
+
+  // Autosave on form state changes via React Hook Form watch
+  useEffect(() => {
+    const subscription = watch((data) => {
+      saveDraft(data as Record<string, unknown>);
+    });
+    return () => subscription.unsubscribe();
+  }, [watch, saveDraft]);
+
+  const handleRestoreDraft = useCallback(async () => {
+    const data = await loadDraft();
+    if (data) {
+      const d = data as Record<string, any>;
+      reset({
+        name: d.name || "",
+        description: d.description || "",
+        parent_team_id: d.parent_team_id || undefined,
+        team_type: d.team_type || undefined,
+        team_head_id: d.team_head_id || undefined,
+      });
+      setDraftDismissed(true);
+      toast.success("Draft restored");
+    }
+  }, [loadDraft, reset]);
+
+  const handleDiscardDraft = useCallback(async () => {
+    await clearDraft();
+    setDraftDismissed(true);
+  }, [clearDraft]);
 
   // Fetch teams and potential team heads on component mount
   useEffect(() => {
@@ -117,6 +158,7 @@ export default function NewTeamPage() {
         return;
       }
 
+      await clearDraft();
       toast.success("Team created successfully!", {
         description: `${data.name} has been added to the system.`,
       });
@@ -149,6 +191,17 @@ export default function NewTeamPage() {
           </div>
         </div>
       </div>
+
+      {/* Draft restore banner */}
+      {!draftDismissed && (
+        <DraftRestoreBanner
+          hasDraft={hasDraft}
+          draftLoaded={draftLoaded}
+          onRestore={handleRestoreDraft}
+          onDiscard={handleDiscardDraft}
+          lastUpdated={draftUpdatedAt}
+        />
+      )}
 
       {/* Form Card */}
       <Card className="shadow-lg border-0">

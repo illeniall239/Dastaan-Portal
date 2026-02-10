@@ -39,12 +39,11 @@ export default async function MeetingDetailPage({ params }: { params: Promise<{ 
 
   const hasGlobalAccess = currentUser?.role && ['admin', 'management'].includes(currentUser.role);
 
-  // STEP 2: Fetch scheduled meeting with team verification
+  // STEP 2: Fetch meeting with team verification
   let query = supabase
-    .from("call_reports")
+    .from("meetings")
     .select("*")
-    .eq("id", resolvedParams.id)
-    .eq("meeting_type", "scheduled_meeting");
+    .eq("id", resolvedParams.id);
 
   // TEAM ISOLATION: Verify user can access this meeting
   if (!hasGlobalAccess && currentUser?.team_id) {
@@ -65,7 +64,7 @@ export default async function MeetingDetailPage({ params }: { params: Promise<{ 
         <div className="flex flex-col gap-4 sm:gap-6 w-full sm:w-auto">
           <BackButton fallbackHref="/gcm/calendar" variant="outline" size="sm" className="w-fit" />
           <div className="space-y-1">
-            <h1 className="text-xl sm:text-2xl font-bold tracking-tight">{meeting.working_title}</h1>
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight">{meeting.title}</h1>
             <p className="text-muted-foreground text-sm sm:text-base">
               Scheduled Meeting
             </p>
@@ -110,7 +109,7 @@ export default async function MeetingDetailPage({ params }: { params: Promise<{ 
                 <UserIcon className="h-5 w-5 text-muted-foreground mt-0.5" />
                 <div>
                   <p className="text-sm font-medium">Writer/Originator</p>
-                  <p className="text-sm text-muted-foreground">{meeting.writer_name}</p>
+                  <p className="text-sm text-muted-foreground">{meeting.contact_name}</p>
                   {meeting.contact_email && (
                     <p className="text-sm text-muted-foreground">{meeting.contact_email}</p>
                   )}
@@ -151,14 +150,14 @@ export default async function MeetingDetailPage({ params }: { params: Promise<{ 
             </CardContent>
           </Card>
 
-          {meeting.meeting_attendees && meeting.meeting_attendees.length > 0 && (
+          {meeting.attendees && meeting.attendees.length > 0 && (
             <Card>
               <CardHeader>
                 <CardTitle className="text-lg">Attendees</CardTitle>
               </CardHeader>
               <CardContent>
                 <ul className="space-y-2">
-                  {meeting.meeting_attendees.map((attendee: string, index: number) => (
+                  {meeting.attendees.map((attendee: string, index: number) => (
                     <li key={index} className="text-sm flex items-center gap-2">
                       <div className="h-2 w-2 rounded-full bg-green-500"></div>
                       {attendee}
@@ -199,10 +198,10 @@ export default async function MeetingDetailPage({ params }: { params: Promise<{ 
               <CardTitle>Project Overview</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {meeting.logline && (
+              {meeting.agenda && (
                 <div>
-                  <h3 className="text-sm font-semibold mb-2">Logline</h3>
-                  <p className="text-sm text-muted-foreground">{meeting.logline}</p>
+                  <h3 className="text-sm font-semibold mb-2">Agenda</h3>
+                  <p className="text-sm text-muted-foreground">{meeting.agenda}</p>
                 </div>
               )}
 
@@ -212,14 +211,14 @@ export default async function MeetingDetailPage({ params }: { params: Promise<{ 
             </CardContent>
           </Card>
 
-          {meeting.meeting_notes && (
+          {meeting.notes && (
             <Card>
               <CardHeader>
                 <CardTitle>Meeting Agenda / Notes</CardTitle>
               </CardHeader>
               <CardContent>
                 <p className="text-sm text-muted-foreground whitespace-pre-wrap">
-                  {meeting.meeting_notes}
+                  {meeting.notes}
                 </p>
               </CardContent>
             </Card>

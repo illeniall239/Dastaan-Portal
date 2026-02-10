@@ -3,11 +3,16 @@ import { v4 as uuidv4 } from "uuid";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { logger } from "@/lib/logger";
+import { applyRateLimit } from '@/lib/api-middleware';
+import { RateLimitPresets } from '@/lib/rate-limit-redis';
 
 export const runtime = "nodejs";
 
 export async function POST(request: NextRequest) {
   try {
+    const rate = await applyRateLimit(request, RateLimitPresets.standard);
+    if (!rate.success) return rate.response!;
+
     const supabase = await createClient();
 
     // Ensure user is authenticated

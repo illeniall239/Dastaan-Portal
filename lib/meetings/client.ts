@@ -1,22 +1,31 @@
 import { createClient } from "@/lib/supabase/client";
 import type { UpdateCallReportFormData } from "@/lib/validations/call-reports";
+import type { Meeting as MeetingType } from "@/types";
 
-export interface Meeting {
-  id: string;
+export type Meeting = MeetingType;
+
+/**
+ * Input for creating a simple calendar meeting (no story pipeline)
+ */
+export interface CreateSimpleMeetingInput {
   title: string;
-  writer_name: string;
   meeting_date: string;
   duration_minutes?: number;
-  end_time?: string;
-  attendees: string[];
-  location: string;
-  notes: string;
-  created_by: string;
-  created_at: string;
+  location?: string;
+  notes?: string;
+  agenda?: string;
+  contact_name?: string;
+  contact_email?: string;
+  contact_phone?: string;
+  contact_type?: string;
+  attendees?: string[];
+  category?: string;
 }
 
+/**
+ * Input for creating a call report (Writer Engagement Report — enters story pipeline)
+ */
 export interface CreateMeetingInput {
-  meeting_type: 'scheduled_meeting' | 'call_report';
   logged_by: string;
   category: string;
   writer_name: string;
@@ -33,31 +42,51 @@ export interface CreateMeetingInput {
   logline_image_url?: string;
   short_synopsis?: string;
   episodic_synopsis?: string;
-  // target_audience deprecated for call_reports, keep optional for compatibility
-  // removed: target_audience
   genre?: string[];
   theme?: string;
   slot?: string;
   content_type?: "Serial" | "Long Serial" | "Telefilm" | "Mini-serial" | "Ramadan Serial" | "Series Sitcom" | "Soap";
-  idea_by?: string; // Private: Who originated the idea (Content Head Initiative only)
-  developed_by?: string; // Private: Who developed the concept (Content Head Initiative only)
-  management_member_name?: string; // Which management member assigned this (Given by Management only)
+  idea_by?: string;
+  developed_by?: string;
+  management_member_name?: string;
   meeting_date: string;
-  duration_minutes?: number; // Meeting duration in minutes (default: 60)
+  duration_minutes?: number;
   attendees: string[];
   location?: string;
   notes: string;
   next_steps?: string;
   status: string;
   created_by: string;
-  overall_rating?: number; // Initial assessment score (1-10) - only for call reports
-  time_spent_minutes?: number; // Time spent creating this call report (tracked in frontend)
-  form_started_at?: string; // When the form was first opened
+  overall_rating?: number;
+  time_spent_minutes?: number;
+  form_started_at?: string;
 }
 
 /**
- * Create a new meeting from client components
- * This function should be called from client components
+ * Create a simple calendar meeting (no story creation, no evaluation pipeline).
+ * POSTs to /api/meetings which inserts into the `meetings` table.
+ */
+export async function createSimpleMeetingClient(
+  meetingData: CreateSimpleMeetingInput
+): Promise<MeetingType> {
+  const response = await fetch("/api/meetings", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(meetingData),
+  });
+
+  const result = await response.json();
+
+  if (!response.ok) {
+    throw new Error(result.error || "Failed to create meeting");
+  }
+
+  return result.meeting;
+}
+
+/**
+ * Create a new call report (Writer Engagement Report) from client components.
+ * This creates a Story + Call Report in the `call_reports` table.
  */
 export async function createMeetingClient(meetingData: CreateMeetingInput) {
   const supabase = createClient();
@@ -113,7 +142,7 @@ export async function createMeetingClient(meetingData: CreateMeetingInput) {
 
   const callReportData = {
     call_report_id: call_report_id,
-    meeting_type: meetingData.meeting_type,
+    meeting_type: "call_report",
     team_id: teamId,
     created_at: loggedAt,
     logged_by: meetingData.logged_by,
@@ -310,15 +339,12 @@ export async function createMeetingClient(meetingData: CreateMeetingInput) {
         });
 
         // Create notification for each relevant user (except creator)
-        const isScheduledMeeting = meetingData.meeting_type === 'scheduled_meeting';
         const notifications = recipientUsers.map((user) => ({
           user_id: user.id,
           type: "info",
-          title: isScheduledMeeting
-            ? `New meeting scheduled: ${meetingData.working_title}`
-            : `New call report logged: ${meetingData.working_title}`,
+          title: `New call report logged: ${meetingData.working_title}`,
           message: `Meeting with ${meetingData.writer_name} on ${formattedDate} at ${formattedTime}`,
-          entity_type: isScheduledMeeting ? "meeting_scheduled" : "call_report_logged",
+          entity_type: "call_report_logged",
           entity_id: data.id,
           created_by: creatorId,
           is_read: false,
@@ -337,7 +363,7 @@ export async function createMeetingClient(meetingData: CreateMeetingInput) {
     const auditLog = {
       entity_type: "call_report",
       entity_id: data.id,
-      action: meetingData.meeting_type === 'scheduled_meeting' ? "created_meeting" : "created_call_report",
+      action: "created_call_report",
       performed_by: meetingData.created_by,
       timestamp: new Date().toISOString(),
       details: {
@@ -359,13 +385,13 @@ export async function createMeetingClient(meetingData: CreateMeetingInput) {
 
 /**
  * Get all meetings for a user from client components
- * This function should be called from client components
+ * Queries the `meetings` table directly.
  */
 export async function getUserMeetingsClient(userId: string) {
   const supabase = createClient();
 
   const { data, error } = await supabase
-    .from("call_reports")
+    .from("meetings")
     .select("*")
     .eq("created_by", userId)
     .order("meeting_date", { ascending: true });
@@ -374,20 +400,7 @@ export async function getUserMeetingsClient(userId: string) {
     throw new Error(`Failed to fetch meetings: ${error.message}`);
   }
 
-  // Transform call reports to meeting format
-  const meetings: Meeting[] = data.map((report: any) => ({
-    id: report.id,
-    title: report.working_title,
-    writer_name: report.writer_name,
-    meeting_date: report.meeting_date,
-    attendees: report.meeting_attendees || [],
-    location: report.location || "",
-    notes: report.meeting_notes,
-    created_by: report.created_by,
-    created_at: report.created_at,
-  }));
-
-  return meetings;
+  return (data || []) as MeetingType[];
 }
 
 /**

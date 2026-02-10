@@ -25,6 +25,7 @@ import { ScoreCard } from "@/components/episodic-evaluations/score-card";
 import { GenreMultiSelect } from "@/components/ui/genre-multi-select";
 import { WriterMultiSelect } from "@/components/writers/writer-multi-select";
 import { LoglineImageUpload } from "@/components/ui/logline-image-upload";
+import { DirectorSelect } from "@/components/directors/director-select";
 import type { Writer, CallReportWriter } from "@/types";
 
 interface User {
@@ -80,7 +81,6 @@ export function CallReportForm({
     display_order: number;
   }>>([]);
   const [loglineImageUrl, setLoglineImageUrl] = useState<string | null>(null);
-
   // Form state
   const [formData, setFormData] = useState({
     category: "",
@@ -89,6 +89,7 @@ export function CallReportForm({
     contactPhone: "",
     contactAddress: "",
     workingTitle: "",
+    director: "",
     totalEpisodes: "",
     receivedEpisodes: "",
     logline: "",
@@ -152,6 +153,7 @@ export function CallReportForm({
         contactPhone: initialData.contact_phone || "",
         contactAddress: initialData.contact_address || "",
         workingTitle: initialData.working_title || "",
+        director: initialData.director || "",
         totalEpisodes: initialData.total_episodes?.toString() || "",
         receivedEpisodes: initialData.received_episodes?.toString() || "",
         logline: initialData.logline || "",
@@ -233,6 +235,7 @@ export function CallReportForm({
           contact_phone: formData.contactPhone || undefined,
           contact_address: formData.contactAddress || undefined,
           working_title: formData.workingTitle || undefined,
+          director: formData.director || undefined,
           total_episodes: formData.totalEpisodes ? parseInt(formData.totalEpisodes) : undefined,
           received_episodes: formData.receivedEpisodes ? parseInt(formData.receivedEpisodes) : undefined,
           logline: formData.logline || undefined,
@@ -339,7 +342,6 @@ export function CallReportForm({
       } else {
         // Create meeting/call report
         const result = await createMeetingClient({
-          meeting_type: "call_report",
           logged_by: userName,
           category: formData.category,
           writer_name: writers.length > 0 ? writers[0].writer_name : (formData.suggestedWriter || "In-house Content"), // Deprecated field
@@ -348,6 +350,7 @@ export function CallReportForm({
           contact_phone: formData.contactPhone,
           contact_address: formData.contactAddress,
           working_title: formData.workingTitle,
+          director: formData.director || undefined,
           total_episodes: formData.totalEpisodes ? parseInt(formData.totalEpisodes) : undefined,
           received_episodes: formData.receivedEpisodes ? parseInt(formData.receivedEpisodes) : undefined,
           logline: formData.logline,
@@ -429,6 +432,7 @@ export function CallReportForm({
           contactPhone: "",
           contactAddress: "",
           workingTitle: "",
+          director: "",
           totalEpisodes: "",
           receivedEpisodes: "",
           logline: "",
@@ -598,13 +602,19 @@ export function CallReportForm({
             <CardTitle className="text-base sm:text-lg">Story Details (One-Liner)</CardTitle>
           </CardHeader>
           <CardContent className="p-3 sm:p-4 md:p-6 pt-0 space-y-3 sm:space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="workingTitle">Working Title</Label>
-              <Input
-                id="workingTitle"
-                placeholder="Story working title"
-                value={formData.workingTitle}
-                onChange={handleInputChange}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="workingTitle">Working Title</Label>
+                <Input
+                  id="workingTitle"
+                  placeholder="Story working title"
+                  value={formData.workingTitle}
+                  onChange={handleInputChange}
+                />
+              </div>
+              <DirectorSelect
+                value={formData.director}
+                onChange={(val) => setFormData(prev => ({ ...prev, director: val }))}
               />
             </div>
 

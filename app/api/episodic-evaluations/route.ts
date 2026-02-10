@@ -5,13 +5,19 @@ import { episodicEvaluationSchema } from "@/lib/validations/episodic-evaluations
 import { episodicEvaluationsQuerySchema } from "@/lib/validations/query-params";
 import { parsePaginationParams, applyPagination, createPaginatedResponse } from "@/lib/utils/pagination";
 import { revalidatePath } from 'next/cache';
+import { applyRateLimit } from '@/lib/api-middleware';
+import { RateLimitPresets } from '@/lib/rate-limit-redis';
 
 /**
  * POST /api/episodic-evaluations
  * Create a new episodic evaluation
  */
 export async function POST(request: Request) {
-  const supabase = await createClient();
+  try {
+    const rate = await applyRateLimit(request, RateLimitPresets.standard);
+    if (!rate.success) return rate.response!;
+
+    const supabase = await createClient();
 
   // Check authentication
   const { data: { user } } = await supabase.auth.getUser();
@@ -33,7 +39,6 @@ export async function POST(request: Request) {
     );
   }
 
-  try {
     const body = await request.json();
 
     // Validate input
@@ -150,7 +155,11 @@ export async function POST(request: Request) {
  * - episode_id: Filter by episode
  */
 export async function GET(request: NextRequest) {
-  const supabase = await createClient();
+  try {
+    const rate = await applyRateLimit(request, RateLimitPresets.relaxed);
+    if (!rate.success) return rate.response!;
+
+    const supabase = await createClient();
 
   // Check authentication
   const { data: { user } } = await supabase.auth.getUser();
@@ -172,7 +181,6 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  try {
     // Parse pagination parameters
     const paginationParams = parsePaginationParams(request);
 

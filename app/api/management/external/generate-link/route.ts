@@ -3,6 +3,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { logger } from "@/lib/logger";
 import { NextRequest, NextResponse } from "next/server";
 import { randomBytes } from "crypto";
+import { applyRateLimit } from '@/lib/api-middleware';
+import { RateLimitPresets } from '@/lib/rate-limit-redis';
 
 export const dynamic = "force-dynamic";
 
@@ -18,6 +20,9 @@ interface GenerateLinkRequest {
 
 export async function POST(request: NextRequest) {
   try {
+    const rate = await applyRateLimit(request, RateLimitPresets.veryStrict);
+    if (!rate.success) return rate.response!;
+
     const supabase = await createClient();
     const adminSupabase = createAdminClient();
 
