@@ -12,36 +12,27 @@ type TeamMember = {
   created_at: string;
 };
 
-type TeamStory = {
-  id: string;
-  title: string;
-  status: string;
-  created_at: string;
-  created_by: string;
-  creator: { name: string } | null;
-};
-
 type TeamCallReport = {
   id: string;
-  report_title: string | null;
+  call_report_id: string | null;
+  working_title: string | null;
+  logline: string | null;
+  category: string | null;
+  genre: string[] | null;
+  content_type: string | null;
+  slot: string | null;
+  remarks: string | null;
+  next_steps: string | null;
+  overall_rating: number | null;
   meeting_date: string;
+  status: string | null;
   created_by: string;
   creator: { name: string } | null;
-};
-
-type TeamEvaluation = {
-  id: string;
-  status: string;
-  created_at: string;
-  evaluator_id: string;
-  evaluator: { name: string } | null;
-  story: { id: string; title: string } | null;
+  episodes: { id: string; episode_number: number; title: string | null }[];
 };
 
 export type TeamWorkItems = {
-  stories: TeamStory[];
   callReports: TeamCallReport[];
-  evaluations: TeamEvaluation[];
 };
 
 export async function getEvaluatorTeam() {
@@ -89,68 +80,56 @@ export async function getTeamMembers(teamId: string): Promise<TeamMember[]> {
 export async function getTeamWorkItems(teamId: string): Promise<TeamWorkItems> {
   const supabase = await createClient();
 
-  // Get team members first
-  const members = await getTeamMembers(teamId);
-  const memberIds = members.map(m => m.id);
-
-  // Get stories assigned to this team
-  const { data: stories } = await supabase
-    .from('stories')
-    .select('id, title, status, created_at, created_by, creator:users!created_by(name)')
-    .eq('team_id', teamId)
-    .order('created_at', { ascending: false });
-
-  // Get call reports for this team
+  // Get call reports for this team with rich fields
   const { data: callReports } = await supabase
     .from('call_reports')
-    .select('id, report_title, meeting_date, created_by, creator:users!created_by(name)')
+    .select(`
+      id, call_report_id, working_title, logline, category,
+      genre, content_type, slot, remarks, next_steps,
+      overall_rating, meeting_date, status,
+      created_by, creator:users!created_by(name)
+    `)
     .eq('team_id', teamId)
     .order('meeting_date', { ascending: false });
 
-  // Get active evaluations assigned to team members
-  const { data: evaluations } = memberIds.length > 0 ? await supabase
-    .from('evaluator_forms')
-    .select(`
-      id,
-      status,
-      created_at,
-      evaluator_id,
-      evaluator:users!evaluator_id(name),
-      story:stories!story_id(id, title)
-    `)
-    .in('evaluator_id', memberIds)
-    .order('created_at', { ascending: false }) : { data: [] };
+  // Get episodes linked to these call reports
+  const crIds = (callReports || []).map(cr => cr.id);
+  const { data: episodes } = crIds.length > 0
+    ? await supabase
+        .from('episodes')
+        .select('id, episode_number, title, call_report_id')
+        .in('call_report_id', crIds)
+        .order('episode_number')
+    : { data: [] };
 
-  // Transform nested arrays to single objects (Supabase returns arrays for joins)
-  const transformedStories: TeamStory[] = (stories || []).map(s => ({
-    id: s.id,
-    title: s.title,
-    status: s.status,
-    created_at: s.created_at,
-    created_by: s.created_by,
-    creator: Array.isArray(s.creator) ? s.creator[0] || null : s.creator
-  }));
+  // Group episodes by call_report_id
+  const episodesByReport = new Map<string, { id: string; episode_number: number; title: string | null }[]>();
+  for (const ep of episodes || []) {
+    const key = ep.call_report_id;
+    if (!episodesByReport.has(key)) episodesByReport.set(key, []);
+    episodesByReport.get(key)!.push({ id: ep.id, episode_number: ep.episode_number, title: ep.title });
+  }
 
   const transformedCallReports: TeamCallReport[] = (callReports || []).map(cr => ({
     id: cr.id,
-    report_title: cr.report_title,
+    call_report_id: cr.call_report_id,
+    working_title: cr.working_title,
+    logline: cr.logline,
+    category: cr.category,
+    genre: cr.genre,
+    content_type: cr.content_type,
+    slot: cr.slot,
+    remarks: cr.remarks,
+    next_steps: cr.next_steps,
+    overall_rating: cr.overall_rating,
     meeting_date: cr.meeting_date,
+    status: cr.status,
     created_by: cr.created_by,
-    creator: Array.isArray(cr.creator) ? cr.creator[0] || null : cr.creator
-  }));
-
-  const transformedEvaluations: TeamEvaluation[] = (evaluations || []).map(e => ({
-    id: e.id,
-    status: e.status,
-    created_at: e.created_at,
-    evaluator_id: e.evaluator_id,
-    evaluator: Array.isArray(e.evaluator) ? e.evaluator[0] || null : e.evaluator,
-    story: Array.isArray(e.story) ? e.story[0] || null : e.story
+    creator: Array.isArray(cr.creator) ? cr.creator[0] || null : cr.creator,
+    episodes: episodesByReport.get(cr.id) || [],
   }));
 
   return {
-    stories: transformedStories,
     callReports: transformedCallReports,
-    evaluations: transformedEvaluations,
   };
 }

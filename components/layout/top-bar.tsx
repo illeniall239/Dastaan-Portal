@@ -28,6 +28,7 @@ interface TopBarProps {
   userName: string;
   userEmail?: string;
   userPosition?: string;
+  teamName?: string | null;
   isDemoMode?: boolean;
 }
 
@@ -60,6 +61,7 @@ export const TopBar = memo(function TopBar({
   userName,
   userEmail,
   userPosition,
+  teamName,
   isDemoMode = false,
 }: TopBarProps) {
   const router = useRouter();
@@ -102,8 +104,15 @@ export const TopBar = memo(function TopBar({
         {/* Spacer for desktop (hidden on mobile) */}
         <div className="hidden lg:block" />
 
-        {/* Right side: Notifications + Profile */}
+        {/* Right side: Team Badge + Notifications + Profile */}
         <div className="flex items-center gap-3">
+          {/* Team Badge */}
+          {teamName && (
+            <span className="hidden sm:inline-flex items-center rounded-full bg-blue-50 border border-blue-200 px-3 py-1 text-xs font-medium text-blue-700">
+              {teamName}
+            </span>
+          )}
+
           {/* Notifications Dropdown */}
           <DropdownMenu open={isNotificationOpen} onOpenChange={setIsNotificationOpen}>
             <DropdownMenuTrigger asChild>

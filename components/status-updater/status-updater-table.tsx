@@ -22,6 +22,7 @@ const STAGE_OPTIONS = [
   { key: "preproduction", label: "Pre-Production", statuses: ["Pre-Production", "In Pre-Production", "Pre Production", "In Pre-Production - Outsource", "Production Planning"] },
   { key: "completed", label: "Script Ready", statuses: ["Script completed", "Script Final", "Script Received/Not Final", "Script completed not on shoot"] },
   { key: "production", label: "In Production", statuses: ["On-air Drama", "Project on Shoot"] },
+  { key: "needs_approval", label: "Needs Management's Approval", statuses: ["Needs Management's Approval"] },
 ];
 
 /** Derive the stage key from a raw status string */
@@ -44,6 +45,7 @@ interface StatusUpdaterTableProps {
 
 export function StatusUpdaterTable({ ideas, role, readOnly = false }: StatusUpdaterTableProps) {
   const showManagementColumns = role !== "evaluator";
+  const showStageStatusRemarks = true;
   const [searchTerm, setSearchTerm] = useState("");
   const [genreFilter, setGenreFilter] = useState<string>("all");
   const [slotFilter, setSlotFilter] = useState<string>("all");
@@ -55,31 +57,41 @@ export function StatusUpdaterTable({ ideas, role, readOnly = false }: StatusUpda
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [updatingIds, setUpdatingIds] = useState<Set<string>>(new Set());
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [localUpdates, setLocalUpdates] = useState<Map<string, { status?: string; remarks?: string }>>(new Map());
+
+  // Merge server data with local updates so UI reflects changes immediately
+  const mergedIdeas = useMemo(() => {
+    if (localUpdates.size === 0) return ideas;
+    return ideas.map(idea => {
+      const updates = localUpdates.get(idea.id);
+      return updates ? { ...idea, ...updates } : idea;
+    });
+  }, [ideas, localUpdates]);
 
   // Extract unique filter values
   const allGenres = useMemo(() => {
     const genreSet = new Set<string>();
-    ideas.forEach(idea => {
+    mergedIdeas.forEach(idea => {
       idea.genre.forEach(g => genreSet.add(g));
     });
     return Array.from(genreSet).sort();
-  }, [ideas]);
+  }, [mergedIdeas]);
 
   const allPersons = useMemo(() => {
     const personSet = new Set<string>();
-    ideas.forEach(idea => {
+    mergedIdeas.forEach(idea => {
       if (idea.person_in_charge) personSet.add(idea.person_in_charge);
     });
     return Array.from(personSet).sort();
-  }, [ideas]);
+  }, [mergedIdeas]);
 
   const allSlots = useMemo(() => {
     const slotSet = new Set<string>();
-    ideas.forEach(idea => {
+    mergedIdeas.forEach(idea => {
       if (idea.slot) slotSet.add(idea.slot);
     });
     return Array.from(slotSet).sort();
-  }, [ideas]);
+  }, [mergedIdeas]);
 
 
 
@@ -103,6 +115,14 @@ export function StatusUpdaterTable({ ideas, role, readOnly = false }: StatusUpda
         throw new Error(`Failed to update ${field}`);
       }
 
+      // Update local state so UI reflects the change immediately
+      setLocalUpdates(prev => {
+        const next = new Map(prev);
+        const existing = next.get(callReportUuid) || {};
+        next.set(callReportUuid, { ...existing, [field]: value });
+        return next;
+      });
+
       toast.success(`${field === 'status' ? 'Status' : 'Remarks'} updated`);
     } catch (error) {
       console.error(`Error updating ${field}:`, error);
@@ -118,7 +138,7 @@ export function StatusUpdaterTable({ ideas, role, readOnly = false }: StatusUpda
 
   // Filter and sort
   const filteredAndSortedIdeas = useMemo(() => {
-    let filtered = ideas.filter(idea => {
+    let filtered = mergedIdeas.filter(idea => {
       // Search through all writer names
       const writerNamesMatch = idea.writer_names?.some(name =>
         name.toLowerCase().includes(searchTerm.toLowerCase())
@@ -199,7 +219,7 @@ export function StatusUpdaterTable({ ideas, role, readOnly = false }: StatusUpda
     });
 
     return filtered;
-  }, [ideas, searchTerm, genreFilter, slotFilter, statusFilter, personFilter, completionMin, completionMax, sortBy, sortOrder]);
+  }, [mergedIdeas, searchTerm, genreFilter, slotFilter, statusFilter, personFilter, completionMin, completionMax, sortBy, sortOrder]);
 
   const handleSort = (field: string) => {
     if (sortBy === field) {
@@ -453,15 +473,21 @@ export function StatusUpdaterTable({ ideas, role, readOnly = false }: StatusUpda
                   <TableHead className="font-bold text-slate-700 text-center border-b whitespace-nowrap">Revised Episodes</TableHead>
                   <TableHead className="font-bold text-slate-700 text-center border-b whitespace-nowrap">Monthly Breakdown</TableHead>
                   <TableHead className="font-bold text-slate-700 border-b whitespace-nowrap">Theme</TableHead>
-                  {showManagementColumns && (
+                  {showStageStatusRemarks && (
                     <>
                       <TableHead className="font-bold text-slate-700 border-b whitespace-nowrap">Stage</TableHead>
                       <TableHead className="font-bold text-slate-700 cursor-pointer border-b whitespace-nowrap" onClick={() => handleSort("status")}>Status</TableHead>
+                    </>
+                  )}
+                  {showManagementColumns && (
+                    <>
                       <TableHead className="bg-blue-50/50 font-bold text-blue-800 text-center border-x border-b px-2 whitespace-nowrap">Content Team Overall</TableHead>
                       <TableHead className="bg-purple-50/50 font-bold text-purple-800 text-center border-r border-b px-2 whitespace-nowrap">Programming Overall</TableHead>
                       <TableHead className="bg-amber-50/50 font-bold text-amber-800 text-center border-r border-b px-2 whitespace-nowrap">Management Overall</TableHead>
-                      <TableHead className="font-bold text-slate-700 border-b whitespace-nowrap">Remarks</TableHead>
                     </>
+                  )}
+                  {showStageStatusRemarks && (
+                    <TableHead className="font-bold text-slate-700 border-b whitespace-nowrap">Remarks</TableHead>
                   )}
                 </TableRow>
               </TableHeader>
@@ -666,7 +692,7 @@ export function StatusUpdaterTable({ ideas, role, readOnly = false }: StatusUpda
                         {idea.theme || <span className="text-slate-300">-</span>}
                       </TableCell>
 
-                      {showManagementColumns && (
+                      {showStageStatusRemarks && (
                         <>
                           {/* Stage - Dropdown */}
                           <TableCell className="border-b px-2">
@@ -735,7 +761,11 @@ export function StatusUpdaterTable({ ideas, role, readOnly = false }: StatusUpda
                               />
                             )}
                           </TableCell>
+                        </>
+                      )}
 
+                      {showManagementColumns && (
+                        <>
                           {/* Content Team Overall */}
                           <TableCell className="bg-blue-50/20 border-x border-b text-center border-b">
                             {idea.content_overall ? (
@@ -771,7 +801,11 @@ export function StatusUpdaterTable({ ideas, role, readOnly = false }: StatusUpda
                               </div>
                             ) : "-"}
                           </TableCell>
+                        </>
+                      )}
 
+                      {showStageStatusRemarks && (
+                        <>
                           {/* Remarks - Free Text */}
                           <TableCell className="border-b px-2">
                             {readOnly ? (

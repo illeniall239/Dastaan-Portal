@@ -16,6 +16,7 @@ interface SidebarWrapperProps {
   userName: string;
   userEmail?: string;
   userPosition?: string;
+  teamName?: string | null;
   navItems: NavItem[];
   children: React.ReactNode;
 }
@@ -24,6 +25,7 @@ export function SidebarWrapper({
   userName,
   userEmail,
   userPosition,
+  teamName,
   navItems,
   children,
 }: SidebarWrapperProps) {
@@ -46,6 +48,7 @@ export function SidebarWrapper({
           userName={userName}
           userEmail={userEmail}
           userPosition={userPosition}
+          teamName={teamName}
         />
       )}
       <div className="flex flex-col flex-1 transition-all duration-150 lg:ml-70 pt-14">
