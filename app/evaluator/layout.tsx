@@ -15,6 +15,11 @@ const evaluatorNavItems = [
     icon: "calendar",
   },
   {
+    title: "Writers",
+    href: "/evaluator/writers",
+    icon: "userPen",
+  },
+  {
     title: "Team",
     href: "/evaluator/team",
     icon: "users",
@@ -54,11 +59,6 @@ const evaluatorNavItems = [
     title: "Contract Terms",
     href: "/evaluator/contract-terms",
     icon: "handshake",
-  },
-  {
-    title: "Writers",
-    href: "/evaluator/writers",
-    icon: "userPen",
   },
 ];
 

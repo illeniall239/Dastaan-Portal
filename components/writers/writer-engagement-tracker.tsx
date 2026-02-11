@@ -1,12 +1,13 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, memo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { format, addMonths, subMonths, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay } from 'date-fns';
+import { format, addMonths, subMonths, startOfMonth, endOfMonth } from 'date-fns';
+import { Plus, Save, Trash2 } from 'lucide-react';
 
 interface Writer {
   id: string;
@@ -25,13 +26,80 @@ interface WriterEngagement {
   updated_at: string;
 }
 
+// Memoized row component — local state for inputs prevents parent re-renders on every keystroke
+const EngagementRow = memo(function EngagementRow({
+  engagement,
+  isSaving,
+  onSave,
+  onDelete,
+}: {
+  engagement: WriterEngagement;
+  isSaving: boolean;
+  onSave: (engagement: WriterEngagement) => void;
+  onDelete: (engagement: WriterEngagement) => void;
+}) {
+  const isNewRow = engagement.id.startsWith('new-');
+  const [timeSlot, setTimeSlot] = useState(engagement.time_slot || '');
+  const [notes, setNotes] = useState(engagement.notes || '');
+
+  return (
+    <div className="grid grid-cols-[1fr_1fr_auto] gap-3 items-center border rounded-lg p-3">
+      <div>
+        <Input
+          value={isNewRow ? timeSlot : engagement.time_slot || ''}
+          onChange={isNewRow ? e => setTimeSlot(e.target.value) : undefined}
+          placeholder="Name of person engaging..."
+          maxLength={100}
+          disabled={!isNewRow}
+          readOnly={!isNewRow}
+        />
+      </div>
+      <div>
+        <Input
+          value={isNewRow ? notes : engagement.notes || ''}
+          onChange={isNewRow ? e => setNotes(e.target.value) : undefined}
+          placeholder="Purpose of engagement..."
+          disabled={!isNewRow}
+          readOnly={!isNewRow}
+        />
+      </div>
+      <div className="flex items-center gap-2">
+        {isNewRow ? (
+          <Button
+            size="sm"
+            onClick={() =>
+              onSave({ ...engagement, time_slot: timeSlot, notes })
+            }
+            disabled={!timeSlot.trim() || !notes.trim() || isSaving}
+          >
+            <Save className="h-4 w-4 mr-1" />
+            {isSaving ? 'Saving...' : 'Save'}
+          </Button>
+        ) : (
+          <span className="text-xs text-muted-foreground whitespace-nowrap">
+            {engagement.creator?.name ? `by ${engagement.creator.name}` : ''}
+          </span>
+        )}
+        <Button
+          size="sm"
+          variant="destructive"
+          onClick={() => onDelete(engagement)}
+        >
+          <Trash2 className="h-4 w-4" />
+        </Button>
+      </div>
+    </div>
+  );
+});
+
 export function WriterEngagementTracker() {
   const [mounted, setMounted] = useState(false);
   const [writers, setWriters] = useState<Writer[]>([]);
   const [selectedWriter, setSelectedWriter] = useState<string>('');
-  const [engagements, setEngagements] = useState<Record<string, WriterEngagement[]>>({});
+  const [engagements, setEngagements] = useState<WriterEngagement[]>([]);
   const [currentDate, setCurrentDate] = useState<Date>(new Date());
-  const [loading, setLoading] = useState<boolean>(true);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [saving, setSaving] = useState<Record<string, boolean>>({});
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => setMounted(true), []);
@@ -41,9 +109,7 @@ export function WriterEngagementTracker() {
     const fetchWriters = async () => {
       try {
         const response = await fetch('/api/writers/list');
-        if (!response.ok) {
-          throw new Error('Failed to fetch writers');
-        }
+        if (!response.ok) throw new Error('Failed to fetch writers');
         const data = await response.json();
         setWriters(data);
       } catch (err) {
@@ -51,172 +117,102 @@ export function WriterEngagementTracker() {
         console.error(err);
       }
     };
-
     fetchWriters();
   }, []);
 
-  // Load engagements when writer is selected
-  useEffect(() => {
-    if (selectedWriter) {
-      const fetchEngagements = async () => {
-        setLoading(true);
-        try {
-          const response = await fetch(`/api/writers?writerId=${selectedWriter}`);
-          if (!response.ok) {
-            throw new Error('Failed to fetch engagements');
-          }
-          const data = await response.json();
+  // Load engagements filtered by writer + month
+  const fetchEngagements = useCallback(async () => {
+    if (!selectedWriter) {
+      setEngagements([]);
+      return;
+    }
 
-          // Group engagements by date
-          const grouped: Record<string, WriterEngagement[]> = {};
-          data.forEach((engagement: WriterEngagement) => {
-            const dateKey = engagement.date_engaged;
-            if (!grouped[dateKey]) {
-              grouped[dateKey] = [];
-            }
-            grouped[dateKey].push(engagement);
-          });
+    setLoading(true);
+    setError(null);
+    try {
+      const monthStart = startOfMonth(currentDate);
+      const monthEnd = endOfMonth(currentDate);
+      const dateFrom = format(monthStart, 'yyyy-MM-dd');
+      const dateTo = format(monthEnd, 'yyyy-MM-dd');
 
-          setEngagements(grouped);
-        } catch (err) {
-          setError('Failed to load engagements');
-          console.error(err);
-        } finally {
-          setLoading(false);
-        }
-      };
-
-      fetchEngagements();
-    } else {
-      setEngagements({});
+      const response = await fetch(
+        `/api/writers?writerId=${selectedWriter}&dateFrom=${dateFrom}&dateTo=${dateTo}`
+      );
+      if (!response.ok) throw new Error('Failed to fetch engagements');
+      const data = await response.json();
+      setEngagements(data);
+    } catch (err) {
+      setError('Failed to load engagements');
+      console.error(err);
+    } finally {
       setLoading(false);
     }
-  }, [selectedWriter]);
+  }, [selectedWriter, currentDate]);
 
-  const handleDateSelect = (date: Date) => {
-    const dateStr = format(date, 'yyyy-MM-dd');
-    const existingNotes = engagements[dateStr] || [];
+  useEffect(() => {
+    fetchEngagements();
+  }, [fetchEngagements]);
 
-    // Create a new engagement for this date
+  const handleAddRow = () => {
     const newEngagement: WriterEngagement = {
-      id: `new-${dateStr}-${existingNotes.length}`,
+      id: `new-${Date.now()}`,
       writer_id: selectedWriter,
-      date_engaged: dateStr,
+      date_engaged: format(startOfMonth(currentDate), 'yyyy-MM-dd'),
+      time_slot: '',
       notes: '',
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };
-
-    setEngagements(prev => ({
-      ...prev,
-      [dateStr]: [...(prev[dateStr] || []), newEngagement]
-    }));
+    setEngagements(prev => [...prev, newEngagement]);
   };
 
-  const handleNoteChange = (date: string, index: number, value: string) => {
-    setEngagements(prev => {
-      const updated = {...prev};
-      if (updated[date]) {
-        updated[date][index].notes = value;
-      }
-      return updated;
-    });
-  };
-
-  const handleSaveEngagement = async (date: string, index: number) => {
-    const engagement = engagements[date][index];
-
+  const handleSave = async (engagement: WriterEngagement) => {
+    setSaving(prev => ({ ...prev, [engagement.id]: true }));
     try {
       const response = await fetch('/api/writers', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           writer_id: engagement.writer_id,
           date_engaged: engagement.date_engaged,
-          notes: engagement.notes,
+          time_slot: engagement.time_slot || null,
+          notes: engagement.notes || null,
         }),
       });
 
-      if (!response.ok) {
-        throw new Error('Failed to save engagement');
-      }
+      if (!response.ok) throw new Error('Failed to save engagement');
+      const saved = await response.json();
 
-      const savedEngagement = await response.json();
-
-      // Update the engagement with the saved ID
-      setEngagements(prev => {
-        const updated = {...prev};
-        if (updated[date]) {
-          updated[date][index] = savedEngagement;
-        }
-        return updated;
-      });
+      setEngagements(prev =>
+        prev.map(e => (e.id === engagement.id ? { ...saved, creator: saved.creator || null } : e))
+      );
     } catch (err) {
       setError('Failed to save engagement');
       console.error(err);
+    } finally {
+      setSaving(prev => ({ ...prev, [engagement.id]: false }));
     }
   };
 
-  const handleDeleteEngagement = async (date: string, index: number) => {
-    const engagement = engagements[date][index];
-
-    if (!engagement.id.startsWith('new-')) { // Only delete if it's already saved
+  const handleDelete = async (engagement: WriterEngagement) => {
+    if (!engagement.id.startsWith('new-')) {
       try {
         const response = await fetch(`/api/writers/${engagement.id}`, {
           method: 'DELETE',
         });
-
-        if (!response.ok) {
-          throw new Error('Failed to delete engagement');
-        }
+        if (!response.ok) throw new Error('Failed to delete engagement');
       } catch (err) {
         setError('Failed to delete engagement');
         console.error(err);
         return;
       }
     }
-
-    // Remove from local state
-    setEngagements(prev => {
-      const updated = {...prev};
-      if (updated[date]) {
-        updated[date] = updated[date].filter((_, i) => i !== index);
-        if (updated[date].length === 0) {
-          delete updated[date];
-        }
-      }
-      return updated;
-    });
+    setEngagements(prev => prev.filter(e => e.id !== engagement.id));
   };
-
-  // Get days for the current month view
-  const monthStart = startOfMonth(currentDate);
-  const monthEnd = endOfMonth(currentDate);
-  const daysInMonth = eachDayOfInterval({ start: monthStart, end: monthEnd });
-
-  // Get days from previous and next months to fill out the grid
-  const startDay = monthStart.getDay();
-  const prevMonthDays = Array.from({ length: startDay }, (_, i) => {
-    const day = new Date(currentDate);
-    day.setDate(-startDay + i + 1);
-    return day;
-  });
-
-  const totalCells = 42;
-  const remainingDays = totalCells - daysInMonth.length - prevMonthDays.length;
-  const nextMonthDays = Array.from({ length: remainingDays }, (_, i) => {
-    const day = new Date(currentDate);
-    day.setDate(daysInMonth.length + i + 1);
-    return day;
-  });
-
-  const allDays = [...prevMonthDays, ...daysInMonth, ...nextMonthDays];
 
   if (!mounted) {
     return (
-      <div className="p-6 max-w-7xl mx-auto">
+      <div className="p-6 max-w-5xl mx-auto">
         <Card>
           <CardHeader>
             <CardTitle>Writer Engagement Tracker</CardTitle>
@@ -230,19 +226,26 @@ export function WriterEngagementTracker() {
   }
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
+    <div className="p-6 max-w-5xl mx-auto">
       <Card>
         <CardHeader>
           <CardTitle>Writer Engagement Tracker</CardTitle>
         </CardHeader>
         <CardContent>
           {error && (
-            <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-md">
+            <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-md text-sm">
               {error}
+              <button
+                onClick={() => setError(null)}
+                className="ml-2 underline text-red-800"
+              >
+                Dismiss
+              </button>
             </div>
           )}
 
-          <div className="mb-6 flex flex-wrap gap-4 items-center">
+          {/* Top controls: writer select + month nav */}
+          <div className="mb-6 flex flex-wrap gap-4 items-end">
             <div className="flex-1 min-w-[200px]">
               <Label htmlFor="writer-select">Select Writer</Label>
               <Select value={selectedWriter} onValueChange={setSelectedWriter}>
@@ -262,107 +265,71 @@ export function WriterEngagementTracker() {
             <div className="flex items-center gap-2">
               <Button
                 variant="outline"
-                onClick={() => setCurrentDate(subMonths(currentDate, 1))}
+                onClick={() => setCurrentDate(prev => subMonths(prev, 1))}
               >
-                Prev Month
+                Prev
               </Button>
-              <div className="text-lg font-medium px-4">
+              <div className="text-lg font-medium px-4 min-w-[160px] text-center">
                 {format(currentDate, 'MMMM yyyy')}
               </div>
               <Button
                 variant="outline"
-                onClick={() => setCurrentDate(addMonths(currentDate, 1))}
+                onClick={() => setCurrentDate(prev => addMonths(prev, 1))}
               >
-                Next Month
+                Next
               </Button>
             </div>
           </div>
 
-          {loading ? (
-            <div>Loading engagements...</div>
+          {/* Engagement rows */}
+          {!selectedWriter ? (
+            <div className="text-center py-12 text-muted-foreground">
+              Select a writer to view and manage engagements.
+            </div>
+          ) : loading ? (
+            <div className="text-center py-12 text-muted-foreground">
+              Loading engagements...
+            </div>
           ) : (
-            <div className="border rounded-lg overflow-hidden">
-              {/* Calendar header */}
-              <div className="grid grid-cols-7 bg-gray-100">
-                {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-                  <div key={day} className="p-2 text-center font-medium text-gray-700 border-r last:border-r-0">
-                    {day}
-                  </div>
-                ))}
-              </div>
+            <div className="space-y-3">
+              {/* Column headers */}
+              {engagements.length > 0 && (
+                <div className="grid grid-cols-[1fr_1fr_auto] gap-3 px-1">
+                  <Label className="text-xs text-muted-foreground uppercase tracking-wide">
+                    Person Engaging
+                  </Label>
+                  <Label className="text-xs text-muted-foreground uppercase tracking-wide">
+                    Purpose
+                  </Label>
+                  <div className="w-[88px]" />
+                </div>
+              )}
 
-              {/* Calendar grid */}
-              <div className="grid grid-cols-7">
-                {allDays.map((day, index) => {
-                  const dateStr = format(day, 'yyyy-MM-dd');
-                  const isCurrentMonth = isSameMonth(day, currentDate);
-                  const isToday = isSameDay(day, new Date());
-                  const dayEngagements = engagements[dateStr] || [];
+              {engagements.map(engagement => (
+                <EngagementRow
+                  key={engagement.id}
+                  engagement={engagement}
+                  isSaving={!!saving[engagement.id]}
+                  onSave={handleSave}
+                  onDelete={handleDelete}
+                />
+              ))}
 
-                  return (
-                    <div
-                      key={index}
-                      className={`min-h-32 p-1.5 border-r border-b last:border-r-0 ${
-                        isCurrentMonth ? 'bg-white' : 'bg-gray-50 text-gray-400'
-                      } ${isToday ? 'ring-2 ring-inset ring-blue-500' : ''}`}
-                    >
-                      <div className="flex justify-between items-center mb-1">
-                        <div className={`text-xs font-medium ${
-                          isToday ? 'bg-blue-500 text-white rounded-full w-5 h-5 flex items-center justify-center' : ''
-                        }`}>
-                          {format(day, 'd')}
-                        </div>
-                        {selectedWriter && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleDateSelect(day)}
-                            className="h-5 w-5 p-0 text-xs text-gray-400 hover:text-gray-700"
-                          >
-                            +
-                          </Button>
-                        )}
-                      </div>
+              {engagements.length === 0 && (
+                <div className="text-center py-8 text-muted-foreground">
+                  No engagements for {format(currentDate, 'MMMM yyyy')}.
+                </div>
+              )}
 
-                      <div className="space-y-1.5 max-h-40 overflow-y-auto">
-                        {dayEngagements.map((engagement, idx) => (
-                          <div key={`${engagement.id}-${idx}`} className="text-xs p-1.5 bg-blue-50 rounded border border-blue-200">
-                            <Textarea
-                              value={engagement.notes || ''}
-                              onChange={(e) => handleNoteChange(dateStr, idx, e.target.value)}
-                              placeholder="Add notes..."
-                              className="text-[11px] min-h-[48px] p-1.5 resize-none border-gray-200"
-                            />
-                            {engagement.creator?.name && !engagement.id.startsWith('new-') && (
-                              <div className="text-[10px] text-gray-400 mt-0.5">
-                                by {engagement.creator.name}
-                              </div>
-                            )}
-                            <div className="flex gap-1 mt-1">
-                              <Button
-                                size="sm"
-                                onClick={() => handleSaveEngagement(dateStr, idx)}
-                                disabled={!engagement.notes?.trim()}
-                                className="h-6 px-2 text-[10px]"
-                              >
-                                Save
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="destructive"
-                                onClick={() => handleDeleteEngagement(dateStr, idx)}
-                                className="h-6 px-2 text-[10px]"
-                              >
-                                Del
-                              </Button>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+              {/* Add More button */}
+              <Button
+                variant="outline"
+                onClick={handleAddRow}
+                className="w-full mt-2"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Add More
+              </Button>
             </div>
           )}
         </CardContent>

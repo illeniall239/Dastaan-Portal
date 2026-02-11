@@ -15,6 +15,11 @@ const programmerNavItems = [
     icon: "calendar",
   },
   {
+    title: "Writers",
+    href: "/programmer/writers",
+    icon: "userPen",
+  },
+  {
     title: "Writer Engagement Reports",
     href: "/programmer/call-reports",
     icon: "fileText",
@@ -43,11 +48,6 @@ const programmerNavItems = [
     title: "Feedback Timeline",
     href: "/programmer/feedback-timeline",
     icon: "clock",
-  },
-  {
-    title: "Writers",
-    href: "/programmer/writers",
-    icon: "userPen",
   },
   {
     title: "Idea Roadmap",
