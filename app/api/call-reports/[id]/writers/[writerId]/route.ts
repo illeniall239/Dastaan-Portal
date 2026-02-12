@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { logger } from "@/lib/logger";
 import { applyRateLimit } from '@/lib/api-middleware';
 import { RateLimitPresets } from '@/lib/rate-limit-redis';
+import { logAuditAction, getRequestContext } from "@/lib/audit/server";
 
 /**
  * PATCH /api/call-reports/[id]/writers/[writerId]
@@ -68,6 +69,16 @@ export async function PATCH(
       );
     }
 
+    // Audit log
+    const requestContext = getRequestContext(request);
+    await logAuditAction({
+      entityType: "call_report_writer",
+      entityId: writerId,
+      action: "updated",
+      performedBy: user.id,
+      details: { ...requestContext, newValues: updateData, callReportId: id },
+    }).catch(err => logger.error("Audit log failed", { error: err }));
+
     return NextResponse.json({
       message: "Writer contact info updated successfully",
       writer: data
@@ -116,6 +127,16 @@ export async function DELETE(
         { status: 500 }
       );
     }
+
+    // Audit log
+    const deleteRequestContext = getRequestContext(request);
+    await logAuditAction({
+      entityType: "call_report_writer",
+      entityId: writerId,
+      action: "deleted",
+      performedBy: user.id,
+      details: { ...deleteRequestContext, callReportId: id },
+    }).catch(err => logger.error("Audit log failed", { error: err }));
 
     return NextResponse.json({
       message: "Writer removed successfully"

@@ -7,6 +7,7 @@ import { parsePaginationParams, applyPagination, createPaginatedResponse } from 
 import { revalidatePath } from 'next/cache';
 import { applyRateLimit } from '@/lib/api-middleware';
 import { RateLimitPresets } from '@/lib/rate-limit-redis';
+import { logAuditAction, getRequestContext } from "@/lib/audit/server";
 
 /**
  * POST /api/episodic-evaluations
@@ -121,6 +122,16 @@ export async function POST(request: Request) {
         { status: 500 }
       );
     }
+
+    // Audit log
+    const requestContext = getRequestContext(request);
+    await logAuditAction({
+      entityType: "episodic_evaluation",
+      entityId: evaluation.id,
+      action: "created",
+      performedBy: user.id,
+      details: { ...requestContext, newValues: { episode_id: evaluationData.episode_id, conflict_of_content_score: evaluationData.conflict_of_content_score, characterization_score: evaluationData.characterization_score, story_progression_score: evaluationData.story_progression_score, overall_assessment_score: evaluationData.overall_assessment_score } },
+    }).catch(err => logger.error("Audit log failed", { error: err }));
 
     // Revalidate evaluation list pages to show new evaluations immediately
     revalidatePath('/content-department/episodic-evaluations');

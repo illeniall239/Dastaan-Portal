@@ -7,6 +7,7 @@ import { sanitizeCallReportForUser } from "@/lib/call-reports/privacy";
 import { revalidatePath } from 'next/cache';
 import { applyRateLimit } from '@/lib/api-middleware';
 import { RateLimitPresets } from '@/lib/rate-limit-redis';
+import { logAuditAction, getRequestContext } from "@/lib/audit/server";
 
 /**
  * GET /api/call-reports/[id]
@@ -219,7 +220,7 @@ export async function PATCH(
     // Update call report
     const { data: updatedCallReport, error: updateError } = await supabase
       .from("call_reports")
-      .update(updates)
+      .update({ ...updates, updated_by: user.id })
       .eq("id", id)
       .select()
       .single();
@@ -263,6 +264,16 @@ export async function PATCH(
         }
       }
     }
+
+    // Audit log
+    const requestContext = getRequestContext(request);
+    await logAuditAction({
+      entityType: "call_report",
+      entityId: id,
+      action: "updated",
+      performedBy: user.id,
+      details: { ...requestContext, newValues: updates },
+    }).catch(err => logger.error("Audit log failed", { error: err }));
 
     // Revalidate call report list pages to show updated reports immediately
     revalidatePath('/content-department/call-reports');

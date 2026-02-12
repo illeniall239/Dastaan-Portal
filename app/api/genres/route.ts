@@ -4,6 +4,7 @@ import { z } from "zod";
 import { logger } from "@/lib/logger";
 import { applyRateLimit } from '@/lib/api-middleware';
 import { RateLimitPresets } from '@/lib/rate-limit-redis';
+import { logAuditAction, getRequestContext } from "@/lib/audit/server";
 
 const createGenreSchema = z.object({
   name: z.string().min(1, "Genre name is required").max(100, "Genre name too long"),
@@ -118,6 +119,16 @@ export async function POST(request: Request) {
         { status: 500 }
       );
     }
+
+    // Audit log
+    const requestContext = getRequestContext(request);
+    await logAuditAction({
+      entityType: "genre",
+      entityId: genre.id,
+      action: "created",
+      performedBy: user.id,
+      details: { ...requestContext, newValues: { name: trimmedName } },
+    }).catch(err => logger.error("Audit log failed", { error: err }));
 
     return NextResponse.json({ genre }, { status: 201 });
   } catch (error) {

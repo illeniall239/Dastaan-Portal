@@ -191,10 +191,10 @@ export async function getProductionMetrics(
     if (creatorIds.length > 0) {
       const { data: creators } = await supabase
         .from('users')
-        .select('id, full_name')
+        .select('id, name')
         .in('id', creatorIds);
       if (creators) {
-        creatorNameMap = Object.fromEntries(creators.map((u: any) => [u.id, u.full_name || 'Unknown']));
+        creatorNameMap = Object.fromEntries(creators.map((u: any) => [u.id, u.name || 'Unknown']));
       }
     }
 

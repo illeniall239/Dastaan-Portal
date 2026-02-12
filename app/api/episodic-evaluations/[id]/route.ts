@@ -6,6 +6,7 @@ import { RateLimitPresets } from "@/lib/rate-limit-redis";
 import { idParamSchema } from "@/lib/validations/uuid-params";
 import { updateEpisodicEvaluationSchema } from "@/lib/validations/episodic-evaluations";
 import { revalidatePath } from 'next/cache';
+import { logAuditAction, getRequestContext } from "@/lib/audit/server";
 
 /**
  * GET /api/episodic-evaluations/[id]
@@ -193,6 +194,16 @@ export async function DELETE(
       );
     }
 
+    // Audit log
+    const requestContext = getRequestContext(request);
+    await logAuditAction({
+      entityType: "episodic_evaluation",
+      entityId: id,
+      action: "deleted",
+      performedBy: user.id,
+      details: { ...requestContext },
+    }).catch(err => logger.error("Audit log failed", { error: err }));
+
     // Revalidate evaluation list pages to show deleted evaluation removed immediately
     revalidatePath('/content-department/episodic-evaluations');
     revalidatePath('/evaluator/episodic-evaluations');
@@ -296,6 +307,7 @@ export async function PATCH(
     const updatable = {
       ...bodyValidation.data,
       updated_at: new Date().toISOString(),
+      updated_by: user.id,
     };
 
     const { error: updateError, data: updated } = await supabase
@@ -312,6 +324,16 @@ export async function PATCH(
         { status: 500 }
       );
     }
+
+    // Audit log
+    const requestContext = getRequestContext(request);
+    await logAuditAction({
+      entityType: "episodic_evaluation",
+      entityId: id,
+      action: "updated",
+      performedBy: user.id,
+      details: { ...requestContext, newValues: bodyValidation.data },
+    }).catch(err => logger.error("Audit log failed", { error: err }));
 
     // Revalidate evaluation list pages to show updated evaluation immediately
     revalidatePath('/content-department/episodic-evaluations');

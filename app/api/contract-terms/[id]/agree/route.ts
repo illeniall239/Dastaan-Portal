@@ -7,6 +7,7 @@ import {
   addRateLimitHeaders,
 } from "@/lib/api-middleware";
 import { RateLimitPresets } from "@/lib/rate-limit-redis";
+import { logAuditAction, getRequestContext } from "@/lib/audit/server";
 
 const agreeSchema = z.object({
   agreed_price: z.number().positive("Agreed price must be positive"),
@@ -110,6 +111,16 @@ export async function POST(
       logger.error("Error updating story status", { error: storyError, context: "POST /api/contract-terms/[id]/agree" });
       // Continue even if story update fails
     }
+
+    // Audit log
+    const requestContext = getRequestContext(request);
+    await logAuditAction({
+      entityType: "negotiation",
+      entityId: id,
+      action: "agreed",
+      performedBy: user.id,
+      details: { ...requestContext, newValues: { agreed_price, agreed_terms, status: "agreed" } },
+    }).catch(err => logger.error("Audit log failed", { error: err }));
 
     const res = NextResponse.json({
       message: "Negotiation marked as agreed successfully",

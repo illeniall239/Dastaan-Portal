@@ -11,6 +11,7 @@ import {
 import { logger } from "@/lib/logger";
 import { applyRateLimit } from '@/lib/api-middleware';
 import { RateLimitPresets } from '@/lib/rate-limit-redis';
+import { logAuditAction, getRequestContext } from "@/lib/audit/server";
 
 /**
  * GET /api/call-reports/[id]/writers
@@ -64,23 +65,36 @@ export async function GET(
       display_order: number;
       created_at: string;
       updated_at: string;
-      writer: Array<{
+      writer: {
+        name: string;
+      } | Array<{
         name: string;
       }>;
     }
 
     // Transform to flatten writer name
-    const transformedWriters = writers?.map((w: WriterData) => ({
-      id: w.id,
-      call_report_id: w.call_report_id,
-      writer_id: w.writer_id,
-      writer_name: w.writer?.[0]?.name || "",
-      writer_email: w.writer_email,
-      writer_phone: w.writer_phone,
-      display_order: w.display_order,
-      created_at: w.created_at,
-      updated_at: w.updated_at,
-    })) || [];
+    const transformedWriters = writers?.map((w: WriterData) => {
+      // Handle writer relation which could be an object (single) or array (multiple)
+      // Supabase returns an object for many-to-one relationships
+      let writerName = "";
+      if (Array.isArray(w.writer)) {
+        writerName = w.writer[0]?.name || "";
+      } else if (w.writer) {
+        writerName = w.writer.name || "";
+      }
+
+      return {
+        id: w.id,
+        call_report_id: w.call_report_id,
+        writer_id: w.writer_id,
+        writer_name: writerName,
+        writer_email: w.writer_email,
+        writer_phone: w.writer_phone,
+        display_order: w.display_order,
+        created_at: w.created_at,
+        updated_at: w.updated_at,
+      };
+    }) || [];
 
     return NextResponse.json({ writers: transformedWriters });
   } catch (error) {
@@ -148,6 +162,16 @@ export async function POST(
       return handleDatabaseError(insertError, "adding writers");
     }
 
+    // Audit log
+    const requestContext = getRequestContext(request);
+    await logAuditAction({
+      entityType: "call_report_writer",
+      entityId: id,
+      action: "created",
+      performedBy: user.id,
+      details: { ...requestContext, newValues: { writers: writerRecords } },
+    }).catch(err => logger.error("Audit log failed", { error: err }));
+
     return NextResponse.json(
       { message: "Writers added successfully", writers: insertedWriters },
       { status: 201 }
@@ -207,6 +231,16 @@ export async function PUT(
       logger.error("Error reordering writers:", errors);
       return handleDatabaseError(errors[0].error, "reordering writers");
     }
+
+    // Audit log
+    const putRequestContext = getRequestContext(request);
+    await logAuditAction({
+      entityType: "call_report_writer",
+      entityId: id,
+      action: "bulk_replaced",
+      performedBy: user.id,
+      details: { ...putRequestContext, newValues: { writers: writers.map((w: WriterToReorder, i: number) => ({ id: w.id, display_order: i })) } },
+    }).catch(err => logger.error("Audit log failed", { error: err }));
 
     return NextResponse.json({ message: "Writers reordered successfully" });
   } catch (error) {

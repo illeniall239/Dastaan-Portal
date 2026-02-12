@@ -3,14 +3,14 @@ import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { applyRateLimit } from '@/lib/api-middleware';
 import { RateLimitPresets } from '@/lib/rate-limit-redis';
+import { logAuditAction, getRequestContext } from "@/lib/audit/server";
+import { logger } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
 
 /**
  * GET /api/admin/settings
  * Fetch all system settings
- *
- * @returns {Promise<NextResponse>} JSON response with settings array or error
  */
 export async function GET(request: Request) {
   try {
@@ -19,7 +19,6 @@ export async function GET(request: Request) {
 
     const user = await getCurrentUser();
 
-    // Only admins can access settings
     if (!user || user.role !== "admin") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
     }
@@ -31,13 +30,13 @@ export async function GET(request: Request) {
       .order("setting_key");
 
     if (error) {
-      console.error("Error fetching settings:", error);
+      logger.error("Error fetching settings:", { error });
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
     return NextResponse.json({ settings: data });
   } catch (error) {
-    console.error("Error in GET /api/admin/settings:", error);
+    logger.error("Error in GET /api/admin/settings:", { error });
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }
@@ -48,9 +47,6 @@ export async function GET(request: Request) {
 /**
  * PUT /api/admin/settings
  * Update a system setting
- *
- * @param {Request} request - Request object containing setting_key and setting_value
- * @returns {Promise<NextResponse>} JSON response with success status or error
  */
 export async function PUT(request: Request) {
   try {
@@ -59,7 +55,6 @@ export async function PUT(request: Request) {
 
     const user = await getCurrentUser();
 
-    // Only admins can modify settings
     if (!user || user.role !== "admin") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
     }
@@ -67,7 +62,6 @@ export async function PUT(request: Request) {
     const body = await request.json();
     const { setting_key, setting_value } = body;
 
-    // Validate input
     if (!setting_key || setting_value === undefined) {
       return NextResponse.json(
         { error: "Missing setting_key or setting_value" },
@@ -77,7 +71,6 @@ export async function PUT(request: Request) {
 
     const supabase = await createClient();
 
-    // Update the setting
     const { error } = await supabase
       .from("system_settings")
       .update({
@@ -88,24 +81,25 @@ export async function PUT(request: Request) {
       .eq("setting_key", setting_key);
 
     if (error) {
-      console.error("Error updating setting:", error);
+      logger.error("Error updating setting:", { error });
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    // Log the change in audit logs
-    await supabase.from("audit_logs").insert({
-      user_id: user.id,
-      action: "UPDATE_SYSTEM_SETTING",
+    const requestContext = getRequestContext(request);
+    await logAuditAction({
+      entityType: "system_setting",
+      entityId: setting_key,
+      action: "updated",
+      performedBy: user.id,
       details: {
-        setting_key,
-        new_value: setting_value,
-        changed_by: user.name,
+        ...requestContext,
+        newValues: { setting_key, setting_value },
       },
-    });
+    }).catch(err => logger.error("Audit log failed", { error: err }));
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Error in PUT /api/admin/settings:", error);
+    logger.error("Error in PUT /api/admin/settings:", { error });
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

@@ -5,6 +5,7 @@ import { detailedOneLinerSchema } from "@/lib/validations/detailed-one-liner";
 import { revalidatePath } from 'next/cache';
 import { applyRateLimit } from '@/lib/api-middleware';
 import { RateLimitPresets } from '@/lib/rate-limit-redis';
+import { logAuditAction, getRequestContext } from "@/lib/audit/server";
 
 /**
  * POST /api/detailed-one-liner
@@ -249,6 +250,16 @@ export async function POST(request: NextRequest) {
     if (fetchError) {
       logger.error("Error fetching complete detailed one-liner", { error: fetchError, context: "POST /api/detailed-one-liner" });
     }
+
+    // Audit log
+    const requestContext = getRequestContext(request);
+    await logAuditAction({
+      entityType: "detailed_one_liner",
+      entityId: detailedOneLiner.id,
+      action: "created",
+      performedBy: user.id,
+      details: { ...requestContext, newValues: { call_report_id: formData.call_report_id } },
+    }).catch(err => logger.error("Audit log failed", { error: err }));
 
     // Revalidate detailed one-liner list pages to show new entry immediately
     revalidatePath('/content-department/detailed-one-liner');

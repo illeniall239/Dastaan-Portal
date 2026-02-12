@@ -6,6 +6,7 @@ import { idParamSchema } from "@/lib/validations/uuid-params";
 import { applyRateLimit, addRateLimitHeaders, withCors } from "@/lib/api-middleware";
 import { RateLimitPresets } from "@/lib/rate-limit-redis";
 import { revalidatePath } from 'next/cache';
+import { logAuditAction, getRequestContext } from "@/lib/audit/server";
 
 /**
  * GET /api/episodes/[id]
@@ -163,7 +164,7 @@ export async function PATCH(
     // Update episode
     const { data: updatedEpisode, error: updateError } = await supabase
       .from("episodes")
-      .update(updates)
+      .update({ ...updates, updated_by: user.id })
       .eq("id", id)
       .select(`
         *,
@@ -180,6 +181,19 @@ export async function PATCH(
         { status: 500 }
       );
     }
+
+    // Audit log the update
+    const requestContext = getRequestContext(request);
+    await logAuditAction({
+      entityType: "episode",
+      entityId: id,
+      action: "updated",
+      performedBy: user.id,
+      details: {
+        ...requestContext,
+        newValues: updates,
+      },
+    }).catch(err => logger.error("Audit log failed", { error: err }));
 
     // Revalidate episode list pages to show updated episodes immediately
     revalidatePath('/content-department/episodes');
@@ -286,6 +300,19 @@ export async function DELETE(
         { status: 500 }
       );
     }
+
+    // Audit log the deletion
+    const deleteRequestContext = getRequestContext(request);
+    await logAuditAction({
+      entityType: "episode",
+      entityId: id,
+      action: "deleted",
+      performedBy: user.id,
+      details: {
+        ...deleteRequestContext,
+        newValues: { attachment_url: existingEpisode.attachment_url },
+      },
+    }).catch(err => logger.error("Audit log failed", { error: err }));
 
     // If there was an attachment, delete it from storage
     if (existingEpisode.attachment_url) {

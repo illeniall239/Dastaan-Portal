@@ -14,6 +14,7 @@ import {
 import { RateLimitPresets } from "@/lib/rate-limit-redis";
 import { parsePaginationParams, applyPagination, createPaginatedResponse } from "@/lib/utils/pagination";
 import { revalidatePath } from 'next/cache';
+import { logAuditAction, getRequestContext } from "@/lib/audit/server";
 
 /**
  * GET /api/contract-terms
@@ -252,6 +253,16 @@ export async function POST(request: Request) {
       logger.error("Error updating story status", { error: storyError, context: "POST /api/contract-terms" });
       // Continue even if story update fails
     }
+
+    // Audit log
+    const requestContext = getRequestContext(request);
+    await logAuditAction({
+      entityType: "negotiation",
+      entityId: negotiation.id,
+      action: "created",
+      performedBy: user.id,
+      details: { ...requestContext, newValues: { negotiation_id, story_id: contractTermData.story_id, proposed_price: contractTermData.proposed_price, agreed_price: contractTermData.agreed_price, contract_type: contractTermData.contract_type, status: "agreed" } },
+    }).catch(err => logger.error("Audit log failed", { error: err }));
 
     // Revalidate contract terms list pages to show new term immediately
     revalidatePath('/content-department/contract-terms');

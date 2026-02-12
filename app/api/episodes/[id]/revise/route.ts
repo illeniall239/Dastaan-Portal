@@ -6,6 +6,7 @@ import { idParamSchema } from "@/lib/validations/uuid-params";
 import { revalidatePath } from "next/cache";
 import { applyRateLimit } from '@/lib/api-middleware';
 import { RateLimitPresets } from '@/lib/rate-limit-redis';
+import { logAuditAction, getRequestContext } from "@/lib/audit/server";
 
 /**
  * POST /api/episodes/[id]/revise
@@ -112,6 +113,24 @@ export async function POST(
         .eq("id", id);
       return NextResponse.json({ error: "Failed to create new version" }, { status: 500 });
     }
+
+    // Audit log the revision
+    const requestContext = getRequestContext(request);
+    await logAuditAction({
+      entityType: "episode",
+      entityId: newEpisode.id,
+      action: "revised",
+      performedBy: user.id,
+      details: {
+        ...requestContext,
+        newValues: {
+          version: newEpisode.version,
+          supersedes_id: existing.id,
+          attachment_name,
+          title: title ?? existing.title,
+        },
+      },
+    }).catch(err => logger.error("Audit log failed", { error: err }));
 
     revalidatePath("/evaluator/episodes");
     revalidatePath("/programmer/episodes");

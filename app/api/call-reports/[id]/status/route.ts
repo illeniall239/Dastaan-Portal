@@ -4,6 +4,7 @@ import { logger } from "@/lib/logger";
 import { requireApiAuth } from "@/lib/api/auth";
 import { applyRateLimit, addRateLimitHeaders } from "@/lib/api-middleware";
 import { RateLimitPresets } from "@/lib/rate-limit-redis";
+import { logAuditAction, getRequestContext } from "@/lib/audit/server";
 
 export async function PATCH(
   request: NextRequest,
@@ -53,6 +54,16 @@ export async function PATCH(
         { status: 500 }
       );
     }
+
+    // Audit log
+    const requestContext = getRequestContext(request);
+    await logAuditAction({
+      entityType: "call_report",
+      entityId: id,
+      action: "status_changed",
+      performedBy: auth.user.id,
+      details: { ...requestContext, newValues: { status, remarks } },
+    }).catch(err => logger.error("Audit log failed", { error: err }));
 
     return addRateLimitHeaders(
       NextResponse.json({ success: true, data }),

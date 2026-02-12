@@ -2,8 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { requireApiAuth } from '@/lib/api/auth';
 import { updateWriterEngagementSchema } from '@/lib/validations/writer-engagements';
+import { logger } from '@/lib/logger';
 import { applyRateLimit, addRateLimitHeaders } from '@/lib/api-middleware';
 import { RateLimitPresets } from '@/lib/rate-limit-redis';
+import { logAuditAction, getRequestContext } from "@/lib/audit/server";
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -52,7 +54,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       rate.result
     );
   } catch (error) {
-    console.error('Error fetching writer engagement:', error);
+    logger.error('Error fetching writer engagement:', error);
     return NextResponse.json(
       { error: 'Failed to fetch writer engagement' },
       { status: 500 }
@@ -82,6 +84,8 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
 
     const { writer_id, date_engaged, time_slot, notes } = validation.data;
 
+    const { user } = auth;
+
     const { data, error } = await supabase
       .from('writer_engagements')
       .update({
@@ -89,6 +93,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
         date_engaged,
         time_slot: time_slot || null,
         notes: notes || null,
+        updated_by: user.id,
         updated_at: new Date().toISOString()
       })
       .eq('id', id)
@@ -98,12 +103,22 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       throw new Error(error.message);
     }
 
+    // Audit log
+    const requestContext = getRequestContext(request);
+    await logAuditAction({
+      entityType: "writer_engagement",
+      entityId: id,
+      action: "updated",
+      performedBy: user.id,
+      details: { ...requestContext, newValues: { writer_id, date_engaged, time_slot } },
+    }).catch(err => logger.error("Audit log failed", { error: err }));
+
     return addRateLimitHeaders(
       NextResponse.json(data[0]),
       rate.result
     );
   } catch (error) {
-    console.error('Error updating writer engagement:', error);
+    logger.error('Error updating writer engagement:', error);
     return NextResponse.json(
       { error: 'Failed to update writer engagement' },
       { status: 500 }
@@ -122,6 +137,8 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
     const supabase = await createClient();
     const { id } = await params;
 
+    const { user } = auth;
+
     const { error } = await supabase
       .from('writer_engagements')
       .delete()
@@ -131,12 +148,22 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
       throw new Error(error.message);
     }
 
+    // Audit log
+    const requestContext = getRequestContext(request);
+    await logAuditAction({
+      entityType: "writer_engagement",
+      entityId: id,
+      action: "deleted",
+      performedBy: user.id,
+      details: { ...requestContext },
+    }).catch(err => logger.error("Audit log failed", { error: err }));
+
     return addRateLimitHeaders(
       NextResponse.json({ success: true }),
       rate.result
     );
   } catch (error) {
-    console.error('Error deleting writer engagement:', error);
+    logger.error('Error deleting writer engagement:', error);
     return NextResponse.json(
       { error: 'Failed to delete writer engagement' },
       { status: 500 }

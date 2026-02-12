@@ -5,3 +5,5 @@ export * from "./useEvaluatorStats";
 export * from "./usePendingEvaluations";
 export * from "./useDashboardStats";
 export * from "./useRoadmapData";
+export * from "./useWriters";
+export * from "./useGenres";

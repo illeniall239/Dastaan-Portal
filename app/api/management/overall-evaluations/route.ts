@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { logger } from '@/lib/logger';
 import { applyRateLimit } from '@/lib/api-middleware';
 import { RateLimitPresets } from '@/lib/rate-limit-redis';
 
@@ -37,7 +38,7 @@ export async function GET(request: NextRequest) {
       .order('created_at', { ascending: false });
 
     if (error) {
-      console.error('Error fetching evaluations:', error);
+      logger.error('Error fetching evaluations:', error);
       return Response.json({ error: 'Failed to fetch evaluations' }, { status: 500 });
     }
 
@@ -69,7 +70,7 @@ export async function GET(request: NextRequest) {
 
     return Response.json({ evaluations: transformedData });
   } catch (error) {
-    console.error('Unexpected error in overall evaluations API:', error);
+    logger.error('Unexpected error in overall evaluations API:', error);
     return Response.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

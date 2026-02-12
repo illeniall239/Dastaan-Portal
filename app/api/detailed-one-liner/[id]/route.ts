@@ -6,6 +6,7 @@ import { updateDetailedOneLinerSchema } from "@/lib/validations/detailed-one-lin
 import { revalidatePath } from 'next/cache';
 import { applyRateLimit } from '@/lib/api-middleware';
 import { RateLimitPresets } from '@/lib/rate-limit-redis';
+import { logAuditAction, getRequestContext } from "@/lib/audit/server";
 
 /**
  * GET /api/detailed-one-liner/[id]
@@ -244,6 +245,7 @@ export async function PATCH(
     if (updates.conclusion_recommendation !== undefined) mainUpdate.conclusion_recommendation = updates.conclusion_recommendation;
 
     // Update main detailed_one_liners record if there are changes
+    mainUpdate.updated_by = user.id;
     if (Object.keys(mainUpdate).length > 0) {
       const { error: updateError } = await supabase
         .from("detailed_one_liners")
@@ -515,6 +517,16 @@ export async function PATCH(
     if (updated.character_relationships) {
       updated.character_relationships.sort((a: any, b: any) => a.sort_order - b.sort_order);
     }
+
+    // Audit log
+    const requestContext = getRequestContext(request);
+    await logAuditAction({
+      entityType: "detailed_one_liner",
+      entityId: id,
+      action: "updated",
+      performedBy: user.id,
+      details: { ...requestContext, newValues: mainUpdate },
+    }).catch(err => logger.error("Audit log failed", { error: err }));
 
     // Revalidate detailed one-liner list pages to show updated entry immediately
     revalidatePath('/content-department/detailed-one-liner');

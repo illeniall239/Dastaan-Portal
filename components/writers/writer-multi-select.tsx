@@ -8,8 +8,9 @@ import { X, Plus, Pencil, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
-import type { Writer, CallReportWriter } from "@/types";
+import type { Writer } from "@/types";
 import { WriterContactModal } from "./writer-contact-modal";
+import { useWriters } from "@/lib/hooks";
 
 interface WriterMultiSelectProps {
   value: Array<{
@@ -41,8 +42,11 @@ export function WriterMultiSelect({
   const [inputValue, setInputValue] = useState("");
   const [showDropdown, setShowDropdown] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState(0);
-  const [writers, setWriters] = useState<Writer[]>([]);
-  const [loading, setLoading] = useState(false);
+
+  // Use React Query for writers
+  // Note: We're filtering locally, which is fine for < 1000 items. If list grows, we might need server-side search.
+  const { data: writers = [], isLoading: loading, refetch } = useWriters();
+
   const inputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const supabase = createClient();
@@ -55,30 +59,6 @@ export function WriterMultiSelect({
     email?: string;
     phone?: string;
   } | null>(null);
-
-  // Fetch writers from database
-  useEffect(() => {
-    fetchWriters();
-  }, []);
-
-  const fetchWriters = async () => {
-    setLoading(true);
-    try {
-      const { data, error } = await supabase
-        .from("writers")
-        .select("*")
-        .eq("status", "active")
-        .order("name");
-
-      if (error) throw error;
-      setWriters(data || []);
-    } catch (error) {
-      console.error("Error fetching writers:", error);
-      toast.error("Failed to load writers");
-    } finally {
-      setLoading(false);
-    }
-  };
 
   // Filter writers based on input and exclude already selected
   const selectedWriterIds = value.map(w => w.writer_id);
@@ -94,9 +74,12 @@ export function WriterMultiSelect({
     ...(inputValue.trim() ? [{ id: "__add_new__", name: `+ Add "${inputValue.trim()}" as new writer`, isAddNew: true }] : [])
   ];
 
+  // Fix type for options to avoid TS errors
+  const safeOptions = options as (Writer & { isAddNew?: boolean })[];
+
   // Add writer to selection
-  const addWriter = async (writer: Writer | { id: string; name: string; isAddNew?: boolean }) => {
-    if ('isAddNew' in writer && writer.isAddNew) {
+  const addWriter = async (writer: Writer & { isAddNew?: boolean }) => {
+    if (writer.isAddNew) {
       const newName = inputValue.trim();
       try {
         const { data, error } = await supabase
@@ -114,7 +97,9 @@ export function WriterMultiSelect({
           return;
         }
 
-        await fetchWriters();
+        // Refetch writers to update cache
+        refetch();
+
         const addedWriter = {
           writer_id: data.id,
           writer_name: data.name,
@@ -137,8 +122,8 @@ export function WriterMultiSelect({
     const newWriter = {
       writer_id: writer.id,
       writer_name: writer.name,
-      writer_email: undefined,
-      writer_phone: undefined,
+      writer_email: writer.email,
+      writer_phone: writer.phone, // Include these fields from the writer object
       display_order: value.length,
     };
 
@@ -185,27 +170,27 @@ export function WriterMultiSelect({
 
   // Handle keyboard navigation
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (!showDropdown && options.length > 0) {
+    if (!showDropdown && safeOptions.length > 0) {
       if (e.key === "ArrowDown" || e.key === "ArrowUp") {
         setShowDropdown(true);
       }
     }
 
-    if (showDropdown && options.length > 0) {
+    if (showDropdown && safeOptions.length > 0) {
       if (e.key === "ArrowDown") {
         e.preventDefault();
         setHighlightedIndex((prev) =>
-          prev < options.length - 1 ? prev + 1 : 0
+          prev < safeOptions.length - 1 ? prev + 1 : 0
         );
       } else if (e.key === "ArrowUp") {
         e.preventDefault();
         setHighlightedIndex((prev) =>
-          prev > 0 ? prev - 1 : options.length - 1
+          prev > 0 ? prev - 1 : safeOptions.length - 1
         );
       } else if (e.key === "Enter") {
         e.preventDefault();
-        if (options[highlightedIndex]) {
-          addWriter(options[highlightedIndex] as Writer);
+        if (safeOptions[highlightedIndex]) {
+          addWriter(safeOptions[highlightedIndex]);
         }
       } else if (e.key === "Escape") {
         setShowDropdown(false);
@@ -310,17 +295,17 @@ export function WriterMultiSelect({
         </div>
 
         {/* Dropdown */}
-        {showDropdown && options.length > 0 && !disabled && !loading && (
+        {showDropdown && safeOptions.length > 0 && !disabled && !loading && (
           <div
             ref={dropdownRef}
             className="absolute z-50 w-full mt-1 bg-white border rounded-md shadow-lg max-h-60 overflow-y-auto"
           >
-            {options.map((option, index) => {
-              const isAddNew = 'isAddNew' in option && option.isAddNew;
+            {safeOptions.map((option, index) => {
+              const isAddNew = option.isAddNew;
               return (
                 <div
                   key={option.id}
-                  onClick={() => addWriter(option as Writer)}
+                  onClick={() => addWriter(option)}
                   onMouseEnter={() => setHighlightedIndex(index)}
                   className={cn(
                     "px-4 py-2 cursor-pointer text-sm",

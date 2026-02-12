@@ -2,8 +2,10 @@ import { NextRequest } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getCurrentUser } from '@/lib/auth';
 import { NotificationRepository } from '@/lib/repositories/notification-repository';
+import { logger } from '@/lib/logger';
 import { applyRateLimit } from '@/lib/api-middleware';
 import { RateLimitPresets } from '@/lib/rate-limit-redis';
+import { logAuditAction, getRequestContext } from "@/lib/audit/server";
 
 export async function GET(request: NextRequest) {
   try {
@@ -74,7 +76,7 @@ export async function GET(request: NextRequest) {
       headers: { 'Content-Type': 'application/json' },
     });
   } catch (error) {
-    console.error('Error fetching cross-team shares:', error);
+    logger.error('Error fetching cross-team shares:', error);
     return new Response(JSON.stringify({ error: 'Failed to fetch cross-team shares' }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' },
@@ -235,15 +237,25 @@ export async function POST(request: NextRequest) {
       }
     } catch (notifError) {
       // Notification failure should not fail the share
-      console.error('Failed to send cross-team share notifications:', notifError);
+      logger.error('Failed to send cross-team share notifications:', notifError);
     }
+
+    // Audit log
+    const requestContext = getRequestContext(request);
+    await logAuditAction({
+      entityType: "cross_team_share",
+      entityId: data[0].id,
+      action: "created",
+      performedBy: user.id,
+      details: { ...requestContext, newValues: { call_report_id, from_team_id, to_team_id } },
+    }).catch(err => logger.error("Audit log failed", { error: err }));
 
     return new Response(JSON.stringify(data[0]), {
       status: 201,
       headers: { 'Content-Type': 'application/json' },
     });
   } catch (error) {
-    console.error('Error creating cross-team share:', error);
+    logger.error('Error creating cross-team share:', error);
     return new Response(JSON.stringify({ error: 'Failed to create cross-team share' }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' },

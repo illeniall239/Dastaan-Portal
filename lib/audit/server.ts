@@ -1,8 +1,10 @@
 /**
  * Audit Logging Server Utilities
  *
- * Provides comprehensive audit trail for admin operations and sensitive actions.
- * All admin operations that bypass RLS MUST be logged for:
+ * Provides comprehensive audit trail for all data mutations.
+ * Uses createAdminClient() to bypass RLS so audit logs are always writable.
+ *
+ * Logged for:
  * - Security accountability
  * - Compliance (GDPR, SOC 2, etc.)
  * - Forensic investigation
@@ -79,30 +81,29 @@ export interface CreateAuditLogParams {
 }
 
 /**
- * Log an admin action to the audit trail
+ * Log an action to the audit trail
  *
- * This function MUST be called for all operations using createAdminClient()
- * to maintain a complete audit trail.
+ * Call after any data mutation to maintain a complete audit trail.
+ * Uses admin client to bypass RLS — works from any route context.
  *
  * @param params - Audit log parameters
  * @returns The created audit log entry, or null if logging failed
  *
  * @example
  * ```typescript
- * await logAdminAction({
- *   entityType: 'user',
- *   entityId: userId,
+ * await logAuditAction({
+ *   entityType: 'episode',
+ *   entityId: episode.id,
  *   action: 'created',
- *   performedBy: currentUser.id,
+ *   performedBy: user.id,
  *   details: {
- *     ipAddress: request.headers.get('x-forwarded-for'),
- *     userAgent: request.headers.get('user-agent'),
- *     newValues: { email, role, department }
+ *     ...getRequestContext(request),
+ *     newValues: { title, status }
  *   }
  * });
  * ```
  */
-export async function logAdminAction(
+export async function logAuditAction(
   params: CreateAuditLogParams
 ): Promise<AuditLogEntry | null> {
   const supabase = createAdminClient();
@@ -135,33 +136,13 @@ export async function logAdminAction(
 }
 
 /**
- * Log multiple admin actions in a single transaction
+ * Log multiple actions in a single transaction
  * Useful when a single operation affects multiple entities
  *
  * @param entries - Array of audit log parameters
  * @returns Array of created audit log entries
- *
- * @example
- * ```typescript
- * await logAdminActions([
- *   {
- *     entityType: 'user',
- *     entityId: userId,
- *     action: 'role_changed',
- *     performedBy: adminId,
- *     details: { from: 'evaluator', to: 'content_manager' }
- *   },
- *   {
- *     entityType: 'permissions',
- *     entityId: userId,
- *     action: 'permissions_updated',
- *     performedBy: adminId,
- *     details: { reason: 'Promotion to content manager' }
- *   }
- * ]);
- * ```
  */
-export async function logAdminActions(
+export async function logAuditActions(
   entries: CreateAuditLogParams[]
 ): Promise<AuditLogEntry[]> {
   const supabase = createAdminClient();
@@ -333,3 +314,9 @@ export function getRequestContext(request: Request) {
     userAgent,
   };
 }
+
+/** @deprecated Use logAuditAction instead */
+export const logAdminAction = logAuditAction;
+
+/** @deprecated Use logAuditActions instead */
+export const logAdminActions = logAuditActions;

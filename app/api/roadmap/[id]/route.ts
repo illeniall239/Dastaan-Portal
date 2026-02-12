@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getRoadmapData } from "@/lib/roadmap/server";
+import { logger } from "@/lib/logger";
 import { applyRateLimit } from '@/lib/api-middleware';
 import { RateLimitPresets } from '@/lib/rate-limit-redis';
 
@@ -27,7 +28,7 @@ export async function GET(
     console.log("[API] Successfully fetched roadmap data for:", data.callReportId);
     return NextResponse.json(data);
   } catch (error) {
-    console.error("[API] Error fetching roadmap data:", error);
+    logger.error("[API] Error fetching roadmap data:", error);
     const errorMessage = error instanceof Error ? error.message : "Unknown error";
     return NextResponse.json(
       { error: `Failed to fetch roadmap data: ${errorMessage}` },

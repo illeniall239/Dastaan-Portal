@@ -6,6 +6,7 @@ import { withApiPerf, applyRateLimit, addRateLimitHeaders, withCors } from "@/li
 import { RateLimitPresets } from "@/lib/rate-limit-redis";
 import { parsePaginationParams, applyPagination, createPaginatedResponse } from "@/lib/utils/pagination";
 import { revalidatePath } from 'next/cache';
+import { logAuditAction, getRequestContext } from "@/lib/audit/server";
 import {
   unauthorizedError,
   forbiddenError,
@@ -181,6 +182,26 @@ export async function POST(request: Request) {
       }
 
       return handleDatabaseError(error, "creating episodes");
+    }
+
+    // Audit log each created episode
+    const requestContext = getRequestContext(request);
+    for (const ep of createdEpisodes) {
+      await logAuditAction({
+        entityType: "episode",
+        entityId: ep.id,
+        action: "created",
+        performedBy: user.id,
+        details: {
+          ...requestContext,
+          newValues: {
+            episode_number: ep.episode_number,
+            title: ep.title,
+            call_report_id: ep.call_report_id,
+            story_id: ep.story_id,
+          },
+        },
+      }).catch(err => logger.error("Audit log failed", { error: err }));
     }
 
     const res = NextResponse.json({

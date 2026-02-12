@@ -1,8 +1,10 @@
 import { NextRequest } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getCurrentUser } from '@/lib/auth';
+import { logger } from '@/lib/logger';
 import { applyRateLimit } from '@/lib/api-middleware';
 import { RateLimitPresets } from '@/lib/rate-limit-redis';
+import { logAuditAction, getRequestContext } from "@/lib/audit/server";
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -74,7 +76,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       headers: { 'Content-Type': 'application/json' },
     });
   } catch (error) {
-    console.error('Error fetching cross-team share:', error);
+    logger.error('Error fetching cross-team share:', error);
     return new Response(JSON.stringify({ error: 'Failed to fetch cross-team share' }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' },
@@ -100,7 +102,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     const body = await request.json();
 
     // Only allow updating status (cancel), notes, deadline
-    const updates: Record<string, unknown> = { updated_at: new Date().toISOString() };
+    const updates: Record<string, unknown> = { updated_at: new Date().toISOString(), updated_by: user.id };
 
     if (body.status === 'cancelled') {
       updates.status = 'cancelled';
@@ -125,12 +127,22 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       throw new Error(error.message);
     }
 
+    // Audit log
+    const requestContext = getRequestContext(request);
+    await logAuditAction({
+      entityType: "cross_team_share",
+      entityId: id,
+      action: "updated",
+      performedBy: user.id,
+      details: { ...requestContext, newValues: updates },
+    }).catch(err => logger.error("Audit log failed", { error: err }));
+
     return new Response(JSON.stringify(data[0]), {
       status: 200,
       headers: { 'Content-Type': 'application/json' },
     });
   } catch (error) {
-    console.error('Error updating cross-team share:', error);
+    logger.error('Error updating cross-team share:', error);
     return new Response(JSON.stringify({ error: 'Failed to update cross-team share' }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' },

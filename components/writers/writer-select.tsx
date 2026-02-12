@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import {
   Select,
   SelectContent,
@@ -9,10 +9,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
+import { Plus, Loader2 } from "lucide-react";
 import { AddWriterDialog } from "./add-writer-dialog";
 import type { Writer } from "@/types";
-import { toast } from "sonner";
+import { useWriters } from "@/lib/hooks";
 
 interface WriterSelectProps {
   value?: string;
@@ -29,36 +29,15 @@ export function WriterSelect({
   required = false,
   placeholder = "Select a writer",
 }: WriterSelectProps) {
-  const [writers, setWriters] = useState<Writer[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const { data: writers = [], isLoading, refetch } = useWriters();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
-  // Fetch writers on mount
-  useEffect(() => {
-    fetchWriters();
-  }, []);
-
-  const fetchWriters = async () => {
-    setIsLoading(true);
-    try {
-      const response = await fetch("/api/writers/list");
-      if (!response.ok) {
-        throw new Error("Failed to fetch writers");
-      }
-      const data = await response.json();
-      setWriters(data);
-    } catch (error) {
-      console.error("Error fetching writers:", error);
-      toast.error("Failed to load writers");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   const handleWriterAdded = (newWriter: Writer) => {
-    // Add new writer to the list
-    setWriters((prev) => [...prev, newWriter].sort((a, b) => a.name.localeCompare(b.name)));
+    // Refetch to ensure the new writer is in our list (though invalidation should handle it)
+    refetch();
     // Automatically select the newly added writer
+    // Note: Since useWriters filters/sorts, we might need to wait for refetch.
+    // However, for immediate feedback we can rely on the ID.
     onChange(newWriter.id, newWriter);
   };
 
@@ -67,7 +46,7 @@ export function WriterSelect({
       setIsDialogOpen(true);
     } else {
       const selectedWriter = writers.find((w) => w.id === writerId);
-      onChange(writerId, selectedWriter);
+      onChange(writerId, selectedWriter || undefined); // Ensure undefined is passed if not found
     }
   };
 
@@ -80,7 +59,14 @@ export function WriterSelect({
         required={required}
       >
         <SelectTrigger>
-          <SelectValue placeholder={isLoading ? "Loading writers..." : placeholder} />
+          {isLoading ? (
+            <div className="flex items-center gap-2">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              <span className="text-muted-foreground">Loading...</span>
+            </div>
+          ) : (
+            <SelectValue placeholder={placeholder} />
+          )}
         </SelectTrigger>
         <SelectContent className="max-h-[300px] overflow-y-auto">
           {writers.map((writer) => (

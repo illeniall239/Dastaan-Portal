@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { logger } from "@/lib/logger";
 import { applyRateLimit } from "@/lib/api-middleware";
 import { RateLimitPresets } from "@/lib/rate-limit-redis";
+import { logAuditAction, getRequestContext } from "@/lib/audit/server";
 
 export const dynamic = "force-dynamic";
 
@@ -42,7 +44,7 @@ export async function GET(
 
     return NextResponse.json({ meeting });
   } catch (error) {
-    console.error("Meeting GET error:", error);
+    logger.error("Meeting GET error:", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }
@@ -105,6 +107,8 @@ export async function PATCH(
       );
     }
 
+    updateData.updated_by = user.id;
+
     const { data: meeting, error } = await supabase
       .from("meetings")
       .update(updateData)
@@ -113,16 +117,26 @@ export async function PATCH(
       .single();
 
     if (error) {
-      console.error("Error updating meeting:", error);
+      logger.error("Error updating meeting:", error);
       return NextResponse.json(
         { error: "Failed to update meeting" },
         { status: 500 }
       );
     }
 
+    // Audit log
+    const requestContext = getRequestContext(request);
+    await logAuditAction({
+      entityType: "meeting",
+      entityId: id,
+      action: "updated",
+      performedBy: user.id,
+      details: { ...requestContext, newValues: updateData },
+    }).catch(err => logger.error("Audit log failed", { error: err }));
+
     return NextResponse.json({ meeting });
   } catch (error) {
-    console.error("Meeting PATCH error:", error);
+    logger.error("Meeting PATCH error:", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }
@@ -155,16 +169,26 @@ export async function DELETE(
     const { error } = await supabase.from("meetings").delete().eq("id", id);
 
     if (error) {
-      console.error("Error deleting meeting:", error);
+      logger.error("Error deleting meeting:", error);
       return NextResponse.json(
         { error: "Failed to delete meeting" },
         { status: 500 }
       );
     }
 
+    // Audit log
+    const requestContext = getRequestContext(request);
+    await logAuditAction({
+      entityType: "meeting",
+      entityId: id,
+      action: "deleted",
+      performedBy: user.id,
+      details: { ...requestContext },
+    }).catch(err => logger.error("Audit log failed", { error: err }));
+
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Meeting DELETE error:", error);
+    logger.error("Meeting DELETE error:", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

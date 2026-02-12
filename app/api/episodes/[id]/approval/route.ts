@@ -6,6 +6,7 @@ import { idParamSchema } from "@/lib/validations/uuid-params";
 import { z } from "zod";
 import { applyRateLimit } from '@/lib/api-middleware';
 import { RateLimitPresets } from '@/lib/rate-limit-redis';
+import { logAuditAction, getRequestContext } from "@/lib/audit/server";
 
 const approvalSchema = z.object({
   approval_status: z.enum(["approved", "rejected", "needs_revision"]),
@@ -86,6 +87,19 @@ export async function PATCH(
     if (!data) {
       return NextResponse.json({ error: "Episode not found" }, { status: 404 });
     }
+
+    // Audit log the approval action
+    const requestContext = getRequestContext(request);
+    await logAuditAction({
+      entityType: "episode",
+      entityId: id,
+      action: "approval_set",
+      performedBy: user.id,
+      details: {
+        ...requestContext,
+        newValues: { approval_status: parsed.data.approval_status },
+      },
+    }).catch(err => logger.error("Audit log failed", { error: err }));
 
     return NextResponse.json({
       success: true,

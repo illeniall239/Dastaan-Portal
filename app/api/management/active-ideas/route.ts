@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 import { getActiveIdeasDetails } from '@/lib/management/active-ideas-details';
 import { getCurrentUser } from '@/lib/auth';
+import { logger } from '@/lib/logger';
 import { applyRateLimit } from '@/lib/api-middleware';
 import { RateLimitPresets } from '@/lib/rate-limit-redis';
 
@@ -27,7 +28,7 @@ export async function GET(request: NextRequest) {
       headers: { 'Content-Type': 'application/json' },
     });
   } catch (error) {
-    console.error('Error fetching active ideas:', error);
+    logger.error('Error fetching active ideas:', error);
     return new Response(JSON.stringify({ error: 'Failed to fetch active ideas' }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' },

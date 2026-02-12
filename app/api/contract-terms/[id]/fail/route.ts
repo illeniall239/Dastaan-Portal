@@ -7,6 +7,7 @@ import {
   addRateLimitHeaders,
 } from "@/lib/api-middleware";
 import { RateLimitPresets } from "@/lib/rate-limit-redis";
+import { logAuditAction, getRequestContext } from "@/lib/audit/server";
 
 const failSchema = z.object({
   failed_reason: z
@@ -108,6 +109,16 @@ export async function POST(
       logger.error("Error updating story status", { error: storyError, context: "POST /api/contract-terms/[id]/fail" });
       // Continue even if story update fails
     }
+
+    // Audit log
+    const requestContext = getRequestContext(request);
+    await logAuditAction({
+      entityType: "negotiation",
+      entityId: id,
+      action: "failed",
+      performedBy: user.id,
+      details: { ...requestContext, newValues: { failed_reason, status: "failed" } },
+    }).catch(err => logger.error("Audit log failed", { error: err }));
 
     const res = NextResponse.json({
       message: "Negotiation marked as failed successfully",

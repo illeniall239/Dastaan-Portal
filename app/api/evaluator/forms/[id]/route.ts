@@ -6,6 +6,7 @@ import { RateLimitPresets } from "@/lib/rate-limit-redis";
 import { revalidatePath } from 'next/cache';
 import { updateEvaluationSchema } from "@/lib/validations/evaluations";
 import { idParamSchema } from "@/lib/validations/uuid-params";
+import { logAuditAction, getRequestContext } from "@/lib/audit/server";
 
 /**
  * PATCH /api/evaluator/forms/[id]
@@ -90,6 +91,16 @@ export async function PATCH(
       { status: 500 }
     ));
   }
+
+  // Audit log
+  const requestContext = getRequestContext(request);
+  await logAuditAction({
+    entityType: "evaluator_form",
+    entityId: id,
+    action: "updated",
+    performedBy: user.id,
+    details: { ...requestContext, newValues: validatedData },
+  }).catch(err => logger.error("Audit log failed", { error: err }));
 
   // Revalidate evaluation list pages to show updated evaluation immediately
   revalidatePath('/content-department/evaluations-list');

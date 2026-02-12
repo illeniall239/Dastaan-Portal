@@ -168,6 +168,7 @@ export interface Story {
   created_by: string;
   created_at: string;
   updated_at: string;
+  updated_by?: string;
 }
 
 // Evaluation Status types
@@ -236,6 +237,7 @@ export interface Meeting {
   created_by: string;
   created_at: string;
   updated_at: string;
+  updated_by?: string;
   // Populated via join
   organizer_name?: string;
 }
@@ -308,6 +310,7 @@ export interface CallReport {
   created_by: string;
   created_at: string;
   updated_at: string;
+  updated_by?: string;
 
   // Team information
   team_id?: string; // Team that created this call report
@@ -494,6 +497,7 @@ export interface Episode {
   logged_by: string;
   created_at: string;
   updated_at: string;
+  updated_by?: string;
   // Versioning
   version: number;
   is_current: boolean;
@@ -557,6 +561,7 @@ export interface EpisodicEvaluation {
   submitted_at: string;
   created_at: string;
   updated_at: string;
+  updated_by?: string;
 }
 
 export interface EpisodicEvaluationDraft {
@@ -603,6 +608,7 @@ export interface DetailedOneLiner {
   created_by: string;
   created_at: string;
   updated_at: string;
+  updated_by?: string;
 }
 
 export interface NarrativeBreakdownItem {
@@ -1028,4 +1034,5 @@ export interface CrossTeamShare {
   completed_evaluations: number;
   created_at: string;
   updated_at: string;
+  updated_by?: string;
 }

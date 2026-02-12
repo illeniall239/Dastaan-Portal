@@ -1,8 +1,10 @@
 import { NextRequest } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getCurrentUser } from '@/lib/auth';
+import { logger } from '@/lib/logger';
 import { applyRateLimit } from '@/lib/api-middleware';
 import { RateLimitPresets } from '@/lib/rate-limit-redis';
+import { logAuditAction, getRequestContext } from "@/lib/audit/server";
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -122,12 +124,22 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       throw new Error(error.message);
     }
 
+    // Audit log
+    const requestContext = getRequestContext(request);
+    await logAuditAction({
+      entityType: "cross_team_evaluation",
+      entityId: data[0].id,
+      action: "submitted",
+      performedBy: user.id,
+      details: { ...requestContext, newValues: { cross_team_share_id: shareId, average_score, decision } },
+    }).catch(err => logger.error("Audit log failed", { error: err }));
+
     return new Response(JSON.stringify(data[0]), {
       status: 201,
       headers: { 'Content-Type': 'application/json' },
     });
   } catch (error) {
-    console.error('Error submitting cross-team evaluation:', error);
+    logger.error('Error submitting cross-team evaluation:', error);
     return new Response(JSON.stringify({ error: 'Failed to submit evaluation' }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' },

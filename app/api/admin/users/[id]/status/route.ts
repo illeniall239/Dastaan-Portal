@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { z } from "zod";
 import { applyRateLimit, addRateLimitHeaders, withCors } from "@/lib/api-middleware";
 import { RateLimitPresets } from "@/lib/rate-limit-redis";
+import { logAuditAction, getRequestContext } from "@/lib/audit/server";
 
 const statusUpdateSchema = z.object({
   status: z.enum(["active", "inactive"]),
@@ -47,6 +48,16 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     logger.error("Error updating user status", { error, context: "PATCH /api/admin/users/[id]/status" });
     return withCors(request, NextResponse.json({ error: "Failed to update user status" }, { status: 500 }));
   }
+
+  // Audit log
+  const requestContext = getRequestContext(request);
+  await logAuditAction({
+    entityType: "user",
+    entityId: id,
+    action: "status_changed",
+    performedBy: user.id,
+    details: { ...requestContext, newValues: { status } },
+  }).catch(err => logger.error("Audit log failed", { error: err }));
 
   return addRateLimitHeaders(withCors(request, NextResponse.json({ message: "User status updated successfully" })), rate.result);
 }

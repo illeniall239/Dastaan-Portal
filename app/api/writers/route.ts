@@ -2,8 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { requireApiAuth } from '@/lib/api/auth';
 import { createWriterEngagementSchema } from '@/lib/validations/writer-engagements';
+import { logger } from '@/lib/logger';
 import { applyRateLimit, addRateLimitHeaders } from '@/lib/api-middleware';
 import { RateLimitPresets } from '@/lib/rate-limit-redis';
+import { logAuditAction, getRequestContext } from "@/lib/audit/server";
 
 export async function GET(request: NextRequest) {
   try {
@@ -83,7 +85,7 @@ export async function GET(request: NextRequest) {
       rate.result
     );
   } catch (error) {
-    console.error('Error fetching writer engagements:', error);
+    logger.error('Error fetching writer engagements:', error);
     return NextResponse.json(
       { error: 'Failed to fetch writer engagements' },
       { status: 500 }
@@ -128,12 +130,22 @@ export async function POST(request: NextRequest) {
       throw new Error(error.message);
     }
 
+    // Audit log
+    const requestContext = getRequestContext(request);
+    await logAuditAction({
+      entityType: "writer_engagement",
+      entityId: data[0].id,
+      action: "created",
+      performedBy: user.id,
+      details: { ...requestContext, newValues: { writer_id, date_engaged, time_slot } },
+    }).catch(err => logger.error("Audit log failed", { error: err }));
+
     return addRateLimitHeaders(
       NextResponse.json(data[0], { status: 201 }),
       rate.result
     );
   } catch (error) {
-    console.error('Error creating writer engagement:', error);
+    logger.error('Error creating writer engagement:', error);
     return NextResponse.json(
       { error: 'Failed to create writer engagement' },
       { status: 500 }

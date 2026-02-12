@@ -8,6 +8,7 @@ import {
 } from "@/lib/api-middleware";
 import { RateLimitPresets } from "@/lib/rate-limit-redis";
 import { revalidatePath } from 'next/cache';
+import { logAuditAction, getRequestContext } from "@/lib/audit/server";
 
 /**
  * GET /api/negotiations/[id]
@@ -128,7 +129,7 @@ export async function PATCH(
 
     const { data, error } = await supabase
       .from("negotiations")
-      .update(updates)
+      .update({ ...updates, updated_by: user.id })
       .eq("id", id)
       .select()
       .single();
@@ -140,6 +141,16 @@ export async function PATCH(
         { status: 500 }
       );
     }
+
+    // Audit log
+    const requestContext = getRequestContext(request);
+    await logAuditAction({
+      entityType: "negotiation",
+      entityId: id,
+      action: "updated",
+      performedBy: user.id,
+      details: { ...requestContext, newValues: updates },
+    }).catch(err => logger.error("Audit log failed", { error: err }));
 
     // Revalidate contract terms list pages to show updated term immediately
     revalidatePath('/content-department/contract-terms');
@@ -209,6 +220,16 @@ export async function DELETE(
         { status: 500 }
       );
     }
+
+    // Audit log
+    const requestContext = getRequestContext(request);
+    await logAuditAction({
+      entityType: "negotiation",
+      entityId: id,
+      action: "deleted",
+      performedBy: user.id,
+      details: { ...requestContext },
+    }).catch(err => logger.error("Audit log failed", { error: err }));
 
     // Revalidate contract terms list pages to show deleted term removed immediately
     revalidatePath('/content-department/contract-terms');

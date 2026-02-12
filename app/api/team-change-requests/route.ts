@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { logger } from '@/lib/logger';
 import { applyRateLimit } from '@/lib/api-middleware';
 import { RateLimitPresets } from '@/lib/rate-limit-redis';
+import { logAuditAction, getRequestContext } from "@/lib/audit/server";
 
 export async function POST(request: NextRequest) {
   try {
@@ -66,6 +67,16 @@ export async function POST(request: NextRequest) {
 
       if (notifError) throw notifError;
     }
+
+    // Audit log
+    const requestContext = getRequestContext(request);
+    await logAuditAction({
+      entityType: "team_change_request",
+      entityId: `${team_id}_${user_id}`,
+      action: "created",
+      performedBy: user.id,
+      details: { ...requestContext, newValues: { team_id, request_type, user_id, reason } },
+    }).catch(err => logger.error("Audit log failed", { error: err }));
 
     return NextResponse.json({ success: true });
   } catch (error) {
