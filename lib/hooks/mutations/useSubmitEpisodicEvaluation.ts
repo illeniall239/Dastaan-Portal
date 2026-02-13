@@ -48,10 +48,10 @@ interface UseSubmitEpisodicEvaluationOptions {
  * const handleSubmit = (formData) => {
  *   submitEpisode.mutate({
  *     episode_id: episodeId,
- *     premise_conflict_score: 8,
- *     storyline_plot_score: 9,
- *     episodic_progression_score: 8,
- *     characters_score: 7,
+ *     conflict_of_content_score: 8,
+ *     characterization_score: 9,
+ *     story_progression_score: 8,
+ *     whats_next_element_score: 7,
  *     decision: "approve",
  *     ...formData
  *   });
