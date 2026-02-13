@@ -421,7 +421,7 @@ export default function ProgrammerEpisodesPage() {
                 throw new Error(data.error || "Failed to fetch evaluations");
             }
 
-            setMyEvaluations(data.evaluations || []);
+            setMyEvaluations(data.data || []);
         } catch (error: any) {
             console.error("Error fetching evaluations:", error);
             toast.error(error.message || "Failed to load evaluations");
@@ -669,9 +669,15 @@ export default function ProgrammerEpisodesPage() {
             let projectStatus: string | undefined;
 
             if (ep.call_report_id && ep.call_report) {
+                const callReport = ep.call_report as any;
                 projectId = `call_report_${ep.call_report_id}`;
-                projectName = ep.call_report.working_title;
-                writerName = ep.call_report.writer_name;
+                projectName = callReport.working_title;
+                const crWriters = callReport.call_report_writers;
+                if (crWriters && crWriters.length > 0) {
+                    const sorted = [...crWriters].sort((a: any, b: any) => (a.display_order ?? 0) - (b.display_order ?? 0));
+                    writerName = sorted.map((w: any) => w.writer?.name).filter(Boolean).join(", ");
+                }
+                if (!writerName) writerName = callReport.writer_name;
                 projectType = "call_report";
             } else if (ep.story_id && ep.story) {
                 projectId = `story_${ep.story_id}`;

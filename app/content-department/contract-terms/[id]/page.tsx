@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { redirect, notFound } from "next/navigation";
 import { ContractTermDetails } from "@/components/contract-terms/contract-term-details";
 import { BackButton } from "@/components/ui/back-button";
+import { getAttachmentsForEntityServer } from "@/lib/attachments/server";
 
 export const dynamic = "force-dynamic";
 
@@ -71,6 +72,14 @@ export default async function ContentDepartmentContractTermDetailsPage({
   // Only content_manager can edit
   const canEdit = userData.role === "content_manager" || userData.role === "admin";
 
+  // Fetch attachments
+  let attachments: any[] = [];
+  try {
+    attachments = await getAttachmentsForEntityServer("negotiation", resolvedParams.id);
+  } catch (error) {
+    console.error("Error fetching attachments:", error);
+  }
+
   return (
     <div className="mobile-container mobile-section space-y-4 sm:space-y-6">
       <div className="flex flex-col gap-4 sm:gap-6 mb-8">
@@ -86,6 +95,7 @@ export default async function ContentDepartmentContractTermDetailsPage({
         contractTerm={contractTerm}
         basePath="/content-department/contract-terms"
         canEdit={canEdit}
+        attachments={attachments}
       />
     </div>
   );

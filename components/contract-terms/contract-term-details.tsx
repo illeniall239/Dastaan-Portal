@@ -9,20 +9,23 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
-import { CheckCircle, XCircle, ArrowLeft } from "lucide-react";
+import { CheckCircle, XCircle, ArrowLeft, PaperclipIcon, Download } from "lucide-react";
 import type { ContractTerm } from "@/lib/contract-terms/client";
+import Link from "next/link";
 import type { DeliveryEpisode } from "@/lib/validations/contract-terms";
 
 interface ContractTermDetailsProps {
   contractTerm: ContractTerm;
   basePath: string;
   canEdit?: boolean;
+  attachments?: any[];
 }
 
 export function ContractTermDetails({
   contractTerm,
   basePath,
   canEdit = true,
+  attachments = [],
 }: ContractTermDetailsProps) {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
@@ -269,6 +272,48 @@ export function ContractTermDetails({
               <p className="whitespace-pre-wrap bg-destructive/10 p-4 rounded border border-destructive/20">
                 {contractTerm.failed_reason}
               </p>
+            </div>
+          )}
+
+          {/* Signed Copy / Attachments */}
+          {attachments.length > 0 && (
+            <div>
+              <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                <PaperclipIcon className="h-5 w-5" />
+                Signed Copy / Attachments
+              </h3>
+              <div className="space-y-2">
+                {attachments.map((attachment: any) => (
+                  <div
+                    key={attachment.id}
+                    className="flex items-center justify-between p-3 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      <PaperclipIcon className="h-4 w-4 text-slate-400" />
+                      <div>
+                        <p className="font-medium text-sm text-slate-900">{attachment.file_name}</p>
+                        <p className="text-xs text-slate-500 mt-0.5">
+                          {(attachment.file_size / 1024 / 1024).toFixed(2)} MB
+                          {attachment.users?.name && ` • ${attachment.users.name}`}
+                          {" • "}
+                          {new Date(attachment.uploaded_at).toLocaleDateString()}
+                        </p>
+                      </div>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="text-xs"
+                      asChild
+                    >
+                      <Link href={`/api/attachments/${attachment.id}`} target="_blank" rel="noopener noreferrer">
+                        <Download className="h-3.5 w-3.5 mr-1.5" />
+                        Download
+                      </Link>
+                    </Button>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
         </CardContent>

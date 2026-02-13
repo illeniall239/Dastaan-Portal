@@ -43,10 +43,12 @@ import {
   ChevronDown,
   Pencil,
   Info,
+  History,
 } from "lucide-react";
 import { formatFileSize } from "@/lib/validations/episodes";
 import { EpisodeUploadForm, type EpisodeFormEntry } from "@/components/episodes/episode-upload-form";
 import { EpisodeFileUpload } from "@/components/episodes/episode-file-upload";
+import { EpisodeRevisions } from "@/components/episodes/episode-revisions";
 import type { EpisodeWithDetails } from "@/types";
 import { BackButton } from "@/components/ui/back-button";
 import { formatDate } from "@/lib/utils/format-date";
@@ -903,51 +905,59 @@ export default function ContentDepartmentEpisodesPage() {
                           {isExpanded &&
                             project.episodes.map((episode) => (
                               <TableRow key={episode.id} className="hover:bg-slate-50">
-                                <TableCell className="pl-12">
-                                  <Badge variant="outline">EP {episode.episode_number}</Badge>
-                                </TableCell>
-                                <TableCell>
-                                  {episode.attachment_url ? (
-                                    <button
-                                      onClick={() => handleDownload(episode)}
-                                      className="text-blue-600 hover:text-blue-800 hover:underline text-sm flex items-center gap-1"
-                                    >
-                                      <FileText className="h-4 w-4" />
-                                      {episode.attachment_name}
-                                    </button>
-                                  ) : (
-                                    <span className="text-muted-foreground italic text-sm">No file</span>
-                                  )}
-                                </TableCell>
-                                <TableCell>
-                                  {episode.logged_by_user?.name || "Unknown"}
-                                </TableCell>
-                                <TableCell>
-                                  {formatDate(episode.created_at)}
-                                </TableCell>
-                                <TableCell className="text-right">
-                                  <DropdownMenu>
-                                    <DropdownMenuTrigger asChild>
-                                      <Button variant="ghost" size="sm">
-                                        <MoreVertical className="h-4 w-4" />
-                                      </Button>
-                                    </DropdownMenuTrigger>
-                                    <DropdownMenuContent align="end" side="bottom" collisionPadding={10} className="z-50 w-[calc(100vw-2rem)] max-w-64 md:max-w-none md:w-56">
-                                      {canEditEpisode(episode) && (
-                                        <DropdownMenuItem onClick={() => router.push(`/content-department/episodes/${episode.id}/edit`)}>
-                                          <Pencil className="mr-2 h-4 w-4" />
-                                          Edit
-                                        </DropdownMenuItem>
+                                  <TableCell className="pl-12">
+                                    <div className="flex items-center gap-2">
+                                      <Badge variant="outline">EP {episode.episode_number}</Badge>
+                                      {(episode as any).revision_count > 0 && (
+                                        <Badge variant="secondary" className="text-xs">
+                                          <History className="h-3 w-3 mr-0.5" />
+                                          {(episode as any).revision_count} rev
+                                        </Badge>
                                       )}
-                                      {episode.attachment_url && (
-                                        <DropdownMenuItem onClick={() => handleDownload(episode)}>
-                                          <Download className="mr-2 h-4 w-4" />
-                                          Download
-                                        </DropdownMenuItem>
-                                      )}
-                                    </DropdownMenuContent>
-                                  </DropdownMenu>
-                                </TableCell>
+                                    </div>
+                                  </TableCell>
+                                  <TableCell>
+                                    {episode.attachment_url ? (
+                                      <button
+                                        onClick={() => handleDownload(episode)}
+                                        className="text-blue-600 hover:text-blue-800 hover:underline text-sm flex items-center gap-1"
+                                      >
+                                        <FileText className="h-4 w-4" />
+                                        {episode.attachment_name}
+                                      </button>
+                                    ) : (
+                                      <span className="text-muted-foreground italic text-sm">No file</span>
+                                    )}
+                                  </TableCell>
+                                  <TableCell>
+                                    {episode.logged_by_user?.name || "Unknown"}
+                                  </TableCell>
+                                  <TableCell>
+                                    {formatDate(episode.created_at)}
+                                  </TableCell>
+                                  <TableCell className="text-right">
+                                    <DropdownMenu>
+                                      <DropdownMenuTrigger asChild>
+                                        <Button variant="ghost" size="sm">
+                                          <MoreVertical className="h-4 w-4" />
+                                        </Button>
+                                      </DropdownMenuTrigger>
+                                      <DropdownMenuContent align="end" side="bottom" collisionPadding={10} className="z-50 w-[calc(100vw-2rem)] max-w-64 md:max-w-none md:w-56">
+                                        {canEditEpisode(episode) && (
+                                          <DropdownMenuItem onClick={() => router.push(`/content-department/episodes/${episode.id}/edit`)}>
+                                            <Pencil className="mr-2 h-4 w-4" />
+                                            Edit
+                                          </DropdownMenuItem>
+                                        )}
+                                        {episode.attachment_url && (
+                                          <DropdownMenuItem onClick={() => handleDownload(episode)}>
+                                            <Download className="mr-2 h-4 w-4" />
+                                            Download
+                                          </DropdownMenuItem>
+                                        )}
+                                      </DropdownMenuContent>
+                                    </DropdownMenu>
+                                  </TableCell>
                               </TableRow>
                             ))}
                         </Fragment>
@@ -1013,6 +1023,12 @@ export default function ContentDepartmentEpisodesPage() {
                                 <div className="flex items-center justify-between gap-2">
                                   <div className="flex items-center gap-2 flex-1 min-w-0">
                                     <Badge variant="outline" className="flex-shrink-0">EP {episode.episode_number}</Badge>
+                                    {(episode as any).revision_count > 0 && (
+                                      <Badge variant="secondary" className="text-xs flex-shrink-0">
+                                        <History className="h-3 w-3 mr-0.5" />
+                                        {(episode as any).revision_count}
+                                      </Badge>
+                                    )}
                                   </div>
                                   <span className="text-xs text-muted-foreground flex-shrink-0">{formatDate(episode.created_at)}</span>
                                 </div>
@@ -1239,6 +1255,13 @@ export default function ContentDepartmentEpisodesPage() {
                                     {episode.additional_info?.length || 0}/5000 characters
                                   </div>
                                 </div>
+
+                                {/* Revisions */}
+                                <EpisodeRevisions
+                                  episodeId={episode.id}
+                                  sourceId={selectedSource}
+                                  canEdit={true}
+                                />
 
                                 <div className="flex items-center justify-between gap-3 pt-2 border-t border-slate-100 flex-wrap">
                                   {episode._error && (

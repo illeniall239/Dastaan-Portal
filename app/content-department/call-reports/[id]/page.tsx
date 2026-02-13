@@ -18,6 +18,7 @@ import type { User } from "@/types";
 import { formatDateTimeLong } from "@/lib/utils/format-date";
 import { getSegregatedEvaluations } from "@/lib/evaluations/server";
 import { SegregatedEvaluationsDisplay } from "@/components/evaluations/segregated-evaluations-display";
+import { ContentRevisions } from "@/components/ui/content-revisions";
 import { ShareCrossTeamButton } from "@/components/call-report/share-cross-team-button";
 
 // Helper to convert stored image path to secure proxy URL
@@ -422,6 +423,14 @@ export default async function CallReportDetailPage({ params }: { params: Promise
             </CardContent>
           </Card>
         )}
+
+        {/* Revisions */}
+        <ContentRevisions
+          entityId={resolvedParams.id}
+          apiBasePath="/api/call-reports"
+          storageBucket="attachments"
+          canEdit={canEdit}
+        />
 
         {/* Segregated Evaluations */}
         {segregatedEvaluations && segregatedEvaluations.total > 0 && (

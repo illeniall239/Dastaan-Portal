@@ -15,9 +15,11 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
-import { Plus, X } from "lucide-react";
+import { Plus, X, PaperclipIcon, Trash2 } from "lucide-react";
 import type { StoryForContractTerm, ContractTerm } from "@/lib/contract-terms/client";
 import type { DeliveryEpisode } from "@/lib/validations/contract-terms";
+import { FileUpload } from "@/components/ui/file-upload";
+import { uploadFile, getAttachmentsForEntity, deleteFile } from "@/lib/attachments/client";
 import {
   RATE_RANGES,
   TIME_SLOTS,
@@ -56,6 +58,43 @@ export function ContractTermForm({ stories, redirectPath, mode = "create", initi
       ? initialData.delivery_schedule
       : [{ episode_number: 1, episode_title: "", delivery_date: "" }]
   );
+
+  // File upload state
+  const [filesToUpload, setFilesToUpload] = useState<File[]>([]);
+  const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({});
+  const [existingAttachments, setExistingAttachments] = useState<any[]>([]);
+  const [deletingAttachmentId, setDeletingAttachmentId] = useState<string | null>(null);
+
+  // Fetch existing attachments in edit mode
+  useEffect(() => {
+    if (mode === "edit" && initialData?.id) {
+      getAttachmentsForEntity("negotiation", initialData.id)
+        .then(setExistingAttachments)
+        .catch((err) => console.error("Error fetching attachments:", err));
+    }
+  }, [mode, initialData?.id]);
+
+  const handleFileUpload = (file: File) => {
+    setFilesToUpload((prev) => [...prev, file]);
+  };
+
+  const handleFileRemove = (fileName: string) => {
+    setFilesToUpload((prev) => prev.filter((f) => f.name !== fileName));
+  };
+
+  const handleDeleteExistingAttachment = async (attachmentId: string, filePath: string) => {
+    setDeletingAttachmentId(attachmentId);
+    try {
+      await deleteFile(attachmentId, filePath);
+      setExistingAttachments((prev) => prev.filter((a) => a.id !== attachmentId));
+      toast.success("Attachment deleted");
+    } catch (error) {
+      console.error("Error deleting attachment:", error);
+      toast.error("Failed to delete attachment");
+    } finally {
+      setDeletingAttachmentId(null);
+    }
+  };
 
   // Auto-populate writer name and genre when story is selected (only in create mode)
   useEffect(() => {
@@ -203,7 +242,27 @@ export function ContractTermForm({ stories, redirectPath, mode = "create", initi
         throw new Error(data.error || (mode === "edit" ? "Failed to update negotiation" : "Failed to create negotiation"));
       }
 
-      toast.success(mode === "edit" ? "ContractTerm updated successfully!" : "ContractTerm created successfully!");
+      // Upload files after successful create/edit
+      const negotiationId = mode === "edit" ? initialData!.id : data.negotiation?.id;
+      if (filesToUpload.length > 0 && negotiationId) {
+        for (const file of filesToUpload) {
+          try {
+            await uploadFile(file, "negotiation", negotiationId, (progress) => {
+              setUploadProgress((prev) => ({ ...prev, [file.name]: progress }));
+            });
+            setUploadProgress((prev) => {
+              const newProgress = { ...prev };
+              delete newProgress[file.name];
+              return newProgress;
+            });
+          } catch (uploadError) {
+            console.error("Error uploading file:", uploadError);
+            toast.error(`Failed to upload ${file.name}`);
+          }
+        }
+      }
+
+      toast.success(mode === "edit" ? "Contract term updated successfully!" : "Contract term created successfully!");
       router.push(redirectPath);
       router.refresh();
     } catch (error) {
@@ -529,6 +588,64 @@ export function ContractTermForm({ stories, redirectPath, mode = "create", initi
             <Plus className="h-4 w-4 mr-2" />
             Add Episode
           </Button>
+        </CardContent>
+      </Card>
+
+      {/* Signed Copy / Attachments Upload */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <PaperclipIcon className="h-5 w-5" />
+            Signed Copy / Attachments
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            Upload signed contract copies, term sheets, or other supporting documents.
+          </p>
+
+          {/* Existing attachments (edit mode) */}
+          {existingAttachments.length > 0 && (
+            <div className="space-y-2">
+              <h4 className="text-sm font-medium">Existing Attachments:</h4>
+              {existingAttachments.map((attachment) => (
+                <div
+                  key={attachment.id}
+                  className="flex items-center justify-between p-3 border rounded-lg bg-gray-50"
+                >
+                  <div className="flex items-center gap-3">
+                    <PaperclipIcon className="h-4 w-4 text-gray-400" />
+                    <div>
+                      <p className="font-medium text-sm">{attachment.file_name}</p>
+                      <p className="text-xs text-gray-500">
+                        {(attachment.file_size / 1024 / 1024).toFixed(2)} MB
+                      </p>
+                    </div>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleDeleteExistingAttachment(attachment.id, attachment.file_path)}
+                    disabled={deletingAttachmentId === attachment.id}
+                    className="text-red-500 hover:text-red-700"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* New file upload */}
+          <FileUpload
+            onFileUpload={handleFileUpload}
+            onFileRemove={handleFileRemove}
+            uploadedFiles={filesToUpload}
+            uploadProgress={uploadProgress}
+            maxFileSize={20}
+            acceptedFileTypes={['.pdf', '.jpg', '.jpeg', '.png', '.doc', '.docx']}
+          />
         </CardContent>
       </Card>
 

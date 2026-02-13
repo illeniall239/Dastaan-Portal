@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { redirect, notFound } from "next/navigation";
 import { ContractTermDetails } from "@/components/contract-terms/contract-term-details";
 import { BackButton } from "@/components/ui/back-button";
+import { getAttachmentsForEntityServer } from "@/lib/attachments/server";
 
 export const dynamic = "force-dynamic";
 
@@ -86,6 +87,7 @@ export default async function GcmContractTermDetailsPage({
         contractTerm={contractTerm}
         basePath="/gcm/contract-terms"
         canEdit={canEdit}
+        attachments={await getAttachmentsForEntityServer("negotiation", resolvedParams.id).catch(() => [])}
       />
     </div>
   );

@@ -12,11 +12,30 @@ export interface Evaluation {
   slot?: string;
   big_idea?: string;
   theme?: string;
-  premise_conflict_score: number;
-  storyline_plot_score: number;
-  episodic_progression_score: number;
-  characters_score: number;
-  overall_assessment_score: number;
+  // New criteria
+  conflict_of_content_score: number;
+  characterization_score: number;
+  story_progression_score: number;
+  whats_next_element_score: number;
+  overall_oneliner_grade_score: number;
+  conflict_of_content_comment?: string;
+  characterization_comment?: string;
+  story_progression_comment?: string;
+  whats_next_element_comment?: string;
+  overall_oneliner_grade_comment?: string;
+  // Descriptive evaluation
+  themes_of_drama?: string[];
+  corresponding_dramas?: string[];
+  theme_category?: string;
+  no_of_tracks?: number;
+  closing_remarks?: string;
+  // Legacy criteria (kept for old evaluations)
+  premise_conflict_score?: number;
+  storyline_plot_score?: number;
+  episodic_progression_score?: number;
+  characters_score?: number;
+  overall_assessment_score?: number;
+  // Other
   first_2_eps_required?: boolean;
   average_score?: number;
   comments?: string;
@@ -38,11 +57,24 @@ export interface CreateEvaluationInput {
   slot?: string;
   big_idea?: string;
   theme?: string;
-  premise_conflict_score: number;
-  storyline_plot_score: number;
-  episodic_progression_score: number;
-  characters_score: number;
-  overall_assessment_score: number;
+  // New criteria
+  conflict_of_content_score: number;
+  characterization_score: number;
+  story_progression_score: number;
+  whats_next_element_score: number;
+  overall_oneliner_grade_score: number;
+  conflict_of_content_comment?: string;
+  characterization_comment?: string;
+  story_progression_comment?: string;
+  whats_next_element_comment?: string;
+  overall_oneliner_grade_comment?: string;
+  // Descriptive evaluation
+  themes_of_drama?: string[];
+  corresponding_dramas?: string[];
+  theme_category?: string;
+  no_of_tracks?: number;
+  closing_remarks?: string;
+  // Other
   first_2_eps_required?: boolean;
   comments?: string;
   decision: "approve" | "reject" | "needs_improvement";
@@ -61,11 +93,24 @@ export interface UpdateEvaluationInput {
   slot?: string | null;
   big_idea?: string | null;
   theme?: string | null;
-  premise_conflict_score?: number;
-  storyline_plot_score?: number;
-  episodic_progression_score?: number;
-  characters_score?: number;
-  overall_assessment_score?: number;
+  // New criteria
+  conflict_of_content_score?: number;
+  characterization_score?: number;
+  story_progression_score?: number;
+  whats_next_element_score?: number;
+  overall_oneliner_grade_score?: number;
+  conflict_of_content_comment?: string | null;
+  characterization_comment?: string | null;
+  story_progression_comment?: string | null;
+  whats_next_element_comment?: string | null;
+  overall_oneliner_grade_comment?: string | null;
+  // Descriptive evaluation
+  themes_of_drama?: string[];
+  corresponding_dramas?: string[];
+  theme_category?: string | null;
+  no_of_tracks?: number | null;
+  closing_remarks?: string | null;
+  // Other
   first_2_eps_required?: boolean | null;
   comments?: string | null;
   decision?: "approve" | "reject" | "needs_improvement";
@@ -104,11 +149,24 @@ export async function createEvaluationClient(evaluationData: CreateEvaluationInp
       slot: evaluationData.slot || null,
       big_idea: evaluationData.big_idea || null,
       theme: evaluationData.theme || null,
-      premise_conflict_score: evaluationData.premise_conflict_score,
-      storyline_plot_score: evaluationData.storyline_plot_score,
-      episodic_progression_score: evaluationData.episodic_progression_score,
-      characters_score: evaluationData.characters_score,
-      overall_assessment_score: evaluationData.overall_assessment_score,
+      // New criteria
+      conflict_of_content_score: evaluationData.conflict_of_content_score,
+      characterization_score: evaluationData.characterization_score,
+      story_progression_score: evaluationData.story_progression_score,
+      whats_next_element_score: evaluationData.whats_next_element_score,
+      overall_oneliner_grade_score: evaluationData.overall_oneliner_grade_score,
+      conflict_of_content_comment: evaluationData.conflict_of_content_comment || null,
+      characterization_comment: evaluationData.characterization_comment || null,
+      story_progression_comment: evaluationData.story_progression_comment || null,
+      whats_next_element_comment: evaluationData.whats_next_element_comment || null,
+      overall_oneliner_grade_comment: evaluationData.overall_oneliner_grade_comment || null,
+      // Descriptive evaluation
+      themes_of_drama: evaluationData.themes_of_drama || [],
+      corresponding_dramas: evaluationData.corresponding_dramas || [],
+      theme_category: evaluationData.theme_category || null,
+      no_of_tracks: evaluationData.no_of_tracks ?? null,
+      closing_remarks: evaluationData.closing_remarks || null,
+      // Other
       comments: evaluationData.comments || null,
       first_2_eps_required: evaluationData.first_2_eps_required || null,
       decision: evaluationData.decision,
@@ -210,7 +268,6 @@ export async function createEvaluationClient(evaluationData: CreateEvaluationInp
 export async function updateEvaluationClient(evaluationData: UpdateEvaluationInput) {
   const supabase = createClient();
 
-  // Whitelist updatable fields
   const {
     id,
     target_writer,
@@ -219,11 +276,21 @@ export async function updateEvaluationClient(evaluationData: UpdateEvaluationInp
     slot,
     big_idea,
     theme,
-    premise_conflict_score,
-    storyline_plot_score,
-    episodic_progression_score,
-    characters_score,
-    overall_assessment_score,
+    conflict_of_content_score,
+    characterization_score,
+    story_progression_score,
+    whats_next_element_score,
+    overall_oneliner_grade_score,
+    conflict_of_content_comment,
+    characterization_comment,
+    story_progression_comment,
+    whats_next_element_comment,
+    overall_oneliner_grade_comment,
+    themes_of_drama,
+    corresponding_dramas,
+    theme_category,
+    no_of_tracks,
+    closing_remarks,
     first_2_eps_required,
     comments,
     time_spent_minutes,
@@ -239,11 +306,24 @@ export async function updateEvaluationClient(evaluationData: UpdateEvaluationInp
     slot: slot ?? null,
     big_idea: big_idea ?? null,
     theme: theme ?? null,
-    premise_conflict_score,
-    storyline_plot_score,
-    episodic_progression_score,
-    characters_score,
-    overall_assessment_score,
+    // New criteria
+    conflict_of_content_score,
+    characterization_score,
+    story_progression_score,
+    whats_next_element_score,
+    overall_oneliner_grade_score,
+    conflict_of_content_comment: conflict_of_content_comment ?? null,
+    characterization_comment: characterization_comment ?? null,
+    story_progression_comment: story_progression_comment ?? null,
+    whats_next_element_comment: whats_next_element_comment ?? null,
+    overall_oneliner_grade_comment: overall_oneliner_grade_comment ?? null,
+    // Descriptive evaluation
+    themes_of_drama: themes_of_drama ?? [],
+    corresponding_dramas: corresponding_dramas ?? [],
+    theme_category: theme_category ?? null,
+    no_of_tracks: no_of_tracks ?? null,
+    closing_remarks: closing_remarks ?? null,
+    // Other
     first_2_eps_required: first_2_eps_required ?? null,
     comments: comments ?? null,
     decision: evaluationData.decision,

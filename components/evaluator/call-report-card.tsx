@@ -3,7 +3,7 @@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { EyeIcon, FilePenLine, TrendingUp, TrendingDown, Minus } from "lucide-react";
+import { EyeIcon, FilePenLine, TrendingUp, TrendingDown, Minus, History } from "lucide-react";
 import Link from "next/link";
 import { EvaluationProgressBar } from "@/components/evaluations/evaluation-progress-bar";
 import { TeamBadge } from "@/components/shared/team-badge";
@@ -197,6 +197,41 @@ export function CallReportCard({ report, portalPrefix = "evaluator", isTeamHead 
                 </div>
               )}
             </div>
+            {/* Additional Notes */}
+            {report.notes && (
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Additional Notes:</p>
+                <p className="text-sm line-clamp-2">{report.notes}</p>
+              </div>
+            )}
+            {/* Follow-up */}
+            {report.next_steps && (
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Follow-up:</p>
+                <p className="text-sm line-clamp-2">{report.next_steps}</p>
+              </div>
+            )}
+            {/* Revisions */}
+            {report.revision_count > 0 && (
+              <div className="bg-blue-50 rounded-lg p-3 border border-blue-100">
+                <div className="flex items-center gap-2 mb-1">
+                  <History className="h-3.5 w-3.5 text-blue-600" />
+                  <span className="text-xs font-semibold text-blue-700">
+                    {report.revision_count} Revision{report.revision_count !== 1 ? "s" : ""}
+                  </span>
+                  {report.latest_revision_date && (
+                    <span className="text-xs text-blue-500">
+                      &middot; Latest: {new Date(report.latest_revision_date).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                    </span>
+                  )}
+                </div>
+                {report.latest_revision_comment && (
+                  <p className="text-xs text-blue-600 line-clamp-1 ml-5.5">
+                    {report.latest_revision_comment}
+                  </p>
+                )}
+              </div>
+            )}
           </div>
           <div className="mt-4 pt-4 border-t flex justify-end gap-2">
             {isTeamHead && (

@@ -43,13 +43,16 @@ export const updateCallReportSchema = z.object({
     }).optional()
   ),
   theme: z.string().max(200).optional(),
-  category: z.enum([
-    "external_producer",
-    "writer_pitch",
-    "inhouse_content",
-    "content_head_initiative",
-    "given_by_management"
-  ]).optional(),
+  category: z.preprocess(
+    (val) => (val === "" || val === null || val === undefined) ? undefined : val,
+    z.enum([
+      "external_producer",
+      "writer_pitch",
+      "inhouse_content",
+      "content_head_initiative",
+      "given_by_management"
+    ]).optional()
+  ),
   idea_by: z.string().max(200).optional(),
   developed_by: z.string().max(200).optional(),
   management_member_name: z.string().max(200).optional(),

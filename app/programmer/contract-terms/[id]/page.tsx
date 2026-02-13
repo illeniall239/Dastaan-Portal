@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect, notFound } from "next/navigation";
 import { ContractTermDetails } from "@/components/contract-terms/contract-term-details";
+import { getAttachmentsForEntityServer } from "@/lib/attachments/server";
 
 export const dynamic = "force-dynamic";
 
@@ -54,12 +55,21 @@ export default async function ProgrammerContractTermDetailsPage({
         notFound();
     }
 
+    // Fetch attachments
+    let attachments: any[] = [];
+    try {
+        attachments = await getAttachmentsForEntityServer("negotiation", resolvedParams.id);
+    } catch (error) {
+        console.error("Error fetching attachments:", error);
+    }
+
     return (
         <div className="mobile-container mobile-section">
             <ContractTermDetails
                 contractTerm={contractTerm}
                 basePath="/programmer/contract-terms"
                 canEdit={true}
+                attachments={attachments}
             />
         </div>
     );

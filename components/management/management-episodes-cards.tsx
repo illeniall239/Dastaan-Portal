@@ -1,12 +1,21 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { ShareLinkDialog } from "@/components/management/share-link-dialog";
-import { Share2, FileText, CheckCircle, Star } from "lucide-react";
+import { Share2, FileText, CheckCircle, Star, Search } from "lucide-react";
+import { useDebounce } from "@/lib/hooks/useDebounce";
 
 interface ManagementEpisodesCardsProps {
   episodes: any[];
@@ -16,11 +25,41 @@ export function ManagementEpisodesCards({ episodes }: ManagementEpisodesCardsPro
   const router = useRouter();
   const [selectedEpisode, setSelectedEpisode] = useState<any>(null);
   const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const [sortBy, setSortBy] = useState<"newest" | "oldest">("newest");
+  const debouncedSearch = useDebounce(search, 300);
+
+  const filteredEpisodes = useMemo(() => {
+    let results = [...episodes];
+
+    if (debouncedSearch) {
+      const q = debouncedSearch.toLowerCase();
+      results = results.filter((ep) => {
+        const fields = [
+          ep.title,
+          ep.stories?.title,
+          ep.stories?.writer_originator_name,
+          ep.stories?.genre,
+          ep.call_reports?.working_title,
+          ep.call_reports?.writer_name,
+        ];
+        return fields.some((f) => f && String(f).toLowerCase().includes(q));
+      });
+    }
+
+    results.sort((a, b) => {
+      const dateA = new Date(a.created_at).getTime();
+      const dateB = new Date(b.created_at).getTime();
+      return sortBy === "newest" ? dateB - dateA : dateA - dateB;
+    });
+
+    return results;
+  }, [episodes, debouncedSearch, sortBy]);
 
   const episodesBySource: Record<
     string,
     { story: any; callReport: any; episodes: any[] }
-  > = episodes.reduce((acc, episode) => {
+  > = filteredEpisodes.reduce((acc, episode) => {
     const key = episode.story_id || episode.call_report_id || episode.id;
     if (!acc[key]) {
       acc[key] = {
@@ -55,6 +94,43 @@ export function ManagementEpisodesCards({ episodes }: ManagementEpisodesCardsPro
 
   return (
     <>
+      {/* Search & Sort */}
+      <div className="space-y-3 mb-6">
+        <div className="flex flex-col sm:flex-row gap-3">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search by title, writer, genre..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+          <Select value={sortBy} onValueChange={(v) => setSortBy(v as "newest" | "oldest")}>
+            <SelectTrigger className="w-full sm:w-[170px]">
+              <SelectValue placeholder="Sort by" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="newest">Newest First</SelectItem>
+              <SelectItem value="oldest">Oldest First</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        {debouncedSearch && (
+          <p className="text-sm text-muted-foreground">
+            Showing {filteredEpisodes.length} of {episodes.length} episodes
+          </p>
+        )}
+      </div>
+
+      {filteredEpisodes.length === 0 && debouncedSearch ? (
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-12">
+            <FileText className="h-12 w-12 text-muted-foreground mb-4" />
+            <p className="text-muted-foreground">No episodes match your search</p>
+          </CardContent>
+        </Card>
+      ) : (
       <div className="space-y-4">
         {Object.entries(episodesBySource).map(([sourceId, { story, callReport, episodes: groupedEpisodes }]) => {
           const totalEpisodes = groupedEpisodes.length;
@@ -160,6 +236,7 @@ export function ManagementEpisodesCards({ episodes }: ManagementEpisodesCardsPro
           );
         })}
       </div>
+      )}
 
       {selectedEpisode && (
         <ShareLinkDialog

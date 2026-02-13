@@ -16,8 +16,10 @@ import { ArrowLeftIcon, PaperclipIcon, Loader2, FilePenLine, AlertTriangle, Shar
 import { ScoreCard } from "@/components/episodic-evaluations/score-card";
 import { CallReportOverallAssessment } from "@/components/evaluations/call-report-overall-assessment";
 import { DetailedOneLinerDisplay } from "@/components/evaluations/detailed-one-liner-display";
+import { calculateOneLinerGrade, getOneLinerGradeColorClasses, oneLinerRatingScaleItems } from "@/lib/validations/evaluations";
 import { useFormTimeTracking } from "@/lib/hooks/useFormTimeTracking";
 import { BackButton } from "@/components/ui/back-button";
+import { TagInput } from "@/components/ui/tag-input";
 import {
   AlertDialog,
   AlertDialogContent,
@@ -60,7 +62,7 @@ interface CallReport {
   content_type?: string;
   overall_rating?: number;
   writers?: CallReportWriter[];
-  created_at?: string; // When the call report was logged
+  created_at?: string;
 }
 
 export function EvaluatorEvaluationForm({
@@ -116,19 +118,33 @@ export function EvaluatorEvaluationForm({
 
   // Form state
   const [formData, setFormData] = useState({
+    // New criteria scores
+    conflictOfContentScore: 5,
+    characterizationScore: 5,
+    storyProgressionScore: 5,
+    whatsNextElementScore: 5,
+    overallOnelinerGradeScore: 5,
+    // Per-criterion comments
+    conflictOfContentComment: "",
+    characterizationComment: "",
+    storyProgressionComment: "",
+    whatsNextElementComment: "",
+    overallOnelinerGradeComment: "",
+    // Descriptive evaluation
+    themesOfDrama: [] as string[],
+    correspondingDramas: [] as string[],
+    themeCategory: "" as "" | "commercial" | "non_commercial" | "commercial_edge",
+    noOfTracks: "" as string,
+    closingRemarks: "",
+    // Additional project info
     targetWriterId: "",
     perEpPriceRange: "",
     slot: "",
-    premiseConflictScore: 5,
-    storylinePlotScore: 5,
-    episodicProgressionScore: 5,
-    charactersScore: 5,
-    overallAssessmentScore: 5,
     first2EpsRequired: false,
-    comments: "",
+    // Decision
     decision: "" as "approve" | "reject" | "needs_improvement" | "",
     decisionNotes: "",
-    delayReason: "", // Required if evaluation is submitted > 3 days after call report creation
+    delayReason: "",
   });
 
   // Check if evaluation is late (> 3 days since call report was created)
@@ -148,25 +164,25 @@ export function EvaluatorEvaluationForm({
     return Math.floor((now.getTime() - createdDate.getTime()) / (1000 * 60 * 60 * 24));
   }, [callReport?.created_at]);
 
-  // Calculate average score
+  // Calculate average score from new 5 criteria
   const [averageScore, setAverageScore] = useState(5);
 
   useEffect(() => {
     const scores = [
-      formData.premiseConflictScore,
-      formData.storylinePlotScore,
-      formData.episodicProgressionScore,
-      formData.charactersScore,
-      formData.overallAssessmentScore,
+      formData.conflictOfContentScore,
+      formData.characterizationScore,
+      formData.storyProgressionScore,
+      formData.whatsNextElementScore,
+      formData.overallOnelinerGradeScore,
     ];
     const avg = scores.reduce((sum, score) => sum + score, 0) / scores.length;
     setAverageScore(Math.round(avg * 10) / 10);
   }, [
-    formData.premiseConflictScore,
-    formData.storylinePlotScore,
-    formData.episodicProgressionScore,
-    formData.charactersScore,
-    formData.overallAssessmentScore,
+    formData.conflictOfContentScore,
+    formData.characterizationScore,
+    formData.storyProgressionScore,
+    formData.whatsNextElementScore,
+    formData.overallOnelinerGradeScore,
   ]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -179,20 +195,9 @@ export function EvaluatorEvaluationForm({
     setFormData((prev) => ({ ...prev, [id]: value }));
   };
 
-  const handleWriterChange = (value: string) => {
-    setFormData((prev) => ({ ...prev, targetWriterId: value }));
-  };
-
   const handleCheckboxChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { id, checked } = e.target;
     setFormData((prev) => ({ ...prev, [id]: checked }));
-  };
-
-  const handleScoreChange = (field: string, value: string) => {
-    const numValue = parseInt(value);
-    if (numValue >= 1 && numValue <= 10) {
-      setFormData((prev) => ({ ...prev, [field]: numValue }));
-    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -238,20 +243,30 @@ export function EvaluatorEvaluationForm({
     setIsLoading(true);
 
     try {
-      // Create evaluation
+      const noOfTracks = formData.noOfTracks ? parseInt(formData.noOfTracks) : undefined;
+
       if (existingEvaluation && isEditing) {
         await updateEvaluationClient({
           id: existingEvaluation.id,
           target_writer: selectedWriter?.name || null,
           per_ep_price_range: formData.perEpPriceRange || null,
           slot: formData.slot || null,
-          premise_conflict_score: formData.premiseConflictScore,
-          storyline_plot_score: formData.storylinePlotScore,
-          episodic_progression_score: formData.episodicProgressionScore,
-          characters_score: formData.charactersScore,
-          overall_assessment_score: formData.overallAssessmentScore,
+          conflict_of_content_score: formData.conflictOfContentScore,
+          characterization_score: formData.characterizationScore,
+          story_progression_score: formData.storyProgressionScore,
+          whats_next_element_score: formData.whatsNextElementScore,
+          overall_oneliner_grade_score: formData.overallOnelinerGradeScore,
+          conflict_of_content_comment: formData.conflictOfContentComment || null,
+          characterization_comment: formData.characterizationComment || null,
+          story_progression_comment: formData.storyProgressionComment || null,
+          whats_next_element_comment: formData.whatsNextElementComment || null,
+          overall_oneliner_grade_comment: formData.overallOnelinerGradeComment || null,
+          themes_of_drama: formData.themesOfDrama,
+          corresponding_dramas: formData.correspondingDramas,
+          theme_category: formData.themeCategory || null,
+          no_of_tracks: noOfTracks ?? null,
+          closing_remarks: formData.closingRemarks || null,
           first_2_eps_required: formData.first2EpsRequired,
-          comments: formData.comments || null,
           decision: formData.decision,
           decision_notes: (formData.decision === "reject" || formData.decision === "needs_improvement") ? formData.decisionNotes : null,
           time_spent_minutes: timeSpentMinutes,
@@ -267,13 +282,22 @@ export function EvaluatorEvaluationForm({
           target_writer: selectedWriter?.name || undefined,
           per_ep_price_range: formData.perEpPriceRange || undefined,
           slot: formData.slot || undefined,
-          premise_conflict_score: formData.premiseConflictScore,
-          storyline_plot_score: formData.storylinePlotScore,
-          episodic_progression_score: formData.episodicProgressionScore,
-          characters_score: formData.charactersScore,
-          overall_assessment_score: formData.overallAssessmentScore,
+          conflict_of_content_score: formData.conflictOfContentScore,
+          characterization_score: formData.characterizationScore,
+          story_progression_score: formData.storyProgressionScore,
+          whats_next_element_score: formData.whatsNextElementScore,
+          overall_oneliner_grade_score: formData.overallOnelinerGradeScore,
+          conflict_of_content_comment: formData.conflictOfContentComment || undefined,
+          characterization_comment: formData.characterizationComment || undefined,
+          story_progression_comment: formData.storyProgressionComment || undefined,
+          whats_next_element_comment: formData.whatsNextElementComment || undefined,
+          overall_oneliner_grade_comment: formData.overallOnelinerGradeComment || undefined,
+          themes_of_drama: formData.themesOfDrama,
+          corresponding_dramas: formData.correspondingDramas,
+          theme_category: formData.themeCategory || undefined,
+          no_of_tracks: noOfTracks,
+          closing_remarks: formData.closingRemarks || undefined,
           first_2_eps_required: formData.first2EpsRequired,
-          comments: formData.comments || undefined,
           decision: formData.decision,
           decision_notes: (formData.decision === "reject" || formData.decision === "needs_improvement") ? formData.decisionNotes : undefined,
           time_spent_minutes: timeSpentMinutes,
@@ -291,11 +315,9 @@ export function EvaluatorEvaluationForm({
           method: 'DELETE',
         });
       } catch (draftError) {
-        // Silently fail - draft deletion is not critical
         console.error("Error deleting draft:", draftError);
       }
 
-      // Navigate back
       router.push(`/${portalPrefix}/evaluations-list`);
     } catch (error: any) {
       console.error("Error submitting evaluation:", error);
@@ -309,24 +331,13 @@ export function EvaluatorEvaluationForm({
     setSavingDraft(true);
     try {
       const draftData = {
-        targetWriterId: formData.targetWriterId,
-        perEpPriceRange: formData.perEpPriceRange,
-        slot: formData.slot,
-        premiseConflictScore: formData.premiseConflictScore,
-        storylinePlotScore: formData.storylinePlotScore,
-        episodicProgressionScore: formData.episodicProgressionScore,
-        charactersScore: formData.charactersScore,
-        overallAssessmentScore: formData.overallAssessmentScore,
-        first2EpsRequired: formData.first2EpsRequired,
-        comments: formData.comments,
+        ...formData,
         accumulatedTimeMinutes: timeSpentMinutes,
       };
 
       const response = await fetch(`/api/evaluator/forms/draft/${callReport.id}`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(draftData),
       });
 
@@ -351,13 +362,11 @@ export function EvaluatorEvaluationForm({
       const data = await response.json();
 
       if (data.draft && data.draft.draft_data) {
-        // Store draft data and show custom dialog
         setPendingDraftData(data.draft.draft_data);
         setShowDraftDialog(true);
       }
     } catch (error) {
       console.error("Error loading draft:", error);
-      // Silently fail - loading draft is not critical
     } finally {
       setLoadingDraft(false);
     }
@@ -366,24 +375,31 @@ export function EvaluatorEvaluationForm({
   const handleLoadDraft = () => {
     if (pendingDraftData) {
       setFormData({
+        conflictOfContentScore: pendingDraftData.conflictOfContentScore ?? pendingDraftData.premiseConflictScore ?? 5,
+        characterizationScore: pendingDraftData.characterizationScore ?? pendingDraftData.charactersScore ?? 5,
+        storyProgressionScore: pendingDraftData.storyProgressionScore ?? pendingDraftData.storylinePlotScore ?? 5,
+        whatsNextElementScore: pendingDraftData.whatsNextElementScore ?? 5,
+        overallOnelinerGradeScore: pendingDraftData.overallOnelinerGradeScore ?? pendingDraftData.overallAssessmentScore ?? 5,
+        conflictOfContentComment: pendingDraftData.conflictOfContentComment || "",
+        characterizationComment: pendingDraftData.characterizationComment || "",
+        storyProgressionComment: pendingDraftData.storyProgressionComment || "",
+        whatsNextElementComment: pendingDraftData.whatsNextElementComment || "",
+        overallOnelinerGradeComment: pendingDraftData.overallOnelinerGradeComment || "",
+        themesOfDrama: pendingDraftData.themesOfDrama || [],
+        correspondingDramas: pendingDraftData.correspondingDramas || [],
+        themeCategory: pendingDraftData.themeCategory || "",
+        noOfTracks: pendingDraftData.noOfTracks?.toString() || "",
+        closingRemarks: pendingDraftData.closingRemarks || "",
         targetWriterId: pendingDraftData.targetWriterId || "",
         perEpPriceRange: pendingDraftData.perEpPriceRange || "",
         slot: pendingDraftData.slot || "",
-        premiseConflictScore: pendingDraftData.premiseConflictScore || 5,
-        storylinePlotScore: pendingDraftData.storylinePlotScore || 5,
-        episodicProgressionScore: pendingDraftData.episodicProgressionScore || 5,
-        charactersScore: pendingDraftData.charactersScore || 5,
-        overallAssessmentScore: pendingDraftData.overallAssessmentScore || 5,
         first2EpsRequired: pendingDraftData.first2EpsRequired || false,
-        comments: pendingDraftData.comments || "",
         decision: "",
         decisionNotes: "",
         delayReason: "",
       });
 
-      // Load accumulated time from draft
       setInitialTimeFromDraft(pendingDraftData.accumulatedTimeMinutes || 0);
-
       toast.success("Draft loaded successfully!");
       setShowDraftDialog(false);
       setPendingDraftData(null);
@@ -397,28 +413,34 @@ export function EvaluatorEvaluationForm({
 
   // Load draft on component mount
   useEffect(() => {
-    // If existing evaluation is provided via props (management mode), use it
     if (propExistingEvaluation) {
       setExistingEvaluation(propExistingEvaluation);
-      // Prefill form values for editing
       setFormData((prev) => ({
         ...prev,
+        conflictOfContentScore: propExistingEvaluation.conflict_of_content_score ?? propExistingEvaluation.premise_conflict_score ?? 5,
+        characterizationScore: propExistingEvaluation.characterization_score ?? propExistingEvaluation.characters_score ?? 5,
+        storyProgressionScore: propExistingEvaluation.story_progression_score ?? propExistingEvaluation.storyline_plot_score ?? 5,
+        whatsNextElementScore: propExistingEvaluation.whats_next_element_score ?? 5,
+        overallOnelinerGradeScore: propExistingEvaluation.overall_oneliner_grade_score ?? propExistingEvaluation.overall_assessment_score ?? 5,
+        conflictOfContentComment: propExistingEvaluation.conflict_of_content_comment || "",
+        characterizationComment: propExistingEvaluation.characterization_comment || "",
+        storyProgressionComment: propExistingEvaluation.story_progression_comment || "",
+        whatsNextElementComment: propExistingEvaluation.whats_next_element_comment || "",
+        overallOnelinerGradeComment: propExistingEvaluation.overall_oneliner_grade_comment || "",
+        themesOfDrama: propExistingEvaluation.themes_of_drama || [],
+        correspondingDramas: propExistingEvaluation.corresponding_dramas || [],
+        themeCategory: propExistingEvaluation.theme_category || "",
+        noOfTracks: propExistingEvaluation.no_of_tracks?.toString() || "",
+        closingRemarks: propExistingEvaluation.closing_remarks || "",
         perEpPriceRange: propExistingEvaluation.per_ep_price_range || "",
         slot: propExistingEvaluation.slot || "",
-        premiseConflictScore: propExistingEvaluation.premise_conflict_score || 5,
-        storylinePlotScore: propExistingEvaluation.storyline_plot_score || 5,
-        episodicProgressionScore: propExistingEvaluation.episodic_progression_score || 5,
-        charactersScore: propExistingEvaluation.characters_score || 5,
-        overallAssessmentScore: propExistingEvaluation.overall_assessment_score || 5,
         first2EpsRequired: !!propExistingEvaluation.first_2_eps_required,
-        comments: propExistingEvaluation.comments || "",
         decision: propExistingEvaluation.decision || "",
         decisionNotes: propExistingEvaluation.decision_notes || "",
       }));
-      return; // Skip fetching for management mode
+      return;
     }
 
-    // Fetch existing evaluation for this call report by current user (evaluator mode)
     const fetchExisting = async () => {
       try {
         const res = await fetch(`/api/evaluator/forms/by-call-report/${callReport.id}`);
@@ -426,18 +448,26 @@ export function EvaluatorEvaluationForm({
           const json = await res.json();
           if (json.evaluation) {
             setExistingEvaluation(json.evaluation);
-            // Prefill form values for editing
             setFormData((prev) => ({
               ...prev,
+              conflictOfContentScore: json.evaluation.conflict_of_content_score ?? json.evaluation.premise_conflict_score ?? 5,
+              characterizationScore: json.evaluation.characterization_score ?? json.evaluation.characters_score ?? 5,
+              storyProgressionScore: json.evaluation.story_progression_score ?? json.evaluation.storyline_plot_score ?? 5,
+              whatsNextElementScore: json.evaluation.whats_next_element_score ?? 5,
+              overallOnelinerGradeScore: json.evaluation.overall_oneliner_grade_score ?? json.evaluation.overall_assessment_score ?? 5,
+              conflictOfContentComment: json.evaluation.conflict_of_content_comment || "",
+              characterizationComment: json.evaluation.characterization_comment || "",
+              storyProgressionComment: json.evaluation.story_progression_comment || "",
+              whatsNextElementComment: json.evaluation.whats_next_element_comment || "",
+              overallOnelinerGradeComment: json.evaluation.overall_oneliner_grade_comment || "",
+              themesOfDrama: json.evaluation.themes_of_drama || [],
+              correspondingDramas: json.evaluation.corresponding_dramas || [],
+              themeCategory: json.evaluation.theme_category || "",
+              noOfTracks: json.evaluation.no_of_tracks?.toString() || "",
+              closingRemarks: json.evaluation.closing_remarks || "",
               perEpPriceRange: json.evaluation.per_ep_price_range || "",
               slot: json.evaluation.slot || "",
-              premiseConflictScore: json.evaluation.premise_conflict_score || 5,
-              storylinePlotScore: json.evaluation.storyline_plot_score || 5,
-              episodicProgressionScore: json.evaluation.episodic_progression_score || 5,
-              charactersScore: json.evaluation.characters_score || 5,
-              overallAssessmentScore: json.evaluation.overall_assessment_score || 5,
               first2EpsRequired: !!json.evaluation.first_2_eps_required,
-              comments: json.evaluation.comments || "",
             }));
           }
         }
@@ -458,7 +488,7 @@ export function EvaluatorEvaluationForm({
           <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Evaluate Project</h1>
           <div className="flex items-center gap-2">
             <p className="text-muted-foreground text-sm sm:text-base">
-              Assessment for "{callReport.working_title}"
+              Assessment for &ldquo;{callReport.working_title}&rdquo;
             </p>
             {isManagementEvaluation && (
               <Badge variant="secondary" className="text-[10px] px-2 py-0 h-4">
@@ -470,7 +500,7 @@ export function EvaluatorEvaluationForm({
       </div>
 
       <div className="space-y-6 max-w-4xl mx-auto px-4 sm:px-6">
-        {/* Evaluation Request Banner */}
+        {/* Cross-team share banner */}
         {crossTeamShareId && crossTeamFromTeamName && (
           <div className="p-3 bg-purple-50 border border-purple-200 rounded-lg flex items-center gap-2">
             <Share2Icon className="h-4 w-4 text-purple-600 shrink-0" />
@@ -509,7 +539,7 @@ export function EvaluatorEvaluationForm({
                 </span>
                 {callReport.writers && callReport.writers.length > 0 ? (
                   <div className="text-sm text-muted-foreground space-y-1">
-                    {callReport.writers.map((writer, index) => (
+                    {callReport.writers.map((writer) => (
                       <p key={writer.writer_id}>
                         {writer.writer_name}
                         {writer.writer_email && ` (${writer.writer_email})`}
@@ -564,8 +594,6 @@ export function EvaluatorEvaluationForm({
                   </div>
                 </div>
               )}
-
-
             </div>
           </div>
         </Card>
@@ -595,11 +623,7 @@ export function EvaluatorEvaluationForm({
                         </p>
                       </div>
                     </div>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      asChild
-                    >
+                    <Button size="sm" variant="outline" asChild>
                       <Link href={`/api/attachments/${attachment.id}`} target="_blank" rel="noopener noreferrer">
                         Download
                       </Link>
@@ -611,10 +635,10 @@ export function EvaluatorEvaluationForm({
           </Card>
         )}
 
-        {/* Detailed One-Liner Analysis - Display comprehensive project analysis */}
+        {/* Detailed One-Liner Analysis */}
         <DetailedOneLinerDisplay detailedOneLiner={detailedOneLiner} />
 
-        {/* Rating Scale - Placed below attachments to guide evaluators before scoring */}
+        {/* Rating Scale Reference */}
         <Card className="p-4 border-2 border-blue-100 bg-blue-50/30">
           <CardHeader className="py-2">
             <CardTitle className="text-base">Rating Scale</CardTitle>
@@ -622,76 +646,162 @@ export function EvaluatorEvaluationForm({
           <CardContent className="pt-2">
             <div className="space-y-2 text-sm">
               <div className="flex items-start gap-3">
-                <span className="font-semibold text-gray-600 min-w-[80px]">9.0 - 10.0:</span>
-                <span className="text-green-700 font-medium">High rating potential</span>
+                <span className="font-semibold text-gray-600 min-w-[50px]">10:</span>
+                <span className="text-green-700 font-medium">Outstanding - perfect flow, strong events, emotional impact</span>
               </div>
               <div className="flex items-start gap-3">
-                <span className="font-semibold text-gray-600 min-w-[80px]">7.0 - 8.9:</span>
-                <span className="text-blue-700 font-medium">Rating potential audience appeal</span>
+                <span className="font-semibold text-gray-600 min-w-[50px]">8 - 9:</span>
+                <span className="text-emerald-700 font-medium">Excellent - engaging and well-structured, minor issues only</span>
               </div>
               <div className="flex items-start gap-3">
-                <span className="font-semibold text-gray-600 min-w-[80px]">5.0 - 6.9:</span>
-                <span className="text-amber-700 font-medium">Need improvement - Required editing or continuous supervision</span>
+                <span className="font-semibold text-gray-600 min-w-[50px]">7:</span>
+                <span className="text-blue-700 font-medium">Good - holds attention but needs some improvement</span>
               </div>
               <div className="flex items-start gap-3">
-                <span className="font-semibold text-gray-600 min-w-[80px]">&lt; 5.0:</span>
-                <span className="text-red-700 font-medium">Either unacceptable or need major re-writing and editing</span>
+                <span className="font-semibold text-gray-600 min-w-[50px]">5 - 6:</span>
+                <span className="text-amber-700 font-medium">Average - lacks impact or has pacing/logic issues</span>
+              </div>
+              <div className="flex items-start gap-3">
+                <span className="font-semibold text-gray-600 min-w-[50px]">3 - 4:</span>
+                <span className="text-orange-700 font-medium">Weak - poor structure, flat events, inconsistent characters</span>
+              </div>
+              <div className="flex items-start gap-3">
+                <span className="font-semibold text-gray-600 min-w-[50px]">1 - 2:</span>
+                <span className="text-red-700 font-medium">Very Poor - confusing, dull, or disconnected from story</span>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        {/* Section 1: Evaluation Scores */}
+        {/* Section 1: Evaluation Scores with Comments */}
         <div className="space-y-4">
           <h3 className="text-xl font-bold">Section 1: Evaluation Scores</h3>
           <p className="text-sm text-muted-foreground">
-            Rate each criterion on a scale of 1-10.
+            Rate each criterion on a scale of 1-10 and provide comments.
           </p>
 
           <div className="space-y-4">
-            <ScoreCard
-              label="Premise / Conflict"
-              description="How interesting and engaging is the core premise and conflict?"
-              score={formData.premiseConflictScore}
-              onChange={(value) => setFormData((prev) => ({ ...prev, premiseConflictScore: value }))}
-            />
+            {/* 1. Conflict of Content */}
+            <div className="space-y-2">
+              <ScoreCard
+                label="Conflict of Content"
+                description="How compelling and engaging is the core conflict driving the content?"
+                score={formData.conflictOfContentScore}
+                onChange={(value) => setFormData((prev) => ({ ...prev, conflictOfContentScore: value }))}
+                gradeFn={calculateOneLinerGrade}
+                gradeColorFn={getOneLinerGradeColorClasses}
+              />
+              <div className="ml-4">
+                <Textarea
+                  id="conflictOfContentComment"
+                  placeholder="Comments on Conflict of Content (optional)..."
+                  rows={2}
+                  value={formData.conflictOfContentComment}
+                  onChange={handleInputChange}
+                  className="text-sm"
+                />
+              </div>
+            </div>
 
-            <ScoreCard
-              label="Storyline / Plot"
-              description="How compelling and coherent is the overall plot structure?"
-              score={formData.storylinePlotScore}
-              onChange={(value) => setFormData((prev) => ({ ...prev, storylinePlotScore: value }))}
-            />
+            {/* 2. Characterization */}
+            <div className="space-y-2">
+              <ScoreCard
+                label="Characterization"
+                description="How well-developed, relatable, and distinct are the characters?"
+                score={formData.characterizationScore}
+                onChange={(value) => setFormData((prev) => ({ ...prev, characterizationScore: value }))}
+                gradeFn={calculateOneLinerGrade}
+                gradeColorFn={getOneLinerGradeColorClasses}
+              />
+              <div className="ml-4">
+                <Textarea
+                  id="characterizationComment"
+                  placeholder="Comments on Characterization (optional)..."
+                  rows={2}
+                  value={formData.characterizationComment}
+                  onChange={handleInputChange}
+                  className="text-sm"
+                />
+              </div>
+            </div>
 
-            <ScoreCard
-              label="Episodic Progression"
-              description="How well does the story flow across multiple episodes?"
-              score={formData.episodicProgressionScore}
-              onChange={(value) => setFormData((prev) => ({ ...prev, episodicProgressionScore: value }))}
-            />
+            {/* 3. Story Progression */}
+            <div className="space-y-2">
+              <ScoreCard
+                label="Story Progression"
+                description="How well does the story flow and progress across the narrative?"
+                score={formData.storyProgressionScore}
+                onChange={(value) => setFormData((prev) => ({ ...prev, storyProgressionScore: value }))}
+                gradeFn={calculateOneLinerGrade}
+                gradeColorFn={getOneLinerGradeColorClasses}
+              />
+              <div className="ml-4">
+                <Textarea
+                  id="storyProgressionComment"
+                  placeholder="Comments on Story Progression (optional)..."
+                  rows={2}
+                  value={formData.storyProgressionComment}
+                  onChange={handleInputChange}
+                  className="text-sm"
+                />
+              </div>
+            </div>
 
-            <ScoreCard
-              label="Characters"
-              description="How well-developed and relatable are the main characters?"
-              score={formData.charactersScore}
-              onChange={(value) => setFormData((prev) => ({ ...prev, charactersScore: value }))}
-            />
+            {/* 4. What Next Element */}
+            <div className="space-y-2">
+              <ScoreCard
+                label="What Next Element"
+                description="How effectively does the story create curiosity about what happens next?"
+                score={formData.whatsNextElementScore}
+                onChange={(value) => setFormData((prev) => ({ ...prev, whatsNextElementScore: value }))}
+                gradeFn={calculateOneLinerGrade}
+                gradeColorFn={getOneLinerGradeColorClasses}
+              />
+              <div className="ml-4">
+                <Textarea
+                  id="whatsNextElementComment"
+                  placeholder="Comments on What Next Element (optional)..."
+                  rows={2}
+                  value={formData.whatsNextElementComment}
+                  onChange={handleInputChange}
+                  className="text-sm"
+                />
+              </div>
+            </div>
 
-            <ScoreCard
-              label="Final Impression"
-              description="What is your overall impression of this project's potential?"
-              score={formData.overallAssessmentScore}
-              onChange={(value) => setFormData((prev) => ({ ...prev, overallAssessmentScore: value }))}
-            />
-
-            {/* Dialogues score removed as per requirements */}
+            {/* 5. Overall Oneliner Grade */}
+            <div className="space-y-2">
+              <ScoreCard
+                label="Overall Oneliner Grade"
+                description="What is your overall grade for this oneliner as a complete package?"
+                score={formData.overallOnelinerGradeScore}
+                onChange={(value) => setFormData((prev) => ({ ...prev, overallOnelinerGradeScore: value }))}
+                gradeFn={calculateOneLinerGrade}
+                gradeColorFn={getOneLinerGradeColorClasses}
+              />
+              <div className="ml-4">
+                <Textarea
+                  id="overallOnelinerGradeComment"
+                  placeholder="Comments on Overall Oneliner Grade (optional)..."
+                  rows={2}
+                  value={formData.overallOnelinerGradeComment}
+                  onChange={handleInputChange}
+                  className="text-sm"
+                />
+              </div>
+            </div>
           </div>
         </div>
 
         {/* Section 2: Overall Assessment */}
         <div className="space-y-4">
           <h3 className="text-xl font-bold">Section 2: Overall Assessment</h3>
-          <CallReportOverallAssessment average={averageScore} />
+          <CallReportOverallAssessment
+            average={averageScore}
+            gradeFn={calculateOneLinerGrade}
+            gradeColorFn={getOneLinerGradeColorClasses}
+            ratingScaleItems={oneLinerRatingScaleItems}
+          />
 
           {/* First 2 Episodes Required Checkbox */}
           <Card className="p-4">
@@ -716,9 +826,94 @@ export function EvaluatorEvaluationForm({
           </Card>
         </div>
 
-        {/* Section 3: Additional Project Information */}
+        {/* Section 3: Descriptive Evaluation */}
         <div className="space-y-4">
-          <h3 className="text-xl font-bold">Section 3: Additional Project Information</h3>
+          <h3 className="text-xl font-bold">Section 3: Descriptive Evaluation</h3>
+          <Card className="p-4 space-y-5">
+            {/* Themes of Drama */}
+            <div className="space-y-2">
+              <Label className="font-semibold">Themes of Drama</Label>
+              <p className="text-xs text-muted-foreground">Add themes that describe this drama</p>
+              <TagInput
+                tags={formData.themesOfDrama}
+                onChange={(tags) => setFormData((prev) => ({ ...prev, themesOfDrama: tags }))}
+                placeholder="e.g., Family, Revenge, Love triangle..."
+              />
+            </div>
+
+            {/* Corresponding Previously Aired Dramas */}
+            <div className="space-y-2">
+              <Label className="font-semibold">Corresponding Previously Aired Dramas</Label>
+              <p className="text-xs text-muted-foreground">Add names of similar previously aired dramas</p>
+              <TagInput
+                tags={formData.correspondingDramas}
+                onChange={(tags) => setFormData((prev) => ({ ...prev, correspondingDramas: tags }))}
+                placeholder="e.g., Humsafar, Zindagi Gulzar Hai..."
+              />
+            </div>
+
+            {/* Category of Theme/Subject */}
+            <div className="space-y-2">
+              <Label className="font-semibold">Category of Theme/Subject</Label>
+              <div className="flex flex-col sm:flex-row gap-3">
+                {[
+                  { value: "commercial", label: "Commercial" },
+                  { value: "non_commercial", label: "Non Commercial" },
+                  { value: "commercial_edge", label: "Commercial Edge" },
+                ].map((option) => (
+                  <label
+                    key={option.value}
+                    className={`flex items-center gap-2 p-3 rounded-lg border-2 cursor-pointer transition-all flex-1 ${
+                      formData.themeCategory === option.value
+                        ? "border-blue-500 bg-blue-50"
+                        : "border-gray-200 hover:border-blue-300 hover:bg-blue-50/30"
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="themeCategory"
+                      value={option.value}
+                      checked={formData.themeCategory === option.value}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, themeCategory: e.target.value as any }))}
+                      className="h-4 w-4 text-blue-600 focus:ring-blue-500"
+                    />
+                    <span className="text-sm font-medium">{option.label}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            {/* No. of Tracks Mentioned */}
+            <div className="space-y-2">
+              <Label htmlFor="noOfTracks" className="font-semibold">No. of Tracks Mentioned</Label>
+              <Input
+                id="noOfTracks"
+                type="number"
+                min="0"
+                value={formData.noOfTracks}
+                onChange={handleInputChange}
+                placeholder="Enter number of tracks"
+                className="w-full sm:w-48"
+              />
+            </div>
+
+            {/* Closing Remarks */}
+            <div className="space-y-2">
+              <Label htmlFor="closingRemarks" className="font-semibold">Closing Remarks</Label>
+              <Textarea
+                id="closingRemarks"
+                placeholder="Final thoughts and remarks about this project..."
+                rows={4}
+                value={formData.closingRemarks}
+                onChange={handleInputChange}
+              />
+            </div>
+          </Card>
+        </div>
+
+        {/* Section 4: Additional Project Information */}
+        <div className="space-y-4">
+          <h3 className="text-xl font-bold">Section 4: Additional Project Information</h3>
           <Card className="p-4 space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
@@ -778,23 +973,6 @@ export function EvaluatorEvaluationForm({
           </Card>
         </div>
 
-        {/* Section 4: Additional Comments */}
-        <div className="space-y-4">
-          <h3 className="text-xl font-bold">Section 4: Additional Comments</h3>
-          <Card className="p-4">
-            <div className="space-y-2">
-              <Label htmlFor="comments">Comments (Optional)</Label>
-              <Textarea
-                id="comments"
-                placeholder="Any additional notes or feedback..."
-                rows={4}
-                value={formData.comments}
-                onChange={handleInputChange}
-              />
-            </div>
-          </Card>
-        </div>
-
         {/* Section 5: Final Decision */}
         <div className="space-y-4">
           <h3 className="text-xl font-bold">Section 5: Final Decision *</h3>
@@ -804,11 +982,10 @@ export function EvaluatorEvaluationForm({
 
           <Card className="p-4 border-2 border-slate-200">
             <div className="space-y-4">
-              {/* Decision Radio Buttons */}
               <div className="space-y-3">
                 <Label className="text-base font-semibold">Your Decision *</Label>
                 <div className="space-y-3">
-                  {/* Approve Option */}
+                  {/* Approve */}
                   <label
                     className={`flex items-start p-4 rounded-lg border-2 cursor-pointer transition-all ${formData.decision === "approve"
                       ? "border-green-500 bg-green-50"
@@ -820,9 +997,7 @@ export function EvaluatorEvaluationForm({
                       name="decision"
                       value="approve"
                       checked={formData.decision === "approve"}
-                      onChange={(e) => {
-                        setFormData({ ...formData, decision: "approve", decisionNotes: "" });
-                      }}
+                      onChange={() => setFormData({ ...formData, decision: "approve", decisionNotes: "" })}
                       className="mt-1 h-4 w-4 text-green-600 focus:ring-green-500"
                     />
                     <div className="ml-3">
@@ -833,7 +1008,7 @@ export function EvaluatorEvaluationForm({
                     </div>
                   </label>
 
-                  {/* Reject Option */}
+                  {/* Reject */}
                   <label
                     className={`flex items-start p-4 rounded-lg border-2 cursor-pointer transition-all ${formData.decision === "reject"
                       ? "border-red-500 bg-red-50"
@@ -845,9 +1020,7 @@ export function EvaluatorEvaluationForm({
                       name="decision"
                       value="reject"
                       checked={formData.decision === "reject"}
-                      onChange={(e) => {
-                        setFormData({ ...formData, decision: "reject" });
-                      }}
+                      onChange={() => setFormData({ ...formData, decision: "reject" })}
                       className="mt-1 h-4 w-4 text-red-600 focus:ring-red-500"
                     />
                     <div className="ml-3">
@@ -858,7 +1031,7 @@ export function EvaluatorEvaluationForm({
                     </div>
                   </label>
 
-                  {/* Needs Improvement Option */}
+                  {/* Needs Improvement */}
                   <label
                     className={`flex items-start p-4 rounded-lg border-2 cursor-pointer transition-all ${formData.decision === "needs_improvement"
                       ? "border-yellow-500 bg-yellow-50"
@@ -870,9 +1043,7 @@ export function EvaluatorEvaluationForm({
                       name="decision"
                       value="needs_improvement"
                       checked={formData.decision === "needs_improvement"}
-                      onChange={(e) => {
-                        setFormData({ ...formData, decision: "needs_improvement" });
-                      }}
+                      onChange={() => setFormData({ ...formData, decision: "needs_improvement" })}
                       className="mt-1 h-4 w-4 text-yellow-600 focus:ring-yellow-500"
                     />
                     <div className="ml-3">
@@ -885,7 +1056,7 @@ export function EvaluatorEvaluationForm({
                 </div>
               </div>
 
-              {/* Decision Notes (Required for Reject or Needs Improvement) */}
+              {/* Decision Notes */}
               {(formData.decision === "reject" || formData.decision === "needs_improvement") && (
                 <div className={`space-y-2 p-3 rounded-lg border ${formData.decision === "reject"
                   ? "bg-red-50 border-red-200"
@@ -917,11 +1088,11 @@ export function EvaluatorEvaluationForm({
                 </div>
               )}
 
-              {/* Warning for Score vs Decision Mismatch */}
+              {/* Score vs Decision warnings */}
               {formData.decision === "approve" && averageScore < 5.0 && (
                 <div className="p-3 bg-amber-50 border border-amber-300 rounded-lg">
                   <p className="text-sm text-amber-800 font-medium">
-                    ⚠️ Warning: You cannot approve a project with an average score below 5.0 (current: {averageScore.toFixed(1)})
+                    Warning: You cannot approve a project with an average score below 5.0 (current: {averageScore.toFixed(1)})
                   </p>
                 </div>
               )}
@@ -929,15 +1100,13 @@ export function EvaluatorEvaluationForm({
               {formData.decision === "reject" && averageScore >= 7.0 && (
                 <div className="p-3 bg-blue-50 border border-blue-300 rounded-lg">
                   <p className="text-sm text-blue-800">
-                    ℹ️ Note: You selected Reject but the score is {averageScore.toFixed(1)}/10 (high). Please confirm your decision is correct.
+                    Note: You selected Reject but the score is {averageScore.toFixed(1)}/10 (high). Please confirm your decision is correct.
                   </p>
                 </div>
               )}
             </div>
           </Card>
         </div>
-
-        {/* Evaluation Progress card removed */}
 
         {/* Late Evaluation Warning & Delay Reason */}
         {isEvaluationLate && (
@@ -977,7 +1146,7 @@ export function EvaluatorEvaluationForm({
           </Card>
         )}
 
-        {/* Form Actions - sticky on mobile, responsive layout */}
+        {/* Form Actions */}
         <div className="sticky bottom-0 bg-white/80 backdrop-blur supports-[backdrop-filter]:bg-white/60 p-3 border-t md:static md:p-0 md:border-0 safe-bottom">
           {/* Mobile: Stacked buttons */}
           <div className="flex flex-col gap-2 sm:hidden">

@@ -7,7 +7,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { useFormTimeTracking } from "@/lib/hooks/useFormTimeTracking";
 import {
   Select,
   SelectContent,
@@ -19,8 +18,11 @@ import Link from "next/link";
 import { toast } from "sonner";
 import { createMeetingClient, updateCallReportClient } from "@/lib/meetings/client";
 import { FileUpload } from "@/components/ui/file-upload";
+import { ContentRevisions } from "@/components/ui/content-revisions";
 import { uploadFile } from "@/lib/attachments/client";
 import { formatFileSize } from "@/lib/validations/episodes";
+import { MentionInput } from "@/components/ui/mention-input";
+import { ScoreCard } from "@/components/episodic-evaluations/score-card";
 import { GenreMultiSelect } from "@/components/ui/genre-multi-select";
 import { WriterMultiSelect } from "@/components/writers/writer-multi-select";
 import { LoglineImageUpload } from "@/components/ui/logline-image-upload";
@@ -81,48 +83,143 @@ export function CallReportForm({
     writer_phone?: string;
     display_order: number;
   }>>([]);
-  const [loglineImageUrl, setLoglineImageUrl] = useState<string | null>(null);
-  // Track time spent on form (only for new reports)
-  const timeSpentMinutes = useFormTimeTracking({
-    enabled: mode === "create",
-  });
-
-  // Form state
-  const [formData, setFormData] = useState({
-    category: "",
-    writerId: "",
-    suggestedWriter: "",
-    contactPhone: "",
-    contactAddress: "",
-    workingTitle: "",
-    director: "",
-    totalEpisodes: "",
-    receivedEpisodes: "",
-    logline: "",
-    shortSynopsis: "",
-    episodicSynopsis: "",
-    genre: [] as string[],
-    theme: "",
-    targetSlot: "",
-    contentType: "",
-    notes: "",
-    nextSteps: "",
-    status: "ready_for_evaluation",
-    ideaBy: "",
-    developedBy: "",
-    managementMemberName: "",
-    overallRating: 0
-  });
-
-
+  const [loglineImageUrl, setLoglineImageUrl] = useState<string | null>(
+    mode === "edit" && initialData?.logline_image_url ? initialData.logline_image_url : null
+  );
   // Autosave
   const { hasDraft, draftLoaded, draftUpdatedAt, saveDraft, loadDraft, clearDraft } = useFormAutosave({
-    formType: "call_report",
+    formType: "call_report_content",
     entityId: callReportId || "_new",
     enabled: mode === "create",
   });
 
   const [draftDismissed, setDraftDismissed] = useState(false);
+
+  // Form state — initialize from initialData in edit mode to avoid two-phase render
+  const [formData, setFormData] = useState(() => {
+    if (mode === "edit" && initialData) {
+      return {
+        category: initialData.category || "",
+        writerId: "",
+        suggestedWriter: initialData.suggested_writer || "",
+        contactPhone: initialData.contact_phone || "",
+        contactAddress: initialData.contact_address || "",
+        workingTitle: initialData.working_title || "",
+        director: initialData.director || "",
+        totalEpisodes: initialData.total_episodes?.toString() || "",
+        receivedEpisodes: initialData.received_episodes?.toString() || "",
+        logline: initialData.logline || "",
+        shortSynopsis: initialData.short_synopsis || "",
+        episodicSynopsis: initialData.episodic_synopsis || "",
+        genre: Array.isArray(initialData.genre) ? initialData.genre : (initialData.genre ? [initialData.genre] : []),
+        theme: initialData.theme || "",
+        targetSlot: initialData.target_slot || "",
+        contentType: initialData.content_type || "",
+        notes: initialData.meeting_notes || "",
+        nextSteps: initialData.next_steps || "",
+        status: initialData.status || "draft",
+        overallRating: initialData.overall_rating || 5,
+        ideaBy: initialData.idea_by || "",
+        developedBy: initialData.developed_by || "",
+        managementMemberName: initialData.management_member_name || "",
+      };
+    }
+    return {
+      category: "",
+      writerId: "",
+      suggestedWriter: "",
+      contactPhone: "",
+      contactAddress: "",
+      workingTitle: "",
+      director: "",
+      totalEpisodes: "",
+      receivedEpisodes: "",
+      logline: "",
+      shortSynopsis: "",
+      episodicSynopsis: "",
+      genre: [] as string[],
+      theme: "",
+      targetSlot: "",
+      contentType: "",
+      notes: "",
+      nextSteps: "",
+      status: "ready_for_evaluation",
+      overallRating: 5,
+      ideaBy: "",
+      developedBy: "",
+      managementMemberName: "",
+    };
+  });
+
+  // File upload state
+  const [filesToUpload, setFilesToUpload] = useState<File[]>([]);
+  const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({});
+  const [existingAttachments, setExistingAttachments] = useState<AttachmentRecord[]>(memoizedInitialAttachments);
+  const [attachmentsMarkedForDeletion, setAttachmentsMarkedForDeletion] = useState<string[]>([]);
+
+  useEffect(() => {
+    console.log("📎 FORM - memoizedInitialAttachments updated:", memoizedInitialAttachments);
+    setExistingAttachments(memoizedInitialAttachments);
+    setAttachmentsMarkedForDeletion([]);
+  }, [memoizedInitialAttachments]);
+
+  const handleExistingAttachmentDownload = (attachment: AttachmentRecord) => {
+    if (attachment.file_path) {
+      // Use signed URL endpoint for secure file access
+      window.open(`/api/attachments/download?path=${encodeURIComponent(attachment.file_path)}`, "_blank");
+    } else {
+      toast.error("Download link not available for this attachment.");
+    }
+  };
+
+  const handleExistingAttachmentRemove = (attachment: AttachmentRecord) => {
+    if (!attachment.id) {
+      setExistingAttachments((prev) => prev.filter((a) => a.file_path !== attachment.file_path));
+      return;
+    }
+
+    setAttachmentsMarkedForDeletion((prev) => [...prev, attachment.id as string]);
+    setExistingAttachments((prev) => prev.filter((a) => a.id !== attachment.id));
+    toast.info("Attachment marked for removal. Save to apply.", { duration: 4000 });
+  };
+
+  // Debug logging for edit mode (state is already initialized from initialData in useState)
+  useEffect(() => {
+    if (mode === "edit" && initialData) {
+      console.log("📝 FORM - Edit mode, initialData loaded:", {
+        category: initialData.category,
+        genre: initialData.genre,
+        target_slot: initialData.target_slot,
+        content_type: initialData.content_type,
+      });
+    }
+  }, [mode, initialData]);
+
+  // Fetch writers when in edit mode
+  useEffect(() => {
+    if (mode === "edit" && callReportId) {
+      const fetchWriters = async () => {
+        try {
+          const response = await fetch(`/api/call-reports/${callReportId}/writers`, { cache: "no-store" });
+          if (response.ok) {
+            const { writers: fetchedWriters } = await response.json();
+            // Map to the format expected by WriterMultiSelect
+            const mappedWriters = fetchedWriters?.map((w: any) => ({
+              writer_id: w.writer_id,
+              writer_name: w.writer_name,
+              writer_email: w.writer_email,
+              writer_phone: w.writer_phone,
+              display_order: w.display_order,
+            })) || [];
+            setWriters(mappedWriters);
+          }
+        } catch (error) {
+          console.error("Error fetching writers:", error);
+        }
+      };
+      fetchWriters();
+    }
+  }, [mode, callReportId]);
 
   // Autosave on form state changes
   useEffect(() => {
@@ -158,10 +255,10 @@ export function CallReportForm({
         notes: d.notes || "",
         nextSteps: d.nextSteps || "",
         status: d.status || "ready_for_evaluation",
+        overallRating: d.overallRating || 5,
         ideaBy: d.ideaBy || "",
         developedBy: d.developedBy || "",
         managementMemberName: d.managementMemberName || "",
-        overallRating: d.overallRating || 0,
       });
       if (d.writers) setWriters(d.writers);
       if (d.loglineImageUrl) setLoglineImageUrl(d.loglineImageUrl);
@@ -174,103 +271,6 @@ export function CallReportForm({
     await clearDraft();
     setDraftDismissed(true);
   }, [clearDraft]);
-
-  // File upload state
-  const [filesToUpload, setFilesToUpload] = useState<File[]>([]);
-  const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({});
-  const [existingAttachments, setExistingAttachments] = useState<AttachmentRecord[]>(memoizedInitialAttachments);
-  const [attachmentsMarkedForDeletion, setAttachmentsMarkedForDeletion] = useState<string[]>([]);
-  const handleExistingAttachmentDownload = (attachment: AttachmentRecord) => {
-    if (attachment.file_path) {
-      // Use signed URL endpoint for secure file access
-      window.open(`/api/attachments/download?path=${encodeURIComponent(attachment.file_path)}`, "_blank");
-    } else {
-      toast.error("Download link not available for this attachment.");
-    }
-  };
-
-  const handleExistingAttachmentRemove = (attachment: AttachmentRecord) => {
-    if (!attachment.id) {
-      setExistingAttachments((prev) => prev.filter((a) => a.file_path !== attachment.file_path));
-      return;
-    }
-
-    setAttachmentsMarkedForDeletion((prev) => [...prev, attachment.id as string]);
-    setExistingAttachments((prev) => prev.filter((a) => a.id !== attachment.id));
-    toast.info("Attachment marked for removal. Save to apply.", { duration: 4000 });
-  };
-
-  useEffect(() => {
-    console.log("📎 FORM - memoizedInitialAttachments updated:", memoizedInitialAttachments);
-    setExistingAttachments(memoizedInitialAttachments);
-    setAttachmentsMarkedForDeletion([]);
-  }, [memoizedInitialAttachments]);
-
-  // Pre-populate form when in edit mode
-  useEffect(() => {
-    if (mode === "edit" && initialData) {
-      console.log("📝 FORM - Populating with initialData:", initialData);
-      console.log("📝 FORM - Genre from initialData:", initialData.genre);
-      console.log("📝 FORM - Target Slot from initialData:", initialData.target_slot);
-      setFormData({
-        category: initialData.category || "",
-        writerId: "",
-        suggestedWriter: initialData.suggested_writer || "",
-        contactPhone: initialData.contact_phone || "",
-        contactAddress: initialData.contact_address || "",
-        workingTitle: initialData.working_title || "",
-        director: initialData.director || "",
-        totalEpisodes: initialData.total_episodes?.toString() || "",
-        receivedEpisodes: initialData.received_episodes?.toString() || "",
-        logline: initialData.logline || "",
-        shortSynopsis: initialData.short_synopsis || "",
-        episodicSynopsis: initialData.episodic_synopsis || "",
-        genre: Array.isArray(initialData.genre) ? initialData.genre : (initialData.genre ? [initialData.genre] : []),
-        theme: initialData.theme || "",
-        targetSlot: initialData.target_slot || "",
-        contentType: initialData.content_type || "",
-        notes: initialData.meeting_notes || "",
-        nextSteps: initialData.next_steps || "",
-        status: initialData.status || "draft",
-        ideaBy: initialData.idea_by || "",
-        developedBy: initialData.developed_by || "",
-        managementMemberName: initialData.management_member_name || "",
-        overallRating: initialData.overall_rating || 0
-      });
-      // Pre-populate logline image if exists
-      if (initialData.logline_image_url) {
-        setLoglineImageUrl(initialData.logline_image_url);
-      }
-
-      // Note: Files are not pre-populated as they require separate handling
-    }
-  }, [mode, initialData]);
-
-  // Fetch writers when in edit mode
-  useEffect(() => {
-    if (mode === "edit" && callReportId) {
-      const fetchWriters = async () => {
-        try {
-          const response = await fetch(`/api/call-reports/${callReportId}/writers`);
-          if (response.ok) {
-            const { writers: fetchedWriters } = await response.json();
-            // Map to the format expected by WriterMultiSelect
-            const mappedWriters = fetchedWriters?.map((w: any) => ({
-              writer_id: w.writer_id,
-              writer_name: w.writer_name,
-              writer_email: w.writer_email,
-              writer_phone: w.writer_phone,
-              display_order: w.display_order,
-            })) || [];
-            setWriters(mappedWriters);
-          }
-        } catch (error) {
-          console.error("Error fetching writers:", error);
-        }
-      };
-      fetchWriters();
-    }
-  }, [mode, callReportId]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { id, value } = e.target;
@@ -314,9 +314,9 @@ export function CallReportForm({
           theme: formData.theme || undefined,
           target_slot: formData.targetSlot || undefined,
           content_type: (formData.contentType || undefined) as "Serial" | "Long Serial" | "Telefilm" | "Mini-serial" | "Ramadan Serial" | "Series Sitcom" | "Soap" | undefined,
-          category: formData.category as "external_producer" | "writer_pitch" | "inhouse_content" | "content_head_initiative" | "given_by_management" | undefined,
-          idea_by: formData.ideaBy,
-          developed_by: formData.developedBy,
+          category: (formData.category || undefined) as "external_producer" | "writer_pitch" | "inhouse_content" | "content_head_initiative" | "given_by_management" | undefined,
+          idea_by: formData.ideaBy || undefined,
+          developed_by: formData.developedBy || undefined,
           management_member_name: formData.managementMemberName || undefined,
           meeting_notes: formData.notes || undefined,
           next_steps: formData.nextSteps || undefined,
@@ -405,15 +405,15 @@ export function CallReportForm({
         if (onSuccess) {
           onSuccess();
         } else {
-          router.push("/evaluator/call-reports");
+          router.push("/content-department/call-reports");
         }
       } else {
-        // Create new meeting/call report
+        // Create meeting/call report
         const result = await createMeetingClient({
           logged_by: userName,
           category: formData.category,
           writer_name: writers.length > 0 ? writers[0].writer_name : (formData.suggestedWriter || "In-house Content"), // Deprecated field
-          writer_email: writers.length > 0 ? (writers[0].writer_email || "") : "", // Deprecated field
+          writer_email: writers.length > 0 ? (writers[0].writer_email || "") : "", // Deprecated field (for create, kept for backward compatibility)
           suggested_writer: formData.suggestedWriter,
           contact_phone: formData.contactPhone,
           contact_address: formData.contactAddress,
@@ -433,14 +433,12 @@ export function CallReportForm({
           developed_by: formData.developedBy || undefined,
           management_member_name: formData.managementMemberName || undefined,
           meeting_date: new Date().toISOString(),
-          time_spent_minutes: timeSpentMinutes,
-          form_started_at: new Date().toISOString(),
           attendees: writers.map(w => w.writer_email).filter((email): email is string => !!email),
           notes: formData.notes,
           next_steps: formData.nextSteps,
           status: formData.status,
-          overall_rating: formData.overallRating,
-          created_by: userId
+          created_by: userId,
+          overall_rating: formData.overallRating
         });
 
         // Add writers to call report
@@ -494,7 +492,7 @@ export function CallReportForm({
         await clearDraft();
 
         // Redirect to call reports list with fresh data
-        router.push("/evaluator/call-reports");
+        router.push("/content-department/call-reports");
         router.refresh(); // Force cache revalidation to show new report
 
         // Reset form
@@ -513,15 +511,15 @@ export function CallReportForm({
           episodicSynopsis: "",
           genre: [],
           theme: "",
-          contentType: "",
           targetSlot: "",
+          contentType: "",
           notes: "",
           nextSteps: "",
           status: "ready_for_evaluation",
+          overallRating: 5,
           ideaBy: "",
           developedBy: "",
-          managementMemberName: "",
-          overallRating: 0
+          managementMemberName: ""
         });
         setWriters([]);
         setFilesToUpload([]);
@@ -536,7 +534,7 @@ export function CallReportForm({
 
   return (
     <form onSubmit={handleSubmit}>
-      <div className="space-y-6 max-w-4xl mx-auto px-4 sm:px-0">
+      <div className="space-y-4 sm:space-y-6 md:space-y-8 max-w-4xl mx-auto px-0">
         {/* Draft restore banner */}
         {!draftDismissed && (
           <DraftRestoreBanner
@@ -550,10 +548,10 @@ export function CallReportForm({
 
         {/* Section 1: Basic Information */}
         <Card>
-          <CardHeader>
-            <CardTitle>Basic Information</CardTitle>
+          <CardHeader className="p-3 sm:p-4 md:p-6">
+            <CardTitle className="text-base sm:text-lg">Basic Information</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="p-3 sm:p-4 md:p-6 pt-0 space-y-3 sm:space-y-4">
             <div className="space-y-2">
               <Label htmlFor="loggedBy">Logged By</Label>
               <Input
@@ -653,10 +651,10 @@ export function CallReportForm({
 
         {/* Section 2: Contact Information */}
         <Card>
-          <CardHeader>
-            <CardTitle>Contact Information</CardTitle>
+          <CardHeader className="p-3 sm:p-4 md:p-6">
+            <CardTitle className="text-base sm:text-lg">Contact Information</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="p-3 sm:p-4 md:p-6 pt-0 space-y-3 sm:space-y-4">
             <div className="space-y-2">
               <Label htmlFor="contactPhone">Contact Phone</Label>
               <Input
@@ -682,11 +680,11 @@ export function CallReportForm({
 
         {/* Section 3: Story Details */}
         <Card>
-          <CardHeader>
-            <CardTitle>Story Details (One-Liner)</CardTitle>
+          <CardHeader className="p-3 sm:p-4 md:p-6">
+            <CardTitle className="text-base sm:text-lg">Story Details (One-Liner)</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <CardContent className="p-3 sm:p-4 md:p-6 pt-0 space-y-3 sm:space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
               <div className="space-y-2">
                 <Label htmlFor="workingTitle">Working Title</Label>
                 <Input
@@ -702,7 +700,7 @@ export function CallReportForm({
               />
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
               <div className="space-y-2">
                 <Label htmlFor="totalEpisodes">Total Episodes</Label>
                 <Input
@@ -819,15 +817,26 @@ export function CallReportForm({
                 </SelectContent>
               </Select>
             </div>
+
+            <div className="space-y-2">
+              <ScoreCard
+                label="Initial Assessment"
+                description="Your initial rating of this story (1-10). Evaluators will see this when they evaluate."
+                score={formData.overallRating}
+                onChange={(score) => setFormData(prev => ({ ...prev, overallRating: score }))}
+                disabled={isLoading}
+                showGrade={true}
+              />
+            </div>
           </CardContent>
         </Card>
 
         {/* Section 4: Additional Notes */}
         <Card>
-          <CardHeader>
-            <CardTitle>Additional Notes</CardTitle>
+          <CardHeader className="p-3 sm:p-4 md:p-6">
+            <CardTitle className="text-base sm:text-lg">Additional Notes</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="p-3 sm:p-4 md:p-6 pt-0 space-y-3 sm:space-y-4">
             <div className="space-y-2">
               <Label htmlFor="notes">Notes</Label>
               <Textarea
@@ -843,10 +852,10 @@ export function CallReportForm({
 
         {/* Section 5: Follow-up */}
         <Card>
-          <CardHeader>
-            <CardTitle>Follow-up</CardTitle>
+          <CardHeader className="p-3 sm:p-4 md:p-6">
+            <CardTitle className="text-base sm:text-lg">Follow-up</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-3 sm:p-4 md:p-6 pt-0">
             <div className="space-y-2">
               <Label htmlFor="nextSteps">Next Steps/Action</Label>
               <Textarea
@@ -863,8 +872,8 @@ export function CallReportForm({
         {/* Existing Attachments (Edit Mode) */}
         {mode === "edit" && (
           <Card>
-            <CardHeader>
-              <CardTitle>Existing Attachments</CardTitle>
+            <CardHeader className="p-3 sm:p-4 md:p-6">
+              <CardTitle className="text-base sm:text-lg">Existing Attachments</CardTitle>
               {attachmentsMarkedForDeletion.length > 0 && (
                 <p className="text-xs text-amber-600">
                   {attachmentsMarkedForDeletion.length} attachment
@@ -872,7 +881,7 @@ export function CallReportForm({
                 </p>
               )}
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-3 sm:p-4 md:p-6 pt-0">
               {existingAttachments.length === 0 ? (
                 <p className="text-sm text-muted-foreground">
                   No attachments uploaded for this report yet.
@@ -917,6 +926,16 @@ export function CallReportForm({
           </Card>
         )}
 
+        {/* Revisions (Edit Mode) */}
+        {mode === "edit" && callReportId && (
+          <ContentRevisions
+            entityId={callReportId}
+            apiBasePath="/api/call-reports"
+            storageBucket="attachments"
+            canEdit={true}
+          />
+        )}
+
         {/* File Upload Section */}
         <FileUpload
           onFileUpload={handleFileUpload}
@@ -928,12 +947,13 @@ export function CallReportForm({
         />
 
         {/* Form Actions - sticky on mobile */}
-        <div className="flex justify-end gap-3 sticky bottom-0 bg-white/80 backdrop-blur supports-[backdrop-filter]:bg-white/60 p-3 sm:p-0 sm:static sm:bg-transparent sm:backdrop-blur-0">
-          <Button asChild variant="outline" type="button">
-            <Link href="/evaluator">Cancel</Link>
+        <div className="flex flex-col sm:flex-row justify-end gap-3 sticky bottom-0 bg-white/80 backdrop-blur supports-[backdrop-filter]:bg-white/60 p-3 sm:p-0 sm:static sm:bg-transparent sm:backdrop-blur-0">
+          <Button asChild variant="outline" type="button" className="touch-target">
+            <Link href="/content-department">Cancel</Link>
           </Button>
-          <Button type="submit" disabled={isLoading}>
-            {isLoading ? "Saving..." : mode === "edit" ? "Update Writer Engagement Report" : "Log Writer Engagement Report"}
+          <Button type="submit" disabled={isLoading} className="touch-target">
+            <span className="hidden sm:inline">{isLoading ? "Saving..." : mode === "edit" ? "Update Writer Engagement Report" : "Log Writer Engagement Report"}</span>
+            <span className="sm:hidden">{isLoading ? "Saving..." : mode === "edit" ? "Update Report" : "Log Report"}</span>
           </Button>
         </div>
       </div>

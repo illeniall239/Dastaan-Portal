@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { format, addMonths, subMonths, startOfMonth, endOfMonth } from 'date-fns';
-import { Plus, Save, Trash2, Loader2 } from 'lucide-react';
+import { Plus, Save, Trash2, Loader2, Pencil, X, Check, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
@@ -24,79 +24,156 @@ interface WriterEngagement {
   notes?: string;
   created_by?: string;
   creator?: { id: string; name: string } | null;
+  writer?: { id: string; name: string } | null;
   created_at: string;
   updated_at: string;
 }
 
-// Memoized row component
-const EngagementRow = memo(function EngagementRow({
+// --- Row for saved engagements (display + edit mode) ---
+const SavedRow = memo(function SavedRow({
   engagement,
+  isEditing,
+  editNotes,
+  isSaving,
+  onEdit,
+  onCancelEdit,
+  onSaveEdit,
+  onEditNotesChange,
+  onDelete,
+  isDeleting,
+}: {
+  engagement: WriterEngagement;
+  isEditing: boolean;
+  editNotes: string;
+  isSaving: boolean;
+  onEdit: () => void;
+  onCancelEdit: () => void;
+  onSaveEdit: () => void;
+  onEditNotesChange: (value: string) => void;
+  onDelete: () => void;
+  isDeleting: boolean;
+}) {
+  const writerName = engagement.writer?.name || 'Unknown Writer';
+
+  if (isEditing) {
+    return (
+      <div className="grid grid-cols-[1fr_1fr_auto] gap-3 items-center border rounded-lg p-3 bg-muted/30">
+        <div className="text-sm font-medium">{writerName}</div>
+        <div>
+          <Input
+            value={editNotes}
+            onChange={(e) => onEditNotesChange(e.target.value)}
+            placeholder="Purpose of engagement..."
+            autoFocus
+          />
+        </div>
+        <div className="flex items-center gap-1">
+          <Button
+            size="icon"
+            variant="ghost"
+            className="h-8 w-8"
+            onClick={onSaveEdit}
+            disabled={!editNotes.trim() || isSaving}
+          >
+            {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+          </Button>
+          <Button
+            size="icon"
+            variant="ghost"
+            className="h-8 w-8"
+            onClick={onCancelEdit}
+            disabled={isSaving}
+          >
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid grid-cols-[1fr_1fr_auto] gap-3 items-center border rounded-lg p-3">
+      <div className="text-sm font-medium">{writerName}</div>
+      <div className="text-sm text-muted-foreground">{engagement.notes || '—'}</div>
+      <div className="flex items-center gap-1">
+        <Button
+          size="icon"
+          variant="ghost"
+          className="h-8 w-8"
+          onClick={onEdit}
+        >
+          <Pencil className="h-4 w-4" />
+        </Button>
+        <Button
+          size="icon"
+          variant="ghost"
+          className="h-8 w-8 text-destructive hover:text-destructive"
+          onClick={onDelete}
+          disabled={isDeleting}
+        >
+          {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+        </Button>
+      </div>
+    </div>
+  );
+});
+
+// --- Row for new (unsaved) engagements ---
+const NewRow = memo(function NewRow({
+  writers,
   isSaving,
   onSave,
   onDelete,
 }: {
-  engagement: WriterEngagement;
+  writers: Writer[];
   isSaving: boolean;
-  onSave: (engagement: WriterEngagement) => void;
-  onDelete: (engagement: WriterEngagement) => void;
+  onSave: (writerId: string, notes: string) => void;
+  onDelete: () => void;
 }) {
-  const isNewRow = engagement.id.startsWith('new-');
-  const [timeSlot, setTimeSlot] = useState(engagement.time_slot || '');
-  const [notes, setNotes] = useState(engagement.notes || '');
+  const [writerId, setWriterId] = useState('');
+  const [notes, setNotes] = useState('');
 
   return (
-    <div className="grid grid-cols-[1fr_1fr_auto] gap-3 items-center border rounded-lg p-3">
+    <div className="grid grid-cols-[1fr_1fr_auto] gap-3 items-center border rounded-lg p-3 border-dashed">
       <div>
-        <Input
-          value={isNewRow ? timeSlot : engagement.time_slot || ''}
-          onChange={isNewRow ? e => setTimeSlot(e.target.value) : undefined}
-          placeholder="e.g., 10:00 AM - 11:00 AM"
-          maxLength={100}
-          disabled={!isNewRow}
-          readOnly={!isNewRow}
-        />
+        <Select value={writerId} onValueChange={setWriterId}>
+          <SelectTrigger>
+            <SelectValue placeholder="Select writer" />
+          </SelectTrigger>
+          <SelectContent>
+            {writers.map((writer) => (
+              <SelectItem key={writer.id} value={writer.id}>
+                {writer.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
       <div>
         <Input
-          value={isNewRow ? notes : engagement.notes || ''}
-          onChange={isNewRow ? e => setNotes(e.target.value) : undefined}
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
           placeholder="Purpose of engagement..."
-          disabled={!isNewRow}
-          readOnly={!isNewRow}
         />
       </div>
-      <div className="flex items-center gap-2">
-        {isNewRow ? (
-          <Button
-            size="sm"
-            onClick={() =>
-              onSave({ ...engagement, time_slot: timeSlot, notes })
-            }
-            disabled={!timeSlot.trim() || !notes.trim() || isSaving}
-          >
-            {isSaving ? (
-              <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-            ) : (
-              <Save className="h-4 w-4 mr-1" />
-            )}
-            Save
-          </Button>
-        ) : (
-          <span className="text-xs text-muted-foreground whitespace-nowrap">
-            {engagement.creator?.name ? `by ${engagement.creator.name}` : ''}
-          </span>
-        )}
+      <div className="flex items-center gap-1">
         <Button
-          size="sm"
-          variant="destructive"
-          onClick={() => onDelete(engagement)}
+          size="icon"
+          variant="ghost"
+          className="h-8 w-8"
+          onClick={() => onSave(writerId, notes)}
+          disabled={!writerId || !notes.trim() || isSaving}
+        >
+          {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+        </Button>
+        <Button
+          size="icon"
+          variant="ghost"
+          className="h-8 w-8 text-destructive hover:text-destructive"
+          onClick={onDelete}
           disabled={isSaving}
         >
-          {isSaving ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <Trash2 className="h-4 w-4" />
-          )}
+          <Trash2 className="h-4 w-4" />
         </Button>
       </div>
     </div>
@@ -105,13 +182,12 @@ const EngagementRow = memo(function EngagementRow({
 
 export function WriterEngagementTracker() {
   const queryClient = useQueryClient();
-  const [selectedWriter, setSelectedWriter] = useState<string>('');
   const [currentDate, setCurrentDate] = useState<Date>(new Date());
+  const [newRowIds, setNewRowIds] = useState<string[]>([]);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editNotes, setEditNotes] = useState('');
 
-  // Local state for new (unsaved) rows
-  const [newEngagements, setNewEngagements] = useState<WriterEngagement[]>([]);
-
-  // 1. Fetch Writers
+  // Fetch writers list
   const { data: writers = [], isLoading: writersLoading } = useQuery({
     queryKey: ['writers'],
     queryFn: async () => {
@@ -119,59 +195,74 @@ export function WriterEngagementTracker() {
       if (!response.ok) throw new Error('Failed to fetch writers');
       return response.json() as Promise<Writer[]>;
     },
-    staleTime: 1000 * 60 * 60, // 1 hour
+    staleTime: 1000 * 60 * 60,
   });
 
-  // 2. Fetch Engagements
-  const { data: serverEngagements = [], isLoading: engagementsLoading, isError } = useQuery({
-    queryKey: ['writer-engagements', selectedWriter, format(currentDate, 'yyyy-MM')],
-    enabled: !!selectedWriter,
-    queryFn: async () => {
-      const monthStart = startOfMonth(currentDate);
-      const monthEnd = endOfMonth(currentDate);
-      const dateFrom = format(monthStart, 'yyyy-MM-dd');
-      const dateTo = format(monthEnd, 'yyyy-MM-dd');
+  // Fetch ALL engagements for the month (no writer filter)
+  const monthStart = startOfMonth(currentDate);
+  const monthEnd = endOfMonth(currentDate);
+  const dateFrom = format(monthStart, 'yyyy-MM-dd');
+  const dateTo = format(monthEnd, 'yyyy-MM-dd');
 
+  const { data: engagements = [], isLoading: engagementsLoading, isError } = useQuery({
+    queryKey: ['writer-engagements', format(currentDate, 'yyyy-MM')],
+    queryFn: async () => {
       const response = await fetch(
-        `/api/writers?writerId=${selectedWriter}&dateFrom=${dateFrom}&dateTo=${dateTo}`
+        `/api/writers?dateFrom=${dateFrom}&dateTo=${dateTo}`
       );
       if (!response.ok) throw new Error('Failed to fetch engagements');
       return response.json() as Promise<WriterEngagement[]>;
     },
   });
 
-  // 3. Save Mutation
+  // Save (create) mutation
   const saveMutation = useMutation({
-    mutationFn: async (engagement: WriterEngagement) => {
+    mutationFn: async ({ writerId, notes, rowId }: { writerId: string; notes: string; rowId: string }) => {
       const response = await fetch('/api/writers', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          writer_id: engagement.writer_id,
-          date_engaged: engagement.date_engaged,
-          time_slot: engagement.time_slot || null,
-          notes: engagement.notes || null,
+          writer_id: writerId,
+          date_engaged: format(monthStart, 'yyyy-MM-dd'),
+          notes,
         }),
       });
       if (!response.ok) throw new Error('Failed to save engagement');
-      return response.json();
+      return { data: await response.json(), rowId };
     },
-    onSuccess: (savedEngagement, variables) => {
-      // Remove the "new" row from local state
-      setNewEngagements(prev => prev.filter(e => e.id !== variables.id));
-
-      // Invalidate the query to fetch fresh data from server
+    onSuccess: (result) => {
+      setNewRowIds(prev => prev.filter(id => id !== result.rowId));
       queryClient.invalidateQueries({ queryKey: ['writer-engagements'] });
-
       toast.success('Engagement saved');
     },
-    onError: (error) => {
-      console.error(error);
+    onError: () => {
       toast.error('Failed to save engagement');
-    }
+    },
   });
 
-  // 4. Delete Mutation
+  // Edit (update) mutation
+  const editMutation = useMutation({
+    mutationFn: async ({ id, notes }: { id: string; notes: string }) => {
+      const response = await fetch(`/api/writers/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ notes }),
+      });
+      if (!response.ok) throw new Error('Failed to update engagement');
+      return response.json();
+    },
+    onSuccess: () => {
+      setEditingId(null);
+      setEditNotes('');
+      queryClient.invalidateQueries({ queryKey: ['writer-engagements'] });
+      toast.success('Engagement updated');
+    },
+    onError: () => {
+      toast.error('Failed to update engagement');
+    },
+  });
+
+  // Delete mutation
   const deleteMutation = useMutation({
     mutationFn: async (engagementId: string) => {
       const response = await fetch(`/api/writers/${engagementId}`, {
@@ -183,41 +274,40 @@ export function WriterEngagementTracker() {
       queryClient.invalidateQueries({ queryKey: ['writer-engagements'] });
       toast.success('Engagement deleted');
     },
-    onError: (error) => {
-      console.error(error);
+    onError: () => {
       toast.error('Failed to delete engagement');
-    }
+    },
   });
 
   const handleAddRow = useCallback(() => {
-    const newEngagement: WriterEngagement = {
-      id: `new-${Date.now()}`,
-      writer_id: selectedWriter,
-      date_engaged: format(startOfMonth(currentDate), 'yyyy-MM-dd'),
-      time_slot: '',
-      notes: '',
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    };
-    setNewEngagements(prev => [...prev, newEngagement]);
-  }, [selectedWriter, currentDate]);
+    setNewRowIds(prev => [...prev, `new-${Date.now()}`]);
+  }, []);
 
-  const handleDelete = useCallback((engagement: WriterEngagement) => {
-    if (engagement.id.startsWith('new-')) {
-      setNewEngagements(prev => prev.filter(e => e.id !== engagement.id));
-    } else {
-      deleteMutation.mutate(engagement.id);
+  const handleRemoveNewRow = useCallback((rowId: string) => {
+    setNewRowIds(prev => prev.filter(id => id !== rowId));
+  }, []);
+
+  const handleStartEdit = useCallback((engagement: WriterEngagement) => {
+    setEditingId(engagement.id);
+    setEditNotes(engagement.notes || '');
+  }, []);
+
+  const handleCancelEdit = useCallback(() => {
+    setEditingId(null);
+    setEditNotes('');
+  }, []);
+
+  const handleSaveEdit = useCallback(() => {
+    if (editingId && editNotes.trim()) {
+      editMutation.mutate({ id: editingId, notes: editNotes.trim() });
     }
-  }, [deleteMutation]);
-
-  // Combine server and new engagements for display
-  const allEngagements = [...serverEngagements, ...newEngagements];
+  }, [editingId, editNotes, editMutation]);
 
   if (writersLoading) {
     return (
       <div className="p-6 max-w-5xl mx-auto text-center">
         <Loader2 className="h-8 w-8 animate-spin mx-auto text-muted-foreground" />
-        <p className="mt-2 text-muted-foreground">Loading writers...</p>
+        <p className="mt-2 text-muted-foreground">Loading...</p>
       </div>
     );
   }
@@ -225,8 +315,29 @@ export function WriterEngagementTracker() {
   return (
     <div className="p-6 max-w-5xl mx-auto">
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
           <CardTitle>Writer Engagement Tracker</CardTitle>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-8 w-8"
+              onClick={() => setCurrentDate(prev => subMonths(prev, 1))}
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <div className="text-sm font-medium px-2 min-w-[120px] text-center">
+              {format(currentDate, 'MMMM yyyy')}
+            </div>
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-8 w-8"
+              onClick={() => setCurrentDate(prev => addMonths(prev, 1))}
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           {isError && (
@@ -235,78 +346,56 @@ export function WriterEngagementTracker() {
             </div>
           )}
 
-          {/* Top controls: writer select + month nav */}
-          <div className="mb-6 flex flex-wrap gap-4 items-end">
-            <div className="flex-1 min-w-[200px]">
-              <Label htmlFor="writer-select">Select Writer</Label>
-              <Select value={selectedWriter} onValueChange={setSelectedWriter}>
-                <SelectTrigger id="writer-select">
-                  <SelectValue placeholder="Choose a writer" />
-                </SelectTrigger>
-                <SelectContent>
-                  {writers.map((writer: Writer) => (
-                    <SelectItem key={writer.id} value={writer.id}>
-                      {writer.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                onClick={() => setCurrentDate(prev => subMonths(prev, 1))}
-              >
-                Prev
-              </Button>
-              <div className="text-lg font-medium px-4 min-w-[160px] text-center">
-                {format(currentDate, 'MMMM yyyy')}
-              </div>
-              <Button
-                variant="outline"
-                onClick={() => setCurrentDate(prev => addMonths(prev, 1))}
-              >
-                Next
-              </Button>
-            </div>
-          </div>
-
-          {/* Engagement rows */}
-          {!selectedWriter ? (
-            <div className="text-center py-12 text-muted-foreground">
-              Select a writer to view and manage engagements.
-            </div>
-          ) : engagementsLoading ? (
+          {engagementsLoading ? (
             <div className="flex justify-center py-12">
               <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
             </div>
           ) : (
             <div className="space-y-3">
               {/* Column headers */}
-              {allEngagements.length > 0 && (
-                <div className="grid grid-cols-[1fr_1fr_auto] gap-3 px-1">
+              {(engagements.length > 0 || newRowIds.length > 0) && (
+                <div className="grid grid-cols-[1fr_1fr_auto] gap-3 px-3">
                   <Label className="text-xs text-muted-foreground uppercase tracking-wide">
-                    Time Slot
+                    Writer
                   </Label>
                   <Label className="text-xs text-muted-foreground uppercase tracking-wide">
                     Purpose
                   </Label>
-                  <div className="w-[88px]" />
+                  <div className="w-[72px]" />
                 </div>
               )}
 
-              {allEngagements.map(engagement => (
-                <EngagementRow
+              {/* Saved engagement rows */}
+              {engagements.map(engagement => (
+                <SavedRow
                   key={engagement.id}
                   engagement={engagement}
-                  isSaving={saveMutation.isPending && saveMutation.variables?.id === engagement.id} // Not ideal matching for optimistic UI but simpler
-                  onSave={(e) => saveMutation.mutate(e)}
-                  onDelete={handleDelete}
+                  isEditing={editingId === engagement.id}
+                  editNotes={editingId === engagement.id ? editNotes : ''}
+                  isSaving={editMutation.isPending && editingId === engagement.id}
+                  onEdit={() => handleStartEdit(engagement)}
+                  onCancelEdit={handleCancelEdit}
+                  onSaveEdit={handleSaveEdit}
+                  onEditNotesChange={setEditNotes}
+                  onDelete={() => deleteMutation.mutate(engagement.id)}
+                  isDeleting={deleteMutation.isPending && deleteMutation.variables === engagement.id}
                 />
               ))}
 
-              {allEngagements.length === 0 && (
+              {/* New (unsaved) rows */}
+              {newRowIds.map(rowId => (
+                <NewRow
+                  key={rowId}
+                  writers={writers}
+                  isSaving={saveMutation.isPending && saveMutation.variables?.rowId === rowId}
+                  onSave={(writerId, notes) =>
+                    saveMutation.mutate({ writerId, notes, rowId })
+                  }
+                  onDelete={() => handleRemoveNewRow(rowId)}
+                />
+              ))}
+
+              {engagements.length === 0 && newRowIds.length === 0 && (
                 <div className="text-center py-8 text-muted-foreground">
                   No engagements for {format(currentDate, 'MMMM yyyy')}.
                 </div>
@@ -319,7 +408,7 @@ export function WriterEngagementTracker() {
                 className="w-full mt-2"
               >
                 <Plus className="h-4 w-4 mr-2" />
-                Add More
+                Add Engagement
               </Button>
             </div>
           )}

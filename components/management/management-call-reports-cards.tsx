@@ -1,14 +1,23 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { ShareLinkDialog } from "@/components/management/share-link-dialog";
 import { CallReportDetailDialog } from "@/components/management/call-report-detail-dialog";
-import { CalendarDays, Users, FileText, Share2, Eye, Star } from "lucide-react";
+import { CalendarDays, Users, FileText, Share2, Eye, Star, Search } from "lucide-react";
 import { format } from "date-fns";
+import { useDebounce } from "@/lib/hooks/useDebounce";
 
 interface ManagementCallReportsCardsProps {
   callReports: any[];
@@ -19,6 +28,39 @@ export function ManagementCallReportsCards({ callReports }: ManagementCallReport
   const [selectedReport, setSelectedReport] = useState<any>(null);
   const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
   const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const [sortBy, setSortBy] = useState<"newest" | "oldest">("newest");
+  const debouncedSearch = useDebounce(search, 300);
+
+  const filteredReports = useMemo(() => {
+    let results = [...callReports];
+
+    // Filter by search
+    if (debouncedSearch) {
+      const q = debouncedSearch.toLowerCase();
+      results = results.filter((r) => {
+        const fields = [
+          r.working_title,
+          r.writer_name,
+          r.call_report_id,
+          r.logline,
+          r.stories?.title,
+          r.stories?.writer_originator_name,
+          r.stories?.genre,
+        ];
+        return fields.some((f) => f && String(f).toLowerCase().includes(q));
+      });
+    }
+
+    // Sort
+    results.sort((a, b) => {
+      const dateA = new Date(a.meeting_date || a.created_at).getTime();
+      const dateB = new Date(b.meeting_date || b.created_at).getTime();
+      return sortBy === "newest" ? dateB - dateA : dateA - dateB;
+    });
+
+    return results;
+  }, [callReports, debouncedSearch, sortBy]);
 
   const handleShare = (report: any) => {
     setSelectedReport(report);
@@ -50,8 +92,48 @@ export function ManagementCallReportsCards({ callReports }: ManagementCallReport
 
   return (
     <>
+      {/* Search & Sort */}
+      <div className="space-y-3 mb-6">
+        <div className="flex flex-col sm:flex-row gap-3">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search by title, writer, logline..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+          <Select value={sortBy} onValueChange={(v) => setSortBy(v as "newest" | "oldest")}>
+            <SelectTrigger className="w-full sm:w-[170px]">
+              <SelectValue placeholder="Sort by" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="newest">Newest First</SelectItem>
+              <SelectItem value="oldest">Oldest First</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        {debouncedSearch && (
+          <p className="text-sm text-muted-foreground">
+            Showing {filteredReports.length} of {callReports.length} reports
+          </p>
+        )}
+      </div>
+
+      {filteredReports.length === 0 && debouncedSearch ? (
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-12 gap-4 text-center text-muted-foreground">
+            <FileText className="h-12 w-12" />
+            <div>
+              <p className="font-medium">No results found</p>
+              <p className="text-sm">Try a different search term.</p>
+            </div>
+          </CardContent>
+        </Card>
+      ) : (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {callReports.map((report) => {
+        {filteredReports.map((report) => {
           const meetingDate = report.meeting_date ? new Date(report.meeting_date) : null;
           const formattedDate = meetingDate ? format(meetingDate, "PPP") : "Not logged";
           const attendees: string[] = report.meeting_attendees || [];
@@ -175,6 +257,7 @@ export function ManagementCallReportsCards({ callReports }: ManagementCallReport
           );
         })}
       </div>
+      )}
 
       {selectedReport && (
         <ShareLinkDialog

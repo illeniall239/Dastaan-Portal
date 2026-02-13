@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { EpisodeFileUpload } from "./episode-file-upload";
+import { EpisodeRevisions } from "./episode-revisions";
 import { updateEpisodeClient } from "@/lib/episodes/client";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
@@ -207,6 +208,13 @@ export function EpisodeEditForm({ episode, onSuccess }: EpisodeEditFormProps) {
           </div>
         </div>
       </Card>
+
+      {/* Revisions */}
+      <EpisodeRevisions
+        episodeId={episode.id}
+        sourceId={episode.call_report_id || episode.story_id}
+        canEdit={true}
+      />
 
       {/* Action Buttons */}
       <div className="flex gap-3">

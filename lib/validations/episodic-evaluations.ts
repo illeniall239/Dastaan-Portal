@@ -1,5 +1,13 @@
 import { z } from "zod";
 
+const scoreField = z
+  .number()
+  .int("Score must be an integer")
+  .min(1, "Score must be at least 1")
+  .max(10, "Score must be at most 10");
+
+const optionalScoreField = scoreField.optional();
+
 /**
  * Validation schema for creating episodic evaluation
  */
@@ -19,11 +27,11 @@ export const episodicEvaluationSchema = z.object({
     .positive("Number of scenes must be positive")
     .min(1, "At least 1 scene is required"),
 
-  // Events (required - at least 1 event must be added)
+  // Events (optional - kept for backward compat but no longer required)
   events: z
     .array(
       z.union([
-        z.string(), // Support old string format for backward compatibility
+        z.string(),
         z.object({
           title: z.string().min(1, "Event title is required").max(100, "Event title must not exceed 100 characters"),
           description: z.string().max(500, "Event description must not exceed 500 characters").default(''),
@@ -31,8 +39,10 @@ export const episodicEvaluationSchema = z.object({
         })
       ])
     )
-    .min(1, "At least one event is required")
-    .max(20, "Cannot add more than 20 events"),
+    .optional(),
+
+  // FREEZE (Ending Scene) - text description
+  freeze_ending_scene: z.string().optional(),
 
   // Summary and Analysis (optional free-form text)
   summary_analysis: z.string().optional(),
@@ -40,42 +50,31 @@ export const episodicEvaluationSchema = z.object({
   // Remarks (optional free-form text)
   remarks: z.string().optional(),
 
-  // Evaluation Scores (1-10 scale)
-  conflict_of_content_score: z
-    .number()
-    .int("Score must be an integer")
-    .min(1, "Score must be at least 1")
-    .max(10, "Score must be at most 10"),
+  // Evaluation Scores (1-10 scale) - 9 criteria
+  conflict_of_content_score: scoreField,
+  characterization_score: scoreField,
+  story_progression_score: scoreField,
+  main_event_score: scoreField,
+  small_event_score: scoreField,
+  dragness_score: scoreField,
+  freezes_score: scoreField,
+  whats_next_element_score: scoreField,
+  overall_assessment_score: scoreField,
 
-  characterization_score: z
-    .number()
-    .int("Score must be an integer")
-    .min(1, "Score must be at least 1")
-    .max(10, "Score must be at most 10"),
+  // Per-criterion comments
+  conflict_of_content_comment: z.string().optional(),
+  characterization_comment: z.string().optional(),
+  story_progression_comment: z.string().optional(),
+  main_event_comment: z.string().optional(),
+  small_event_comment: z.string().optional(),
+  dragness_comment: z.string().optional(),
+  freezes_comment: z.string().optional(),
+  whats_next_element_comment: z.string().optional(),
+  overall_assessment_comment: z.string().optional(),
 
-  story_progression_score: z
-    .number()
-    .int("Score must be an integer")
-    .min(1, "Score must be at least 1")
-    .max(10, "Score must be at most 10"),
-
-  freezes_score: z
-    .number()
-    .int("Score must be an integer")
-    .min(1, "Score must be at least 1")
-    .max(10, "Score must be at most 10"),
-
-  whats_next_element_score: z
-    .number()
-    .int("Score must be an integer")
-    .min(1, "Score must be at least 1")
-    .max(10, "Score must be at most 10"),
-
-  overall_assessment_score: z
-    .number()
-    .int("Score must be an integer")
-    .min(1, "Score must be at least 1")
-    .max(10, "Score must be at most 10"),
+  // Episode Evaluation qualitative remarks
+  scenes_remarks: z.string().optional(),
+  characterization_remarks: z.string().optional(),
 
   // Time tracking (optional)
   time_spent_minutes: z.number().min(0).optional(),
@@ -87,7 +86,6 @@ export type EpisodicEvaluationFormData = z.infer<typeof episodicEvaluationSchema
 /**
  * Validation schema for updating episodic evaluation
  * All fields are optional to support partial updates
- * Replaces the manual whitelist in app/api/episodic-evaluations/[id]/route.ts
  */
 export const updateEpisodicEvaluationSchema = z.object({
   // Episode Details (optional for updates)
@@ -109,7 +107,7 @@ export const updateEpisodicEvaluationSchema = z.object({
   events: z
     .array(
       z.union([
-        z.string(), // Support old string format for backward compatibility
+        z.string(),
         z.object({
           title: z.string().min(1, "Event title is required").max(100, "Event title must not exceed 100 characters"),
           description: z.string().max(500, "Event description must not exceed 500 characters").default(''),
@@ -117,58 +115,42 @@ export const updateEpisodicEvaluationSchema = z.object({
         })
       ])
     )
-    .min(1, "At least one event is required")
-    .max(20, "Cannot add more than 20 events")
     .optional(),
 
-  // Summary and Analysis (optional free-form text)
+  // FREEZE (Ending Scene)
+  freeze_ending_scene: z.string().optional(),
+
+  // Summary and Analysis
   summary_analysis: z.string().optional(),
 
-  // Remarks (optional free-form text)
+  // Remarks
   remarks: z.string().optional(),
 
   // Evaluation Scores (1-10 scale, all optional for updates)
-  conflict_of_content_score: z
-    .number()
-    .int("Score must be an integer")
-    .min(1, "Score must be at least 1")
-    .max(10, "Score must be at most 10")
-    .optional(),
+  conflict_of_content_score: optionalScoreField,
+  characterization_score: optionalScoreField,
+  story_progression_score: optionalScoreField,
+  main_event_score: optionalScoreField,
+  small_event_score: optionalScoreField,
+  dragness_score: optionalScoreField,
+  freezes_score: optionalScoreField,
+  whats_next_element_score: optionalScoreField,
+  overall_assessment_score: optionalScoreField,
 
-  characterization_score: z
-    .number()
-    .int("Score must be an integer")
-    .min(1, "Score must be at least 1")
-    .max(10, "Score must be at most 10")
-    .optional(),
+  // Per-criterion comments
+  conflict_of_content_comment: z.string().optional(),
+  characterization_comment: z.string().optional(),
+  story_progression_comment: z.string().optional(),
+  main_event_comment: z.string().optional(),
+  small_event_comment: z.string().optional(),
+  dragness_comment: z.string().optional(),
+  freezes_comment: z.string().optional(),
+  whats_next_element_comment: z.string().optional(),
+  overall_assessment_comment: z.string().optional(),
 
-  story_progression_score: z
-    .number()
-    .int("Score must be an integer")
-    .min(1, "Score must be at least 1")
-    .max(10, "Score must be at most 10")
-    .optional(),
-
-  freezes_score: z
-    .number()
-    .int("Score must be an integer")
-    .min(1, "Score must be at least 1")
-    .max(10, "Score must be at most 10")
-    .optional(),
-
-  whats_next_element_score: z
-    .number()
-    .int("Score must be an integer")
-    .min(1, "Score must be at least 1")
-    .max(10, "Score must be at most 10")
-    .optional(),
-
-  overall_assessment_score: z
-    .number()
-    .int("Score must be an integer")
-    .min(1, "Score must be at least 1")
-    .max(10, "Score must be at most 10")
-    .optional(),
+  // Episode Evaluation qualitative remarks
+  scenes_remarks: z.string().optional(),
+  characterization_remarks: z.string().optional(),
 
   // Rating description (computed field, can be updated manually)
   rating_description: z.string().max(200).optional(),
@@ -200,7 +182,7 @@ export function calculateScenesScore(scenes: number): number {
 }
 
 /**
- * Calculate rating description based on score
+ * Calculate rating description based on score (old 4-tier, kept for backward compat)
  * @param score - Average score (0-10)
  * @returns Rating description
  */
@@ -212,14 +194,17 @@ export function calculateGrade(score: number): string {
 }
 
 /**
- * Calculate overall average from all 6 scores
- * @param scores - Object containing all 6 evaluation scores
+ * Calculate overall average from all 9 scores
+ * @param scores - Object containing all 9 evaluation scores
  * @returns Average score (0-10) with 2 decimal places
  */
 export function calculateOverallAverage(scores: {
   conflict: number;
   characterization: number;
   progression: number;
+  mainEvent: number;
+  smallEvent: number;
+  dragness: number;
   freezes: number;
   whatsNext: number;
   overallAssessment: number;
@@ -228,14 +213,17 @@ export function calculateOverallAverage(scores: {
     scores.conflict +
     scores.characterization +
     scores.progression +
+    scores.mainEvent +
+    scores.smallEvent +
+    scores.dragness +
     scores.freezes +
     scores.whatsNext +
     scores.overallAssessment;
-  return Number((sum / 6).toFixed(2));
+  return Number((sum / 9).toFixed(2));
 }
 
 /**
- * Get color classes for rating description
+ * Get color classes for rating description (old 4-tier, kept for backward compat)
  * @param rating - Rating description
  * @returns Tailwind CSS classes for styling
  */

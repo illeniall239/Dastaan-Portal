@@ -417,14 +417,31 @@ export interface EpisodicEvaluationWithType {
   conflict_of_content_score: number;
   characterization_score: number;
   story_progression_score: number;
+  main_event_score: number;
+  small_event_score: number;
+  dragness_score: number;
   freezes_score: number;
   whats_next_element_score: number;
   overall_assessment_score: number;
   overall_average: number;
   overall_grade: EpisodicGrade;
-  events: (string | EventItem)[];
+  events?: (string | EventItem)[];
+  freeze_ending_scene?: string;
   summary_analysis?: string;
   remarks?: string;
+  // Per-criterion comments
+  conflict_of_content_comment?: string;
+  characterization_comment?: string;
+  story_progression_comment?: string;
+  main_event_comment?: string;
+  small_event_comment?: string;
+  dragness_comment?: string;
+  freezes_comment?: string;
+  whats_next_element_comment?: string;
+  overall_assessment_comment?: string;
+  // Qualitative remarks
+  scenes_remarks?: string;
+  characterization_remarks?: string;
   submitted_at: string;
   created_at: string;
   updated_at: string;
@@ -522,6 +539,23 @@ export interface EpisodeWithDetails extends Episode {
   };
 }
 
+// Episode Revision types
+export interface EpisodeRevision {
+  id: string;
+  episode_id: string;
+  revision_number: number;
+  attachment_url?: string | null;
+  attachment_name?: string | null;
+  attachment_type?: string | null;
+  comment?: string | null;
+  uploaded_by?: string | null;
+  created_at: string;
+  uploaded_by_user?: {
+    name: string;
+    email: string;
+  };
+}
+
 // Event types
 export interface EventItem {
   title: string;
@@ -541,18 +575,35 @@ export interface EpisodicEvaluation {
   // Episode Details
   no_of_pages: number;
   no_of_scenes: number;
-  pages_score: number; // +5 or -5
-  scenes_score: number; // +5 or -5
-  events: (string | EventItem)[]; // Array of event descriptions or objects with title, description, and impact
+  pages_score: number;
+  scenes_score: number;
+  events?: (string | EventItem)[];
+  freeze_ending_scene?: string;
   // Summary and Analysis
-  summary_analysis?: string; // Free-form text field for evaluator's summary and analysis
-  // Evaluation Scores (1-10)
+  summary_analysis?: string;
+  // Evaluation Scores (1-10) - 9 criteria
   conflict_of_content_score: number;
   characterization_score: number;
   story_progression_score: number;
+  main_event_score: number;
+  small_event_score: number;
+  dragness_score: number;
   freezes_score: number;
   whats_next_element_score: number;
   overall_assessment_score: number;
+  // Per-criterion comments
+  conflict_of_content_comment?: string;
+  characterization_comment?: string;
+  story_progression_comment?: string;
+  main_event_comment?: string;
+  small_event_comment?: string;
+  dragness_comment?: string;
+  freezes_comment?: string;
+  whats_next_element_comment?: string;
+  overall_assessment_comment?: string;
+  // Qualitative remarks
+  scenes_remarks?: string;
+  characterization_remarks?: string;
   // Calculated
   overall_average: number;
   overall_grade: EpisodicGrade;
@@ -571,14 +622,32 @@ export interface EpisodicEvaluationDraft {
   draft_data: {
     noOfPages: number;
     noOfScenes: number;
-    events: any[];
+    freezeEndingScene?: string;
     summaryAnalysis?: string;
+    remarks?: string;
+    scenesRemarks?: string;
+    characterizationRemarks?: string;
     conflictScore: number;
     characterizationScore: number;
     progressionScore: number;
+    mainEventScore: number;
+    smallEventScore: number;
+    dragnessScore: number;
     freezesScore: number;
     whatsNextScore: number;
     overallAssessmentScore: number;
+    conflictComment?: string;
+    characterizationComment?: string;
+    progressionComment?: string;
+    mainEventComment?: string;
+    smallEventComment?: string;
+    dragnessComment?: string;
+    freezesComment?: string;
+    whatsNextComment?: string;
+    overallAssessmentComment?: string;
+    accumulatedTimeMinutes?: number;
+    // Legacy fields (backward compat)
+    events?: any[];
   };
   created_at: string;
   updated_at: string;

@@ -535,6 +535,22 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    // Fetch revision counts for all episodes in batch
+    let revisionCountMap: Record<string, number> = {};
+    if (episodes && episodes.length > 0) {
+      const episodeIds = episodes.map((ep) => ep.id);
+      const { data: revisionCounts } = await supabase
+        .from("episode_revisions")
+        .select("episode_id")
+        .in("episode_id", episodeIds);
+
+      if (revisionCounts) {
+        revisionCounts.forEach((r: { episode_id: string }) => {
+          revisionCountMap[r.episode_id] = (revisionCountMap[r.episode_id] || 0) + 1;
+        });
+      }
+    }
+
     // Transform episodes to include writer_names array for multi-writer support
     const transformedEpisodes = (episodes || []).map((episode: EpisodeData) => {
       let transformed: EpisodeData = episode;
@@ -562,6 +578,9 @@ export async function GET(request: NextRequest) {
           is_evaluated: !!evaluationStatusMap[episode.id],
         };
       }
+
+      // Add revision count
+      (transformed as any).revision_count = revisionCountMap[episode.id] || 0;
 
       return transformed;
     });

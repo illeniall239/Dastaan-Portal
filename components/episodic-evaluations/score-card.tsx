@@ -13,6 +13,8 @@ interface ScoreCardProps {
   onChange: (score: number) => void;
   disabled?: boolean;
   showGrade?: boolean;
+  gradeFn?: (score: number) => string;
+  gradeColorFn?: (grade: string) => string;
 }
 
 export function ScoreCard({
@@ -22,9 +24,11 @@ export function ScoreCard({
   onChange,
   disabled = false,
   showGrade = true,
+  gradeFn,
+  gradeColorFn,
 }: ScoreCardProps) {
-  const rating = calculateGrade(score);
-  const ratingColorClasses = getGradeColorClasses(rating);
+  const rating = (gradeFn || calculateGrade)(score);
+  const ratingColorClasses = (gradeColorFn || getGradeColorClasses)(rating);
 
   const handleChange = (value: string) => {
     const numValue = parseInt(value);

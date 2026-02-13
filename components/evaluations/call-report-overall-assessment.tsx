@@ -4,13 +4,29 @@ import { Card } from "@/components/ui/card";
 import { Award } from "lucide-react";
 import { calculateGrade, getGradeColorClasses } from "@/lib/validations/episodic-evaluations";
 
+const defaultRatingScaleItems = [
+  { range: "9.0 - 10.0", description: "High rating potential", color: "text-green-700" },
+  { range: "7.0 - 8.9", description: "Rating potential audience appeal", color: "text-blue-700" },
+  { range: "5.0 - 6.9", description: "Need improvement - Required editing or continuous supervision", color: "text-amber-700" },
+  { range: "< 5.0", description: "Either unacceptable or need major re-writing and editing", color: "text-red-700" },
+];
+
 interface CallReportOverallAssessmentProps {
   average: number;
+  gradeFn?: (score: number) => string;
+  gradeColorFn?: (grade: string) => string;
+  ratingScaleItems?: { range: string; description: string; color: string }[];
 }
 
-export function CallReportOverallAssessment({ average }: CallReportOverallAssessmentProps) {
-  const grade = calculateGrade(average);
-  const ratingColorClasses = getGradeColorClasses(grade);
+export function CallReportOverallAssessment({
+  average,
+  gradeFn,
+  gradeColorFn,
+  ratingScaleItems,
+}: CallReportOverallAssessmentProps) {
+  const grade = (gradeFn || calculateGrade)(average);
+  const ratingColorClasses = (gradeColorFn || getGradeColorClasses)(grade);
+  const scaleItems = ratingScaleItems || defaultRatingScaleItems;
 
   return (
     <Card className="p-6 bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-200">
@@ -56,12 +72,7 @@ export function CallReportOverallAssessment({ average }: CallReportOverallAssess
       <div className="mt-6 p-4 bg-white rounded-lg border border-gray-200">
         <h4 className="font-semibold text-sm text-gray-700 mb-3">Rating Scale</h4>
         <div className="space-y-2">
-          {[
-            { range: "9.0 - 10.0", description: "High rating potential", color: "text-green-700" },
-            { range: "7.0 - 8.9", description: "Rating potential audience appeal", color: "text-blue-700" },
-            { range: "5.0 - 6.9", description: "Need improvement - Required editing or continuous supervision", color: "text-amber-700" },
-            { range: "< 5.0", description: "Either unacceptable or need major re-writing and editing", color: "text-red-700" },
-          ].map((item, index) => (
+          {scaleItems.map((item, index) => (
             <div
               key={index}
               className="flex items-start gap-3 text-sm"

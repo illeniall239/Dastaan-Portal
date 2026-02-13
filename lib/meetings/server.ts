@@ -395,6 +395,29 @@ export async function getAllCallReports() {
     throw new Error(`Failed to fetch call reports: ${error.message}`);
   }
 
+  // Batch fetch revision counts + latest comment
+  let revisionMap: Record<string, { count: number; latest_comment: string | null; latest_date: string | null }> = {};
+  if (data && data.length > 0) {
+    const reportIds = data.map((r: any) => r.id);
+    const { data: revisionData } = await supabase
+      .from("call_report_revisions")
+      .select("call_report_id, revision_number, comment, created_at")
+      .in("call_report_id", reportIds)
+      .order("revision_number", { ascending: false });
+
+    if (revisionData) {
+      for (const rev of revisionData) {
+        const rid = rev.call_report_id;
+        if (!revisionMap[rid]) {
+          // First entry per report is the latest (desc order)
+          revisionMap[rid] = { count: 1, latest_comment: rev.comment, latest_date: rev.created_at };
+        } else {
+          revisionMap[rid].count++;
+        }
+      }
+    }
+  }
+
   interface CallReportWriterData {
     writer_id: string;
     writer_email: string | null;
@@ -465,7 +488,11 @@ export async function getAllCallReports() {
       has_detailed_one_liner: !!report.detailed_one_liners?.[0]?.id,
       writer_names: writerNames,
       writers: sortedWriters,
+      next_steps: (report as any).next_steps || null,
       evaluation_log: report.evaluation_logs?.[0] || null,
+      revision_count: revisionMap[report.id]?.count || 0,
+      latest_revision_comment: revisionMap[report.id]?.latest_comment || null,
+      latest_revision_date: revisionMap[report.id]?.latest_date || null,
     };
   });
 

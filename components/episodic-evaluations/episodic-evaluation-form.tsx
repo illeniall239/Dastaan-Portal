@@ -1,27 +1,28 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
-import { EventsList } from "./events-list";
 import { ScoreCard } from "./score-card";
 import { AutoCalculatedScore } from "./auto-calculated-score";
-import { OverallAssessment } from "./overall-assessment";
+import { CallReportOverallAssessment } from "@/components/evaluations/call-report-overall-assessment";
 import { useFormTimeTracking } from "@/lib/hooks/useFormTimeTracking";
 import {
   episodicEvaluationSchema,
   calculatePagesScore,
   calculateScenesScore,
-  calculateGrade,
   calculateOverallAverage,
   type EpisodicEvaluationFormData,
 } from "@/lib/validations/episodic-evaluations";
-import type { Episode, EpisodicEvaluation, EpisodicGrade } from "@/types";
+import {
+  calculateOneLinerGrade,
+  getOneLinerGradeColorClasses,
+  oneLinerRatingScaleItems,
+} from "@/lib/validations/evaluations";
+import type { Episode, EpisodicEvaluation } from "@/types";
 import { toast } from "sonner";
 import { Loader2, Save, FilePenLine, Download, FileText, Paperclip } from "lucide-react";
 import {
@@ -34,21 +35,6 @@ import {
   AlertDialogAction,
   AlertDialogCancel,
 } from "@/components/ui/alert-dialog";
-
-interface DraftData {
-  noOfPages: number;
-  noOfScenes: number;
-  events: any[];
-  summaryAnalysis?: string;
-  conflictScore: number;
-  characterizationScore: number;
-  progressionScore: number;
-  freezesScore: number;
-  whatsNextScore: number;
-  remarks?: string;
-  savedAt: string;
-  episodeId: string;
-}
 
 interface EpisodicEvaluationFormProps {
   episode: Episode;
@@ -76,11 +62,11 @@ export function EpisodicEvaluationForm({
     initialTime: initialTimeFromDraft,
   });
 
-  // Form state
+  // Form state - Episode metrics
   const [noOfPages, setNoOfPages] = useState(existingEvaluation?.no_of_pages || 45);
   const [noOfScenes, setNoOfScenes] = useState(existingEvaluation?.no_of_scenes || 22);
-  const [events, setEvents] = useState<any[]>(
-    existingEvaluation?.events || []
+  const [freezeEndingScene, setFreezeEndingScene] = useState(
+    existingEvaluation?.freeze_ending_scene || ""
   );
   const [summaryAnalysis, setSummaryAnalysis] = useState(
     existingEvaluation?.summary_analysis || ""
@@ -89,7 +75,15 @@ export function EpisodicEvaluationForm({
     existingEvaluation?.remarks || ""
   );
 
-  // Score state
+  // Episode Evaluation qualitative remarks
+  const [scenesRemarks, setScenesRemarks] = useState(
+    existingEvaluation?.scenes_remarks || ""
+  );
+  const [characterizationRemarks, setCharacterizationRemarks] = useState(
+    existingEvaluation?.characterization_remarks || ""
+  );
+
+  // Score state - 9 criteria
   const [conflictScore, setConflictScore] = useState(
     existingEvaluation?.conflict_of_content_score || 5
   );
@@ -98,6 +92,15 @@ export function EpisodicEvaluationForm({
   );
   const [progressionScore, setProgressionScore] = useState(
     existingEvaluation?.story_progression_score || 5
+  );
+  const [mainEventScore, setMainEventScore] = useState(
+    existingEvaluation?.main_event_score || 5
+  );
+  const [smallEventScore, setSmallEventScore] = useState(
+    existingEvaluation?.small_event_score || 5
+  );
+  const [dragnessScore, setDragnessScore] = useState(
+    existingEvaluation?.dragness_score || 5
   );
   const [freezesScore, setFreezesScore] = useState(
     existingEvaluation?.freezes_score || 5
@@ -109,6 +112,35 @@ export function EpisodicEvaluationForm({
     existingEvaluation?.overall_assessment_score || 5
   );
 
+  // Per-criterion comment state
+  const [conflictComment, setConflictComment] = useState(
+    existingEvaluation?.conflict_of_content_comment || ""
+  );
+  const [characterizationComment, setCharacterizationComment] = useState(
+    existingEvaluation?.characterization_comment || ""
+  );
+  const [progressionComment, setProgressionComment] = useState(
+    existingEvaluation?.story_progression_comment || ""
+  );
+  const [mainEventComment, setMainEventComment] = useState(
+    existingEvaluation?.main_event_comment || ""
+  );
+  const [smallEventComment, setSmallEventComment] = useState(
+    existingEvaluation?.small_event_comment || ""
+  );
+  const [dragnessComment, setDragnessComment] = useState(
+    existingEvaluation?.dragness_comment || ""
+  );
+  const [freezesComment, setFreezesComment] = useState(
+    existingEvaluation?.freezes_comment || ""
+  );
+  const [whatsNextComment, setWhatsNextComment] = useState(
+    existingEvaluation?.whats_next_element_comment || ""
+  );
+  const [overallAssessmentComment, setOverallAssessmentComment] = useState(
+    existingEvaluation?.overall_assessment_comment || ""
+  );
+
   // Calculated values
   const pagesScore = calculatePagesScore(noOfPages);
   const scenesScore = calculateScenesScore(noOfScenes);
@@ -116,11 +148,13 @@ export function EpisodicEvaluationForm({
     conflict: conflictScore,
     characterization: characterizationScore,
     progression: progressionScore,
+    mainEvent: mainEventScore,
+    smallEvent: smallEventScore,
+    dragness: dragnessScore,
     freezes: freezesScore,
     whatsNext: whatsNextScore,
     overallAssessment: overallAssessmentScore,
   });
-  const overallGrade = calculateGrade(overallAverage) as EpisodicGrade;
 
   // Check for existing draft on component mount
   useEffect(() => {
@@ -131,7 +165,6 @@ export function EpisodicEvaluationForm({
           if (response.ok) {
             const { draft } = await response.json();
             if (draft && draft.draft_data) {
-              // Store draft data and show custom dialog
               setPendingDraftData(draft.draft_data);
               setShowDraftDialog(true);
             }
@@ -153,23 +186,35 @@ export function EpisodicEvaluationForm({
       const draftData = {
         noOfPages,
         noOfScenes,
-        events,
+        freezeEndingScene,
         summaryAnalysis,
+        remarks,
+        scenesRemarks,
+        characterizationRemarks,
         conflictScore,
         characterizationScore,
         progressionScore,
+        mainEventScore,
+        smallEventScore,
+        dragnessScore,
         freezesScore,
         whatsNextScore,
         overallAssessmentScore,
-        remarks,
+        conflictComment,
+        characterizationComment,
+        progressionComment,
+        mainEventComment,
+        smallEventComment,
+        dragnessComment,
+        freezesComment,
+        whatsNextComment,
+        overallAssessmentComment,
         accumulatedTimeMinutes: timeSpentMinutes,
       };
 
       const response = await fetch(`/api/episodic-evaluations/draft/${episode.id}`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(draftData),
       });
 
@@ -190,17 +235,31 @@ export function EpisodicEvaluationForm({
 
   const handleLoadDraft = () => {
     if (pendingDraftData) {
-      setNoOfPages(pendingDraftData.noOfPages);
-      setNoOfScenes(pendingDraftData.noOfScenes);
-      setEvents(pendingDraftData.events);
+      setNoOfPages(pendingDraftData.noOfPages ?? 45);
+      setNoOfScenes(pendingDraftData.noOfScenes ?? 22);
+      setFreezeEndingScene(pendingDraftData.freezeEndingScene || "");
       setSummaryAnalysis(pendingDraftData.summaryAnalysis || "");
-      setConflictScore(pendingDraftData.conflictScore);
-      setCharacterizationScore(pendingDraftData.characterizationScore);
-      setProgressionScore(pendingDraftData.progressionScore);
-      setFreezesScore(pendingDraftData.freezesScore);
-      setWhatsNextScore(pendingDraftData.whatsNextScore);
-      setOverallAssessmentScore(pendingDraftData.overallAssessmentScore || 5);
       setRemarks(pendingDraftData.remarks || "");
+      setScenesRemarks(pendingDraftData.scenesRemarks || "");
+      setCharacterizationRemarks(pendingDraftData.characterizationRemarks || "");
+      setConflictScore(pendingDraftData.conflictScore ?? 5);
+      setCharacterizationScore(pendingDraftData.characterizationScore ?? 5);
+      setProgressionScore(pendingDraftData.progressionScore ?? 5);
+      setMainEventScore(pendingDraftData.mainEventScore ?? 5);
+      setSmallEventScore(pendingDraftData.smallEventScore ?? 5);
+      setDragnessScore(pendingDraftData.dragnessScore ?? 5);
+      setFreezesScore(pendingDraftData.freezesScore ?? 5);
+      setWhatsNextScore(pendingDraftData.whatsNextScore ?? 5);
+      setOverallAssessmentScore(pendingDraftData.overallAssessmentScore ?? 5);
+      setConflictComment(pendingDraftData.conflictComment || "");
+      setCharacterizationComment(pendingDraftData.characterizationComment || "");
+      setProgressionComment(pendingDraftData.progressionComment || "");
+      setMainEventComment(pendingDraftData.mainEventComment || "");
+      setSmallEventComment(pendingDraftData.smallEventComment || "");
+      setDragnessComment(pendingDraftData.dragnessComment || "");
+      setFreezesComment(pendingDraftData.freezesComment || "");
+      setWhatsNextComment(pendingDraftData.whatsNextComment || "");
+      setOverallAssessmentComment(pendingDraftData.overallAssessmentComment || "");
 
       // Load accumulated time from draft
       setInitialTimeFromDraft(pendingDraftData.accumulatedTimeMinutes || 0);
@@ -224,40 +283,35 @@ export function EpisodicEvaluationForm({
       return;
     }
 
-    // Validate form data
-    // Check if at least one event exists
-    if (events.length === 0) {
-      toast.error("At least one event is required");
-      return;
-    }
-
-    // Filter out empty events (those with no title)
-    const filteredEvents = events.filter((e) => {
-      if (typeof e === 'string') {
-        return e.trim().length > 0;
-      }
-      return e.title && e.title.trim().length > 0;
-    });
-
-    // Check if at least one valid event with a title exists
-    if (filteredEvents.length === 0) {
-      toast.error("At least one valid event with a title is required");
-      return;
-    }
-
     const formData = {
       episode_id: episode.id,
       no_of_pages: noOfPages,
       no_of_scenes: noOfScenes,
-      events: filteredEvents,
-      summary_analysis: summaryAnalysis,
+      freeze_ending_scene: freezeEndingScene || undefined,
+      summary_analysis: summaryAnalysis || undefined,
+      remarks: remarks || undefined,
+      scenes_remarks: scenesRemarks || undefined,
+      characterization_remarks: characterizationRemarks || undefined,
+      // 9 scoring criteria
       conflict_of_content_score: conflictScore,
       characterization_score: characterizationScore,
       story_progression_score: progressionScore,
+      main_event_score: mainEventScore,
+      small_event_score: smallEventScore,
+      dragness_score: dragnessScore,
       freezes_score: freezesScore,
       whats_next_element_score: whatsNextScore,
       overall_assessment_score: overallAssessmentScore,
-      remarks: remarks,
+      // Per-criterion comments
+      conflict_of_content_comment: conflictComment || undefined,
+      characterization_comment: characterizationComment || undefined,
+      story_progression_comment: progressionComment || undefined,
+      main_event_comment: mainEventComment || undefined,
+      small_event_comment: smallEventComment || undefined,
+      dragness_comment: dragnessComment || undefined,
+      freezes_comment: freezesComment || undefined,
+      whats_next_element_comment: whatsNextComment || undefined,
+      overall_assessment_comment: overallAssessmentComment || undefined,
       time_spent_minutes: timeSpentMinutes,
       started_at: new Date().toISOString(),
     };
@@ -282,7 +336,6 @@ export function EpisodicEvaluationForm({
         });
       } catch (deleteError) {
         console.error("Error deleting draft after submission:", deleteError);
-        // Don't show error to user, as main submission was successful
       }
     } catch (error: any) {
       console.error("Form submission error:", error);
@@ -291,6 +344,82 @@ export function EpisodicEvaluationForm({
       setSubmitting(false);
     }
   };
+
+  // Score criteria definitions with comments
+  const scoreCriteria = [
+    {
+      label: "Conflict of Content",
+      description: "How engaging and well-developed is the central conflict?",
+      score: conflictScore,
+      setScore: setConflictScore,
+      comment: conflictComment,
+      setComment: setConflictComment,
+    },
+    {
+      label: "Characterization",
+      description: "How compelling and relatable are the characters?",
+      score: characterizationScore,
+      setScore: setCharacterizationScore,
+      comment: characterizationComment,
+      setComment: setCharacterizationComment,
+    },
+    {
+      label: "Story Progression",
+      description: "How effectively does the narrative move the story forward?",
+      score: progressionScore,
+      setScore: setProgressionScore,
+      comment: progressionComment,
+      setComment: setProgressionComment,
+    },
+    {
+      label: "Main Event",
+      description: "How impactful and well-executed is the main event of the episode?",
+      score: mainEventScore,
+      setScore: setMainEventScore,
+      comment: mainEventComment,
+      setComment: setMainEventComment,
+    },
+    {
+      label: "Small Event",
+      description: "How effective are the supporting events in building the narrative?",
+      score: smallEventScore,
+      setScore: setSmallEventScore,
+      comment: smallEventComment,
+      setComment: setSmallEventComment,
+    },
+    {
+      label: "Dragness",
+      description: "How well does the episode maintain pacing and avoid unnecessary drag?",
+      score: dragnessScore,
+      setScore: setDragnessScore,
+      comment: dragnessComment,
+      setComment: setDragnessComment,
+    },
+    {
+      label: "Freeze",
+      description: "How effective are the cliffhangers/freeze moments in creating suspense?",
+      score: freezesScore,
+      setScore: setFreezesScore,
+      comment: freezesComment,
+      setComment: setFreezesComment,
+    },
+    {
+      label: "What Next Element",
+      description: "How strong is the anticipation for the next episode?",
+      score: whatsNextScore,
+      setScore: setWhatsNextScore,
+      comment: whatsNextComment,
+      setComment: setWhatsNextComment,
+    },
+    {
+      label: "Overall Episode Grade",
+      description: "What is your overall impression of this episode?",
+      score: overallAssessmentScore,
+      setScore: setOverallAssessmentScore,
+      comment: overallAssessmentComment,
+      setComment: setOverallAssessmentComment,
+    },
+  ];
 
   return (
     <form onSubmit={handleFormSubmit} className="space-y-8 px-4 sm:px-0">
@@ -362,7 +491,7 @@ export function EpisodicEvaluationForm({
                   }
                 }
               }}
-              onBlur={(e) => {
+              onBlur={() => {
                 if (noOfPages === 0 || !noOfPages) {
                   setNoOfPages(1);
                 }
@@ -397,7 +526,7 @@ export function EpisodicEvaluationForm({
                   }
                 }
               }}
-              onBlur={(e) => {
+              onBlur={() => {
                 if (noOfScenes === 0 || !noOfScenes) {
                   setNoOfScenes(1);
                 }
@@ -418,34 +547,92 @@ export function EpisodicEvaluationForm({
           <AutoCalculatedScore type="pages" value={noOfPages} score={pagesScore} />
           <AutoCalculatedScore type="scenes" value={noOfScenes} score={scenesScore} />
         </div>
+
+        {/* FREEZE (Ending Scene) */}
+        <div className="space-y-2">
+          <Label htmlFor="freeze_ending_scene">
+            FREEZE (Ending Scene)
+          </Label>
+          <Textarea
+            id="freeze_ending_scene"
+            placeholder="Describe the ending scene / cliffhanger of this episode..."
+            rows={3}
+            value={freezeEndingScene}
+            onChange={(e) => setFreezeEndingScene(e.target.value)}
+            disabled={isReadOnly}
+          />
+          <p className="text-xs text-muted-foreground">
+            Describe the freeze/cliffhanger moment at the end of the episode
+          </p>
+        </div>
       </div>
 
-      {/* Section 2: Events */}
+      {/* Section 2: Episode Evaluation (Qualitative) */}
       <div className="space-y-4">
-        <h3 className="text-xl font-bold">Section 2: Events</h3>
-        <EventsList events={events} onChange={setEvents} disabled={isReadOnly} />
+        <h3 className="text-xl font-bold">Section 2: Episode Evaluation</h3>
+        <p className="text-sm text-muted-foreground">
+          Evaluate the following aspects of the episode. Review the guidance and provide your remarks.
+        </p>
+
+        {/* Scenes evaluation */}
+        <Card className="p-5 space-y-3">
+          <div>
+            <Label className="text-base font-semibold">Scenes</Label>
+            <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-md">
+              <p className="text-sm text-blue-800 font-medium">What to Check:</p>
+              <p className="text-sm text-blue-700 mt-1">
+                Are there enough well-connected scenes and enough main lead scenes that maintain story flow?
+              </p>
+            </div>
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="scenes_remarks" className="text-sm">Remarks / Notes</Label>
+            <Textarea
+              id="scenes_remarks"
+              placeholder="Enter your remarks about scenes..."
+              rows={3}
+              value={scenesRemarks}
+              onChange={(e) => setScenesRemarks(e.target.value)}
+              disabled={isReadOnly}
+            />
+          </div>
+        </Card>
+
+        {/* Characterization evaluation */}
+        <Card className="p-5 space-y-3">
+          <div>
+            <Label className="text-base font-semibold">Characterization</Label>
+            <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-md">
+              <p className="text-sm text-blue-800 font-medium">What to Check:</p>
+              <p className="text-sm text-blue-700 mt-1">
+                Are main leads prominent and consistent, and side characters&apos; arcs balanced?
+              </p>
+            </div>
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="characterization_remarks" className="text-sm">Remarks / Notes</Label>
+            <Textarea
+              id="characterization_remarks"
+              placeholder="Enter your remarks about characterization..."
+              rows={3}
+              value={characterizationRemarks}
+              onChange={(e) => setCharacterizationRemarks(e.target.value)}
+              disabled={isReadOnly}
+            />
+          </div>
+        </Card>
       </div>
 
-      {/* Rating Scale - placed below Events section */}
+      {/* Rating Scale Reference */}
       <Card className="p-4 border-2 border-blue-100 bg-blue-50/30">
         <div className="text-base font-semibold mb-2">Rating Scale</div>
         <div className="space-y-2 text-sm">
-          <div className="flex items-start gap-3">
-            <span className="font-semibold text-gray-600 min-w-[80px]">9.0 - 10.0:</span>
-            <span className="text-green-700 font-medium">High rating potential</span>
-          </div>
-          <div className="flex items-start gap-3">
-            <span className="font-semibold text-gray-600 min-w-[80px]">7.0 - 8.9:</span>
-            <span className="text-blue-700 font-medium">Rating potential audience appeal</span>
-          </div>
-          <div className="flex items-start gap-3">
-            <span className="font-semibold text-gray-600 min-w-[80px]">5.0 - 6.9:</span>
-            <span className="text-amber-700 font-medium">Need improvement - Required editing or continuous supervision</span>
-          </div>
-          <div className="flex items-start gap-3">
-            <span className="font-semibold text-gray-600 min-w-[80px]">&lt; 5.0:</span>
-            <span className="text-red-700 font-medium">Either unacceptable or need major re-writing and editing</span>
-          </div>
+          {oneLinerRatingScaleItems.map((item, index) => (
+            <div key={index} className="flex items-start gap-3">
+              <span className="font-semibold text-gray-600 min-w-[60px]">{item.range}:</span>
+              <span className={`${item.color} font-medium`}>{item.description}</span>
+            </div>
+          ))}
         </div>
       </Card>
 
@@ -469,7 +656,7 @@ export function EpisodicEvaluationForm({
         </div>
       </div>
 
-      {/* Section 4: Evaluation Scores */}
+      {/* Section 4: Evaluation Scores (9 criteria with comments) */}
       <div className="space-y-4">
         <h3 className="text-xl font-bold">Section 4: Evaluation Scores</h3>
         <p className="text-sm text-muted-foreground">
@@ -477,53 +664,29 @@ export function EpisodicEvaluationForm({
         </p>
 
         <div className="space-y-4">
-          <ScoreCard
-            label="Conflict of Content"
-            description="How engaging and well-developed is the central conflict?"
-            score={conflictScore}
-            onChange={setConflictScore}
-            disabled={isReadOnly}
-          />
-
-          <ScoreCard
-            label="Characterization"
-            description="How compelling and relatable are the characters?"
-            score={characterizationScore}
-            onChange={setCharacterizationScore}
-            disabled={isReadOnly}
-          />
-
-          <ScoreCard
-            label="Story Progression"
-            description="How effectively does the narrative move the story forward?"
-            score={progressionScore}
-            onChange={setProgressionScore}
-            disabled={isReadOnly}
-          />
-
-          <ScoreCard
-            label="Freezes"
-            description="How effective are the cliffhangers in creating suspense?"
-            score={freezesScore}
-            onChange={setFreezesScore}
-            disabled={isReadOnly}
-          />
-
-          <ScoreCard
-            label="What's Next Element"
-            description="How strong is the anticipation for the next episode?"
-            score={whatsNextScore}
-            onChange={setWhatsNextScore}
-            disabled={isReadOnly}
-          />
-
-          <ScoreCard
-            label="Final Impression"
-            description="What is your overall impression of this episode?"
-            score={overallAssessmentScore}
-            onChange={setOverallAssessmentScore}
-            disabled={isReadOnly}
-          />
+          {scoreCriteria.map((criterion) => (
+            <div key={criterion.label} className="space-y-2">
+              <ScoreCard
+                label={criterion.label}
+                description={criterion.description}
+                score={criterion.score}
+                onChange={criterion.setScore}
+                disabled={isReadOnly}
+                gradeFn={calculateOneLinerGrade}
+                gradeColorFn={getOneLinerGradeColorClasses}
+              />
+              <div className="ml-4">
+                <Textarea
+                  placeholder={`Comments for ${criterion.label} (optional)...`}
+                  rows={2}
+                  value={criterion.comment}
+                  onChange={(e) => criterion.setComment(e.target.value)}
+                  disabled={isReadOnly}
+                  className="text-sm"
+                />
+              </div>
+            </div>
+          ))}
         </div>
       </div>
 
@@ -549,7 +712,12 @@ export function EpisodicEvaluationForm({
       {/* Section 6: Overall Assessment */}
       <div className="space-y-4">
         <h3 className="text-xl font-bold">Section 6: Overall Assessment</h3>
-        <OverallAssessment average={overallAverage} grade={overallGrade} />
+        <CallReportOverallAssessment
+          average={overallAverage}
+          gradeFn={calculateOneLinerGrade}
+          gradeColorFn={getOneLinerGradeColorClasses}
+          ratingScaleItems={oneLinerRatingScaleItems}
+        />
       </div>
 
       {/* Submit and Save Draft Buttons */}

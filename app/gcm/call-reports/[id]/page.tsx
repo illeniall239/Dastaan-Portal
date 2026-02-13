@@ -18,6 +18,7 @@ import type { User } from "@/types";
 import { formatDateTimeLong } from "@/lib/utils/format-date";
 import { getSegregatedEvaluations } from "@/lib/evaluations/server";
 import { SegregatedEvaluationsDisplay } from "@/components/evaluations/segregated-evaluations-display";
+import { ContentRevisions } from "@/components/ui/content-revisions";
 
 // Helper to convert stored image path to secure proxy URL
 function getSecureImageUrl(value: string | null | undefined): string | null {
@@ -389,6 +390,14 @@ export default async function CallReportDetailPage({ params }: { params: Promise
             </CardContent>
           </Card>
         )}
+
+        {/* Revisions */}
+        <ContentRevisions
+          entityId={resolvedParams.id}
+          apiBasePath="/api/call-reports"
+          storageBucket="attachments"
+          canEdit={true}
+        />
 
         {/* Segregated Evaluations */}
         {segregatedEvaluations && segregatedEvaluations.total > 0 && (

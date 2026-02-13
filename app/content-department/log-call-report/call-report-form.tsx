@@ -18,6 +18,7 @@ import Link from "next/link";
 import { toast } from "sonner";
 import { createMeetingClient, updateCallReportClient } from "@/lib/meetings/client";
 import { FileUpload } from "@/components/ui/file-upload";
+import { ContentRevisions } from "@/components/ui/content-revisions";
 import { uploadFile } from "@/lib/attachments/client";
 import { formatFileSize } from "@/lib/validations/episodes";
 import { MentionInput } from "@/components/ui/mention-input";
@@ -82,7 +83,9 @@ export function CallReportForm({
     writer_phone?: string;
     display_order: number;
   }>>([]);
-  const [loglineImageUrl, setLoglineImageUrl] = useState<string | null>(null);
+  const [loglineImageUrl, setLoglineImageUrl] = useState<string | null>(
+    mode === "edit" && initialData?.logline_image_url ? initialData.logline_image_url : null
+  );
   // Autosave
   const { hasDraft, draftLoaded, draftUpdatedAt, saveDraft, loadDraft, clearDraft } = useFormAutosave({
     formType: "call_report_content",
@@ -92,31 +95,60 @@ export function CallReportForm({
 
   const [draftDismissed, setDraftDismissed] = useState(false);
 
-  // Form state
-  const [formData, setFormData] = useState({
-    category: "",
-    writerId: "",
-    suggestedWriter: "",
-    contactPhone: "",
-    contactAddress: "",
-    workingTitle: "",
-    director: "",
-    totalEpisodes: "",
-    receivedEpisodes: "",
-    logline: "",
-    shortSynopsis: "",
-    episodicSynopsis: "",
-    genre: [] as string[],
-    theme: "",
-    targetSlot: "",
-    contentType: "",
-    notes: "",
-    nextSteps: "",
-    status: "ready_for_evaluation",
-    overallRating: 5,
-    ideaBy: "",
-    developedBy: "",
-    managementMemberName: ""
+  // Form state — initialize from initialData in edit mode to avoid two-phase render
+  const [formData, setFormData] = useState(() => {
+    if (mode === "edit" && initialData) {
+      return {
+        category: initialData.category || "",
+        writerId: "",
+        suggestedWriter: initialData.suggested_writer || "",
+        contactPhone: initialData.contact_phone || "",
+        contactAddress: initialData.contact_address || "",
+        workingTitle: initialData.working_title || "",
+        director: initialData.director || "",
+        totalEpisodes: initialData.total_episodes?.toString() || "",
+        receivedEpisodes: initialData.received_episodes?.toString() || "",
+        logline: initialData.logline || "",
+        shortSynopsis: initialData.short_synopsis || "",
+        episodicSynopsis: initialData.episodic_synopsis || "",
+        genre: Array.isArray(initialData.genre) ? initialData.genre : (initialData.genre ? [initialData.genre] : []),
+        theme: initialData.theme || "",
+        targetSlot: initialData.target_slot || "",
+        contentType: initialData.content_type || "",
+        notes: initialData.meeting_notes || "",
+        nextSteps: initialData.next_steps || "",
+        status: initialData.status || "draft",
+        overallRating: initialData.overall_rating || 5,
+        ideaBy: initialData.idea_by || "",
+        developedBy: initialData.developed_by || "",
+        managementMemberName: initialData.management_member_name || "",
+      };
+    }
+    return {
+      category: "",
+      writerId: "",
+      suggestedWriter: "",
+      contactPhone: "",
+      contactAddress: "",
+      workingTitle: "",
+      director: "",
+      totalEpisodes: "",
+      receivedEpisodes: "",
+      logline: "",
+      shortSynopsis: "",
+      episodicSynopsis: "",
+      genre: [] as string[],
+      theme: "",
+      targetSlot: "",
+      contentType: "",
+      notes: "",
+      nextSteps: "",
+      status: "ready_for_evaluation",
+      overallRating: 5,
+      ideaBy: "",
+      developedBy: "",
+      managementMemberName: "",
+    };
   });
 
   // File upload state
@@ -151,41 +183,15 @@ export function CallReportForm({
     toast.info("Attachment marked for removal. Save to apply.", { duration: 4000 });
   };
 
-  // Pre-populate form when in edit mode
+  // Debug logging for edit mode (state is already initialized from initialData in useState)
   useEffect(() => {
     if (mode === "edit" && initialData) {
-      console.log("📝 FORM - Populating with initialData:", initialData);
-      console.log("📝 FORM - Genre from initialData:", initialData.genre);
-      console.log("📝 FORM - Target Slot from initialData:", initialData.target_slot);
-      setFormData({
-        category: initialData.category || "",
-        writerId: "",
-        suggestedWriter: initialData.suggested_writer || "",
-        contactPhone: initialData.contact_phone || "",
-        contactAddress: initialData.contact_address || "",
-        workingTitle: initialData.working_title || "",
-        director: initialData.director || "",
-        totalEpisodes: initialData.total_episodes?.toString() || "",
-        receivedEpisodes: initialData.received_episodes?.toString() || "",
-        logline: initialData.logline || "",
-        shortSynopsis: initialData.short_synopsis || "",
-        episodicSynopsis: initialData.episodic_synopsis || "",
-        genre: Array.isArray(initialData.genre) ? initialData.genre : (initialData.genre ? [initialData.genre] : []),
-        theme: initialData.theme || "",
-        targetSlot: initialData.target_slot || "",
-        contentType: initialData.content_type || "",
-        notes: initialData.meeting_notes || "",
-        nextSteps: initialData.next_steps || "",
-        status: initialData.status || "draft",
-        overallRating: initialData.overall_rating || 5,
-        ideaBy: initialData.idea_by || "",
-        developedBy: initialData.developed_by || "",
-        managementMemberName: initialData.management_member_name || ""
+      console.log("📝 FORM - Edit mode, initialData loaded:", {
+        category: initialData.category,
+        genre: initialData.genre,
+        target_slot: initialData.target_slot,
+        content_type: initialData.content_type,
       });
-      // Pre-populate logline image if exists
-      if (initialData.logline_image_url) {
-        setLoglineImageUrl(initialData.logline_image_url);
-      }
     }
   }, [mode, initialData]);
 
@@ -194,7 +200,7 @@ export function CallReportForm({
     if (mode === "edit" && callReportId) {
       const fetchWriters = async () => {
         try {
-          const response = await fetch(`/api/call-reports/${callReportId}/writers`);
+          const response = await fetch(`/api/call-reports/${callReportId}/writers`, { cache: "no-store" });
           if (response.ok) {
             const { writers: fetchedWriters } = await response.json();
             // Map to the format expected by WriterMultiSelect
@@ -308,9 +314,9 @@ export function CallReportForm({
           theme: formData.theme || undefined,
           target_slot: formData.targetSlot || undefined,
           content_type: (formData.contentType || undefined) as "Serial" | "Long Serial" | "Telefilm" | "Mini-serial" | "Ramadan Serial" | "Series Sitcom" | "Soap" | undefined,
-          category: formData.category as "external_producer" | "writer_pitch" | "inhouse_content" | "content_head_initiative" | "given_by_management" | undefined,
-          idea_by: formData.ideaBy,
-          developed_by: formData.developedBy,
+          category: (formData.category || undefined) as "external_producer" | "writer_pitch" | "inhouse_content" | "content_head_initiative" | "given_by_management" | undefined,
+          idea_by: formData.ideaBy || undefined,
+          developed_by: formData.developedBy || undefined,
           management_member_name: formData.managementMemberName || undefined,
           meeting_notes: formData.notes || undefined,
           next_steps: formData.nextSteps || undefined,
@@ -918,6 +924,16 @@ export function CallReportForm({
               )}
             </CardContent>
           </Card>
+        )}
+
+        {/* Revisions (Edit Mode) */}
+        {mode === "edit" && callReportId && (
+          <ContentRevisions
+            entityId={callReportId}
+            apiBasePath="/api/call-reports"
+            storageBucket="attachments"
+            canEdit={true}
+          />
         )}
 
         {/* File Upload Section */}

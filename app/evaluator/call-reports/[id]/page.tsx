@@ -15,6 +15,7 @@ import { getAttachmentsForEntityServer } from "@/lib/attachments/server";
 import { BackButton } from "@/components/ui/back-button";
 import { formatDateTimeLong, formatDate } from "@/lib/utils/format-date";
 import { ShareCrossTeamButton } from "@/components/call-report/share-cross-team-button";
+import { ContentRevisions } from "@/components/ui/content-revisions";
 
 // Helper to convert stored image path to secure proxy URL
 function getSecureImageUrl(value: string | null | undefined): string | null {
@@ -378,6 +379,14 @@ export default async function CallReportDetailPage({ params }: { params: Promise
             </CardContent>
           </Card>
         )}
+
+        {/* Revisions */}
+        <ContentRevisions
+          entityId={resolvedParams.id}
+          apiBasePath="/api/call-reports"
+          storageBucket="attachments"
+          canEdit={canEdit}
+        />
       </div>
     </div>
   );

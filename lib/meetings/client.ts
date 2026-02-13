@@ -408,7 +408,7 @@ export async function getUserMeetingsClient(userId: string) {
  * Client-side function that calls the API endpoint
  */
 export async function getCallReportClient(id: string): Promise<any> {
-  const response = await fetch(`/api/call-reports/${id}`);
+  const response = await fetch(`/api/call-reports/${id}`, { cache: "no-store" });
   const result = await response.json();
 
   if (!response.ok) {
