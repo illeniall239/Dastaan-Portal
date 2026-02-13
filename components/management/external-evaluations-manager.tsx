@@ -59,10 +59,6 @@ interface EvaluationData {
   freezes_score?: number;
   whats_next_element_score?: number;
   overall_assessment_score?: number;
-  premise_conflict_score?: number;
-  storyline_plot_score?: number;
-  episodic_progression_score?: number;
-  characters_score?: number;
   summary_analysis?: string;
   slot?: string;
   comments?: string;
@@ -144,11 +140,11 @@ export function ExternalEvaluationsManager({
 
     if (contentType === "call_report" || contentType === "one_liner") {
       const scores = {
-        premise_conflict_score: (data.premise_conflict_score as number) ?? 0,
-        storyline_plot_score: (data.storyline_plot_score as number) ?? 0,
-        episodic_progression_score: (data.episodic_progression_score as number) ?? 0,
-        characters_score: (data.characters_score as number) ?? 0,
-        overall_assessment_score: (data.overall_assessment_score as number) ?? 0,
+        conflict_of_content_score: (data.conflict_of_content_score as number) ?? 0,
+        characterization_score: (data.characterization_score as number) ?? 0,
+        story_progression_score: (data.story_progression_score as number) ?? 0,
+        whats_next_element_score: (data.whats_next_element_score as number) ?? 0,
+        overall_oneliner_grade_score: (data.overall_oneliner_grade_score as number) ?? 0,
       };
 
       const scoreValues = Object.values(scores).filter((v) => typeof v === "number") as number[];
@@ -395,24 +391,24 @@ export function ExternalEvaluationsManager({
                               ) : (
                                 <div className="grid md:grid-cols-2 gap-2 text-sm">
                                   <div className="bg-gray-50 rounded p-2">
-                                    <p className="text-muted-foreground mb-1">Premise/Conflict</p>
-                                    <p className="font-semibold">{"premise_conflict_score" in scores ? String(scores.premise_conflict_score) : "N/A"}/10</p>
+                                    <p className="text-muted-foreground mb-1">Conflict of Content</p>
+                                    <p className="font-semibold">{"conflict_of_content_score" in scores ? String(scores.conflict_of_content_score) : "N/A"}/10</p>
                                   </div>
                                   <div className="bg-gray-50 rounded p-2">
-                                    <p className="text-muted-foreground mb-1">Storyline/Plot</p>
-                                    <p className="font-semibold">{"storyline_plot_score" in scores ? String(scores.storyline_plot_score) : "N/A"}/10</p>
+                                    <p className="text-muted-foreground mb-1">Characterization</p>
+                                    <p className="font-semibold">{"characterization_score" in scores ? String(scores.characterization_score) : "N/A"}/10</p>
                                   </div>
                                   <div className="bg-gray-50 rounded p-2">
-                                    <p className="text-muted-foreground mb-1">Episodic Progression</p>
-                                    <p className="font-semibold">{"episodic_progression_score" in scores ? String(scores.episodic_progression_score) : "N/A"}/10</p>
+                                    <p className="text-muted-foreground mb-1">Story Progression</p>
+                                    <p className="font-semibold">{"story_progression_score" in scores ? String(scores.story_progression_score) : "N/A"}/10</p>
                                   </div>
                                   <div className="bg-gray-50 rounded p-2">
-                                    <p className="text-muted-foreground mb-1">Characters</p>
-                                    <p className="font-semibold">{"characters_score" in scores ? String(scores.characters_score) : "N/A"}/10</p>
+                                    <p className="text-muted-foreground mb-1">What's Next Element</p>
+                                    <p className="font-semibold">{"whats_next_element_score" in scores ? String(scores.whats_next_element_score) : "N/A"}/10</p>
                                   </div>
                                   <div className="bg-gray-50 rounded p-2 md:col-span-2">
-                                    <p className="text-muted-foreground mb-1">Final Impression</p>
-                                    <p className="font-semibold">{"overall_assessment_score" in scores ? String(scores.overall_assessment_score) : "N/A"}/10</p>
+                                    <p className="text-muted-foreground mb-1">Overall Oneliner Grade</p>
+                                    <p className="font-semibold">{"overall_oneliner_grade_score" in scores ? String(scores.overall_oneliner_grade_score) : "N/A"}/10</p>
                                   </div>
                                 </div>
                               )}

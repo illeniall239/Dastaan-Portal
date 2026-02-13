@@ -343,40 +343,40 @@ export default async function EvaluatorEvaluationDetailPage({ params }: { params
                 <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
                   <div className="flex items-center gap-2">
                     <StarIcon className="h-4 w-4 text-[#224794]" />
-                    <span className="text-sm font-medium">Premise / Conflict</span>
+                    <span className="text-sm font-medium">Conflict of Content</span>
                   </div>
                   <span className="text-lg font-bold text-[#224794]">
-                    {evaluation.premise_conflict_score}/10
+                    {evaluation.conflict_of_content_score}/10
                   </span>
                 </div>
 
                 <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
                   <div className="flex items-center gap-2">
                     <StarIcon className="h-4 w-4 text-[#224794]" />
-                    <span className="text-sm font-medium">Storyline / Plot</span>
+                    <span className="text-sm font-medium">Characterization</span>
                   </div>
                   <span className="text-lg font-bold text-[#224794]">
-                    {evaluation.storyline_plot_score}/10
+                    {evaluation.characterization_score}/10
                   </span>
                 </div>
 
                 <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
                   <div className="flex items-center gap-2">
                     <StarIcon className="h-4 w-4 text-[#224794]" />
-                    <span className="text-sm font-medium">Episodic Progression</span>
+                    <span className="text-sm font-medium">Story Progression</span>
                   </div>
                   <span className="text-lg font-bold text-[#224794]">
-                    {evaluation.episodic_progression_score}/10
+                    {evaluation.story_progression_score}/10
                   </span>
                 </div>
 
                 <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
                   <div className="flex items-center gap-2">
                     <StarIcon className="h-4 w-4 text-[#224794]" />
-                    <span className="text-sm font-medium">Characters</span>
+                    <span className="text-sm font-medium">What's Next Element</span>
                   </div>
                   <span className="text-lg font-bold text-[#224794]">
-                    {evaluation.characters_score}/10
+                    {evaluation.whats_next_element_score}/10
                   </span>
                 </div>
 

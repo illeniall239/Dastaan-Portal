@@ -77,17 +77,17 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     }
 
     const {
-      premise_conflict_score,
-      storyline_plot_score,
-      episodic_progression_score,
-      characters_score,
-      overall_assessment_score,
+      conflict_of_content_score,
+      characterization_score,
+      story_progression_score,
+      whats_next_element_score,
+      overall_oneliner_grade_score,
       decision,
       comments,
     } = body;
 
     // Validate scores
-    const scores = [premise_conflict_score, storyline_plot_score, episodic_progression_score, characters_score, overall_assessment_score];
+    const scores = [conflict_of_content_score, characterization_score, story_progression_score, whats_next_element_score, overall_oneliner_grade_score];
     if (scores.some(s => s === undefined || s === null || s < 1 || s > 10)) {
       return new Response(JSON.stringify({ error: 'All scores must be between 1 and 10' }), {
         status: 400,
@@ -108,11 +108,11 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         call_report_id: share.call_report_id,
         evaluator_id: user.id,
         cross_team_share_id: shareId,
-        premise_conflict_score,
-        storyline_plot_score,
-        episodic_progression_score,
-        characters_score,
-        overall_assessment_score,
+        conflict_of_content_score,
+        characterization_score,
+        story_progression_score,
+        whats_next_element_score,
+        overall_oneliner_grade_score,
         average_score,
         decision: decision || null,
         comments: comments || null,

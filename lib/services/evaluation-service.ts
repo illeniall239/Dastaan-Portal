@@ -53,11 +53,11 @@ export interface EvaluatorAssignments {
 export interface EvaluationSubmissionData {
   call_report_id: string;
   evaluator_id: string;
-  premise_conflict_score: number;
-  storyline_plot_score: number;
-  episodic_progression_score: number;
-  characters_score: number;
-  overall_assessment_score: number;
+  conflict_of_content_score: number;
+  characterization_score: number;
+  story_progression_score: number;
+  whats_next_element_score: number;
+  overall_oneliner_grade_score: number;
   comments: string;
 }
 

@@ -33,11 +33,11 @@ export interface Evaluation {
   evaluator_email?: string;
 
   // 8 Evaluation Criteria (1-10 scale)
-  premise_conflict_score: number;
-  storyline_plot_score: number;
-  episodic_progression_score: number;
-  characters_score: number;
-  overall_assessment_score: number;
+  conflict_of_content_score: number;
+  characterization_score: number;
+  story_progression_score: number;
+  whats_next_element_score: number;
+  overall_oneliner_grade_score: number;
 
   // Calculated
   average_score: number;
@@ -62,11 +62,11 @@ export interface EvaluationCreateData {
   evaluator_id: string;
   evaluator_name?: string;
   evaluator_email?: string;
-  premise_conflict_score: number;
-  storyline_plot_score: number;
-  episodic_progression_score: number;
-  characters_score: number;
-  overall_assessment_score: number;
+  conflict_of_content_score: number;
+  characterization_score: number;
+  story_progression_score: number;
+  whats_next_element_score: number;
+  overall_oneliner_grade_score: number;
   comments: string;
   status?: 'draft' | 'submitted';
 }
@@ -102,11 +102,11 @@ export interface EvaluationStatistics {
  * Criteria scores breakdown
  */
 export interface CriteriaBreakdown {
-  premise_conflict: number;
-  storyline_plot: number;
-  episodic_progression: number;
-  characters: number;
-  overall_assessment: number;
+  conflict_of_content: number;
+  characterization: number;
+  story_progression: number;
+  whats_next_element: number;
+  overall_oneliner_grade: number;
 }
 
 /**
@@ -121,18 +121,18 @@ export class EvaluationRepository extends BaseRepository<Evaluation> {
    * Calculate average score from criteria scores
    */
   private calculateAverageScore(scores: {
-    premise_conflict_score: number;
-    storyline_plot_score: number;
-    episodic_progression_score: number;
-    characters_score: number;
-    overall_assessment_score: number;
+    conflict_of_content_score: number;
+    characterization_score: number;
+    story_progression_score: number;
+    whats_next_element_score: number;
+    overall_oneliner_grade_score: number;
   }): number {
     const sum =
-      scores.premise_conflict_score +
-      scores.storyline_plot_score +
-      scores.episodic_progression_score +
-      scores.characters_score +
-      scores.overall_assessment_score;
+      scores.conflict_of_content_score +
+      scores.characterization_score +
+      scores.story_progression_score +
+      scores.whats_next_element_score +
+      scores.overall_oneliner_grade_score;
 
     return Number((sum / 5).toFixed(2));
   }
@@ -148,11 +148,11 @@ export class EvaluationRepository extends BaseRepository<Evaluation> {
       logger.info(`Creating evaluation for call report: ${data.call_report_id}`);
 
       const averageScore = this.calculateAverageScore({
-        premise_conflict_score: data.premise_conflict_score,
-        storyline_plot_score: data.storyline_plot_score,
-        episodic_progression_score: data.episodic_progression_score,
-        characters_score: data.characters_score,
-        overall_assessment_score: data.overall_assessment_score,
+        conflict_of_content_score: data.conflict_of_content_score,
+        characterization_score: data.characterization_score,
+        story_progression_score: data.story_progression_score,
+        whats_next_element_score: data.whats_next_element_score,
+        overall_oneliner_grade_score: data.overall_oneliner_grade_score,
       });
 
       const evaluation = await this.create({
@@ -190,11 +190,11 @@ export class EvaluationRepository extends BaseRepository<Evaluation> {
       }
 
       const scores = {
-        premise_conflict_score: data.premise_conflict_score ?? existing.premise_conflict_score,
-        storyline_plot_score: data.storyline_plot_score ?? existing.storyline_plot_score,
-        episodic_progression_score: data.episodic_progression_score ?? existing.episodic_progression_score,
-        characters_score: data.characters_score ?? existing.characters_score,
-        overall_assessment_score: data.overall_assessment_score ?? existing.overall_assessment_score,
+        conflict_of_content_score: data.conflict_of_content_score ?? existing.conflict_of_content_score,
+        characterization_score: data.characterization_score ?? existing.characterization_score,
+        story_progression_score: data.story_progression_score ?? existing.story_progression_score,
+        whats_next_element_score: data.whats_next_element_score ?? existing.whats_next_element_score,
+        overall_oneliner_grade_score: data.overall_oneliner_grade_score ?? existing.overall_oneliner_grade_score,
       };
 
       const averageScore = this.calculateAverageScore(scores);
@@ -409,29 +409,29 @@ export class EvaluationRepository extends BaseRepository<Evaluation> {
 
       const sums = evaluations.reduce(
         (acc, evaluation) => ({
-          premise_conflict: acc.premise_conflict + evaluation.premise_conflict_score,
-          storyline_plot: acc.storyline_plot + evaluation.storyline_plot_score,
-          episodic_progression: acc.episodic_progression + evaluation.episodic_progression_score,
-          characters: acc.characters + evaluation.characters_score,
-          overall_assessment: acc.overall_assessment + evaluation.overall_assessment_score,
+          conflict_of_content: acc.conflict_of_content + evaluation.conflict_of_content_score,
+          characterization: acc.characterization + evaluation.characterization_score,
+          story_progression: acc.story_progression + evaluation.story_progression_score,
+          whats_next_element: acc.whats_next_element + evaluation.whats_next_element_score,
+          overall_oneliner_grade: acc.overall_oneliner_grade + evaluation.overall_oneliner_grade_score,
         }),
         {
-          premise_conflict: 0,
-          storyline_plot: 0,
-          episodic_progression: 0,
-          characters: 0,
-          overall_assessment: 0,
+          conflict_of_content: 0,
+          characterization: 0,
+          story_progression: 0,
+          whats_next_element: 0,
+          overall_oneliner_grade: 0,
         }
       );
 
       const count = evaluations.length;
 
       return {
-        premise_conflict: Number((sums.premise_conflict / count).toFixed(2)),
-        storyline_plot: Number((sums.storyline_plot / count).toFixed(2)),
-        episodic_progression: Number((sums.episodic_progression / count).toFixed(2)),
-        characters: Number((sums.characters / count).toFixed(2)),
-        overall_assessment: Number((sums.overall_assessment / count).toFixed(2)),
+        conflict_of_content: Number((sums.conflict_of_content / count).toFixed(2)),
+        characterization: Number((sums.characterization / count).toFixed(2)),
+        story_progression: Number((sums.story_progression / count).toFixed(2)),
+        whats_next_element: Number((sums.whats_next_element / count).toFixed(2)),
+        overall_oneliner_grade: Number((sums.overall_oneliner_grade / count).toFixed(2)),
       };
     } catch (error) {
       logger.error(`Failed to get criteria breakdown: ${error instanceof Error ? error.message : String(error)}`);

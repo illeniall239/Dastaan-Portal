@@ -36,7 +36,7 @@ interface UseUpdateEvaluationOptions {
  * const handleUpdate = (formData) => {
  *   updateEvaluation.mutate({
  *     id: evaluationId,
- *     premise_conflict_score: 9,
+ *     conflict_of_content_score: 9,
  *     decision: "approve",
  *     decision_notes: "Updated after review",
  *     ...formData

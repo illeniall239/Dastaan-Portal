@@ -108,11 +108,11 @@ export default function ExternalEvaluatePage({ params }: ExternalEvaluatePagePro
       evaluationData.evaluation_data = {
         slot,
         scores: {
-          premise_conflict: premiseConflictScore,
-          storyline_plot: storylinePlotScore,
-          episodic_progression: episodicProgressionScore,
-          characters: charactersScore,
-          overall_assessment: crOverallAssessmentScore,
+          conflict_of_content: premiseConflictScore,
+          characterization: storylinePlotScore,
+          story_progression: episodicProgressionScore,
+          whats_next_element: charactersScore,
+          overall_oneliner_grade: crOverallAssessmentScore,
         },
         average_score: parseFloat(callReportAverageScore),
         comments,
@@ -149,11 +149,11 @@ export default function ExternalEvaluatePage({ params }: ExternalEvaluatePagePro
       setSummaryAnalysis(data.summary_analysis || "");
     } else if (contentItem.type === "call_report") {
       setSlot(data.slot || "");
-      setPremiseConflictScore(data.scores?.premise_conflict || 5);
-      setStorylinePlotScore(data.scores?.storyline_plot || 5);
-      setEpisodicProgressionScore(data.scores?.episodic_progression || 5);
-      setCharactersScore(data.scores?.characters || 5);
-      setCrOverallAssessmentScore(data.scores?.overall_assessment || 5);
+      setPremiseConflictScore(data.scores?.conflict_of_content || 5);
+      setStorylinePlotScore(data.scores?.characterization || 5);
+      setEpisodicProgressionScore(data.scores?.story_progression || 5);
+      setCharactersScore(data.scores?.whats_next_element || 5);
+      setCrOverallAssessmentScore(data.scores?.overall_oneliner_grade || 5);
       setComments(data.comments || "");
     } else if (contentItem.type === "one_liner") {
       setOlComments(data.comments || "");
@@ -339,11 +339,11 @@ export default function ExternalEvaluatePage({ params }: ExternalEvaluatePagePro
 
         evaluationData = {
           slot: slot,
-          premise_conflict_score: premiseConflictScore,
-          storyline_plot_score: storylinePlotScore,
-          episodic_progression_score: episodicProgressionScore,
-          characters_score: charactersScore,
-          overall_assessment_score: crOverallAssessmentScore,
+          conflict_of_content_score: premiseConflictScore,
+          characterization_score: storylinePlotScore,
+          story_progression_score: episodicProgressionScore,
+          whats_next_element_score: charactersScore,
+          overall_oneliner_grade_score: crOverallAssessmentScore,
           comments: comments || null,
         };
       }
@@ -868,7 +868,7 @@ export default function ExternalEvaluatePage({ params }: ExternalEvaluatePagePro
                 </CardHeader>
                 <CardContent className="space-y-6">
                   <ScoreCard
-                    label="Premise / Conflict"
+                    label="Conflict of Content"
                     description="How interesting and engaging is the core premise and conflict?"
                     score={premiseConflictScore}
                     onChange={setPremiseConflictScore}
@@ -876,7 +876,7 @@ export default function ExternalEvaluatePage({ params }: ExternalEvaluatePagePro
                   />
 
                   <ScoreCard
-                    label="Storyline / Plot"
+                    label="Characterization"
                     description="How compelling and coherent is the overall plot structure?"
                     score={storylinePlotScore}
                     onChange={setStorylinePlotScore}
@@ -884,7 +884,7 @@ export default function ExternalEvaluatePage({ params }: ExternalEvaluatePagePro
                   />
 
                   <ScoreCard
-                    label="Episodic Progression"
+                    label="Story Progression"
                     description="How well does the story flow across multiple episodes?"
                     score={episodicProgressionScore}
                     onChange={setEpisodicProgressionScore}
@@ -892,7 +892,7 @@ export default function ExternalEvaluatePage({ params }: ExternalEvaluatePagePro
                   />
 
                   <ScoreCard
-                    label="Characters"
+                    label="What's Next Element"
                     description="How well-developed and relatable are the main characters?"
                     score={charactersScore}
                     onChange={setCharactersScore}
@@ -900,7 +900,7 @@ export default function ExternalEvaluatePage({ params }: ExternalEvaluatePagePro
                   />
 
                   <ScoreCard
-                    label="Final Impression"
+                    label="Overall Oneliner Grade"
                     description="What is your overall impression of this project's potential?"
                     score={crOverallAssessmentScore}
                     onChange={setCrOverallAssessmentScore}

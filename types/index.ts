@@ -389,12 +389,24 @@ export interface EvaluationWithType {
   evaluator_email: string;
   evaluator_role: UserRole;
   evaluation_type: EvaluationType;
-  // Evaluation scores
-  premise_conflict_score: number;
-  storyline_plot_score: number;
-  episodic_progression_score: number;
-  characters_score: number;
-  overall_assessment_score: number;
+  // Evaluation scores (new criteria)
+  conflict_of_content_score: number;
+  characterization_score: number;
+  story_progression_score: number;
+  whats_next_element_score: number;
+  overall_oneliner_grade_score: number;
+  // Per-criterion comments
+  conflict_of_content_comment?: string | null;
+  characterization_comment?: string | null;
+  story_progression_comment?: string | null;
+  whats_next_element_comment?: string | null;
+  overall_oneliner_grade_comment?: string | null;
+  // Descriptive evaluation
+  themes_of_drama?: string[];
+  corresponding_dramas?: string[];
+  theme_category?: string | null;
+  no_of_tracks?: number | null;
+  closing_remarks?: string | null;
   average_score: number;
   decision: string;
   comments: string | null;
@@ -490,11 +502,11 @@ export interface EvaluationSnapshot {
   form_id: string;
   evaluator_name: string;
   evaluator_email: string;
-  premise_conflict_score: number;
-  storyline_plot_score: number;
-  episodic_progression_score: number;
-  characters_score: number;
-  overall_assessment_score: number;
+  conflict_of_content_score: number;
+  characterization_score: number;
+  story_progression_score: number;
+  whats_next_element_score: number;
+  overall_oneliner_grade_score: number;
   average_score: number;
   comments: string;
   submitted_at: string;

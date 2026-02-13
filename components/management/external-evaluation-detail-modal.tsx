@@ -63,11 +63,11 @@ function normalizeEvaluationData(data: any, contentType: string) {
 
   if (contentType === "call_report") {
     const scores = {
-      premise_conflict: data.premise_conflict_score || 0,
-      storyline_plot: data.storyline_plot_score || 0,
-      episodic_progression: data.episodic_progression_score || 0,
-      characters: data.characters_score || 0,
-      overall_assessment: data.overall_assessment_score || 0,
+      conflict_of_content: data.conflict_of_content_score || 0,
+      characterization: data.characterization_score || 0,
+      story_progression: data.story_progression_score || 0,
+      whats_next_element: data.whats_next_element_score || 0,
+      overall_oneliner_grade: data.overall_oneliner_grade_score || 0,
     };
 
     // Calculate average from flat scores
@@ -437,29 +437,29 @@ export function ExternalEvaluationDetailModal({
           </CardHeader>
           <CardContent className="space-y-6">
             <ScoreDisplay
-              label="Premise / Conflict"
+              label="Conflict of Content"
               description="How interesting and engaging is the core premise and conflict?"
-              score={scores.premise_conflict || 0}
+              score={scores.conflict_of_content || 0}
             />
             <ScoreDisplay
-              label="Storyline / Plot"
+              label="Characterization"
               description="How compelling and coherent is the overall plot structure?"
-              score={scores.storyline_plot || 0}
+              score={scores.characterization || 0}
             />
             <ScoreDisplay
-              label="Episodic Progression"
+              label="Story Progression"
               description="How well does the story flow across multiple episodes?"
-              score={scores.episodic_progression || 0}
+              score={scores.story_progression || 0}
             />
             <ScoreDisplay
-              label="Characters"
+              label="What's Next Element"
               description="How well-developed and relatable are the main characters?"
-              score={scores.characters || 0}
+              score={scores.whats_next_element || 0}
             />
             <ScoreDisplay
-              label="Final Impression"
+              label="Overall Oneliner Grade"
               description="What is your overall impression of this project's potential?"
-              score={scores.overall_assessment || 0}
+              score={scores.overall_oneliner_grade || 0}
             />
           </CardContent>
         </Card>

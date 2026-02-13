@@ -272,11 +272,11 @@ export async function POST(request: NextRequest) {
 
       // Validate evaluation scores (1-10)
       const requiredScores = [
-        'premise_conflict_score',
-        'storyline_plot_score',
-        'episodic_progression_score',
-        'characters_score',
-        'overall_assessment_score'
+        'conflict_of_content_score',
+        'characterization_score',
+        'story_progression_score',
+        'whats_next_element_score',
+        'overall_oneliner_grade_score'
       ];
 
       for (const scoreField of requiredScores) {

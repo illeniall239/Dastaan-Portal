@@ -138,25 +138,25 @@ export function EvaluatorScoresBreakdown({
                 {/* Individual Criteria Scores */}
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-3 pt-3 border-t">
                   <ScoreItem
-                    label="Premise & Conflict"
-                    score={evaluation.premise_conflict_score}
+                    label="Conflict of Content"
+                    score={evaluation.conflict_of_content_score}
                   />
                   <ScoreItem
-                    label="Storyline & Plot"
-                    score={evaluation.storyline_plot_score}
+                    label="Characterization"
+                    score={evaluation.characterization_score}
                   />
                   <ScoreItem
-                    label="Episodic Progression"
-                    score={evaluation.episodic_progression_score}
+                    label="Story Progression"
+                    score={evaluation.story_progression_score}
                   />
                   <ScoreItem
-                    label="Characters"
-                    score={evaluation.characters_score}
+                    label="What's Next Element"
+                    score={evaluation.whats_next_element_score}
                   />
                   {/* Dialogues removed */}
                   <ScoreItem
-                    label="Overall Assessment"
-                    score={evaluation.overall_assessment_score}
+                    label="Overall Oneliner Grade"
+                    score={evaluation.overall_oneliner_grade_score}
                   />
                 </div>
 

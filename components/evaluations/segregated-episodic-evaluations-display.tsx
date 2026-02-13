@@ -86,7 +86,7 @@ export function SegregatedEpisodicEvaluationsDisplay({
           </div>
 
           {/* Scoring Breakdown */}
-          <div className="grid grid-cols-2 gap-2 text-xs">
+          <div className="grid grid-cols-3 gap-2 text-xs">
             <div className="bg-gray-50 rounded p-2">
               <p className="text-muted-foreground mb-1">Conflict of Content</p>
               <p className="font-semibold">{evaluation.conflict_of_content_score}/10</p>
@@ -98,6 +98,18 @@ export function SegregatedEpisodicEvaluationsDisplay({
             <div className="bg-gray-50 rounded p-2">
               <p className="text-muted-foreground mb-1">Story Progression</p>
               <p className="font-semibold">{evaluation.story_progression_score}/10</p>
+            </div>
+            <div className="bg-gray-50 rounded p-2">
+              <p className="text-muted-foreground mb-1">Main Event</p>
+              <p className="font-semibold">{evaluation.main_event_score}/10</p>
+            </div>
+            <div className="bg-gray-50 rounded p-2">
+              <p className="text-muted-foreground mb-1">Small Event</p>
+              <p className="font-semibold">{evaluation.small_event_score}/10</p>
+            </div>
+            <div className="bg-gray-50 rounded p-2">
+              <p className="text-muted-foreground mb-1">Dragness</p>
+              <p className="font-semibold">{evaluation.dragness_score}/10</p>
             </div>
             <div className="bg-gray-50 rounded p-2">
               <p className="text-muted-foreground mb-1">Freezes</p>

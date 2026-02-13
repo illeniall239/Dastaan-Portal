@@ -59,26 +59,26 @@ export function SegregatedEvaluationsDisplay({
           {/* Scoring Breakdown */}
           <div className="grid grid-cols-2 gap-2 text-xs">
             <div className="bg-gray-50 rounded p-2">
-              <p className="text-muted-foreground mb-1">Premise/Conflict</p>
-              <p className="font-semibold">{evaluation.premise_conflict_score}/10</p>
+              <p className="text-muted-foreground mb-1">Conflict of Content</p>
+              <p className="font-semibold">{evaluation.conflict_of_content_score}/10</p>
             </div>
             <div className="bg-gray-50 rounded p-2">
-              <p className="text-muted-foreground mb-1">Storyline/Plot</p>
-              <p className="font-semibold">{evaluation.storyline_plot_score}/10</p>
+              <p className="text-muted-foreground mb-1">Characterization</p>
+              <p className="font-semibold">{evaluation.characterization_score}/10</p>
             </div>
             <div className="bg-gray-50 rounded p-2">
-              <p className="text-muted-foreground mb-1">Episodic Progression</p>
-              <p className="font-semibold">{evaluation.episodic_progression_score}/10</p>
+              <p className="text-muted-foreground mb-1">Story Progression</p>
+              <p className="font-semibold">{evaluation.story_progression_score}/10</p>
             </div>
             <div className="bg-gray-50 rounded p-2">
-              <p className="text-muted-foreground mb-1">Characters</p>
-              <p className="font-semibold">{evaluation.characters_score}/10</p>
+              <p className="text-muted-foreground mb-1">What's Next Element</p>
+              <p className="font-semibold">{evaluation.whats_next_element_score}/10</p>
             </div>
             <div className="bg-gray-50 rounded p-2">
-              <p className="text-muted-foreground mb-1">Final Impression</p>
+              <p className="text-muted-foreground mb-1">Overall Oneliner Grade</p>
               <p className="font-semibold">
-                {evaluation.overall_assessment_score ?? "N/A"}
-                {evaluation.overall_assessment_score !== undefined && evaluation.overall_assessment_score !== null ? "/10" : ""}
+                {evaluation.overall_oneliner_grade_score ?? "N/A"}
+                {evaluation.overall_oneliner_grade_score !== undefined && evaluation.overall_oneliner_grade_score !== null ? "/10" : ""}
               </p>
             </div>
           </div>

@@ -9,11 +9,11 @@ export const createCrossTeamShareSchema = z.object({
 });
 
 export const crossTeamEvaluationSchema = z.object({
-  premise_conflict_score: z.number().min(1).max(10),
-  storyline_plot_score: z.number().min(1).max(10),
-  episodic_progression_score: z.number().min(1).max(10),
-  characters_score: z.number().min(1).max(10),
-  overall_assessment_score: z.number().min(1).max(10),
+  conflict_of_content_score: z.number().min(1).max(10),
+  characterization_score: z.number().min(1).max(10),
+  story_progression_score: z.number().min(1).max(10),
+  whats_next_element_score: z.number().min(1).max(10),
+  overall_oneliner_grade_score: z.number().min(1).max(10),
   decision: z.string().optional().nullable(),
   comments: z.string().optional().nullable(),
 });

@@ -39,10 +39,10 @@ interface UseSubmitEvaluationOptions {
  *   submitEvaluation.mutate({
  *     call_report_id: reportId,
  *     evaluator_id: user.id,
- *     premise_conflict_score: 8,
- *     storyline_plot_score: 7,
- *     episodic_progression_score: 9,
- *     characters_score: 8,
+ *     conflict_of_content_score: 8,
+ *     characterization_score: 7,
+ *     story_progression_score: 9,
+ *     whats_next_element_score: 8,
  *     decision: "approve",
  *     decision_notes: "Excellent premise",
  *     ...formData

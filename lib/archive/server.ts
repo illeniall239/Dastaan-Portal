@@ -21,11 +21,11 @@ export interface EvaluationSnapshot {
   form_id: string;
   evaluator_name: string;
   evaluator_email: string;
-  premise_conflict_score: number;
-  storyline_plot_score: number;
-  episodic_progression_score: number;
-  characters_score: number;
-  overall_assessment_score: number;
+  conflict_of_content_score: number;
+  characterization_score: number;
+  story_progression_score: number;
+  whats_next_element_score: number;
+  overall_oneliner_grade_score: number;
   average_score: number;
   comments: string;
   submitted_at: string;
@@ -70,7 +70,7 @@ export async function getArchivedItemWithEvaluations(archiveId: string) {
   // Get all evaluation snapshots for this archive
   const { data: evaluations, error: evalError } = await supabase
     .from("evaluations_snapshot")
-    .select("id, form_id, archive_id, evaluator_name, evaluator_email, premise_conflict_score, storyline_plot_score, episodic_progression_score, characters_score, overall_assessment_score, average_score, comments, submitted_at")
+    .select("id, form_id, archive_id, evaluator_name, evaluator_email, conflict_of_content_score, characterization_score, story_progression_score, whats_next_element_score, overall_oneliner_grade_score, average_score, comments, submitted_at")
     .eq("archive_id", archiveId)
     .order("submitted_at", { ascending: false });
 
