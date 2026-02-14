@@ -41,11 +41,6 @@ const managementNavItems = [
     icon: "clipboardCheck",
   },
   {
-    title: "Writers Summary",
-    href: "/management/writers-summary",
-    icon: "userCheck",
-  },
-  {
     title: "Evaluation Requests",
     href: "/management/cross-team-shares",
     icon: "share2",

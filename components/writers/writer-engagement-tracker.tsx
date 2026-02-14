@@ -180,9 +180,20 @@ const NewRow = memo(function NewRow({
   );
 });
 
-export function WriterEngagementTracker() {
+interface WriterEngagementTrackerProps {
+  userId: string;
+  initialEngagements?: WriterEngagement[];
+  initialWriters?: Writer[];
+}
+
+export function WriterEngagementTracker({
+  userId,
+  initialEngagements = [],
+  initialWriters = [],
+}: WriterEngagementTrackerProps) {
   const queryClient = useQueryClient();
   const [currentDate, setCurrentDate] = useState<Date>(new Date());
+  const initialMonth = format(new Date(), 'yyyy-MM');
   const [newRowIds, setNewRowIds] = useState<string[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editNotes, setEditNotes] = useState('');
@@ -195,6 +206,7 @@ export function WriterEngagementTracker() {
       if (!response.ok) throw new Error('Failed to fetch writers');
       return response.json() as Promise<Writer[]>;
     },
+    initialData: initialWriters.length > 0 ? initialWriters : undefined,
     staleTime: 1000 * 60 * 60,
   });
 
@@ -204,8 +216,11 @@ export function WriterEngagementTracker() {
   const dateFrom = format(monthStart, 'yyyy-MM-dd');
   const dateTo = format(monthEnd, 'yyyy-MM-dd');
 
+  const currentMonth = format(currentDate, 'yyyy-MM');
+  const isCurrentMonth = currentMonth === initialMonth;
+
   const { data: engagements = [], isLoading: engagementsLoading, isError } = useQuery({
-    queryKey: ['writer-engagements', format(currentDate, 'yyyy-MM')],
+    queryKey: ['writer-engagements', userId, currentMonth],
     queryFn: async () => {
       const response = await fetch(
         `/api/writers?dateFrom=${dateFrom}&dateTo=${dateTo}`
@@ -213,6 +228,7 @@ export function WriterEngagementTracker() {
       if (!response.ok) throw new Error('Failed to fetch engagements');
       return response.json() as Promise<WriterEngagement[]>;
     },
+    initialData: isCurrentMonth && initialEngagements.length > 0 ? initialEngagements : undefined,
   });
 
   // Save (create) mutation
@@ -232,7 +248,7 @@ export function WriterEngagementTracker() {
     },
     onSuccess: (result) => {
       setNewRowIds(prev => prev.filter(id => id !== result.rowId));
-      queryClient.invalidateQueries({ queryKey: ['writer-engagements'] });
+      queryClient.invalidateQueries({ queryKey: ['writer-engagements', userId] });
       toast.success('Engagement saved');
     },
     onError: () => {
@@ -254,7 +270,7 @@ export function WriterEngagementTracker() {
     onSuccess: () => {
       setEditingId(null);
       setEditNotes('');
-      queryClient.invalidateQueries({ queryKey: ['writer-engagements'] });
+      queryClient.invalidateQueries({ queryKey: ['writer-engagements', userId] });
       toast.success('Engagement updated');
     },
     onError: () => {
@@ -271,7 +287,7 @@ export function WriterEngagementTracker() {
       if (!response.ok) throw new Error('Failed to delete engagement');
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['writer-engagements'] });
+      queryClient.invalidateQueries({ queryKey: ['writer-engagements', userId] });
       toast.success('Engagement deleted');
     },
     onError: () => {

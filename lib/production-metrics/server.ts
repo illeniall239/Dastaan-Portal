@@ -165,11 +165,18 @@ export async function getProductionMetrics(
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-    const { data: engagements } = await supabase
+    let engagementsQuery = supabase
       .from('writer_engagements')
       .select('id, writer_id, date_engaged, time_slot, notes, created_by')
       .gte('date_engaged', thirtyDaysAgo.toISOString().split('T')[0])
       .order('date_engaged', { ascending: false });
+
+    // Apply same team isolation as call_reports
+    if (!hasGlobalAccess && teamId) {
+      engagementsQuery = engagementsQuery.eq('team_id', teamId);
+    }
+
+    const { data: engagements } = await engagementsQuery;
 
     // Batch-fetch writer names for all engagements
     const writerIds = [...new Set((engagements || []).map((e: any) => e.writer_id).filter(Boolean))];

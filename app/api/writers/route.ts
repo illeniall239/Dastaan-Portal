@@ -14,8 +14,16 @@ export async function GET(request: NextRequest) {
 
     const auth = await requireApiAuth();
     if (!auth.success) return auth.response;
+    const { user } = auth;
 
     const supabase = await createClient();
+
+    // Fetch current user's team_id and role for team isolation
+    const { data: currentUser } = await supabase
+      .from('users')
+      .select('team_id, role')
+      .eq('id', user.id)
+      .single();
 
     // Get query parameters
     const { searchParams } = new URL(request.url);
@@ -32,12 +40,19 @@ export async function GET(request: NextRequest) {
         time_slot,
         notes,
         created_by,
+        team_id,
         created_at,
         updated_at,
         writer:writers (id, name)
       `)
       .order('date_engaged', { ascending: false })
       .order('time_slot', { ascending: true });
+
+    // TEAM ISOLATION: Only admin/management/programmer see all engagements
+    const hasGlobalAccess = currentUser?.role && ['admin', 'management', 'programmer'].includes(currentUser.role);
+    if (!hasGlobalAccess && currentUser?.team_id) {
+      query = query.eq('team_id', currentUser.team_id);
+    }
 
     if (writerId) {
       query = query.eq('writer_id', writerId);
@@ -115,6 +130,13 @@ export async function POST(request: NextRequest) {
 
     const { writer_id, date_engaged, time_slot, notes } = validation.data;
 
+    // Fetch user's team_id for team isolation
+    const { data: userProfile } = await supabase
+      .from('users')
+      .select('team_id')
+      .eq('id', user.id)
+      .single();
+
     const { data, error } = await supabase
       .from('writer_engagements')
       .insert([{
@@ -123,6 +145,7 @@ export async function POST(request: NextRequest) {
         time_slot: time_slot || null,
         notes: notes || null,
         created_by: user.id,
+        team_id: userProfile?.team_id || null,
       }])
       .select();
 
