@@ -169,12 +169,13 @@ export function WhatsCookingDashboard({ ideas }: WhatsCookingDashboardProps) {
         idea.writer_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         (idea.director && idea.director.toLowerCase().includes(searchTerm.toLowerCase()));
 
-      // Rating filter
+      // Rating filter - prefer average_initial_assessment, fallback to overall_rating
+      const effectiveRating = idea.average_initial_assessment ?? idea.overall_rating;
       const matchesRating = ratingFilter === "all" ||
-        (ratingFilter === "high" && idea.overall_rating !== null && idea.overall_rating >= 8) ||
-        (ratingFilter === "medium" && idea.overall_rating !== null && idea.overall_rating >= 5 && idea.overall_rating < 8) ||
-        (ratingFilter === "low" && idea.overall_rating !== null && idea.overall_rating < 5) ||
-        (ratingFilter === "unrated" && idea.overall_rating === null);
+        (ratingFilter === "high" && effectiveRating !== null && effectiveRating >= 8) ||
+        (ratingFilter === "medium" && effectiveRating !== null && effectiveRating >= 5 && effectiveRating < 8) ||
+        (ratingFilter === "low" && effectiveRating !== null && effectiveRating < 5) ||
+        (ratingFilter === "unrated" && effectiveRating === null);
 
       // Genre filter
       const matchesGenre = genreFilter === "all" || idea.genre.includes(genreFilter);
@@ -200,8 +201,8 @@ export function WhatsCookingDashboard({ ideas }: WhatsCookingDashboardProps) {
             comparison = a.working_title.localeCompare(b.working_title);
             break;
           case "rating":
-            const ratingA = a.overall_rating ?? -1;
-            const ratingB = b.overall_rating ?? -1;
+            const ratingA = (a.average_initial_assessment ?? a.overall_rating) ?? -1;
+            const ratingB = (b.average_initial_assessment ?? b.overall_rating) ?? -1;
             comparison = ratingA - ratingB;
             break;
           case "genre":
@@ -308,11 +309,15 @@ export function WhatsCookingDashboard({ ideas }: WhatsCookingDashboardProps) {
   // Calculate summary stats
   const stats = useMemo(() => {
     const total = filteredIdeas.length;
-    const highPriority = filteredIdeas.filter(i => i.overall_rating !== null && i.overall_rating >= 8).length;
+    const highPriority = filteredIdeas.filter(i => {
+      const r = i.average_initial_assessment ?? i.overall_rating;
+      return r !== null && r >= 8;
+    }).length;
     const recentCount = filteredIdeas.filter(i => isRecent(i.created_at)).length;
 
-    const avgRating = filteredIdeas.length > 0
-      ? filteredIdeas.reduce((sum, i) => sum + (i.overall_rating ?? 0), 0) / filteredIdeas.filter(i => i.overall_rating !== null).length
+    const ratedIdeas = filteredIdeas.filter(i => (i.average_initial_assessment ?? i.overall_rating) !== null);
+    const avgRating = ratedIdeas.length > 0
+      ? ratedIdeas.reduce((sum, i) => sum + ((i.average_initial_assessment ?? i.overall_rating) ?? 0), 0) / ratedIdeas.length
       : 0;
 
     return { total, highPriority, recentCount, avgRating };
@@ -331,7 +336,8 @@ export function WhatsCookingDashboard({ ideas }: WhatsCookingDashboardProps) {
     if (scores.salman !== null && scores.salman !== undefined) parts.push(`S:${scores.salman}`);
     if (scores.imran !== null && scores.imran !== undefined) parts.push(`I:${scores.imran}`);
 
-    const avgScore = idea.overall_rating !== null ? idea.overall_rating.toFixed(1) : 'N/A';
+    const effectiveRating = idea.average_initial_assessment ?? idea.overall_rating;
+    const avgScore = effectiveRating !== null ? effectiveRating.toFixed(1) : 'N/A';
 
     if (parts.length > 0) {
       return `${avgScore} (${parts.join(', ')})`;
@@ -350,7 +356,8 @@ export function WhatsCookingDashboard({ ideas }: WhatsCookingDashboardProps) {
 
   // Render table row
   const renderIdeaRow = (idea: ActiveIdeaDetail, index: number, totalCount: number) => {
-    const ratingStyle = getRatingBadge(idea.overall_rating);
+    const effectiveRating = idea.average_initial_assessment ?? idea.overall_rating;
+    const ratingStyle = getRatingBadge(effectiveRating);
     const isNew = isRecent(idea.created_at);
 
     return (

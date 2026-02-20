@@ -180,7 +180,7 @@ async function DashboardContent() {
           title="Total Stories"
           value={0}
           icon={FileText}
-          href="/gcm/stories"
+          href="/gcm/call-reports"
         />
       </div>
 

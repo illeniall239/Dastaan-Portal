@@ -11,20 +11,22 @@ interface RatingTiersProps {
 }
 
 export function RatingTiers({ ideas }: RatingTiersProps) {
-  // Categorize by rating
+  // Use average_initial_assessment with fallback to overall_rating
+  const getEffectiveRating = (i: ActiveIdeaDetail) => i.average_initial_assessment ?? i.overall_rating;
+
   const highRated = ideas
-    .filter(i => i.overall_rating !== null && i.overall_rating >= 8)
-    .sort((a, b) => (b.overall_rating || 0) - (a.overall_rating || 0));
-  
+    .filter(i => { const r = getEffectiveRating(i); return r !== null && r >= 8; })
+    .sort((a, b) => (getEffectiveRating(b) || 0) - (getEffectiveRating(a) || 0));
+
   const mediumRated = ideas
-    .filter(i => i.overall_rating !== null && i.overall_rating >= 5 && i.overall_rating < 8)
-    .sort((a, b) => (b.overall_rating || 0) - (a.overall_rating || 0));
-  
+    .filter(i => { const r = getEffectiveRating(i); return r !== null && r >= 5 && r < 8; })
+    .sort((a, b) => (getEffectiveRating(b) || 0) - (getEffectiveRating(a) || 0));
+
   const lowRated = ideas
-    .filter(i => i.overall_rating !== null && i.overall_rating < 5)
-    .sort((a, b) => (b.overall_rating || 0) - (a.overall_rating || 0));
-  
-  const unrated = ideas.filter(i => i.overall_rating === null);
+    .filter(i => { const r = getEffectiveRating(i); return r !== null && r < 5; })
+    .sort((a, b) => (getEffectiveRating(b) || 0) - (getEffectiveRating(a) || 0));
+
+  const unrated = ideas.filter(i => getEffectiveRating(i) === null);
 
   const tiers = [
     {
@@ -89,9 +91,9 @@ export function RatingTiers({ ideas }: RatingTiersProps) {
       <div className="grid grid-cols-2 gap-3">
         {tiers.map((tier) => {
           const Icon = tier.icon;
-          
+
           return (
-            <Card 
+            <Card
               key={tier.key}
               className={`p-3 ${tier.bgColor} ${tier.borderColor} border`}
             >
@@ -114,7 +116,7 @@ export function RatingTiers({ ideas }: RatingTiersProps) {
                 <ul className="space-y-1.5">
                   {tier.ideas.slice(0, 4).map(idea => (
                     <li key={idea.id} className="flex items-center gap-1.5">
-                      <span 
+                      <span
                         className="w-1.5 h-1.5 rounded-full flex-shrink-0"
                         style={{ backgroundColor: getThemeColor(idea.theme) }}
                         title={idea.theme || "No theme"}

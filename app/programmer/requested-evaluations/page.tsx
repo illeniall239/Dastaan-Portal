@@ -1,0 +1,25 @@
+import { getCurrentUser } from "@/lib/auth";
+import { redirect } from "next/navigation";
+import { BackButton } from "@/components/ui/back-button";
+import { RequestedEvaluationsView } from "@/components/cross-team-shares/requested-evaluations-view";
+
+export default async function ProgrammerRequestedEvaluationsPage() {
+  const user = await getCurrentUser();
+  if (!user) redirect("/login");
+  if (!["programmer", "management", "admin"].includes(user.role)) redirect("/dashboard");
+
+  return (
+    <div className="mobile-container mobile-section space-y-4 sm:space-y-6">
+      <div className="flex flex-col gap-4 sm:gap-6 mb-8">
+        <BackButton fallbackHref="/programmer" variant="outline" size="sm" className="w-fit" />
+        <div className="space-y-1">
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Requested Evaluations</h1>
+          <p className="text-muted-foreground text-sm sm:text-base">
+            View results for cross-team evaluation requests your team has sent.
+          </p>
+        </div>
+      </div>
+      <RequestedEvaluationsView />
+    </div>
+  );
+}

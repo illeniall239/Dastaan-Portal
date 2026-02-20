@@ -177,8 +177,8 @@ export function StatusUpdaterTable({ ideas, role, readOnly = false }: StatusUpda
           bVal = b.working_title.toLowerCase();
           break;
         case "rating":
-          aVal = a.overall_rating || 0;
-          bVal = b.overall_rating || 0;
+          aVal = (a.average_initial_assessment ?? a.overall_rating) || 0;
+          bVal = (b.average_initial_assessment ?? b.overall_rating) || 0;
           break;
         case "writer":
           aVal = (a.writer_names?.join(', ') || a.writer_name || '').toLowerCase();
@@ -234,10 +234,10 @@ export function StatusUpdaterTable({ ideas, role, readOnly = false }: StatusUpda
   // For programming portal, include all possible columns regardless of role
   const transformDataForExport = () => {
     // Use selected rows if any are selected, otherwise use all filtered rows
-    const rowsToExport = selectedIds.size > 0 
+    const rowsToExport = selectedIds.size > 0
       ? filteredAndSortedIdeas.filter(idea => selectedIds.has(idea.id))
       : filteredAndSortedIdeas;
-    
+
     return rowsToExport.map((idea, index) => {
       const transformed: any = {
         "Sr #": index + 1,
@@ -251,8 +251,8 @@ export function StatusUpdaterTable({ ideas, role, readOnly = false }: StatusUpda
         "Short Synopsis": idea.logline || '',
         "Evaluation Decision": idea.one_liner_approved ?
           (idea.one_liner_approved === "approved" ? "Approved" :
-           idea.one_liner_approved === "needs_improvement" ? "Needs Revision" :
-           idea.one_liner_approved === "pending" ? "Pending" : "Rejected") : '',
+            idea.one_liner_approved === "needs_improvement" ? "Needs Revision" :
+              idea.one_liner_approved === "pending" ? "Pending" : "Rejected") : '',
         "Expected Episodes": idea.total_episodes ?? '',
         "Episodes Received": idea.received_episodes ?? '',
         "Script Completion %": idea.completion_percentage != null ? `${idea.completion_percentage.toFixed(0)}%` : '',
@@ -608,9 +608,9 @@ export function StatusUpdaterTable({ ideas, role, readOnly = false }: StatusUpda
                         <span className={cn(
                           "font-semibold",
                           idea.days_active >= 90 ? "text-rose-600" :
-                          idea.days_active >= 60 ? "text-amber-600" :
-                          idea.days_active >= 30 ? "text-blue-600" :
-                          "text-slate-600"
+                            idea.days_active >= 60 ? "text-amber-600" :
+                              idea.days_active >= 30 ? "text-blue-600" :
+                                "text-slate-600"
                         )}>
                           {idea.days_active}
                         </span>
@@ -636,9 +636,9 @@ export function StatusUpdaterTable({ ideas, role, readOnly = false }: StatusUpda
                           <span className={cn(
                             "font-semibold",
                             idea.days_since_last_episode >= 60 ? "text-rose-600" :
-                            idea.days_since_last_episode >= 30 ? "text-amber-600" :
-                            idea.days_since_last_episode >= 14 ? "text-blue-600" :
-                            "text-emerald-600"
+                              idea.days_since_last_episode >= 30 ? "text-amber-600" :
+                                idea.days_since_last_episode >= 14 ? "text-blue-600" :
+                                  "text-emerald-600"
                           )}>
                             {idea.days_since_last_episode}
                           </span>

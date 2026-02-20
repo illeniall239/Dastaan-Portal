@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { redirect, notFound } from "next/navigation";
 import { ContractTermForm } from "@/components/contract-terms/contract-term-form";
 import { BackButton } from "@/components/ui/back-button";
+import type { ProjectForContractTerm } from "@/lib/contract-terms/client";
 
 export const dynamic = "force-dynamic";
 
@@ -96,7 +97,14 @@ export default async function EditContentDepartmentNegotiationPage({
       </div>
 
       <ContractTermForm
-        stories={stories || []}
+        stories={(stories || []).map((s): ProjectForContractTerm => ({
+          id: s.id,
+          display_id: s.story_id,
+          title: s.title,
+          writer_name: s.writer_originator_name,
+          genre: s.genre,
+          item_type: "story",
+        }))}
         redirectPath="/content-department/contract-terms"
         mode="edit"
         initialData={contractTerm}

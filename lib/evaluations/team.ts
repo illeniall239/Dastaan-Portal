@@ -24,11 +24,20 @@ type TeamCallReport = {
   remarks: string | null;
   next_steps: string | null;
   overall_rating: number | null;
+  average_initial_assessment?: number | null;
+  assessment_count?: number | null;
   meeting_date: string;
   status: string | null;
   created_by: string;
   creator: { name: string } | null;
-  episodes: { id: string; episode_number: number; title: string | null }[];
+  episodes: {
+    id: string;
+    episode_number: number;
+    title: string | null;
+    initial_assessment?: number | null;
+    average_initial_assessment?: number | null;
+    assessment_count?: number | null;
+  }[];
 };
 
 export type TeamWorkItems = {
@@ -56,7 +65,7 @@ export async function getEvaluatorTeam() {
     .single();
 
   if (teamError) throw teamError;
-  
+
   // Transform team_head from array to single object (Supabase returns arrays for joins)
   return {
     ...team,
@@ -86,7 +95,8 @@ export async function getTeamWorkItems(teamId: string): Promise<TeamWorkItems> {
     .select(`
       id, call_report_id, working_title, logline, category,
       genre, content_type, slot, remarks, next_steps,
-      overall_rating, meeting_date, status,
+      overall_rating, average_initial_assessment, assessment_count,
+      meeting_date, status,
       created_by, creator:users!created_by(name)
     `)
     .eq('team_id', teamId)
@@ -96,18 +106,25 @@ export async function getTeamWorkItems(teamId: string): Promise<TeamWorkItems> {
   const crIds = (callReports || []).map(cr => cr.id);
   const { data: episodes } = crIds.length > 0
     ? await supabase
-        .from('episodes')
-        .select('id, episode_number, title, call_report_id')
-        .in('call_report_id', crIds)
-        .order('episode_number')
+      .from('episodes')
+      .select('id, episode_number, title, call_report_id, initial_assessment, average_initial_assessment, assessment_count')
+      .in('call_report_id', crIds)
+      .order('episode_number')
     : { data: [] };
 
   // Group episodes by call_report_id
-  const episodesByReport = new Map<string, { id: string; episode_number: number; title: string | null }[]>();
+  const episodesByReport = new Map<string, Array<{ id: string; episode_number: number; title: string | null; initial_assessment?: number | null; average_initial_assessment?: number | null; assessment_count?: number | null }>>();
   for (const ep of episodes || []) {
     const key = ep.call_report_id;
     if (!episodesByReport.has(key)) episodesByReport.set(key, []);
-    episodesByReport.get(key)!.push({ id: ep.id, episode_number: ep.episode_number, title: ep.title });
+    episodesByReport.get(key)!.push({
+      id: ep.id,
+      episode_number: ep.episode_number,
+      title: ep.title,
+      initial_assessment: ep.initial_assessment,
+      average_initial_assessment: ep.average_initial_assessment,
+      assessment_count: ep.assessment_count
+    });
   }
 
   const transformedCallReports: TeamCallReport[] = (callReports || []).map(cr => ({
@@ -122,6 +139,8 @@ export async function getTeamWorkItems(teamId: string): Promise<TeamWorkItems> {
     remarks: cr.remarks,
     next_steps: cr.next_steps,
     overall_rating: cr.overall_rating,
+    average_initial_assessment: cr.average_initial_assessment,
+    assessment_count: cr.assessment_count,
     meeting_date: cr.meeting_date,
     status: cr.status,
     created_by: cr.created_by,

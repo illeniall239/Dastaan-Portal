@@ -51,6 +51,7 @@ import { formatFileSize } from "@/lib/validations/episodes";
 import { EpisodeUploadForm, type EpisodeFormEntry } from "@/components/episodes/episode-upload-form";
 import { EpisodeFileUpload } from "@/components/episodes/episode-file-upload";
 import { getGradeColorClasses } from "@/lib/validations/episodic-evaluations";
+import { ScoreCard } from "@/components/episodic-evaluations/score-card";
 import type { EpisodeWithDetails, EpisodicEvaluationWithDetails } from "@/types";
 import { BackButton } from "@/components/ui/back-button";
 import { formatDate } from "@/lib/utils/format-date";
@@ -115,6 +116,7 @@ type ExistingEpisodeEdit = EpisodeWithDetails & {
     _originalAttachmentUrl?: string | null;
     _originalAttachmentType?: string | null;
     _originalAdditionalInfo?: string | null;
+    _originalInitialAssessment?: number | null;
 };
 
 export default function ProgrammerEpisodesPage() {
@@ -154,6 +156,7 @@ export default function ProgrammerEpisodesPage() {
             episode_number: 1,
             file: null,
             additional_info: "",
+            initial_assessment: 5,
         },
     ]);
 

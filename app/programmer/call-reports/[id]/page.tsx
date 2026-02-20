@@ -16,6 +16,8 @@ import { BackButton } from "@/components/ui/back-button";
 import { formatDateTimeLong, formatDate } from "@/lib/utils/format-date";
 import { ShareCrossTeamButton } from "@/components/call-report/share-cross-team-button";
 import { ContentRevisions } from "@/components/ui/content-revisions";
+import { StoryApprovalPanel } from "@/components/approvals/story-approval-panel";
+
 
 // Helper to convert stored image path to secure proxy URL
 function getSecureImageUrl(value: string | null | undefined): string | null {
@@ -150,6 +152,14 @@ export default async function ProgrammerCallReportDetailPage({ params }: { param
     report.meeting_date ||
     report.updated_at ||
     report.inserted_at;
+
+  // Check if evaluation is completed (for approval gate)
+  const { data: evalLog } = await supabase
+    .from("evaluation_logs")
+    .select("id, final_decision")
+    .eq("call_report_id", resolvedParams.id)
+    .maybeSingle();
+  const evaluationCompleted = !!evalLog;
 
   // Programmers and admins can edit
   const canEdit = ["programmer", "admin"].includes(user.role);
@@ -397,7 +407,17 @@ export default async function ProgrammerCallReportDetailPage({ params }: { param
           apiBasePath="/api/call-reports"
           storageBucket="attachments"
           canEdit={canEdit}
+          userRole={user.role}
+          evaluateUrl="/evaluator/evaluate"
+          entityType="call-report"
         />
+
+        {/* Story Approval Gate */}
+        <StoryApprovalPanel
+          callReportId={resolvedParams.id}
+          evaluationCompleted={evaluationCompleted}
+        />
+
       </div>
     </div>
   );

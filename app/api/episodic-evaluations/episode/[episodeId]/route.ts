@@ -65,8 +65,12 @@ export async function GET(
       );
     }
 
-    // Get evaluation for this episode by current evaluator
-    const { data: evaluation, error } = await supabase
+    // Get evaluation for this episode by current evaluator, scoped by revision and/or cross_team_share_id if provided
+    const url = new URL(request.url);
+    const revisionId = url.searchParams.get("revision_id");
+    const crossTeamShareId = url.searchParams.get("cross_team_share_id");
+
+    let evalQuery = supabase
       .from("episodic_evaluations")
       .select(`
         *,
@@ -78,8 +82,21 @@ export async function GET(
         )
       `)
       .eq("episode_id", episodeId)
-      .eq("evaluator_id", user.id)
-      .maybeSingle();
+      .eq("evaluator_id", user.id);
+
+    if (revisionId) {
+      evalQuery = evalQuery.eq("revision_id", revisionId);
+    } else {
+      evalQuery = evalQuery.is("revision_id", null);
+    }
+
+    if (crossTeamShareId) {
+      evalQuery = evalQuery.eq("cross_team_share_id", crossTeamShareId);
+    } else {
+      evalQuery = evalQuery.is("cross_team_share_id", null);
+    }
+
+    const { data: evaluation, error } = await evalQuery.maybeSingle();
 
     if (error) {
       logger.error(`Error fetching episodic evaluation: ${error instanceof Error ? error.message : String(error)}`);

@@ -46,6 +46,7 @@ import {
 import { formatFileSize } from "@/lib/validations/episodes";
 import { EpisodeUploadForm, type EpisodeFormEntry } from "@/components/episodes/episode-upload-form";
 import { EpisodeFileUpload } from "@/components/episodes/episode-file-upload";
+import { ScoreCard } from "@/components/episodic-evaluations/score-card";
 import type { EpisodeWithDetails } from "@/types";
 import { BackButton } from "@/components/ui/back-button";
 import { formatDate } from "@/lib/utils/format-date";
@@ -89,6 +90,7 @@ type ExistingEpisodeEdit = EpisodeWithDetails & {
   _originalAttachmentUrl?: string | null;
   _originalAttachmentType?: string | null;
   _originalAdditionalInfo?: string | null;
+  _originalInitialAssessment?: number | null;
 };
 
 export default function GcmEpisodesPage() {

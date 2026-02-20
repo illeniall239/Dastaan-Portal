@@ -31,12 +31,13 @@ export default async function EvaluatorEvaluatePage({
   searchParams,
 }: {
   params: Promise<{ callReportId: string }>;
-  searchParams: Promise<{ crossTeamShareId?: string }>;
+  searchParams: Promise<{ crossTeamShareId?: string; revision_id?: string }>;
 }) {
   const resolvedParams = await params;
   const resolvedSearchParams = await searchParams;
   const { callReportId } = resolvedParams;
   const crossTeamShareId = resolvedSearchParams.crossTeamShareId;
+  const revisionId = resolvedSearchParams.revision_id;
 
   const user = await getCurrentUser();
 
@@ -172,6 +173,7 @@ export default async function EvaluatorEvaluatePage({
         detailedOneLiner={detailedOneLiner}
         crossTeamShareId={crossTeamShareId}
         crossTeamFromTeamName={crossTeamFromTeamName}
+        revisionId={revisionId}
       />
     </div>
   );

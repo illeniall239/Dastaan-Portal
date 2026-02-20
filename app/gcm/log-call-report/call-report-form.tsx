@@ -405,7 +405,7 @@ export function CallReportForm({
         if (onSuccess) {
           onSuccess();
         } else {
-          router.push("/content-department/call-reports");
+          router.push("/gcm/call-reports");
         }
       } else {
         // Create meeting/call report
@@ -492,7 +492,7 @@ export function CallReportForm({
         await clearDraft();
 
         // Redirect to call reports list with fresh data
-        router.push("/content-department/call-reports");
+        router.push("/gcm/call-reports");
         router.refresh(); // Force cache revalidation to show new report
 
         // Reset form

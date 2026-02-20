@@ -18,6 +18,8 @@ import {
   History,
   ChevronDown,
   ChevronRight,
+  Star,
+  ClipboardCheck,
 } from "lucide-react";
 import { formatDate } from "@/lib/utils/format-date";
 import type { EpisodeRevision } from "@/types";
@@ -32,6 +34,55 @@ interface ContentRevisionsProps {
   sourceId?: string | null;
   canEdit: boolean;
   compact?: boolean;
+  /** Current user role for showing role-appropriate actions */
+  userRole?: string;
+  /** Base URL for evaluation page, e.g. "/evaluator/evaluate" or "/evaluator/episodes" */
+  evaluateUrl?: string;
+  /** Entity type for evaluation context: "call-report" or "episode" */
+  entityType?: "call-report" | "episode";
+}
+
+/**
+ * Inline score selector for initial assessment (1-10)
+ */
+function InlineScoreSelector({
+  score,
+  onChange,
+  saving,
+  disabled,
+}: {
+  score: number | null | undefined;
+  onChange: (score: number) => void;
+  saving?: boolean;
+  disabled?: boolean;
+}) {
+  return (
+    <div className="flex items-center gap-1.5">
+      <span className="text-xs text-muted-foreground whitespace-nowrap">Assessment:</span>
+      <div className="flex gap-0.5">
+        {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((value) => (
+          <button
+            key={value}
+            type="button"
+            onClick={() => !disabled && !saving && onChange(value)}
+            disabled={disabled || saving}
+            className={`
+              w-6 h-6 text-[10px] font-medium rounded transition-colors
+              ${score === value
+                ? "bg-blue-600 text-white"
+                : "bg-gray-100 text-gray-500 hover:bg-gray-200"
+              }
+              ${disabled || saving ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}
+            `}
+            title={`Score: ${value}`}
+          >
+            {value}
+          </button>
+        ))}
+      </div>
+      {saving && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />}
+    </div>
+  );
 }
 
 export function ContentRevisions({
@@ -41,6 +92,9 @@ export function ContentRevisions({
   sourceId,
   canEdit,
   compact = false,
+  userRole,
+  evaluateUrl,
+  entityType,
 }: ContentRevisionsProps) {
   const supabase = createClient();
 
@@ -50,11 +104,22 @@ export function ContentRevisions({
   const [submitting, setSubmitting] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [expanded, setExpanded] = useState(!compact);
+  const [savingAssessmentId, setSavingAssessmentId] = useState<string | null>(null);
 
   const [file, setFile] = useState<File | null>(null);
   const [comment, setComment] = useState("");
 
   const revisionsUrl = `${apiBasePath}/${entityId}/revisions`;
+
+  // Determine if user can set initial assessment
+  const canAssess = userRole && [
+    "content_manager", "content_creator", "admin", "management", "programmer", "gcm"
+  ].includes(userRole);
+
+  // Determine if user can evaluate revisions
+  const canEvaluate = evaluateUrl && userRole && [
+    "evaluator", "programmer", "admin", "management", "executive", "content_manager"
+  ].includes(userRole);
 
   const fetchRevisions = useCallback(async () => {
     setLoading(true);
@@ -169,6 +234,40 @@ export function ContentRevisions({
     }
   };
 
+  const handleAssessmentChange = async (revision: EpisodeRevision, score: number) => {
+    setSavingAssessmentId(revision.id);
+    try {
+      const response = await fetch(`${revisionsUrl}/${revision.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ initial_assessment: score }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || "Failed to save assessment");
+      }
+
+      // Update local state
+      setRevisions((prev) =>
+        prev.map((r) =>
+          r.id === revision.id ? { ...r, initial_assessment: score } : r
+        )
+      );
+      toast.success(`Assessment saved: ${score}/10`);
+    } catch (error: any) {
+      console.error("Error saving assessment:", error);
+      toast.error(error.message || "Failed to save assessment");
+    } finally {
+      setSavingAssessmentId(null);
+    }
+  };
+
+  // Find the latest evaluated revision (highest revision_number with evaluation_count > 0)
+  const latestEvaluatedRevision = [...revisions]
+    .filter((r) => (r.evaluation_count || 0) > 0)
+    .sort((a, b) => b.revision_number - a.revision_number)[0] || null;
+
   const renderAddForm = (size: "sm" | "default" = "default") => (
     <div
       className={
@@ -251,6 +350,146 @@ export function ContentRevisions({
     </div>
   );
 
+  const renderRevisionRow = (revision: EpisodeRevision, isCompact: boolean) => {
+    const isLatestEvaluated = latestEvaluatedRevision?.id === revision.id;
+    const hasEvaluations = (revision.evaluation_count || 0) > 0;
+
+    return (
+      <div
+        key={revision.id}
+        className={`
+          ${isCompact
+            ? "flex flex-col gap-2 p-2 rounded-md text-sm"
+            : "flex flex-col gap-3 p-4 border rounded-lg"
+          }
+          ${isLatestEvaluated
+            ? "border-green-300 bg-green-50/50"
+            : isCompact
+              ? "bg-slate-50"
+              : "bg-slate-50/50"
+          }
+        `}
+      >
+        {/* Row 1: Revision info */}
+        <div className="flex items-start gap-3">
+          <Badge
+            variant={isLatestEvaluated ? "default" : "secondary"}
+            className={`flex-shrink-0 ${isCompact ? "text-xs" : "mt-0.5"} ${
+              isLatestEvaluated ? "bg-green-600" : ""
+            }`}
+          >
+            {isCompact ? "Rev" : "Revision"} {revision.revision_number}
+          </Badge>
+
+          <div className="flex-1 min-w-0 space-y-1">
+            {revision.attachment_name && (
+              <button
+                onClick={() => handleDownload(revision)}
+                className={`text-blue-600 hover:underline flex items-center gap-1 ${
+                  isCompact ? "text-xs" : "text-sm"
+                }`}
+              >
+                <FileText className={isCompact ? "h-3 w-3" : "h-4 w-4 flex-shrink-0"} />
+                <span className="truncate">{revision.attachment_name}</span>
+              </button>
+            )}
+            {revision.comment && (
+              <p className={`text-muted-foreground ${isCompact ? "text-xs line-clamp-2" : "text-sm"}`}>
+                {revision.comment}
+              </p>
+            )}
+            <p className="text-xs text-muted-foreground">
+              {isCompact ? "" : "Uploaded by "}
+              {revision.uploaded_by_user?.name || "Unknown"} &middot;{" "}
+              {formatDate(revision.created_at)}
+            </p>
+          </div>
+
+          {/* Badges and actions on right */}
+          <div className="flex items-center gap-1 flex-shrink-0">
+            {isLatestEvaluated && (
+              <Badge variant="outline" className="text-[10px] border-green-400 text-green-700 whitespace-nowrap">
+                <Star className="h-3 w-3 mr-0.5" />
+                Latest Evaluated
+              </Badge>
+            )}
+            {hasEvaluations && (
+              <Badge variant="outline" className="text-[10px] whitespace-nowrap">
+                {revision.evaluation_count} eval{revision.evaluation_count !== 1 ? "s" : ""}
+                {revision.average_evaluation_score != null && ` · ${revision.average_evaluation_score}/10`}
+              </Badge>
+            )}
+            {!isCompact && revision.attachment_url && (
+              <Button size="sm" variant="ghost" onClick={() => handleDownload(revision)}>
+                <Download className="h-4 w-4" />
+              </Button>
+            )}
+            {!isCompact && canEdit && (
+              <Button
+                size="sm"
+                variant="ghost"
+                className="text-destructive hover:text-destructive"
+                onClick={() => handleDeleteRevision(revision)}
+                disabled={deletingId === revision.id}
+              >
+                {deletingId === revision.id ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Trash2 className="h-4 w-4" />
+                )}
+              </Button>
+            )}
+          </div>
+        </div>
+
+        {/* Row 2: Initial Assessment (content dept) */}
+        {canAssess && (
+          <div className={isCompact ? "ml-0" : "ml-0"}>
+            <InlineScoreSelector
+              score={revision.initial_assessment}
+              onChange={(score) => handleAssessmentChange(revision, score)}
+              saving={savingAssessmentId === revision.id}
+              disabled={false}
+            />
+          </div>
+        )}
+
+        {/* Show read-only assessment badge if user can't assess but assessment exists */}
+        {!canAssess && revision.initial_assessment && (
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs text-muted-foreground">Assessment:</span>
+            <Badge variant="outline" className="text-xs">
+              {revision.initial_assessment}/10
+            </Badge>
+          </div>
+        )}
+
+        {/* Row 3: Evaluate Revision button (evaluators) */}
+        {canEvaluate && evaluateUrl && (
+          <div className="flex items-center gap-2">
+            {hasEvaluations ? (
+              <Badge variant="outline" className="text-xs text-green-700 border-green-400">
+                <ClipboardCheck className="h-3 w-3 mr-1" />
+                Evaluated
+              </Badge>
+            ) : null}
+            <Button
+              size="sm"
+              variant="outline"
+              className="text-xs h-7"
+              onClick={() => {
+                window.location.href = `${evaluateUrl}/${entityId}?revision_id=${revision.id}`;
+              }}
+            >
+              <ClipboardCheck className="h-3 w-3 mr-1" />
+              {hasEvaluations ? "Re-evaluate Revision" : "Evaluate Revision"}
+            </Button>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   // Compact mode
   if (compact) {
     return (
@@ -274,38 +513,7 @@ export function ContentRevisions({
 
         {expanded && !loading && revisions.length > 0 && (
           <div className="ml-6 space-y-2">
-            {revisions.map((revision) => (
-              <div
-                key={revision.id}
-                className="flex items-start gap-3 p-2 rounded-md bg-slate-50 text-sm"
-              >
-                <Badge variant="outline" className="flex-shrink-0 text-xs">
-                  Rev {revision.revision_number}
-                </Badge>
-                <div className="flex-1 min-w-0">
-                  {revision.attachment_name && (
-                    <button
-                      onClick={() => handleDownload(revision)}
-                      className="text-blue-600 hover:underline flex items-center gap-1 text-xs"
-                    >
-                      <FileText className="h-3 w-3" />
-                      <span className="truncate">
-                        {revision.attachment_name}
-                      </span>
-                    </button>
-                  )}
-                  {revision.comment && (
-                    <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
-                      {revision.comment}
-                    </p>
-                  )}
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    {revision.uploaded_by_user?.name || "Unknown"} &middot;{" "}
-                    {formatDate(revision.created_at)}
-                  </p>
-                </div>
-              </div>
-            ))}
+            {revisions.map((revision) => renderRevisionRow(revision, true))}
             {canEdit && !showAddForm && (
               <Button
                 size="sm"
@@ -368,6 +576,28 @@ export function ContentRevisions({
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
+        {/* Latest evaluated revision summary */}
+        {latestEvaluatedRevision && (
+          <div className="flex items-center gap-3 p-3 rounded-lg border border-green-200 bg-green-50/50">
+            <Star className="h-4 w-4 text-green-600 flex-shrink-0" />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-green-800">
+                Latest Evaluated: Revision #{latestEvaluatedRevision.revision_number}
+              </p>
+            </div>
+            {latestEvaluatedRevision.average_evaluation_score != null && (
+              <Badge className="bg-green-600 text-white">
+                Avg: {latestEvaluatedRevision.average_evaluation_score}/10
+              </Badge>
+            )}
+            {latestEvaluatedRevision.initial_assessment != null && (
+              <Badge variant="outline" className="border-green-400 text-green-700">
+                Assessment: {latestEvaluatedRevision.initial_assessment}/10
+              </Badge>
+            )}
+          </div>
+        )}
+
         {loading ? (
           <div className="flex items-center gap-2 text-sm text-muted-foreground py-4">
             <Loader2 className="h-4 w-4 animate-spin" />
@@ -392,63 +622,7 @@ export function ContentRevisions({
           </div>
         ) : (
           <div className="space-y-3">
-            {revisions.map((revision) => (
-              <div
-                key={revision.id}
-                className="flex items-start gap-4 p-4 border rounded-lg bg-slate-50/50"
-              >
-                <Badge variant="secondary" className="flex-shrink-0 mt-0.5">
-                  Revision {revision.revision_number}
-                </Badge>
-                <div className="flex-1 min-w-0 space-y-1.5">
-                  {revision.attachment_name && (
-                    <button
-                      onClick={() => handleDownload(revision)}
-                      className="text-blue-600 hover:underline flex items-center gap-1.5 text-sm"
-                    >
-                      <FileText className="h-4 w-4 flex-shrink-0" />
-                      <span className="truncate">
-                        {revision.attachment_name}
-                      </span>
-                    </button>
-                  )}
-                  {revision.comment && (
-                    <p className="text-sm text-foreground">{revision.comment}</p>
-                  )}
-                  <p className="text-xs text-muted-foreground">
-                    Uploaded by{" "}
-                    {revision.uploaded_by_user?.name || "Unknown"} &middot;{" "}
-                    {formatDate(revision.created_at)}
-                  </p>
-                </div>
-                <div className="flex items-center gap-1 flex-shrink-0">
-                  {revision.attachment_url && (
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => handleDownload(revision)}
-                    >
-                      <Download className="h-4 w-4" />
-                    </Button>
-                  )}
-                  {canEdit && (
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="text-destructive hover:text-destructive"
-                      onClick={() => handleDeleteRevision(revision)}
-                      disabled={deletingId === revision.id}
-                    >
-                      {deletingId === revision.id ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <Trash2 className="h-4 w-4" />
-                      )}
-                    </Button>
-                  )}
-                </div>
-              </div>
-            ))}
+            {revisions.map((revision) => renderRevisionRow(revision, false))}
           </div>
         )}
 

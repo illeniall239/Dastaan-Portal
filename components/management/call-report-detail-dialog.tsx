@@ -1,10 +1,12 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { FileText, Mail, Phone, MapPin, Target, Lightbulb, Eye, Paperclip } from "lucide-react";
+import { FileText, Mail, Phone, MapPin, Target, Lightbulb, Eye, Paperclip, Film, Loader2, ClipboardCheck, ChevronDown, ChevronRight } from "lucide-react";
 import { format } from "date-fns";
+import { ContentRevisions } from "@/components/ui/content-revisions";
 
 interface CallReportDetailDialogProps {
   report: any | null;
@@ -53,10 +55,164 @@ const getStatusColor = (status: string): string => {
   return colors[status] || "bg-slate-100 text-slate-700 border-slate-200";
 };
 
+// ── helpers for the eval section ──────────────────────────────────────────
+function evalTypeLabel(type: string) {
+  if (type === 'management') return 'Management';
+  if (type === 'programmer') return 'Programmer';
+  return 'Evaluator';
+}
+function evalTypeBadgeClass(type: string) {
+  if (type === 'management') return 'bg-purple-100 text-purple-700 border-purple-200';
+  if (type === 'programmer') return 'bg-green-100 text-green-700 border-green-200';
+  return 'bg-blue-100 text-blue-700 border-blue-200';
+}
+function decisionBadgeClass(decision: string | null) {
+  if (decision === 'approve') return 'bg-green-100 text-green-700 border-green-200';
+  if (decision === 'reject') return 'bg-red-100 text-red-700 border-red-200';
+  if (decision === 'needs_improvement') return 'bg-amber-100 text-amber-700 border-amber-200';
+  return 'bg-slate-100 text-slate-600';
+}
+function decisionLabel(decision: string | null) {
+  if (decision === 'approve') return 'Approve';
+  if (decision === 'reject') return 'Reject';
+  if (decision === 'needs_improvement') return 'Needs Improvement';
+  return null;
+}
+function scoreColor(score: number | null) {
+  if (!score) return 'text-slate-500';
+  if (score >= 7) return 'text-green-700 font-semibold';
+  if (score >= 5) return 'text-amber-700 font-semibold';
+  return 'text-red-700 font-semibold';
+}
+
+interface EvalGroup {
+  label: string;       // "Original" | "Revision N"
+  revisionId: string | null;
+  items: any[];
+}
+
+function EvalGroupPanel({ group, showDecision }: { group: EvalGroup; showDecision?: boolean }) {
+  const [open, setOpen] = useState(true);
+  const avg = group.items.length
+    ? (group.items.reduce((s, e) => s + (e.average_score || e.overall_average || 0), 0) / group.items.length).toFixed(1)
+    : null;
+  return (
+    <div className="border rounded-md overflow-hidden text-sm">
+      <button
+        type="button"
+        onClick={() => setOpen(v => !v)}
+        className="w-full flex items-center justify-between px-3 py-2 bg-slate-50 hover:bg-slate-100 transition-colors"
+      >
+        <div className="flex items-center gap-2 font-medium text-slate-700">
+          {open ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+          {group.label}
+          <Badge variant="outline" className="text-xs font-normal">{group.items.length} eval{group.items.length !== 1 ? 's' : ''}</Badge>
+          {avg && <span className={`text-xs ${scoreColor(parseFloat(avg))}`}>avg {avg}/10</span>}
+        </div>
+      </button>
+      {open && (
+        <div className="divide-y">
+          {group.items.length === 0 ? (
+            <p className="px-3 py-2 text-xs text-muted-foreground italic">No evaluations yet</p>
+          ) : group.items.map((e: any) => (
+            <div key={e.id} className="flex items-center justify-between px-3 py-2 gap-2">
+              <div className="flex items-center gap-1.5 min-w-0">
+                <span className="font-medium truncate">{e.evaluator_name || 'Unknown'}</span>
+                <Badge className={`text-[10px] px-1 py-0 border ${evalTypeBadgeClass(e.evaluation_type)}`}>
+                  {evalTypeLabel(e.evaluation_type)}
+                </Badge>
+              </div>
+              <div className="flex items-center gap-1.5 shrink-0">
+                <span className={`text-sm ${scoreColor(e.average_score || e.overall_average)}`}>
+                  {(e.average_score || e.overall_average)?.toFixed(1) ?? '—'}/10
+                </span>
+                {showDecision && e.decision && (
+                  <Badge className={`text-[10px] px-1 py-0 border ${decisionBadgeClass(e.decision)}`}>
+                    {decisionLabel(e.decision)}
+                  </Badge>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function CallReportDetailDialog({ report, isOpen, onClose }: CallReportDetailDialogProps) {
+  const [episodes, setEpisodes] = useState<any[]>([]);
+  const [loadingEpisodes, setLoadingEpisodes] = useState(false);
+
+  // ── evaluations state ────────────────────────────────────────────────────
+  const [crEvals, setCrEvals] = useState<any[]>([]);
+  const [epEvalsMap, setEpEvalsMap] = useState<Record<string, any[]>>({});
+  const [crRevisions, setCrRevisions] = useState<any[]>([]);
+  const [epRevisionsMap, setEpRevisionsMap] = useState<Record<string, any[]>>({});
+  const [loadingEvals, setLoadingEvals] = useState(false);
+
+  useEffect(() => {
+    if (isOpen && report?.id) {
+      setLoadingEpisodes(true);
+      fetch(`/api/episodes?call_report_id=${report.id}&_t=${Date.now()}`)
+        .then(r => r.json())
+        .then(data => setEpisodes(data.data || data || []))
+        .catch(() => setEpisodes([]))
+        .finally(() => setLoadingEpisodes(false));
+    } else {
+      setEpisodes([]);
+    }
+  }, [isOpen, report?.id]);
+
+  useEffect(() => {
+    if (!isOpen || !report?.id) {
+      setCrEvals([]); setEpEvalsMap({}); setCrRevisions([]); setEpRevisionsMap({});
+      return;
+    }
+    setLoadingEvals(true);
+    const t = Date.now();
+    Promise.all([
+      fetch(`/api/management/call-reports-with-evaluations?call_report_id=${report.id}&_t=${t}`).then(r => r.json()),
+      fetch(`/api/management/episodes-with-evaluations?call_report_id=${report.id}&_t=${t}`).then(r => r.json()),
+      fetch(`/api/call-reports/${report.id}/revisions?_t=${t}`).then(r => r.json()),
+    ]).then(([crData, epData, crRevData]) => {
+      const crReport = crData.callReports?.[0];
+      const allCrEvals = [
+        ...(crReport?.segregatedEvaluations?.evaluatorEvaluations || []),
+        ...(crReport?.segregatedEvaluations?.managementEvaluations || []),
+        ...(crReport?.segregatedEvaluations?.programmerEvaluations || []),
+      ];
+      setCrEvals(allCrEvals);
+      setCrRevisions(crRevData.revisions || []);
+
+      // Episode evaluations: map episodeId → flat list
+      const epMap: Record<string, any[]> = {};
+      for (const ep of (epData.episodes || [])) {
+        epMap[ep.id] = [
+          ...(ep.segregatedEvaluations?.evaluatorEvaluations || []),
+          ...(ep.segregatedEvaluations?.managementEvaluations || []),
+          ...(ep.segregatedEvaluations?.programmerEvaluations || []),
+        ];
+      }
+      setEpEvalsMap(epMap);
+
+      // Fetch episode revisions for any episode that has revision evals
+      const epIds = Object.keys(epMap).filter(id => epMap[id].some((e: any) => e.revision_id));
+      if (epIds.length > 0) {
+        Promise.all(epIds.map(id =>
+          fetch(`/api/episodes/${id}/revisions?_t=${t}`).then(r => r.json()).then(d => ({ id, revs: d.revisions || [] })).catch(() => ({ id, revs: [] }))
+        )).then(results => {
+          const revMap: Record<string, any[]> = {};
+          for (const r of results) revMap[r.id] = r.revs;
+          setEpRevisionsMap(revMap);
+        });
+      }
+    }).catch(() => {}).finally(() => setLoadingEvals(false));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, report?.id]);
+
   if (!report) return null;
 
-  const episodesCount = report.episodes ? report.episodes.length : 0;
   const attendees: string[] = report.meeting_attendees || [];
   const genres: string[] = report.genre || [];
 
@@ -245,7 +401,7 @@ export function CallReportDetailDialog({ report, isOpen, onClose }: CallReportDe
           )}
 
           {/* Evaluation Status */}
-          {(report.overall_rating || report.evaluation_status || report.evaluation_deadline) && (
+          {(report.average_initial_assessment || report.overall_rating || report.evaluation_status || report.evaluation_deadline) && (
             <Card>
               <CardHeader>
                 <CardTitle className="text-lg flex items-center gap-2">
@@ -255,10 +411,13 @@ export function CallReportDetailDialog({ report, isOpen, onClose }: CallReportDe
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
-                  {report.overall_rating && (
+                  {(report.average_initial_assessment ?? report.overall_rating) && (
                     <div>
-                      <span className="text-sm text-muted-foreground">Overall Rating:</span>
-                      <p className="font-bold text-xl mt-1">{report.overall_rating.toFixed(1)} / 10</p>
+                      <span className="text-sm text-muted-foreground">Initial Assessment:</span>
+                      <p className="font-bold text-xl mt-1">{(report.average_initial_assessment ?? report.overall_rating).toFixed(1)} / 10</p>
+                      {report.assessment_count > 0 && (
+                        <span className="text-xs text-muted-foreground">{report.assessment_count} assessor{report.assessment_count !== 1 ? 's' : ''}</span>
+                      )}
                     </div>
                   )}
                   {report.evaluation_deadline && (
@@ -336,19 +495,146 @@ export function CallReportDetailDialog({ report, isOpen, onClose }: CallReportDe
             </Card>
           )}
 
-          {/* Linked Episodes */}
-          {episodesCount > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Linked Episodes</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm">
-                  <span className="font-medium">{episodesCount}</span> episode{episodesCount !== 1 ? 's' : ''} linked to this report
-                </p>
-              </CardContent>
-            </Card>
-          )}
+          {/* ── Evaluation Scores ──────────────────────────────────────────── */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <ClipboardCheck className="h-5 w-5" />
+                Evaluation Scores
+                {loadingEvals && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-5">
+              {/* Call Report eval groups */}
+              {crEvals.length > 0 || (!loadingEvals) ? (
+                <div className="space-y-2">
+                  <p className="text-sm font-semibold text-slate-600 uppercase tracking-wide text-xs">Call Report</p>
+                  {(() => {
+                    const groups: EvalGroup[] = [
+                      { label: 'Original', revisionId: null, items: crEvals.filter(e => !e.revision_id) },
+                      ...crRevisions.map((rev: any) => ({
+                        label: `Revision ${rev.revision_number}${rev.attachment_name ? ` — ${rev.attachment_name}` : ''}`,
+                        revisionId: rev.id,
+                        items: crEvals.filter(e => e.revision_id === rev.id),
+                      })),
+                    ].filter(g => g.items.length > 0 || g.revisionId === null);
+                    return groups.length > 0 ? groups.map(g => (
+                      <EvalGroupPanel key={g.revisionId ?? 'base'} group={g} showDecision={true} />
+                    )) : (
+                      <p className="text-sm text-muted-foreground italic">No evaluations submitted yet.</p>
+                    );
+                  })()}
+                </div>
+              ) : null}
+
+              {/* Episode eval groups (shown inline with episode data once loaded) */}
+              {!loadingEpisodes && episodes.length > 0 && (
+                <div className="space-y-4">
+                  <p className="text-sm font-semibold text-slate-600 uppercase tracking-wide text-xs">Episodes</p>
+                  {episodes.map((ep: any) => {
+                    const epEvals = epEvalsMap[ep.id] || [];
+                    const epRevs = epRevisionsMap[ep.id] || [];
+                    const groups: EvalGroup[] = [
+                      { label: 'Original', revisionId: null, items: epEvals.filter(e => !e.revision_id) },
+                      ...epRevs.map((rev: any) => ({
+                        label: `Revision ${rev.revision_number}${rev.attachment_name ? ` — ${rev.attachment_name}` : ''}`,
+                        revisionId: rev.id,
+                        items: epEvals.filter(e => e.revision_id === rev.id),
+                      })),
+                    ].filter(g => g.items.length > 0);
+                    return (
+                      <div key={ep.id} className="space-y-1.5">
+                        <p className="text-sm font-medium">
+                          <Badge variant="outline" className="mr-1.5 text-xs">EP {ep.episode_number}</Badge>
+                          {ep.title || ''}
+                        </p>
+                        {groups.length > 0 ? groups.map(g => (
+                          <EvalGroupPanel key={g.revisionId ?? 'base'} group={g} />
+                        )) : (
+                          <p className="text-xs text-muted-foreground italic pl-1">No evaluations yet.</p>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Call Report Revisions */}
+          <ContentRevisions
+            entityId={report.id}
+            apiBasePath="/api/call-reports"
+            storageBucket="attachments"
+            canEdit={false}
+            userRole="management"
+            entityType="call-report"
+          />
+
+          {/* Linked Episodes with Revisions */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Film className="h-5 w-5" />
+                Linked Episodes
+                {episodes.length > 0 && (
+                  <span className="text-sm font-normal text-muted-foreground">({episodes.length})</span>
+                )}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {loadingEpisodes ? (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground py-2">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Loading episodes...
+                </div>
+              ) : episodes.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No episodes linked to this report.</p>
+              ) : (
+                <div className="space-y-4">
+                  {episodes.map((ep: any) => (
+                    <div key={ep.id} className="border rounded-lg overflow-hidden">
+                      {/* Episode header */}
+                      <div className="flex items-center justify-between px-4 py-3 bg-slate-50 border-b">
+                        <div className="flex items-center gap-2">
+                          <Badge variant="outline" className="text-xs">EP {ep.episode_number}</Badge>
+                          {ep.title && <span className="text-sm font-medium">{ep.title}</span>}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {ep.approval_status && (
+                            <Badge
+                              variant="outline"
+                              className={
+                                ep.approval_status === "approved"
+                                  ? "bg-green-50 text-green-700 border-green-200"
+                                  : ep.approval_status === "rejected"
+                                    ? "bg-red-50 text-red-700 border-red-200"
+                                    : "bg-slate-50 text-slate-600 border-slate-200"
+                              }
+                            >
+                              {ep.approval_status}
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+                      {/* Episode revisions */}
+                      <div className="px-4 py-3">
+                        <ContentRevisions
+                          entityId={ep.id}
+                          apiBasePath="/api/episodes"
+                          storageBucket="episodes"
+                          canEdit={false}
+                          compact={true}
+                          userRole="management"
+                          entityType="episode"
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
 
           {/* Private Fields (Content Head Initiative) */}
           {(report.idea_by || report.developed_by || report.management_member_name) && (

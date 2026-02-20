@@ -23,6 +23,7 @@ import {
   UserCheck,
   ListChecks,
   Map,
+  Inbox,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useSidebar } from "@/lib/providers/sidebar-provider";
@@ -62,6 +63,7 @@ function getIconComponent(iconName: string) {
     userCheck: UserCheck,
     listChecks: ListChecks,
     map: Map,
+    inbox: Inbox,
   };
   return icons[iconName] || HomeIcon;
 }

@@ -46,6 +46,16 @@ const evaluatorNavItems = [
     icon: "clipboardList",
   },
   {
+    title: "Incoming Evaluations",
+    href: "/evaluator/cross-team-shares",
+    icon: "inbox",
+  },
+  {
+    title: "Requested Evaluations",
+    href: "/evaluator/requested-evaluations",
+    icon: "share2",
+  },
+  {
     title: "Episodes",
     href: "/evaluator/episodes",
     icon: "film",

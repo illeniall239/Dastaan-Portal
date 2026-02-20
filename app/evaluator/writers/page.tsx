@@ -1,23 +1,23 @@
 import { getCurrentUser } from "@/lib/auth";
 import { redirect } from "next/navigation";
-import { getWriterEngagements } from "@/lib/writers/server";
+import { createClient } from "@/lib/supabase/server";
 import { WriterEngagementTracker } from "@/components/writers/writer-engagement-tracker";
-import { startOfMonth, endOfMonth, format } from "date-fns";
 
 export default async function EvaluatorWriterEngagementPage() {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
 
-  const now = new Date();
-  const dateFrom = format(startOfMonth(now), "yyyy-MM-dd");
-  const dateTo = format(endOfMonth(now), "yyyy-MM-dd");
-  const { engagements, writers } = await getWriterEngagements(dateFrom, dateTo);
+  const supabase = await createClient();
+  const { data: writers } = await supabase
+    .from("writers")
+    .select("id, name")
+    .eq("status", "active")
+    .order("name");
 
   return (
     <WriterEngagementTracker
       userId={user.id}
-      initialEngagements={engagements}
-      initialWriters={writers}
+      initialWriters={writers || []}
     />
   );
 }

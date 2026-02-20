@@ -60,6 +60,7 @@ export default function LogEpisodesPage() {
       episode_number: 1,
       file: null,
       additional_info: "",
+      initial_assessment: 5,
     },
   ]);
 
@@ -332,6 +333,7 @@ export default function LogEpisodesPage() {
             attachment_name,
             attachment_type,
             additional_info: episode.additional_info || null,
+            initial_assessment: episode.initial_assessment || null,
           };
         })
       );

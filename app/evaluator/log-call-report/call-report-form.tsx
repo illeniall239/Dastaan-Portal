@@ -321,7 +321,6 @@ export function CallReportForm({
           meeting_notes: formData.notes || undefined,
           next_steps: formData.nextSteps || undefined,
           status: formData.status || undefined,
-          overall_rating: formData.overallRating,
           attachments_to_delete: attachmentsMarkedForDeletion.length > 0 ? attachmentsMarkedForDeletion : undefined,
         };
 
@@ -405,7 +404,7 @@ export function CallReportForm({
         if (onSuccess) {
           onSuccess();
         } else {
-          router.push("/content-department/call-reports");
+          router.push("/evaluator/call-reports");
         }
       } else {
         // Create meeting/call report
@@ -438,7 +437,6 @@ export function CallReportForm({
           next_steps: formData.nextSteps,
           status: formData.status,
           created_by: userId,
-          overall_rating: formData.overallRating
         });
 
         // Add writers to call report
@@ -492,7 +490,7 @@ export function CallReportForm({
         await clearDraft();
 
         // Redirect to call reports list with fresh data
-        router.push("/content-department/call-reports");
+        router.push("/evaluator/call-reports");
         router.refresh(); // Force cache revalidation to show new report
 
         // Reset form
@@ -818,16 +816,6 @@ export function CallReportForm({
               </Select>
             </div>
 
-            <div className="space-y-2">
-              <ScoreCard
-                label="Initial Assessment"
-                description="Your initial rating of this story (1-10). Evaluators will see this when they evaluate."
-                score={formData.overallRating}
-                onChange={(score) => setFormData(prev => ({ ...prev, overallRating: score }))}
-                disabled={isLoading}
-                showGrade={true}
-              />
-            </div>
           </CardContent>
         </Card>
 

@@ -3,7 +3,7 @@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { EyeIcon, FilePenLine, TrendingUp, TrendingDown, Minus, History } from "lucide-react";
+import { EyeIcon, FilePenLine, TrendingUp, TrendingDown, Minus, History, CheckCircle2, XCircle } from "lucide-react";
 import Link from "next/link";
 import { EvaluationProgressBar } from "@/components/evaluations/evaluation-progress-bar";
 import { TeamBadge } from "@/components/shared/team-badge";
@@ -54,6 +54,9 @@ export function CallReportCard({ report, portalPrefix = "evaluator", isTeamHead 
   const currentAvg = report.current_average_score;
   const evalStatus = report.evaluation_status;
 
+  // Only team heads and programmers can see management approval details
+  const canSeeApprovalStatus = isTeamHead || portalPrefix === "programmer";
+
   // Score color helper
   const getScoreColor = (score: number | null) => {
     if (score === null) return "text-gray-600";
@@ -96,6 +99,36 @@ export function CallReportCard({ report, portalPrefix = "evaluator", isTeamHead 
                     className="text-xs"
                   >
                     {evalStatus.replace(/_/g, " ")}
+                  </Badge>
+                )}
+                {canSeeApprovalStatus && report.approval_status?.isFullyApproved && (
+                  <Badge variant="default" className="text-xs bg-green-100 text-green-800 border-green-300">
+                    Story Approved
+                  </Badge>
+                )}
+                {canSeeApprovalStatus && report.approval_status?.isRejected && (
+                  <Badge variant="destructive" className="text-xs">
+                    Story Rejected
+                  </Badge>
+                )}
+                {canSeeApprovalStatus &&
+                  report.evaluation_log?.final_decision &&
+                  report.approval_status &&
+                  !report.approval_status.isFullyApproved &&
+                  !report.approval_status.isRejected &&
+                  !report.approval_status.managementApproved && (
+                  <Badge variant="secondary" className="text-xs bg-amber-100 text-amber-800 border-amber-300">
+                    Waiting on Management&apos;s Approval
+                  </Badge>
+                )}
+                {canSeeApprovalStatus &&
+                  report.evaluation_log?.final_decision &&
+                  report.approval_status &&
+                  !report.approval_status.isFullyApproved &&
+                  !report.approval_status.isRejected &&
+                  report.approval_status.managementApproved && (
+                  <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-800 border-blue-300">
+                    Waiting on Final Approval ({report.approval_status.approvedCount}/3)
                   </Badge>
                 )}
               </div>
@@ -170,16 +203,40 @@ export function CallReportCard({ report, portalPrefix = "evaluator", isTeamHead 
                         {(report.evaluation_log.approval_count > 0 ||
                           report.evaluation_log.rejection_count > 0 ||
                           report.evaluation_log.needs_improvement_count > 0) && (
-                          <span className="text-xs text-slate-600">
-                            ({report.evaluation_log.approval_count} approve,
-                             {report.evaluation_log.rejection_count} reject,
-                             {report.evaluation_log.needs_improvement_count} need improvement)
-                          </span>
-                        )}
+                            <span className="text-xs text-slate-600">
+                              ({report.evaluation_log.approval_count} approve,
+                              {report.evaluation_log.rejection_count} reject,
+                              {report.evaluation_log.needs_improvement_count} need improvement)
+                            </span>
+                          )}
                       </div>
                     </div>
                   </div>
                 )}
+              </div>
+            )}
+
+            {/* Management Approval Status - only visible to team heads and programmers */}
+            {canSeeApprovalStatus && report.approval_status?.managementApprovals?.length > 0 && (
+              <div className="bg-slate-50 rounded-lg p-3 border">
+                <p className="text-xs font-semibold text-slate-600 mb-2">Management Approval</p>
+                <div className="space-y-1">
+                  {report.approval_status.managementApprovals.map((ma: any) => (
+                    <div key={ma.name} className="flex items-center justify-between text-xs">
+                      <div className="flex items-center gap-1.5">
+                        {ma.decision === "approved" ? (
+                          <CheckCircle2 className="h-3.5 w-3.5 text-green-600" />
+                        ) : (
+                          <XCircle className="h-3.5 w-3.5 text-red-600" />
+                        )}
+                        <span className="font-medium text-slate-700">{ma.name}</span>
+                      </div>
+                      <span className={ma.decision === "approved" ? "text-green-600 font-medium" : "text-red-600 font-medium"}>
+                        {ma.decision === "approved" ? "Approved" : "Rejected"}
+                      </span>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
 
@@ -209,6 +266,31 @@ export function CallReportCard({ report, portalPrefix = "evaluator", isTeamHead 
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Follow-up:</p>
                 <p className="text-sm line-clamp-2">{report.next_steps}</p>
+              </div>
+            )}
+            {/* Episodes */}
+            {report.episodes && report.episodes.length > 0 && (
+              <div className="bg-purple-50 rounded-lg p-3 border border-purple-100">
+                <p className="text-xs font-semibold text-purple-700 mb-2">
+                  {report.episodes.length} Episode{report.episodes.length !== 1 ? "s" : ""}
+                </p>
+                <div className="space-y-1">
+                  {report.episodes.map((ep: any) => (
+                    <div key={ep.episode_number} className="flex items-center justify-between text-xs">
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline" className="text-[10px] px-1 py-0 h-4">
+                          EP {ep.episode_number}
+                        </Badge>
+                        <span className="text-purple-600">{ep.logged_by_name}</span>
+                      </div>
+                      {(ep.average_initial_assessment ?? ep.initial_assessment) != null && (
+                        <Badge variant="secondary" className="text-[10px] px-1 py-0 h-4 bg-blue-50 text-blue-700">
+                          Initial Assessment {(ep.average_initial_assessment ?? ep.initial_assessment)}/10
+                        </Badge>
+                      )}
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
             {/* Revisions */}

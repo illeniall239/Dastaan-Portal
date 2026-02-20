@@ -16,7 +16,7 @@ export function ThemeGroups({ ideas }: ThemeGroupsProps) {
 
   // Group ideas by theme
   const themeGroups: Record<string, ActiveIdeaDetail[]> = {};
-  
+
   ideas.forEach(idea => {
     const theme = idea.theme || "Unspecified";
     if (!themeGroups[theme]) {
@@ -50,10 +50,10 @@ export function ThemeGroups({ ideas }: ThemeGroupsProps) {
         {activeThemes.map(([theme, themeIdeas]) => {
           const color = getThemeColor(theme === "Unspecified" ? null : theme);
           const isExpanded = expandedTheme === theme;
-          
-          // Sort ideas by rating within theme
-          const sortedIdeas = [...themeIdeas].sort((a, b) => 
-            (b.overall_rating || 0) - (a.overall_rating || 0)
+
+          // Sort ideas by rating within theme (prefer average_initial_assessment)
+          const sortedIdeas = [...themeIdeas].sort((a, b) =>
+            ((b.average_initial_assessment ?? b.overall_rating) || 0) - ((a.average_initial_assessment ?? a.overall_rating) || 0)
           );
 
           return (
@@ -62,15 +62,15 @@ export function ThemeGroups({ ideas }: ThemeGroupsProps) {
                 onClick={() => setExpandedTheme(isExpanded ? null : theme)}
                 className="w-full"
               >
-                <div 
+                <div
                   className={`flex items-center justify-between p-3 rounded-lg transition-all hover:shadow-sm ${isExpanded ? 'shadow-sm' : ''}`}
-                  style={{ 
+                  style={{
                     backgroundColor: `${color}15`,
                     borderLeft: `4px solid ${color}`
                   }}
                 >
                   <div className="flex items-center gap-3">
-                    <span 
+                    <span
                       className="w-3 h-3 rounded-full"
                       style={{ backgroundColor: color }}
                     />
@@ -78,8 +78,8 @@ export function ThemeGroups({ ideas }: ThemeGroupsProps) {
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="text-lg font-bold text-gray-700">{themeIdeas.length}</span>
-                    {isExpanded ? 
-                      <ChevronDown className="h-4 w-4 text-gray-400" /> : 
+                    {isExpanded ?
+                      <ChevronDown className="h-4 w-4 text-gray-400" /> :
                       <ChevronRight className="h-4 w-4 text-gray-400" />
                     }
                   </div>
@@ -92,19 +92,21 @@ export function ThemeGroups({ ideas }: ThemeGroupsProps) {
                   <ul className="space-y-2">
                     {sortedIdeas.slice(0, 8).map(idea => (
                       <li key={idea.id} className="flex items-center gap-2">
-                        {idea.overall_rating !== null ? (
-                          <span 
-                            className={`text-xs font-medium px-1.5 py-0.5 rounded ${
-                              idea.overall_rating >= 8 ? 'bg-green-50 text-green-700' :
-                              idea.overall_rating >= 5 ? 'bg-amber-50 text-amber-700' :
-                              'bg-red-50 text-red-700'
-                            }`}
-                          >
-                            {idea.overall_rating.toFixed(1)}
-                          </span>
-                        ) : (
-                          <span className="text-xs text-gray-400 px-1.5 py-0.5">—</span>
-                        )}
+                        {(() => {
+                          const r = idea.average_initial_assessment ?? idea.overall_rating;
+                          return r !== null ? (
+                            <span
+                              className={`text-xs font-medium px-1.5 py-0.5 rounded ${r >= 8 ? 'bg-green-50 text-green-700' :
+                                  r >= 5 ? 'bg-amber-50 text-amber-700' :
+                                    'bg-red-50 text-red-700'
+                                }`}
+                            >
+                              {r.toFixed(1)}
+                            </span>
+                          ) : (
+                            <span className="text-xs text-gray-400 px-1.5 py-0.5">—</span>
+                          );
+                        })()}
                         <Link
                           href={`/management/active-projects/${idea.id}`}
                           className="text-sm text-gray-700 hover:text-[#224794] hover:underline truncate"

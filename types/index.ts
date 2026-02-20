@@ -291,7 +291,10 @@ export interface CallReport {
   next_steps?: string;
   status: "draft" | "ready_for_evaluation" | "in_review";
   evaluation_status?: EvaluationStatus;
-  overall_rating?: number; // Initial assessment score (1-10) from content manager
+  evaluation_round?: number;
+  overall_rating?: number; // @deprecated Use initial_assessments table instead
+  average_initial_assessment?: number | null; // Denormalized avg from initial_assessments table
+  assessment_count?: number; // Denormalized count from initial_assessments table
   average_score?: number;
   current_average_score?: number;
   required_evaluators?: number; // Default: 20
@@ -342,6 +345,7 @@ export interface EvaluatorAssignment {
   assigned_at: string;
   completed_at?: string;
   created_at: string;
+  evaluation_round?: number;
 }
 
 // Evaluation Progress
@@ -534,6 +538,11 @@ export interface Episode {
   approved_by?: string | null;
   approved_at?: string | null;
   supersedes_id?: string | null;
+  // Initial assessment
+  initial_assessment?: number | null; // @deprecated Use initial_assessments table instead
+  average_initial_assessment?: number | null; // Denormalized avg from initial_assessments table
+  assessment_count?: number; // Denormalized count from initial_assessments table
+  evaluation_round?: number;
 }
 
 export interface EpisodeWithDetails extends Episode {
@@ -549,6 +558,49 @@ export interface EpisodeWithDetails extends Episode {
     title: string;
     status: StoryStatus;
   };
+  revision_count?: number;
+  latest_revision?: {
+    attachment_url: string | null;
+    attachment_name: string | null;
+    attachment_type: string | null;
+    revision_number: number;
+    initial_assessment?: number | null;
+    assessed_by_name?: string | null;
+  } | null;
+}
+
+// Story Approval types
+export type ApproverType = 'management' | 'evaluator' | 'programmer';
+export type ApprovalDecision = 'approved' | 'rejected';
+
+export interface StoryApproval {
+  id: string;
+  call_report_id: string;
+  user_id: string;
+  decision: ApprovalDecision;
+  notes?: string | null;
+  approver_type: ApproverType;
+  created_at: string;
+  updated_at: string;
+  user?: {
+    name: string;
+    email: string;
+  };
+}
+
+export interface StoryApprovalStatus {
+  approvals: StoryApproval[];
+  totalApprovals: number;
+  totalRejections: number;
+  managementApproved: boolean; // both mandatory approvers approved
+  managementRejected: boolean; // any mandatory approver rejected
+  thirdApproved: boolean; // at least 1 non-management approval
+  isFullyApproved: boolean; // all conditions met
+  isRejected: boolean;
+  canCurrentUserApprove: boolean;
+  currentUserApproval?: StoryApproval | null;
+  isCurrentUserMandatoryApprover: boolean; // true for Humera/Salman only
+  currentUserName?: string | null;
 }
 
 // Episode Revision types
@@ -562,6 +614,50 @@ export interface EpisodeRevision {
   comment?: string | null;
   uploaded_by?: string | null;
   created_at: string;
+  initial_assessment?: number | null;
+  assessed_by?: string | null;
+  assessed_at?: string | null;
+  evaluation_count?: number;
+  average_evaluation_score?: number | null;
+  uploaded_by_user?: {
+    name: string;
+    email: string;
+  };
+}
+
+// Initial Assessment types (per-user scoring for call reports and episodes)
+export interface InitialAssessment {
+  id: string;
+  entity_type: 'call_report' | 'episode';
+  entity_id: string;
+  assessor_id: string;
+  score: number; // 1-10
+  comment?: string | null;
+  created_at: string;
+  updated_at: string;
+  assessor?: {
+    name: string;
+    email: string;
+    role?: string;
+  };
+}
+
+// Call Report Revision types
+export interface CallReportRevision {
+  id: string;
+  call_report_id: string;
+  revision_number: number;
+  attachment_url?: string | null;
+  attachment_name?: string | null;
+  attachment_type?: string | null;
+  comment?: string | null;
+  uploaded_by?: string | null;
+  created_at: string;
+  initial_assessment?: number | null;
+  assessed_by?: string | null;
+  assessed_at?: string | null;
+  evaluation_count?: number;
+  average_evaluation_score?: number | null;
   uploaded_by_user?: {
     name: string;
     email: string;
@@ -625,6 +721,8 @@ export interface EpisodicEvaluation {
   created_at: string;
   updated_at: string;
   updated_by?: string;
+  evaluation_round?: number;
+  revision_id?: string | null;
 }
 
 export interface EpisodicEvaluationDraft {

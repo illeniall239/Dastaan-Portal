@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
  */
 export async function getEvaluatorProgress(callReportId: string) {
   const supabase = await createClient();
+
   const { data, error } = await supabase
     .from("evaluator_forms")
     .select("id, average_score, submitted_at")

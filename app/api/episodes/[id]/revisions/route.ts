@@ -74,7 +74,43 @@ export async function GET(
       );
     }
 
-    return NextResponse.json({ revisions: revisions || [] });
+    // Aggregate evaluation data per revision
+    const revisionIds = (revisions || []).map((r: any) => r.id);
+    let evalSummaryMap: Record<string, { count: number; avg: number | null }> = {};
+
+    if (revisionIds.length > 0) {
+      const { data: evalData } = await supabase
+        .from("episodic_evaluations")
+        .select("revision_id, overall_average")
+        .in("revision_id", revisionIds)
+        .not("revision_id", "is", null);
+
+      if (evalData) {
+        for (const ev of evalData) {
+          if (!ev.revision_id) continue;
+          if (!evalSummaryMap[ev.revision_id]) {
+            evalSummaryMap[ev.revision_id] = { count: 0, avg: null };
+          }
+          evalSummaryMap[ev.revision_id].count++;
+        }
+        // Calculate averages
+        for (const revId of Object.keys(evalSummaryMap)) {
+          const revEvals = evalData.filter((e: any) => e.revision_id === revId && e.overall_average != null);
+          if (revEvals.length > 0) {
+            const sum = revEvals.reduce((s: number, e: any) => s + (e.overall_average || 0), 0);
+            evalSummaryMap[revId].avg = Number((sum / revEvals.length).toFixed(2));
+          }
+        }
+      }
+    }
+
+    const enrichedRevisions = (revisions || []).map((r: any) => ({
+      ...r,
+      evaluation_count: evalSummaryMap[r.id]?.count || 0,
+      average_evaluation_score: evalSummaryMap[r.id]?.avg ?? null,
+    }));
+
+    return NextResponse.json({ revisions: enrichedRevisions });
   } catch (error) {
     logger.error("Error in GET /api/episodes/[id]/revisions:", error);
     return NextResponse.json(

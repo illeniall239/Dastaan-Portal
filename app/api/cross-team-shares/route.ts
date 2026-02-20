@@ -50,7 +50,18 @@ export async function GET(request: NextRequest) {
         ),
         from_team:teams!cross_team_shares_from_team_id_fkey (id, name, team_type),
         to_team:teams!cross_team_shares_to_team_id_fkey (id, name, team_type),
-        shared_by_user:users!cross_team_shares_shared_by_fkey (id, name, email, role)
+        shared_by_user:users!cross_team_shares_shared_by_fkey (id, name, email, role),
+        shared_episodes:cross_team_share_episodes (
+          id,
+          episode_id,
+          revision_id,
+          episode:episodes (
+            id,
+            episode_number,
+            title,
+            call_report_id
+          )
+        )
       `)
       .order('shared_at', { ascending: false });
 
@@ -71,7 +82,114 @@ export async function GET(request: NextRequest) {
       throw new Error(error.message);
     }
 
-    return new Response(JSON.stringify(data), {
+    const shareIds = (data || []).map((s: any) => s.id);
+
+    // Fetch call report revisions linked to these shares
+    let crRevRows: any[] = [];
+    if (shareIds.length > 0) {
+      const { data: crRevData } = await supabase
+        .from('cross_team_share_call_report_revisions')
+        .select(`
+          cross_team_share_id,
+          call_report_revision_id,
+          revision:call_report_revisions (
+            id,
+            revision_number,
+            attachment_name,
+            comment,
+            created_at
+          )
+        `)
+        .in('cross_team_share_id', shareIds);
+      crRevRows = crRevData || [];
+    }
+
+    // Bulk check which shares/items the current user has already evaluated
+    let myEvaluatedShareIds = new Set<string>();
+    const myEvaluatedEpisodeShareKeys = new Set<string>();  // "episodeId|shareId" (base)
+    const myCRRevKeys = new Set<string>();                  // "shareId|revisionId"
+    const myEpRevKeys = new Set<string>();                  // "episodeId|shareId|revisionId"
+
+    if (shareIds.length > 0) {
+      const [
+        { data: myEvals },
+        { data: myEpEvals },
+        { data: myCRRevEvals },
+        { data: myEpRevEvals },
+      ] = await Promise.all([
+        // Call report base evaluations (revision_id IS NULL)
+        supabase
+          .from('evaluator_forms')
+          .select('cross_team_share_id')
+          .eq('evaluator_id', user.id)
+          .in('cross_team_share_id', shareIds)
+          .is('revision_id', null),
+        // Episode base evaluations (revision_id IS NULL)
+        supabase
+          .from('episodic_evaluations')
+          .select('cross_team_share_id, episode_id')
+          .eq('evaluator_id', user.id)
+          .in('cross_team_share_id', shareIds)
+          .is('revision_id', null),
+        // Call report revision evaluations (revision_id IS NOT NULL)
+        supabase
+          .from('evaluator_forms')
+          .select('cross_team_share_id, revision_id')
+          .eq('evaluator_id', user.id)
+          .in('cross_team_share_id', shareIds)
+          .not('revision_id', 'is', null),
+        // Episode revision evaluations (revision_id IS NOT NULL)
+        supabase
+          .from('episodic_evaluations')
+          .select('cross_team_share_id, episode_id, revision_id')
+          .eq('evaluator_id', user.id)
+          .in('cross_team_share_id', shareIds)
+          .not('revision_id', 'is', null),
+      ]);
+
+      myEvaluatedShareIds = new Set((myEvals || []).map((e: any) => e.cross_team_share_id));
+
+      for (const e of myEpEvals || []) {
+        myEvaluatedEpisodeShareKeys.add(`${e.episode_id}|${e.cross_team_share_id}`);
+      }
+      for (const e of myCRRevEvals || []) {
+        myCRRevKeys.add(`${e.cross_team_share_id}|${e.revision_id}`);
+      }
+      for (const e of myEpRevEvals || []) {
+        myEpRevKeys.add(`${e.episode_id}|${e.cross_team_share_id}|${e.revision_id}`);
+      }
+    }
+
+    const enriched = (data || []).map((s: any) => {
+      // Call report revisions for this share
+      const sharecrRevs = crRevRows.filter((r: any) => r.cross_team_share_id === s.id);
+
+      // Which CR revisions has this user already evaluated?
+      const myEvaluatedCRRevisionIds = sharecrRevs
+        .filter((r: any) => myCRRevKeys.has(`${s.id}|${r.call_report_revision_id}`))
+        .map((r: any) => r.call_report_revision_id);
+
+      // Which episode+revision pairs has this user already evaluated?
+      const myEvaluatedEpisodeRevisionKeys = Array.from(myEpRevKeys)
+        .filter((k: string) => k.includes(`|${s.id}|`))
+        .map((k: string) => {
+          const parts = k.split('|');
+          return `${parts[0]}|${parts[2]}`; // "episodeId|revisionId"
+        });
+
+      return {
+        ...s,
+        currentUserHasEvaluated: myEvaluatedShareIds.has(s.id),
+        myEvaluatedEpisodeIds: (s.shared_episodes || [])
+          .filter((se: any) => se.episode_id && !se.revision_id && myEvaluatedEpisodeShareKeys.has(`${se.episode_id}|${s.id}`))
+          .map((se: any) => se.episode_id),
+        sharedCallReportRevisions: sharecrRevs,
+        myEvaluatedCRRevisionIds,
+        myEvaluatedEpisodeRevisionKeys,
+      };
+    });
+
+    return new Response(JSON.stringify(enriched), {
       status: 200,
       headers: { 'Content-Type': 'application/json' },
     });
@@ -99,10 +217,30 @@ export async function POST(request: NextRequest) {
 
     const supabase = createAdminClient();
     const body = await request.json();
-    const { call_report_id, to_team_id, notes, evaluation_deadline, required_evaluations } = body;
+    const {
+      call_report_id,
+      to_team_id,
+      notes,
+      evaluation_deadline,
+      episode_ids,              // backward compat: plain episode UUID array
+      episode_shares,           // new format: [{episode_id, revision_id?}]
+      call_report_revision_ids, // new: call report revision UUIDs to share
+    } = body;
 
-    if (!call_report_id || !to_team_id) {
-      return new Response(JSON.stringify({ error: 'call_report_id and to_team_id are required' }), {
+    // Normalize episode list: prefer episode_shares, fall back to episode_ids
+    const normalizedEpisodeShares: { episode_id: string; revision_id: string | null }[] =
+      episode_shares
+        ? episode_shares.map((s: any) => ({ episode_id: s.episode_id, revision_id: s.revision_id || null }))
+        : (episode_ids ?? []).map((id: string) => ({ episode_id: id, revision_id: null }));
+
+    const hasCallReportRevisions = Array.isArray(call_report_revision_ids) && call_report_revision_ids.length > 0;
+
+    // Validate: must share at least something
+    if (
+      !to_team_id ||
+      (!call_report_id && !hasCallReportRevisions && normalizedEpisodeShares.length === 0)
+    ) {
+      return new Response(JSON.stringify({ error: 'to_team_id and at least one item to share are required' }), {
         status: 400,
         headers: { 'Content-Type': 'application/json' },
       });
@@ -131,18 +269,20 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Verify the call report belongs to the user's team
-    const { data: callReport } = await supabase
-      .from('call_reports')
-      .select('id, team_id')
-      .eq('id', call_report_id)
-      .single();
+    // Verify the call report exists (if provided)
+    if (call_report_id) {
+      const { data: callReport } = await supabase
+        .from('call_reports')
+        .select('id, team_id')
+        .eq('id', call_report_id)
+        .single();
 
-    if (!callReport) {
-      return new Response(JSON.stringify({ error: 'Call report not found' }), {
-        status: 404,
-        headers: { 'Content-Type': 'application/json' },
-      });
+      if (!callReport) {
+        return new Response(JSON.stringify({ error: 'Call report not found' }), {
+          status: 404,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      }
     }
 
     // Verify user is team head or admin/management
@@ -176,16 +316,21 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    const requiredEvaluations =
+      (call_report_id ? 1 : 0) +
+      (hasCallReportRevisions ? call_report_revision_ids.length : 0) +
+      normalizedEpisodeShares.length;
+
     const { data, error } = await supabase
       .from('cross_team_shares')
       .insert([{
-        call_report_id,
+        call_report_id: call_report_id || null,
         from_team_id,
         to_team_id,
         shared_by: user.id,
         notes: notes || null,
         evaluation_deadline: evaluation_deadline || null,
-        required_evaluations: required_evaluations || 3,
+        required_evaluations: requiredEvaluations,
       }])
       .select(`
         *,
@@ -205,11 +350,59 @@ export async function POST(request: NextRequest) {
       throw new Error(error.message);
     }
 
+    const shareRecord = data[0];
+
+    // Link episodes (base + revisions) to the share
+    if (normalizedEpisodeShares.length > 0) {
+      const episodeRows = normalizedEpisodeShares.map((s) => ({
+        cross_team_share_id: shareRecord.id,
+        episode_id: s.episode_id,
+        revision_id: s.revision_id || null,
+      }));
+
+      const { error: epError } = await supabase
+        .from('cross_team_share_episodes')
+        .insert(episodeRows);
+
+      if (epError) {
+        logger.error('Failed to link episodes to cross-team share:', epError);
+      }
+    }
+
+    // Link call report revisions to the share
+    if (hasCallReportRevisions) {
+      const crRevRows = call_report_revision_ids.map((revId: string) => ({
+        cross_team_share_id: shareRecord.id,
+        call_report_revision_id: revId,
+      }));
+
+      const { error: crRevError } = await supabase
+        .from('cross_team_share_call_report_revisions')
+        .insert(crRevRows);
+
+      if (crRevError) {
+        logger.error('Failed to link call report revisions to cross-team share:', crRevError);
+      }
+    }
+
     // Send notifications to receiving team's evaluators (non-blocking)
     try {
-      const shareRecord = data[0];
       const fromTeamName = shareRecord.from_team?.name || 'Another team';
-      const reportTitle = shareRecord.call_report?.working_title || 'A call report';
+      const reportTitle = shareRecord.call_report?.working_title || null;
+
+      const episodeCount = normalizedEpisodeShares.length;
+      const revisionCount = (hasCallReportRevisions ? call_report_revision_ids.length : 0) + normalizedEpisodeShares.filter((s) => s.revision_id).length;
+
+      let notifTitle = 'New evaluation request from another team';
+      let notifMessage = '';
+
+      if (reportTitle && episodeCount > 0) {
+        notifMessage = `"${reportTitle}" + ${episodeCount} episode${episodeCount !== 1 ? 's' : ''}${revisionCount > 0 ? ` + ${revisionCount} revision${revisionCount !== 1 ? 's' : ''}` : ''} — ${fromTeamName} is requesting your team's evaluation`;
+      } else if (reportTitle) {
+        notifMessage = `"${reportTitle}"${revisionCount > 0 ? ` + ${revisionCount} revision${revisionCount !== 1 ? 's' : ''}` : ''} — ${fromTeamName} is requesting your team's evaluation`;
+      } else {
+        notifMessage = `${episodeCount} episode${episodeCount !== 1 ? 's' : ''} shared for evaluation — ${fromTeamName} is requesting your team's evaluation`;
+      }
 
       // Get all members of the receiving team
       const { data: teamMembers } = await supabase
@@ -218,7 +411,6 @@ export async function POST(request: NextRequest) {
         .eq('team_id', to_team_id);
 
       if (teamMembers && teamMembers.length > 0) {
-        // Notify evaluators + team head
         const recipientIds = teamMembers
           .filter((m) => m.role === 'evaluator' || m.role === 'content_creator' || m.role === 'content_manager')
           .map((m) => m.id);
@@ -228,15 +420,14 @@ export async function POST(request: NextRequest) {
           await notifRepo.createNotificationsForUsers(
             recipientIds,
             'info',
-            'New evaluation request from another team',
-            `"${reportTitle}" — ${fromTeamName} is requesting your team's evaluation`,
-            'call_report',
-            call_report_id
+            notifTitle,
+            notifMessage,
+            call_report_id ? 'call_report' : 'cross_team_share',
+            call_report_id || shareRecord.id
           );
         }
       }
     } catch (notifError) {
-      // Notification failure should not fail the share
       logger.error('Failed to send cross-team share notifications:', notifError);
     }
 
@@ -244,13 +435,22 @@ export async function POST(request: NextRequest) {
     const requestContext = getRequestContext(request);
     await logAuditAction({
       entityType: "cross_team_share",
-      entityId: data[0].id,
+      entityId: shareRecord.id,
       action: "created",
       performedBy: user.id,
-      details: { ...requestContext, newValues: { call_report_id, from_team_id, to_team_id } },
+      details: {
+        ...requestContext,
+        newValues: {
+          call_report_id: call_report_id || null,
+          from_team_id,
+          to_team_id,
+          episode_shares: normalizedEpisodeShares,
+          call_report_revision_ids: call_report_revision_ids || [],
+        },
+      },
     }).catch(err => logger.error("Audit log failed", { error: err }));
 
-    return new Response(JSON.stringify(data[0]), {
+    return new Response(JSON.stringify(shareRecord), {
       status: 201,
       headers: { 'Content-Type': 'application/json' },
     });

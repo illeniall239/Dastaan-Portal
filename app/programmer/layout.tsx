@@ -59,6 +59,11 @@ const programmerNavItems = [
     href: "/programmer/cross-team-shares",
     icon: "share2",
   },
+  {
+    title: "Requested Evaluations",
+    href: "/programmer/requested-evaluations",
+    icon: "clipboardCheck",
+  },
 ];
 
 export default async function ProgrammerLayout({

@@ -65,11 +65,9 @@ export const deliveryBatchSchema = deliveryEpisodeSchema;
  * Used when creating a new contract term/content delivery
  */
 export const createContractTermSchema = z.object({
-  // Project selection (required)
-  story_id: z
-    .string()
-    .uuid("Invalid story ID")
-    .min(1, "Project selection is required"),
+  // Project selection — one of story_id or call_report_id is required
+  story_id: z.string().uuid("Invalid story ID").optional(),
+  call_report_id: z.string().uuid("Invalid call report ID").optional(),
 
   // Auto-populated fields (read-only in form, but validated)
   writer_producer_name: z
@@ -185,6 +183,9 @@ export const createContractTermSchema = z.object({
     message: "Expected completion date must be after project start date",
     path: ["expected_completion_date"],
   }
+).refine(
+  (data) => !!(data.story_id || data.call_report_id),
+  { message: "Please select a project", path: ["story_id"] }
 );
 
 /**

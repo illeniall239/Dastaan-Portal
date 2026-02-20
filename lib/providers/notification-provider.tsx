@@ -3,6 +3,7 @@
 import { createContext, useContext, useEffect, ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { subscribeToNotifications, type Notification } from "@/lib/notifications/client";
+import { createClient } from "@/lib/supabase/client";
 import { logger } from "@/lib/logger";
 import {
   useNotifications as useNotificationsQuery,
@@ -45,6 +46,19 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
   // Mutation hooks for marking notifications as read
   const markAsReadMutation = useMarkAsRead();
   const markAllAsReadMutation = useMarkAllAsRead();
+
+  // Invalidate notification queries immediately when user signs in
+  // (fixes: NotificationProvider fires before auth is ready on login page,
+  //  caches empty results for 30s staleTime, so notifications don't appear after login)
+  useEffect(() => {
+    const supabase = createClient();
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+        queryClient.invalidateQueries({ queryKey: ['notifications'] });
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, [queryClient]);
 
   // Subscribe to real-time notifications for instant updates
   useEffect(() => {

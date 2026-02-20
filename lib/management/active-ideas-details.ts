@@ -23,6 +23,8 @@ export interface ActiveIdeaDetail {
   logline: string | null;
   created_at: string;
   overall_rating: number | null;
+  average_initial_assessment?: number | null;
+  assessment_count?: number;
   slot: string | null;
   content_type: string | null;
   theme: string | null;

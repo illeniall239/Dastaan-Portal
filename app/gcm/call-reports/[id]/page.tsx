@@ -19,6 +19,8 @@ import { formatDateTimeLong } from "@/lib/utils/format-date";
 import { getSegregatedEvaluations } from "@/lib/evaluations/server";
 import { SegregatedEvaluationsDisplay } from "@/components/evaluations/segregated-evaluations-display";
 import { ContentRevisions } from "@/components/ui/content-revisions";
+import { StoryApprovalPanel } from "@/components/approvals/story-approval-panel";
+
 
 // Helper to convert stored image path to secure proxy URL
 function getSecureImageUrl(value: string | null | undefined): string | null {
@@ -124,6 +126,14 @@ export default async function CallReportDetailPage({ params }: { params: Promise
     console.error("Error fetching attachments:", error);
     // Continue without attachments if there's an error
   }
+
+  // Check if evaluation is completed (for approval gate)
+  const { data: evalLog } = await supabase
+    .from("evaluation_logs")
+    .select("id, final_decision")
+    .eq("call_report_id", resolvedParams.id)
+    .maybeSingle();
+  const evaluationCompleted = !!evalLog;
 
   // Fetch segregated evaluations for this call report
   let segregatedEvaluations = null;
@@ -397,12 +407,21 @@ export default async function CallReportDetailPage({ params }: { params: Promise
           apiBasePath="/api/call-reports"
           storageBucket="attachments"
           canEdit={true}
+          userRole={user.role}
+          evaluateUrl="/evaluator/evaluate"
+          entityType="call-report"
         />
 
         {/* Segregated Evaluations */}
         {segregatedEvaluations && segregatedEvaluations.total > 0 && (
           <SegregatedEvaluationsDisplay evaluations={segregatedEvaluations} />
         )}
+
+        {/* Story Approval Gate */}
+        <StoryApprovalPanel
+          callReportId={resolvedParams.id}
+          evaluationCompleted={evaluationCompleted}
+        />
       </div>
     </div>
   );

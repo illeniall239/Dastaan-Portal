@@ -13,6 +13,7 @@ const optionalScoreField = scoreField.optional();
 export const createEvaluationSchema = z.object({
   call_report_id: z.string().uuid({ message: "Invalid call report ID" }),
   evaluator_id: z.string().uuid({ message: "Invalid evaluator ID" }),
+  revision_id: z.string().uuid().optional().nullable(),
 
   // New evaluation scores (1-10 scale)
   conflict_of_content_score: scoreField,

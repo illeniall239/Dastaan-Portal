@@ -98,10 +98,15 @@ export async function GET(request: NextRequest) {
     let query = supabase.from("negotiations").select(
       `
         *,
-        stories!inner(
+        stories!left(
           story_id,
           title,
           writer_originator_name,
+          genre
+        ),
+        call_reports!left(
+          call_report_id,
+          working_title,
           genre
         )
       `,
@@ -209,7 +214,8 @@ export async function POST(request: Request) {
       .from("negotiations")
       .insert({
         negotiation_id,
-        story_id: contractTermData.story_id,
+        story_id: contractTermData.story_id || null,
+        call_report_id: contractTermData.call_report_id || null,
         writer_producer_name: contractTermData.writer_producer_name,
         genre: contractTermData.genre,
         contract_type: contractTermData.contract_type,
@@ -240,18 +246,20 @@ export async function POST(request: Request) {
       );
     }
 
-    // Update story status to 'in_legal_review' since negotiation is agreed
-    const { error: storyError } = await supabase
-      .from("stories")
-      .update({
-        status: "in_legal_review",
-        current_stage: "legal_review",
-      })
-      .eq("id", contractTermData.story_id);
+    // Update story status to 'in_legal_review' since negotiation is agreed (only for story-based terms)
+    if (contractTermData.story_id) {
+      const { error: storyError } = await supabase
+        .from("stories")
+        .update({
+          status: "in_legal_review",
+          current_stage: "legal_review",
+        })
+        .eq("id", contractTermData.story_id);
 
-    if (storyError) {
-      logger.error("Error updating story status", { error: storyError, context: "POST /api/contract-terms" });
-      // Continue even if story update fails
+      if (storyError) {
+        logger.error("Error updating story status", { error: storyError, context: "POST /api/contract-terms" });
+        // Continue even if story update fails
+      }
     }
 
     // Audit log

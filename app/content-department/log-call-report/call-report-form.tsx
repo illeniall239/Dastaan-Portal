@@ -818,16 +818,14 @@ export function CallReportForm({
               </Select>
             </div>
 
-            <div className="space-y-2">
-              <ScoreCard
-                label="Initial Assessment"
-                description="Your initial rating of this story (1-10). Evaluators will see this when they evaluate."
-                score={formData.overallRating}
-                onChange={(score) => setFormData(prev => ({ ...prev, overallRating: score }))}
-                disabled={isLoading}
-                showGrade={true}
-              />
-            </div>
+            <ScoreCard
+              label="Initial Assessment"
+              description="Your initial rating of this story (1-10). Evaluators will see this when they evaluate."
+              score={formData.overallRating}
+              onChange={(score) => setFormData(prev => ({ ...prev, overallRating: score }))}
+              disabled={isLoading}
+              showGrade={true}
+            />
           </CardContent>
         </Card>
 

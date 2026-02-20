@@ -163,19 +163,20 @@ export async function deleteNotificationClient(notificationId: string) {
 }
 
 /**
- * Subscribe to real-time notifications for the current user
+ * Subscribe to real-time notifications for the current user.
+ * Returns a cleanup function that removes the channel when called.
  */
 export function subscribeToNotifications(
   callback: (notification: Notification) => void
-) {
+): () => void {
   const supabase = createClient();
+  let channel: ReturnType<typeof supabase.channel> | null = null;
 
-  // First get the current user
+  // Async: subscribe once we know the current user
   supabase.auth.getUser().then(({ data: { user } }) => {
     if (!user) return;
 
-    // Subscribe to new notifications
-    const channel = supabase
+    channel = supabase
       .channel("notifications")
       .on(
         "postgres_changes",
@@ -190,10 +191,10 @@ export function subscribeToNotifications(
         }
       )
       .subscribe();
-
-    // Return cleanup function
-    return () => {
-      supabase.removeChannel(channel);
-    };
   });
+
+  // Return cleanup from outer scope so useEffect cleanup works correctly
+  return () => {
+    if (channel) supabase.removeChannel(channel);
+  };
 }

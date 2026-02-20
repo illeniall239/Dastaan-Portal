@@ -18,10 +18,12 @@ export function TopPicks({ ideas }: TopPicksProps) {
   const [modalOpen, setModalOpen] = useState(false);
   const [modalData, setModalData] = useState<DrillDownData | null>(null);
 
-  // Get top rated ideas (7+), sorted by rating descending
+  // Get top rated ideas (7+), prefer average_initial_assessment
+  const getEffectiveRating = (i: ActiveIdeaDetail) => i.average_initial_assessment ?? i.overall_rating;
+
   const allTopIdeas = ideas
-    .filter(idea => idea.overall_rating !== null && idea.overall_rating >= 7)
-    .sort((a, b) => (b.overall_rating || 0) - (a.overall_rating || 0));
+    .filter(idea => { const r = getEffectiveRating(idea); return r !== null && r >= 7; })
+    .sort((a, b) => (getEffectiveRating(b) || 0) - (getEffectiveRating(a) || 0));
 
   const topIdeas = allTopIdeas.slice(0, 6);
 
@@ -102,14 +104,14 @@ export function TopPicks({ ideas }: TopPicksProps) {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {topIdeas.map((idea) => {
           const themeColor = getThemeColor(idea.theme);
-          
+
           return (
             <Link
               key={idea.id}
               href={`/management/active-projects/${idea.id}`}
               className="block"
             >
-              <Card 
+              <Card
                 className="p-4 hover:shadow-md transition-shadow border-l-4 h-full"
                 style={{ borderLeftColor: themeColor }}
               >
@@ -118,7 +120,7 @@ export function TopPicks({ ideas }: TopPicksProps) {
                   <div className="flex items-center gap-1.5 bg-green-50 px-2.5 py-1 rounded-lg">
                     <Star className="h-4 w-4 text-green-600 fill-green-600" />
                     <span className="text-xl font-bold text-green-700">
-                      {idea.overall_rating?.toFixed(1)}
+                      {(idea.average_initial_assessment ?? idea.overall_rating)?.toFixed(1)}
                     </span>
                   </div>
                   <Badge variant="outline" className="text-xs border-gray-200 text-gray-600">
@@ -143,7 +145,7 @@ export function TopPicks({ ideas }: TopPicksProps) {
                   </div>
                   {idea.theme && (
                     <div className="flex items-center gap-2">
-                      <span 
+                      <span
                         className="w-2 h-2 rounded-full"
                         style={{ backgroundColor: themeColor }}
                       />

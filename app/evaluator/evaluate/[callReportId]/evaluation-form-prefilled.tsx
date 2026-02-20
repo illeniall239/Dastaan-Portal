@@ -77,6 +77,7 @@ export function EvaluatorEvaluationForm({
   portalPrefix = "evaluator",
   crossTeamShareId,
   crossTeamFromTeamName,
+  revisionId,
 }: {
   callReport: CallReport;
   userId: string;
@@ -89,6 +90,7 @@ export function EvaluatorEvaluationForm({
   portalPrefix?: string;
   crossTeamShareId?: string;
   crossTeamFromTeamName?: string;
+  revisionId?: string;
 }) {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
@@ -99,6 +101,7 @@ export function EvaluatorEvaluationForm({
   const [pendingDraftData, setPendingDraftData] = useState<any>(null);
   const [existingEvaluation, setExistingEvaluation] = useState<any>(null);
   const [isEditing, setIsEditing] = useState(false);
+  const isReadOnly = !!existingEvaluation && !isEditing;
   const [initialTimeFromDraft, setInitialTimeFromDraft] = useState(0);
 
   // Track time spent on form
@@ -279,6 +282,7 @@ export function EvaluatorEvaluationForm({
           call_report_id: callReport.id,
           evaluator_id: userId,
           cross_team_share_id: crossTeamShareId || undefined,
+          revision_id: revisionId || undefined,
           target_writer: selectedWriter?.name || undefined,
           per_ep_price_range: formData.perEpPriceRange || undefined,
           slot: formData.slot || undefined,
@@ -318,7 +322,7 @@ export function EvaluatorEvaluationForm({
         console.error("Error deleting draft:", draftError);
       }
 
-      router.push(`/${portalPrefix}/evaluations-list`);
+      router.push(crossTeamShareId ? `/${portalPrefix}/cross-team-shares` : `/${portalPrefix}/evaluations-list`);
     } catch (error: any) {
       console.error("Error submitting evaluation:", error);
       toast.error(`Failed to submit evaluation: ${error.message || "Please try again."}`);
@@ -468,6 +472,8 @@ export function EvaluatorEvaluationForm({
               perEpPriceRange: json.evaluation.per_ep_price_range || "",
               slot: json.evaluation.slot || "",
               first2EpsRequired: !!json.evaluation.first_2_eps_required,
+              decision: json.evaluation.decision || "",
+              decisionNotes: json.evaluation.decision_notes || "",
             }));
           }
         }
@@ -482,6 +488,7 @@ export function EvaluatorEvaluationForm({
 
   return (
     <form onSubmit={handleSubmit}>
+      <div className={isReadOnly ? "pointer-events-none select-none opacity-60" : ""}>
       <div className="flex flex-col gap-4 sm:gap-6 mb-8 max-w-4xl mx-auto px-4 sm:px-6 py-6">
         <BackButton fallbackHref={`/${portalPrefix}/evaluations-list`} variant="outline" size="sm" className="w-fit" />
         <div className="space-y-1">
@@ -500,6 +507,16 @@ export function EvaluatorEvaluationForm({
       </div>
 
       <div className="space-y-6 max-w-4xl mx-auto px-4 sm:px-6">
+        {/* Revision evaluation banner */}
+        {revisionId && (
+          <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg flex items-center gap-2">
+            <FilePenLine className="h-4 w-4 text-amber-600 shrink-0" />
+            <p className="text-sm text-amber-800">
+              Evaluating a <span className="font-semibold">specific revision</span> of this call report
+            </p>
+          </div>
+        )}
+
         {/* Cross-team share banner */}
         {crossTeamShareId && crossTeamFromTeamName && (
           <div className="p-3 bg-purple-50 border border-purple-200 rounded-lg flex items-center gap-2">
@@ -1147,107 +1164,111 @@ export function EvaluatorEvaluationForm({
         )}
 
         {/* Form Actions */}
+        {!isReadOnly && (
         <div className="sticky bottom-0 bg-white/80 backdrop-blur supports-[backdrop-filter]:bg-white/60 p-3 border-t md:static md:p-0 md:border-0 safe-bottom">
-          {/* Mobile: Stacked buttons */}
-          <div className="flex flex-col gap-2 sm:hidden">
-            <div className="flex gap-2">
-              <Button asChild variant="outline" type="button" className="flex-1 text-xs px-2">
-                <Link href={`/${portalPrefix}/evaluations-list`}>Cancel</Link>
-              </Button>
-              {!existingEvaluation || isEditing ? (
+            <>
+              {/* Mobile: Stacked buttons */}
+              <div className="flex flex-col gap-2 sm:hidden">
+                <div className="flex gap-2">
+                  <Button asChild variant="outline" type="button" className="flex-1 text-xs px-2">
+                    <Link href={`/${portalPrefix}/evaluations-list`}>Cancel</Link>
+                  </Button>
+                  {!existingEvaluation || isEditing ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={saveDraft}
+                      disabled={isLoading || savingDraft || loadingDraft}
+                      className="flex-1 border-[#224794] text-[#224794] hover:bg-[#224794] hover:text-white text-xs px-2"
+                    >
+                      {savingDraft ? (
+                        <>
+                          <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                          <span className="truncate">Saving...</span>
+                        </>
+                      ) : (
+                        <>
+                          <FilePenLine className="mr-1 h-3 w-3" />
+                          <span className="truncate">Save Draft</span>
+                        </>
+                      )}
+                    </Button>
+                  ) : null}
+                </div>
                 <Button
-                  type="button"
-                  variant="outline"
-                  onClick={saveDraft}
+                  type="submit"
                   disabled={isLoading || savingDraft || loadingDraft}
-                  className="flex-1 border-[#224794] text-[#224794] hover:bg-[#224794] hover:text-white text-xs px-2"
+                  className="w-full bg-[#10b981] hover:bg-[#059669] text-sm"
                 >
-                  {savingDraft ? (
-                    <>
-                      <Loader2 className="mr-1 h-3 w-3 animate-spin" />
-                      <span className="truncate">Saving...</span>
-                    </>
-                  ) : (
-                    <>
-                      <FilePenLine className="mr-1 h-3 w-3" />
-                      <span className="truncate">Save Draft</span>
-                    </>
-                  )}
+                  {isLoading
+                    ? "Saving..."
+                    : existingEvaluation && isEditing
+                      ? "Update Evaluation"
+                      : isManagementEvaluation
+                        ? "Submit Management Evaluation"
+                        : "Submit Evaluation"
+                  }
                 </Button>
-              ) : null}
-            </div>
-            <Button
-              type="submit"
-              disabled={isLoading || savingDraft || loadingDraft}
-              className="w-full bg-[#10b981] hover:bg-[#059669] text-sm"
-            >
-              {isLoading
-                ? "Saving..."
-                : existingEvaluation && isEditing
-                  ? "Update Evaluation"
-                  : isManagementEvaluation
-                    ? "Submit Management Evaluation"
-                    : "Submit Evaluation"
-              }
-            </Button>
-            {existingEvaluation && !isEditing && (
-              <Button type="button" variant="outline" onClick={() => setIsEditing(true)} className="w-full">
-                Edit
-              </Button>
-            )}
-          </div>
+                {existingEvaluation && !isEditing && !crossTeamShareId && (
+                  <Button type="button" variant="outline" onClick={() => setIsEditing(true)} className="w-full">
+                    Edit
+                  </Button>
+                )}
+              </div>
 
-          {/* Tablet & Desktop: Horizontal layout */}
-          <div className="hidden sm:flex justify-between items-center gap-3">
-            <div className="flex gap-3">
-              <Button asChild variant="outline" type="button">
-                <Link href={`/${portalPrefix}/evaluations-list`}>Cancel</Link>
-              </Button>
-            </div>
-            <div className="flex gap-3">
-              {!existingEvaluation || isEditing ? (
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={saveDraft}
-                  disabled={isLoading || savingDraft || loadingDraft}
-                  className="border-[#224794] text-[#224794] hover:bg-[#224794] hover:text-white"
-                >
-                  {savingDraft ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Saving...
-                    </>
-                  ) : (
-                    <>
-                      <FilePenLine className="mr-2 h-4 w-4" />
-                      Save Draft
-                    </>
+              {/* Tablet & Desktop: Horizontal layout */}
+              <div className="hidden sm:flex justify-between items-center gap-3">
+                <div className="flex gap-3">
+                  <Button asChild variant="outline" type="button">
+                    <Link href={`/${portalPrefix}/evaluations-list`}>Cancel</Link>
+                  </Button>
+                </div>
+                <div className="flex gap-3">
+                  {!existingEvaluation || isEditing ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={saveDraft}
+                      disabled={isLoading || savingDraft || loadingDraft}
+                      className="border-[#224794] text-[#224794] hover:bg-[#224794] hover:text-white"
+                    >
+                      {savingDraft ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Saving...
+                        </>
+                      ) : (
+                        <>
+                          <FilePenLine className="mr-2 h-4 w-4" />
+                          Save Draft
+                        </>
+                      )}
+                    </Button>
+                  ) : null}
+                  <Button
+                    type="submit"
+                    disabled={isLoading || savingDraft || loadingDraft}
+                    className="bg-[#10b981] hover:bg-[#059669]"
+                  >
+                    {isLoading
+                      ? "Saving..."
+                      : existingEvaluation && isEditing
+                        ? "Update Evaluation"
+                        : isManagementEvaluation
+                          ? "Submit Management Evaluation"
+                          : "Submit Evaluation"
+                    }
+                  </Button>
+                  {existingEvaluation && !isEditing && !crossTeamShareId && (
+                    <Button type="button" variant="outline" onClick={() => setIsEditing(true)}>
+                      Edit
+                    </Button>
                   )}
-                </Button>
-              ) : null}
-              <Button
-                type="submit"
-                disabled={isLoading || savingDraft || loadingDraft}
-                className="bg-[#10b981] hover:bg-[#059669]"
-              >
-                {isLoading
-                  ? "Saving..."
-                  : existingEvaluation && isEditing
-                    ? "Update Evaluation"
-                    : isManagementEvaluation
-                      ? "Submit Management Evaluation"
-                      : "Submit Evaluation"
-                }
-              </Button>
-              {existingEvaluation && !isEditing && (
-                <Button type="button" variant="outline" onClick={() => setIsEditing(true)}>
-                  Edit
-                </Button>
-              )}
-            </div>
-          </div>
+                </div>
+              </div>
+            </>
         </div>
+        )}
 
         {/* Draft Found Dialog */}
         <Suspense fallback={null}>
@@ -1280,6 +1301,20 @@ export function EvaluatorEvaluationForm({
           </AlertDialog>
         </Suspense>
       </div>
+      </div>
+      {isReadOnly && (
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 pb-6">
+          <Card className="p-4 bg-blue-50 border-blue-200">
+            <p className="text-sm text-center text-blue-800 font-medium">
+              This evaluation was submitted on{" "}
+              {existingEvaluation?.submitted_at
+                ? new Date(existingEvaluation.submitted_at).toLocaleString()
+                : "an earlier date"}{" "}
+              and cannot be modified.
+            </p>
+          </Card>
+        </div>
+      )}
     </form>
   );
 }

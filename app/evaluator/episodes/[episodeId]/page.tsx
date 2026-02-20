@@ -1,14 +1,14 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { EpisodicEvaluationForm } from "@/components/episodic-evaluations/episodic-evaluation-form";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Loader2, FileText } from "lucide-react";
+import { Loader2, FileText, FilePenLine, Share2 } from "lucide-react";
 import { BackButton } from "@/components/ui/back-button";
 import type { Episode, EpisodicEvaluation } from "@/types";
 import type { EpisodicEvaluationFormData } from "@/lib/validations/episodic-evaluations";
@@ -19,6 +19,10 @@ interface EpisodePageProps {
 
 export default function EpisodicEvaluationPage({ params }: EpisodePageProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const revisionId = searchParams.get("revision_id") || undefined;
+  const crossTeamShareId = searchParams.get("crossTeamShareId") || undefined;
+  const isEvaluatedView = searchParams.get("evaluated") === "1";
   const supabase = createClient();
 
   const [episodeId, setEpisodeId] = useState<string | null>(null);
@@ -48,8 +52,12 @@ export default function EpisodicEvaluationPage({ params }: EpisodePageProps) {
 
       setEpisode(episodeData.episode);
 
-      // Check if evaluator has already evaluated this episode
-      const evalResponse = await fetch(`/api/episodic-evaluations/episode/${episodeId}`);
+      // Check if evaluator has already evaluated this episode (scoped by revision and/or cross-team share)
+      const evalParams = new URLSearchParams();
+      if (revisionId) evalParams.set("revision_id", revisionId);
+      if (crossTeamShareId) evalParams.set("cross_team_share_id", crossTeamShareId);
+      const evalUrl = `/api/episodic-evaluations/episode/${episodeId}${evalParams.toString() ? `?${evalParams}` : ""}`;
+      const evalResponse = await fetch(evalUrl);
       const evalData = await evalResponse.json();
 
       if (!evalResponse.ok) {
@@ -106,7 +114,7 @@ export default function EpisodicEvaluationPage({ params }: EpisodePageProps) {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({ ...formData, revision_id: revisionId || null, cross_team_share_id: crossTeamShareId || null }),
       });
 
       const data = await response.json();
@@ -118,7 +126,7 @@ export default function EpisodicEvaluationPage({ params }: EpisodePageProps) {
       toast.success("Evaluation submitted successfully!");
 
       setTimeout(() => {
-        router.push("/evaluator/episodes");
+        router.push(crossTeamShareId ? "/evaluator/cross-team-shares" : "/evaluator/episodes");
       }, 1500);
     } catch (error: any) {
       console.error("Error submitting evaluation:", error);
@@ -158,9 +166,11 @@ export default function EpisodicEvaluationPage({ params }: EpisodePageProps) {
           {existingEvaluation && !isEditing && (
             <div className="flex items-center gap-3">
               <Badge className="bg-green-100 text-green-800 border-green-300">Submitted</Badge>
-              <Button size="sm" variant="outline" onClick={() => setIsEditing(true)}>
-                Edit
-              </Button>
+              {!crossTeamShareId && (
+                <Button size="sm" variant="outline" onClick={() => setIsEditing(true)}>
+                  Edit
+                </Button>
+              )}
             </div>
           )}
         </div>
@@ -176,12 +186,32 @@ export default function EpisodicEvaluationPage({ params }: EpisodePageProps) {
         </div>
       </div>
 
+      {/* Cross-team share evaluation banner */}
+      {crossTeamShareId && (
+        <div className="p-3 bg-purple-50 border border-purple-200 rounded-lg flex items-center gap-2">
+          <Share2 className="h-4 w-4 text-purple-600 shrink-0" />
+          <p className="text-sm text-purple-800">
+            Evaluating for a <span className="font-semibold">cross-team evaluation request</span>
+          </p>
+        </div>
+      )}
+
+      {/* Revision evaluation banner */}
+      {revisionId && (
+        <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg flex items-center gap-2">
+          <FilePenLine className="h-4 w-4 text-amber-600 shrink-0" />
+          <p className="text-sm text-amber-800">
+            Evaluating a <span className="font-semibold">specific revision</span> of this episode
+          </p>
+        </div>
+      )}
+
       {/* Evaluation Form */}
       <EpisodicEvaluationForm
         episode={episode}
         existingEvaluation={existingEvaluation || undefined}
         onSubmit={handleSubmit}
-        disabled={!!existingEvaluation && !isEditing}
+        disabled={isEvaluatedView || (!!existingEvaluation && !isEditing)}
       />
     </div>
   );

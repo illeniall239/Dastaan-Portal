@@ -7,6 +7,8 @@ interface EpisodeRevisionsProps {
   sourceId?: string | null;
   canEdit: boolean;
   compact?: boolean;
+  userRole?: string;
+  evaluateUrl?: string;
 }
 
 /**
@@ -18,6 +20,8 @@ export function EpisodeRevisions({
   sourceId,
   canEdit,
   compact = false,
+  userRole,
+  evaluateUrl,
 }: EpisodeRevisionsProps) {
   return (
     <ContentRevisions
@@ -27,6 +31,9 @@ export function EpisodeRevisions({
       sourceId={sourceId}
       canEdit={canEdit}
       compact={compact}
+      userRole={userRole}
+      evaluateUrl={evaluateUrl}
+      entityType="episode"
     />
   );
 }

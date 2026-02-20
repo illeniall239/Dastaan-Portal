@@ -44,6 +44,16 @@ export interface StoryForContractTerm {
   status: string;
 }
 
+/** Unified item type used in the contract term form dropdown (stories + call reports) */
+export interface ProjectForContractTerm {
+  id: string;           // UUID of the story or call_report
+  display_id: string;   // ST-2025-0001 or CR-2026-7915
+  title: string;
+  writer_name: string;
+  genre: string | null;
+  item_type: "story" | "call_report";
+}
+
 /**
  * Fetch all approved stories eligible for contract terms
  * Stories must be in 'approved' status

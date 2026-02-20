@@ -41,7 +41,17 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         ),
         from_team:teams!cross_team_shares_from_team_id_fkey (id, name, team_type),
         to_team:teams!cross_team_shares_to_team_id_fkey (id, name, team_type),
-        shared_by_user:users!cross_team_shares_shared_by_fkey (id, name, email, role)
+        shared_by_user:users!cross_team_shares_shared_by_fkey (id, name, email, role),
+        shared_episodes:cross_team_share_episodes (
+          id,
+          episode_id,
+          episode:episodes (
+            id,
+            episode_number,
+            title,
+            call_report_id
+          )
+        )
       `)
       .eq('id', id)
       .single();
@@ -71,7 +81,24 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       .eq('cross_team_share_id', id)
       .order('submitted_at', { ascending: false });
 
-    return new Response(JSON.stringify({ ...data, evaluations: evaluations || [] }), {
+    // Also fetch episodic evaluations linked to this share
+    const { data: episodicEvaluations } = await supabase
+      .from('episodic_evaluations')
+      .select(`
+        id,
+        episode_id,
+        evaluator_id,
+        average_score,
+        decision,
+        comments,
+        submitted_at,
+        evaluator:users!episodic_evaluations_evaluator_id_fkey (id, name, email),
+        episode:episodes!episodic_evaluations_episode_id_fkey (id, episode_number, title)
+      `)
+      .eq('cross_team_share_id', id)
+      .order('submitted_at', { ascending: false });
+
+    return new Response(JSON.stringify({ ...data, evaluations: evaluations || [], episodic_evaluations: episodicEvaluations || [] }), {
       status: 200,
       headers: { 'Content-Type': 'application/json' },
     });

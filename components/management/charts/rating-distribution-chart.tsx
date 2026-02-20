@@ -12,11 +12,14 @@ interface RatingDistributionChartProps {
 }
 
 export function RatingDistributionChart({ ideas }: RatingDistributionChartProps) {
+  // Use average_initial_assessment with fallback to overall_rating
+  const getR = (i: ActiveIdeaDetail) => i.average_initial_assessment ?? i.overall_rating;
+
   const distributionData = useMemo(() => {
-    const high = ideas.filter(i => i.overall_rating !== null && i.overall_rating >= 8).length;
-    const medium = ideas.filter(i => i.overall_rating !== null && i.overall_rating >= 5 && i.overall_rating < 8).length;
-    const low = ideas.filter(i => i.overall_rating !== null && i.overall_rating < 5).length;
-    const unrated = ideas.filter(i => i.overall_rating === null).length;
+    const high = ideas.filter(i => { const r = getR(i); return r !== null && r >= 8; }).length;
+    const medium = ideas.filter(i => { const r = getR(i); return r !== null && r >= 5 && r < 8; }).length;
+    const low = ideas.filter(i => { const r = getR(i); return r !== null && r < 5; }).length;
+    const unrated = ideas.filter(i => getR(i) === null).length;
     const total = ideas.length;
 
     return [
@@ -53,9 +56,9 @@ export function RatingDistributionChart({ ideas }: RatingDistributionChartProps)
 
   // Calculate average rating
   const avgRating = useMemo(() => {
-    const ratedIdeas = ideas.filter(i => i.overall_rating !== null);
+    const ratedIdeas = ideas.filter(i => (i.average_initial_assessment ?? i.overall_rating) !== null);
     if (ratedIdeas.length === 0) return null;
-    const sum = ratedIdeas.reduce((acc, i) => acc + (i.overall_rating || 0), 0);
+    const sum = ratedIdeas.reduce((acc, i) => acc + ((i.average_initial_assessment ?? i.overall_rating) || 0), 0);
     return (sum / ratedIdeas.length).toFixed(1);
   }, [ideas]);
 

@@ -49,9 +49,11 @@ import { formatFileSize } from "@/lib/validations/episodes";
 import { EpisodeUploadForm, type EpisodeFormEntry } from "@/components/episodes/episode-upload-form";
 import { EpisodeFileUpload } from "@/components/episodes/episode-file-upload";
 import { EpisodeRevisions } from "@/components/episodes/episode-revisions";
+import { ScoreCard } from "@/components/episodic-evaluations/score-card";
 import type { EpisodeWithDetails } from "@/types";
 import { BackButton } from "@/components/ui/back-button";
 import { formatDate } from "@/lib/utils/format-date";
+import { ShareCrossTeamButton } from "@/components/call-report/share-cross-team-button";
 
 interface CallReportWriter {
   id?: string;
@@ -92,6 +94,7 @@ type ExistingEpisodeEdit = EpisodeWithDetails & {
   _originalAttachmentUrl?: string | null;
   _originalAttachmentType?: string | null;
   _originalAdditionalInfo?: string | null;
+  _originalInitialAssessment?: number | null;
 };
 
 export default function ContentDepartmentEpisodesPage() {
@@ -112,6 +115,8 @@ export default function ContentDepartmentEpisodesPage() {
   const [totalProjects, setTotalProjects] = useState(0);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [currentUserRole, setCurrentUserRole] = useState<string | null>(null);
+  const [isTeamHead, setIsTeamHead] = useState(false);
+  const [currentTeamId, setCurrentTeamId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("list");
   const logSectionRef = useRef<HTMLDivElement | null>(null);
 
@@ -129,6 +134,7 @@ export default function ContentDepartmentEpisodesPage() {
       episode_number: 1,
       file: null,
       additional_info: "",
+      initial_assessment: 5,
     },
   ]);
 
@@ -146,7 +152,7 @@ export default function ContentDepartmentEpisodesPage() {
 
       setCurrentUserId(user.id);
 
-      // Fetch user role and team (team_id not used here but good to have for consistency)
+      // Fetch user role and team
       const { data: userData } = await supabase
         .from("users")
         .select("team_id, role")
@@ -155,6 +161,15 @@ export default function ContentDepartmentEpisodesPage() {
 
       if (userData) {
         setCurrentUserRole(userData.role);
+        if (userData.team_id) {
+          setCurrentTeamId(userData.team_id);
+          const { data: team } = await supabase
+            .from("teams")
+            .select("team_head_id")
+            .eq("id", userData.team_id)
+            .single();
+          setIsTeamHead(team?.team_head_id === user.id);
+        }
       }
 
       // Fetch episodes with project-based pagination (20 projects at a time, all their episodes)
@@ -321,6 +336,7 @@ export default function ContentDepartmentEpisodesPage() {
         episode_number: nextEpisodeNumber,
         file: null,
         additional_info: "",
+        initial_assessment: 5,
       },
     ]);
   }, [existingEpisodesForSource]);
@@ -335,6 +351,7 @@ export default function ContentDepartmentEpisodesPage() {
           episode_number: 1,
           file: null,
           additional_info: "",
+          initial_assessment: 5,
         },
       ]);
       return;
@@ -366,6 +383,7 @@ export default function ContentDepartmentEpisodesPage() {
           _originalAttachmentUrl: episode.attachment_url ?? null,
           _originalAttachmentType: episode.attachment_type ?? null,
           _originalAdditionalInfo: episode.additional_info ?? null,
+          _originalInitialAssessment: episode.initial_assessment ?? null,
         }));
 
       setExistingEpisodesForSource(episodesList);
@@ -380,6 +398,7 @@ export default function ContentDepartmentEpisodesPage() {
           episode_number: 1,
           file: null,
           additional_info: "",
+          initial_assessment: 5,
         },
       ]);
     } finally {
@@ -479,6 +498,7 @@ export default function ContentDepartmentEpisodesPage() {
             attachment_name,
             attachment_type,
             additional_info: episode.additional_info || null,
+            initial_assessment: episode.initial_assessment || null,
           };
         })
       );
@@ -519,6 +539,7 @@ export default function ContentDepartmentEpisodesPage() {
           episode_number: 1,
           file: null,
           additional_info: "",
+          initial_assessment: 5,
         },
       ]);
 
@@ -643,6 +664,7 @@ export default function ContentDepartmentEpisodesPage() {
         episode_number: nextNumber,
         file: null,
         additional_info: "",
+        initial_assessment: 5,
       },
     ]);
     setActiveTab("log");
@@ -662,7 +684,8 @@ export default function ContentDepartmentEpisodesPage() {
       (episode.episode_number ?? null) !== (episode._originalEpisodeNumber ?? null) ||
       (episode.additional_info ?? "") !== (episode._originalAdditionalInfo ?? "") ||
       (episode.attachment_url ?? null) !== (episode._originalAttachmentUrl ?? null) ||
-      (episode.attachment_name ?? null) !== (episode._originalAttachmentName ?? null)
+      (episode.attachment_name ?? null) !== (episode._originalAttachmentName ?? null) ||
+      (episode.initial_assessment ?? null) !== (episode._originalInitialAssessment ?? null)
     );
   };
 
@@ -693,6 +716,12 @@ export default function ContentDepartmentEpisodesPage() {
         (episode.additional_info ?? "") !== (episode._originalAdditionalInfo ?? "")
       ) {
         payload.additional_info = episode.additional_info ?? null;
+      }
+
+      if (
+        (episode.initial_assessment ?? null) !== (episode._originalInitialAssessment ?? null)
+      ) {
+        payload.initial_assessment = episode.initial_assessment ?? null;
       }
 
       if (episode._newFile) {
@@ -760,6 +789,7 @@ export default function ContentDepartmentEpisodesPage() {
         _originalAttachmentUrl: updatedEpisode.attachment_url ?? null,
         _originalAttachmentType: updatedEpisode.attachment_type ?? null,
         _originalAdditionalInfo: updatedEpisode.additional_info ?? null,
+        _originalInitialAssessment: updatedEpisode.initial_assessment ?? null,
       });
 
       toast.success(`Episode ${updatedEpisode.episode_number ?? ""} updated.`);
@@ -836,242 +866,153 @@ export default function ContentDepartmentEpisodesPage() {
               </p>
             </div>
           ) : (
-            <div className="bg-white rounded-lg border shadow-sm">
-              {/* Desktop table */}
-              <div className="hidden md:block">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Project</TableHead>
-                      <TableHead>Attachment</TableHead>
-                      <TableHead>Logged By</TableHead>
-                      <TableHead>Date</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {projects.map((project) => {
-                      const isExpanded = expandedProjects.has(project.projectId);
+            <div className="space-y-3">
+              {projects.map((project) => {
+                const isExpanded = expandedProjects.has(project.projectId);
 
-                      return (
-                        <Fragment key={project.projectId}>
-                          <TableRow
-                            className="bg-slate-50 hover:bg-slate-100 cursor-pointer border-t-2 border-slate-200"
-                            onClick={() => toggleProject(project.projectId)}
-                          >
-                            <TableCell colSpan={5} className="font-semibold py-4">
-                              <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-3">
-                                  {isExpanded ? (
-                                    <ChevronDown className="h-5 w-5 text-slate-600 flex-shrink-0" />
-                                  ) : (
-                                    <ChevronRight className="h-5 w-5 text-slate-600 flex-shrink-0" />
-                                  )}
-                                  <div>
-                                    <div className="flex items-center gap-2">
-                                      <span className="text-base">{project.projectName}</span>
-                                      {project.writerName && (
-                                        <span className="text-sm text-muted-foreground font-normal">by {project.writerName}</span>
-                                      )}
-                                    </div>
-                                    {project.projectStatus && (
-                                      <Badge variant="secondary" className="text-xs mt-1">{project.projectStatus}</Badge>
-                                    )}
-                                  </div>
-                                </div>
-                                <div className="flex items-center gap-3">
-                                  <span className="text-sm text-muted-foreground">
-                                    {project.totalCount} {project.totalCount === 1 ? "Episode" : "Episodes"}
-                                  </span>
-                                  <Button
-                                    size="sm"
-                                    variant="secondary"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleContinueEpisodes(project);
-                                    }}
-                                    disabled={
-                                      project.projectType !== "call_report" || !project.sourceId
-                                    }
-                                  >
-                                    <Plus className="h-3 w-3 mr-1" />
-                                    Add Episode
-                                  </Button>
-                                </div>
-                              </div>
-                            </TableCell>
-                          </TableRow>
-
-                          {isExpanded &&
-                            project.episodes.map((episode) => (
-                              <TableRow key={episode.id} className="hover:bg-slate-50">
-                                  <TableCell className="pl-12">
-                                    <div className="flex items-center gap-2">
-                                      <Badge variant="outline">EP {episode.episode_number}</Badge>
-                                      {(episode as any).revision_count > 0 && (
-                                        <Badge variant="secondary" className="text-xs">
-                                          <History className="h-3 w-3 mr-0.5" />
-                                          {(episode as any).revision_count} rev
-                                        </Badge>
-                                      )}
-                                    </div>
-                                  </TableCell>
-                                  <TableCell>
-                                    {episode.attachment_url ? (
-                                      <button
-                                        onClick={() => handleDownload(episode)}
-                                        className="text-blue-600 hover:text-blue-800 hover:underline text-sm flex items-center gap-1"
-                                      >
-                                        <FileText className="h-4 w-4" />
-                                        {episode.attachment_name}
-                                      </button>
-                                    ) : (
-                                      <span className="text-muted-foreground italic text-sm">No file</span>
-                                    )}
-                                  </TableCell>
-                                  <TableCell>
-                                    {episode.logged_by_user?.name || "Unknown"}
-                                  </TableCell>
-                                  <TableCell>
-                                    {formatDate(episode.created_at)}
-                                  </TableCell>
-                                  <TableCell className="text-right">
-                                    <DropdownMenu>
-                                      <DropdownMenuTrigger asChild>
-                                        <Button variant="ghost" size="sm">
-                                          <MoreVertical className="h-4 w-4" />
-                                        </Button>
-                                      </DropdownMenuTrigger>
-                                      <DropdownMenuContent align="end" side="bottom" collisionPadding={10} className="z-50 w-[calc(100vw-2rem)] max-w-64 md:max-w-none md:w-56">
-                                        {canEditEpisode(episode) && (
-                                          <DropdownMenuItem onClick={() => router.push(`/content-department/episodes/${episode.id}/edit`)}>
-                                            <Pencil className="mr-2 h-4 w-4" />
-                                            Edit
-                                          </DropdownMenuItem>
-                                        )}
-                                        {episode.attachment_url && (
-                                          <DropdownMenuItem onClick={() => handleDownload(episode)}>
-                                            <Download className="mr-2 h-4 w-4" />
-                                            Download
-                                          </DropdownMenuItem>
-                                        )}
-                                      </DropdownMenuContent>
-                                    </DropdownMenu>
-                                  </TableCell>
-                              </TableRow>
-                            ))}
-                        </Fragment>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
-              </div>
-
-              {/* Mobile cards */}
-              <div className="md:hidden divide-y">
-                {projects.map((project) => {
-                  const isExpanded = expandedProjects.has(project.projectId);
-
-                  return (
-                    <div key={project.projectId} className="">
-                      <div
-                        className="p-4 flex items-center justify-between bg-slate-50"
-                        onClick={() => toggleProject(project.projectId)}
-                      >
-                        <div className="flex items-center gap-2">
-                          {isExpanded ? (
-                            <ChevronDown className="h-5 w-5 text-slate-600" />
-                          ) : (
-                            <ChevronRight className="h-5 w-5 text-slate-600" />
-                          )}
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <span className="font-medium">{project.projectName}</span>
-                              {project.writerName && (
-                                <span className="text-sm text-muted-foreground">by {project.writerName}</span>
-                              )}
-                            </div>
-                            {project.projectStatus && (
-                              <Badge variant="secondary" className="text-xs mt-1">{project.projectStatus}</Badge>
+                return (
+                  <div key={project.projectId} className="bg-white rounded-lg border shadow-sm overflow-hidden">
+                    {/* Project Header */}
+                    <div
+                      className="p-4 flex items-center justify-between bg-slate-50 hover:bg-slate-100 cursor-pointer"
+                      onClick={() => toggleProject(project.projectId)}
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        {isExpanded ? (
+                          <ChevronDown className="h-5 w-5 text-slate-600 flex-shrink-0" />
+                        ) : (
+                          <ChevronRight className="h-5 w-5 text-slate-600 flex-shrink-0" />
+                        )}
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-semibold text-base">{project.projectName}</span>
+                            {project.writerName && (
+                              <span className="text-sm text-muted-foreground font-normal">by {project.writerName}</span>
                             )}
                           </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm text-muted-foreground">{project.totalCount}</span>
-                          <Button
-                            size="sm"
-                            variant="secondary"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleContinueEpisodes(project);
-                            }}
-                            disabled={
-                              project.projectType !== "call_report" || !project.sourceId
-                            }
-                          >
-                            <Plus className="h-3 w-3 mr-1" />
-                            Add
-                          </Button>
+                          {project.projectStatus && (
+                            <Badge variant="secondary" className="text-xs mt-1">{project.projectStatus}</Badge>
+                          )}
                         </div>
                       </div>
+                      <div className="flex items-center gap-3 flex-shrink-0">
+                        <span className="text-sm text-muted-foreground">
+                          {project.totalCount} {project.totalCount === 1 ? "Episode" : "Episodes"}
+                        </span>
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleContinueEpisodes(project);
+                          }}
+                          disabled={project.projectType !== "call_report" || !project.sourceId}
+                        >
+                          <Plus className="h-3 w-3 mr-1" />
+                          <span className="hidden sm:inline">Add Episode</span>
+                          <span className="sm:hidden">Add</span>
+                        </Button>
+                      </div>
+                    </div>
 
-                      {isExpanded && (
-                        <div className="divide-y divide-slate-200">
-                          {project.episodes.map((episode) => (
-                            <div key={episode.id} className="p-4 flex flex-col gap-3 pl-8 border-l-2 border-slate-200 bg-white">
-                              <div className="flex flex-col gap-2">
-                                <div className="flex items-center justify-between gap-2">
-                                  <div className="flex items-center gap-2 flex-1 min-w-0">
-                                    <Badge variant="outline" className="flex-shrink-0">EP {episode.episode_number}</Badge>
-                                    {(episode as any).revision_count > 0 && (
-                                      <Badge variant="secondary" className="text-xs flex-shrink-0">
-                                        <History className="h-3 w-3 mr-0.5" />
-                                        {(episode as any).revision_count}
-                                      </Badge>
-                                    )}
-                                  </div>
-                                  <span className="text-xs text-muted-foreground flex-shrink-0">{formatDate(episode.created_at)}</span>
-                                </div>
-                              </div>
-                              <div className="flex flex-col gap-3">
-                                <div className="text-sm min-w-0">
-                                  {episode.attachment_url ? (
-                                    <button
-                                      onClick={() => handleDownload(episode)}
-                                      className="text-blue-600 hover:text-blue-800 hover:underline flex items-center gap-1 w-full"
-                                    >
-                                      <FileText className="h-4 w-4 flex-shrink-0" />
-                                      <span className="truncate">{episode.attachment_name}</span>
-                                    </button>
-                                  ) : (
-                                    <span className="text-muted-foreground italic">No file</span>
+                    {/* Episode Cards */}
+                    {isExpanded && (
+                      <div className="p-3 sm:p-4 space-y-3 bg-slate-50/50">
+                        {project.episodes.map((episode) => {
+                          const latestRev = episode.latest_revision;
+                          const showRevised = !!latestRev?.attachment_url;
+                          const displayUrl = showRevised ? latestRev!.attachment_url : episode.attachment_url;
+                          const displayName = showRevised ? latestRev!.attachment_name : episode.attachment_name;
+
+                          return (
+                            <Card key={episode.id} className="border-slate-200">
+                              <CardContent className="p-4 space-y-3">
+                                {/* Row 1: Badges */}
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <Badge variant="outline" className="font-semibold">EP {episode.episode_number}</Badge>
+                                  {episode.revision_count != null && episode.revision_count > 0 && (
+                                    <Badge variant="secondary" className="text-xs">
+                                      <History className="h-3 w-3 mr-0.5" />
+                                      {episode.revision_count} rev
+                                    </Badge>
                                   )}
                                 </div>
-                                <div className="flex items-center gap-2 flex-wrap">
-                                  <span className="text-sm text-muted-foreground flex-1">
-                                    By: {episode.logged_by_user?.name || "Unknown"}
-                                  </span>
+
+                                {/* Row 2: Attachment */}
+                                <div className="text-sm">
+                                  {displayUrl ? (
+                                    <div className="flex flex-col gap-0.5">
+                                      <button
+                                        onClick={() => handleDownload(episode)}
+                                        className="text-blue-600 hover:text-blue-800 hover:underline flex items-center gap-1.5 w-fit"
+                                      >
+                                        <FileText className="h-4 w-4 flex-shrink-0" />
+                                        <span className="truncate">{displayName}</span>
+                                      </button>
+                                      {showRevised && (
+                                        <span className="text-xs text-amber-600 font-medium ml-5.5">
+                                          Revision #{latestRev!.revision_number}
+                                        </span>
+                                      )}
+                                      {showRevised && latestRev!.initial_assessment != null && (
+                                        <span className="text-xs text-blue-600 font-medium ml-5.5">
+                                          Revision Assessment: {latestRev!.initial_assessment}/10{latestRev!.assessed_by_name ? ` by ${latestRev!.assessed_by_name}` : ""}
+                                        </span>
+                                      )}
+                                    </div>
+                                  ) : (
+                                    <span className="text-muted-foreground italic">No file attached</span>
+                                  )}
+                                </div>
+
+                                {/* Row 3: Info */}
+                                <div className="space-y-1 text-sm text-muted-foreground">
+                                  {episode.initial_assessment != null && (
+                                    <div className="flex items-center gap-2">
+                                      <span className="font-medium text-blue-700">
+                                        Initial Assessment: {episode.initial_assessment}/10
+                                      </span>
+                                      <span>by {episode.logged_by_user?.name || "Unknown"}</span>
+                                    </div>
+                                  )}
+                                  <div className="flex items-center gap-4">
+                                    <span>Logged by: {episode.logged_by_user?.name || "Unknown"}</span>
+                                    <span>{formatDate(episode.created_at)}</span>
+                                  </div>
+                                </div>
+
+                                {/* Row 4: Actions */}
+                                <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100 flex-wrap">
+                                  {isTeamHead && (
+                                    <ShareCrossTeamButton
+                                      callReportId={episode.call_report_id || ""}
+                                      currentTeamId={currentTeamId || undefined}
+                                      episodeId={episode.id}
+                                      callReportTitle={project.projectName}
+                                    />
+                                  )}
                                   {canEditEpisode(episode) && (
-                                    <Button size="sm" variant="outline" onClick={() => router.push(`/content-department/episodes/${episode.id}/edit`)} className="touch-target">
-                                      <Pencil className="h-4 w-4" />
+                                    <Button size="sm" variant="outline" onClick={() => router.push(`/content-department/episodes/${episode.id}/edit`)}>
+                                      <Pencil className="h-4 w-4 mr-1" />
+                                      Edit
                                     </Button>
                                   )}
-                                  {episode.attachment_url && (
-                                    <Button size="sm" variant="outline" onClick={() => handleDownload(episode)} className="touch-target">
+                                  {displayUrl && (
+                                    <Button size="sm" variant="outline" onClick={() => handleDownload(episode)}>
                                       <Download className="h-4 w-4 mr-1" />
                                       Download
                                     </Button>
                                   )}
                                 </div>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
+                              </CardContent>
+                            </Card>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           )}
 
@@ -1256,11 +1197,29 @@ export default function ContentDepartmentEpisodesPage() {
                                   </div>
                                 </div>
 
+                                {/* Initial Assessment */}
+                                <div className="space-y-2">
+                                  <Label>Initial Assessment</Label>
+                                  <ScoreCard
+                                    label="Initial Assessment"
+                                    description="Your initial rating of this episode (1-10)"
+                                    score={episode.initial_assessment ?? 5}
+                                    onChange={(score) =>
+                                      updateExistingEpisode(episode.id, {
+                                        initial_assessment: score,
+                                      })
+                                    }
+                                    disabled={episode._isSaving}
+                                  />
+                                </div>
+
                                 {/* Revisions */}
                                 <EpisodeRevisions
                                   episodeId={episode.id}
                                   sourceId={selectedSource}
                                   canEdit={true}
+                                  userRole={currentUserRole || undefined}
+                                  evaluateUrl="/evaluator/episodes"
                                 />
 
                                 <div className="flex items-center justify-between gap-3 pt-2 border-t border-slate-100 flex-wrap">

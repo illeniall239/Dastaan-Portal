@@ -16,12 +16,34 @@ export async function GET(request: NextRequest) {
   try {
     const adminClient = createAdminClient();
 
+    const { searchParams } = request.nextUrl;
+    const filterCallReportId = searchParams.get("call_report_id") || null;
+
     // Get all episodes that have evaluations
     // We query the episodic_evaluations_with_type view to get unique episode_ids
-    const { data: episodeIds, error: idsError } = await adminClient
+    // If filtering by call_report_id, pre-fetch those episode IDs first
+    let preFilteredEpisodeIds: string[] | null = null;
+    if (filterCallReportId) {
+      const { data: epRows } = await adminClient
+        .from("episodes")
+        .select("id")
+        .eq("call_report_id", filterCallReportId);
+      preFilteredEpisodeIds = (epRows || []).map(r => r.id);
+      if (preFilteredEpisodeIds.length === 0) {
+        return NextResponse.json({ success: true, episodes: [] });
+      }
+    }
+
+    let idsQuery = adminClient
       .from("episodic_evaluations_with_type")
       .select("episode_id")
       .order("created_at", { ascending: false });
+
+    if (preFilteredEpisodeIds) {
+      idsQuery = idsQuery.in("episode_id", preFilteredEpisodeIds);
+    }
+
+    const { data: episodeIds, error: idsError } = await idsQuery;
 
     if (idsError) {
       throw new Error(`Failed to fetch episode IDs: ${idsError.message}`);

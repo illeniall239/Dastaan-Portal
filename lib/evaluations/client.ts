@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/client";
 import { logger } from "@/lib/logger";
+import { MANDATORY_APPROVER_EMAILS } from "@/lib/approvals/config";
 
 export interface Evaluation {
   id: string;
@@ -51,6 +52,7 @@ export interface CreateEvaluationInput {
   call_report_id: string;
   evaluator_id: string;
   cross_team_share_id?: string;
+  revision_id?: string | null;
   target_writer?: string;
   per_ep_price_range?: string;
   genre?: string;
@@ -143,6 +145,7 @@ export async function createEvaluationClient(evaluationData: CreateEvaluationInp
       call_report_id: evaluationData.call_report_id,
       evaluator_id: evaluationData.evaluator_id,
       cross_team_share_id: evaluationData.cross_team_share_id || null,
+      revision_id: evaluationData.revision_id || null,
       target_writer: evaluationData.target_writer || null,
       per_ep_price_range: evaluationData.per_ep_price_range || null,
       genre: evaluationData.genre || null,
@@ -236,6 +239,49 @@ export async function createEvaluationClient(evaluationData: CreateEvaluationInp
   } catch (notifError) {
     logger.error("Failed to create notifications:", notifError);
     // Don't fail the evaluation creation if notification fails
+  }
+
+  // Notify approval gate participants (Humera, Salman, and programmers)
+  try {
+    const { data: { user: currentUser } } = await supabase.auth.getUser();
+
+    // Get Humera and Salman's user IDs by email
+    const { data: mandatoryUsers } = await supabase
+      .from("users")
+      .select("id")
+      .in("email", MANDATORY_APPROVER_EMAILS)
+      .eq("status", "active");
+
+    // Get all programmer user IDs
+    const { data: programmerUsers } = await supabase
+      .from("users")
+      .select("id")
+      .eq("role", "programmer")
+      .eq("status", "active");
+
+    const approvalRecipientIds = new Set<string>();
+    mandatoryUsers?.forEach(u => approvalRecipientIds.add(u.id));
+    programmerUsers?.forEach(u => approvalRecipientIds.add(u.id));
+
+    // Exclude the evaluator who submitted
+    if (currentUser?.id) approvalRecipientIds.delete(currentUser.id);
+
+    if (approvalRecipientIds.size > 0 && callReport) {
+      const approvalNotifications = Array.from(approvalRecipientIds).map(userId => ({
+        user_id: userId,
+        type: "info",
+        title: `Story awaiting your approval: ${callReport?.working_title || "Unknown"}`,
+        message: `An evaluation has been completed. Please review and approve/reject this story.`,
+        entity_type: "story_approval_pending",
+        entity_id: evaluationData.call_report_id,
+        created_by: currentUser?.id || null,
+        is_read: false,
+      }));
+
+      await supabase.from("notifications").insert(approvalNotifications);
+    }
+  } catch (approvalNotifError) {
+    logger.error("Failed to create approval gate notifications:", approvalNotifError);
   }
 
   // Create audit log entry

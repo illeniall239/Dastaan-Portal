@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { EpisodeFileUpload } from "./episode-file-upload";
+import { ScoreCard } from "@/components/episodic-evaluations/score-card";
 import { Plus, Trash2, AlertCircle } from "lucide-react";
 import { Card } from "@/components/ui/card";
 
@@ -14,6 +15,7 @@ export interface EpisodeFormEntry {
   episode_number: number;
   file: File | null;
   additional_info: string;
+  initial_assessment?: number;
 }
 
 interface EpisodeUploadFormProps {
@@ -43,10 +45,12 @@ export function EpisodeUploadForm({
         ? Math.max(...episodes.map((ep) => ep.episode_number)) + 1
         : 1;
 
+    const hasAssessment = episodes.length > 0 && episodes[0].initial_assessment !== undefined;
     const newEpisode: EpisodeFormEntry = {
       episode_number: nextEpisodeNumber,
       file: null,
       additional_info: "",
+      ...(hasAssessment ? { initial_assessment: 5 } : {}),
     };
 
     updateEpisodes([...episodes, newEpisode]);
@@ -160,6 +164,18 @@ export function EpisodeUploadForm({
                 {episode.additional_info.length}/5000 characters
               </p>
             </div>
+
+            {/* Initial Assessment */}
+            {episode.initial_assessment !== undefined && (
+              <ScoreCard
+                label="Initial Assessment"
+                description="Your initial rating of this episode (1-10)"
+                score={episode.initial_assessment}
+                onChange={(score) => updateEpisode(index, "initial_assessment", score)}
+                disabled={disabled}
+                showGrade={true}
+              />
+            )}
           </div>
         </Card>
       ))}

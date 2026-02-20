@@ -4,6 +4,7 @@ import {
   getContentActivityNotificationRecipients,
 } from "@/lib/notifications/server";
 import { logger } from "@/lib/logger";
+import { MANDATORY_APPROVER_EMAILS } from "@/lib/approvals/config";
 
 export interface MeetingWriter {
   writer_id: string;
@@ -65,6 +66,13 @@ export interface CallReportWithRelations extends Meeting {
     needs_improvement_count: number;
     decision_reason: string;
   } | null;
+  episodes?: Array<{
+    episode_number: number;
+    initial_assessment: number | null;
+    average_initial_assessment?: number | null;
+    assessment_count?: number | null;
+    logged_by_name: string;
+  }>;
 }
 
 export interface CreateMeetingInput {
@@ -418,6 +426,89 @@ export async function getAllCallReports() {
     }
   }
 
+  // Batch fetch episodes with initial_assessment for all call reports
+  let episodeMap: Record<string, Array<{ episode_number: number; initial_assessment: number | null; average_initial_assessment?: number | null; assessment_count?: number | null; logged_by_name: string }>> = {};
+  if (data && data.length > 0) {
+    const reportIds = data.map((r: any) => r.id);
+    const { data: episodeData } = await supabase
+      .from("episodes")
+      .select("call_report_id, episode_number, initial_assessment, average_initial_assessment, assessment_count, logged_by_user:users!logged_by(name)")
+      .in("call_report_id", reportIds)
+      .order("episode_number", { ascending: true });
+
+    if (episodeData) {
+      for (const ep of episodeData as any[]) {
+        if (!ep.call_report_id) continue;
+        if (!episodeMap[ep.call_report_id]) episodeMap[ep.call_report_id] = [];
+        episodeMap[ep.call_report_id].push({
+          episode_number: ep.episode_number,
+          initial_assessment: ep.initial_assessment,
+          average_initial_assessment: ep.average_initial_assessment,
+          assessment_count: ep.assessment_count,
+          logged_by_name: ep.logged_by_user?.name || "Unknown",
+        });
+      }
+    }
+  }
+
+  // Batch fetch story approval status for all call reports
+  interface ManagementApproval {
+    name: string;
+    decision: string;
+  }
+  interface ApprovalStatus {
+    isFullyApproved: boolean;
+    isRejected: boolean;
+    approvedCount: number;
+    managementApproved: boolean;
+    managementApprovals: ManagementApproval[];
+  }
+  let approvalStatusMap: Record<string, ApprovalStatus> = {};
+  if (data && data.length > 0) {
+    const reportIds = data.map((r: any) => r.id);
+    const { data: approvalData } = await supabase
+      .from("story_approvals")
+      .select("call_report_id, decision, approver_type, user:users!user_id(email, name)")
+      .in("call_report_id", reportIds);
+
+    if (approvalData) {
+      // Group by call_report_id
+      const grouped: Record<string, typeof approvalData> = {};
+      for (const a of approvalData) {
+        if (!grouped[a.call_report_id]) grouped[a.call_report_id] = [];
+        grouped[a.call_report_id].push(a);
+      }
+
+      for (const [reportId, approvals] of Object.entries(grouped)) {
+        const approved = approvals.filter(a => a.decision === "approved");
+        const managementRejected = approvals.some(a => a.decision === "rejected" && a.approver_type === "management");
+
+        // Check mandatory approvers specifically
+        const mandatoryApprovedEmails = approved
+          .filter(a => a.approver_type === "management" && MANDATORY_APPROVER_EMAILS.includes((a.user as any)?.email))
+          .map(a => (a.user as any)?.email);
+        const allMandatoryApproved = MANDATORY_APPROVER_EMAILS.every(email => mandatoryApprovedEmails.includes(email));
+        const thirdApproved = approved.some(a => a.approver_type !== "management");
+
+        // Collect individual management approver decisions
+        const mgmtApprovals: ManagementApproval[] = approvals
+          .filter(a => a.approver_type === "management")
+          .map(a => ({
+            name: (a.user as any)?.name || (a.user as any)?.email || "Unknown",
+            decision: a.decision,
+          }));
+
+        approvalStatusMap[reportId] = {
+          isFullyApproved: allMandatoryApproved && thirdApproved,
+          isRejected: managementRejected,
+          approvedCount: approved.length,
+          managementApproved: allMandatoryApproved,
+          managementApprovals: mgmtApprovals,
+        };
+      }
+    }
+  }
+
   interface CallReportWriterData {
     writer_id: string;
     writer_email: string | null;
@@ -493,6 +584,8 @@ export async function getAllCallReports() {
       revision_count: revisionMap[report.id]?.count || 0,
       latest_revision_comment: revisionMap[report.id]?.latest_comment || null,
       latest_revision_date: revisionMap[report.id]?.latest_date || null,
+      episodes: episodeMap[report.id] || [],
+      approval_status: approvalStatusMap[report.id] || null,
     };
   });
 

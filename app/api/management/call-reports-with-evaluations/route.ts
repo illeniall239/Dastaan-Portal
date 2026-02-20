@@ -16,12 +16,21 @@ export async function GET(request: NextRequest) {
   try {
     const adminClient = createAdminClient();
 
+    const { searchParams } = request.nextUrl;
+    const filterCallReportId = searchParams.get("call_report_id") || null;
+
     // Get all call reports that have evaluations
     // We query the call_report_evaluations_with_type view to get unique call_report_ids
-    const { data: callReportIds, error: idsError } = await adminClient
+    let idsQuery = adminClient
       .from("call_report_evaluations_with_type")
       .select("call_report_id")
       .order("created_at", { ascending: false });
+
+    if (filterCallReportId) {
+      idsQuery = idsQuery.eq("call_report_id", filterCallReportId);
+    }
+
+    const { data: callReportIds, error: idsError } = await idsQuery;
 
     if (idsError) {
       throw new Error(`Failed to fetch call report IDs: ${idsError.message}`);

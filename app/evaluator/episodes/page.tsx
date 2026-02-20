@@ -23,18 +23,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
 import {
   Loader2,
-  MoreVertical,
   Download,
   FileText,
   Plus,
@@ -51,9 +44,11 @@ import { formatFileSize } from "@/lib/validations/episodes";
 import { EpisodeUploadForm, type EpisodeFormEntry } from "@/components/episodes/episode-upload-form";
 import { EpisodeFileUpload } from "@/components/episodes/episode-file-upload";
 import { getGradeColorClasses } from "@/lib/validations/episodic-evaluations";
+import { ScoreCard } from "@/components/episodic-evaluations/score-card";
 import type { EpisodeWithDetails, EpisodicEvaluationWithDetails } from "@/types";
 import { BackButton } from "@/components/ui/back-button";
 import { formatDate } from "@/lib/utils/format-date";
+import { ShareCrossTeamButton } from "@/components/call-report/share-cross-team-button";
 
 interface CallReportWriter {
   id?: string;
@@ -115,6 +110,7 @@ type ExistingEpisodeEdit = EpisodeWithDetails & {
   _originalAttachmentUrl?: string | null;
   _originalAttachmentType?: string | null;
   _originalAdditionalInfo?: string | null;
+  _originalInitialAssessment?: number | null;
 };
 
 export default function EvaluatorEpisodesPage() {
@@ -137,6 +133,8 @@ export default function EvaluatorEpisodesPage() {
   const [expandedEvalProjects, setExpandedEvalProjects] = useState<Set<string>>(new Set());
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [currentUserRole, setCurrentUserRole] = useState<string | null>(null);
+  const [isTeamHead, setIsTeamHead] = useState(false);
+  const [currentTeamId, setCurrentTeamId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("list");
   const logSectionRef = useRef<HTMLDivElement | null>(null);
 
@@ -185,15 +183,25 @@ export default function EvaluatorEpisodesPage() {
 
       setCurrentUserId(user.id);
 
-      // Fetch user role
+      // Fetch user role and team
       const { data: userData } = await supabase
         .from("users")
-        .select("role")
+        .select("role, team_id")
         .eq("id", user.id)
         .single();
 
       if (userData) {
         setCurrentUserRole(userData.role);
+        if (userData.team_id) {
+          setCurrentTeamId(userData.team_id);
+          // Check if user is team head
+          const { data: team } = await supabase
+            .from("teams")
+            .select("team_head_id")
+            .eq("id", userData.team_id)
+            .single();
+          setIsTeamHead(team?.team_head_id === user.id);
+        }
       }
 
       // Fetch episodes with project-based pagination (20 projects at a time, all their episodes)
@@ -477,7 +485,7 @@ export default function EvaluatorEpisodesPage() {
         throw new Error(data.error || "Failed to fetch evaluations");
       }
 
-      setMyEvaluations(data.data || []);
+      setMyEvaluations((data.data || []).filter((e: any) => !e.cross_team_share_id));
     } catch (error: any) {
       if (error.name === 'AbortError') return;
       console.error("Error fetching evaluations:", error);
@@ -1005,328 +1013,205 @@ export default function EvaluatorEpisodesPage() {
               </p>
             </div>
           ) : (
-            <div className="bg-white rounded-lg border shadow-sm">
-              {/* Desktop table */}
-              <div className="hidden md:block">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Project</TableHead>
-                      <TableHead>Attachment</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {projects.map((project) => {
-                      const isExpanded = expandedProjects.has(project.projectId);
-                      const progressPct = (project.evaluatedCount / project.totalCount) * 100;
-                      let progressClass = "bg-gray-100 text-gray-800 border-gray-300";
-                      if (progressPct === 100) progressClass = "bg-green-100 text-green-800 border-green-300";
-                      else if (progressPct > 0) progressClass = "bg-yellow-100 text-yellow-800 border-yellow-300";
+            <div className="space-y-3">
+              {projects.map((project) => {
+                const isExpanded = expandedProjects.has(project.projectId);
+                const progressPct = (project.evaluatedCount / project.totalCount) * 100;
+                let progressClass = "bg-gray-100 text-gray-800 border-gray-300";
+                if (progressPct === 100) progressClass = "bg-green-100 text-green-800 border-green-300";
+                else if (progressPct > 0) progressClass = "bg-yellow-100 text-yellow-800 border-yellow-300";
 
-                      return (
-                        <Fragment key={project.projectId}>
-                          <TableRow
-                            className="bg-slate-50 hover:bg-slate-100 cursor-pointer border-t-2 border-slate-200"
-                            onClick={() => toggleProject(project.projectId)}
-                          >
-                            <TableCell colSpan={4} className="font-semibold py-4">
-                              <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-3">
-                                  {isExpanded ? (
-                                    <ChevronDown className="h-5 w-5 text-slate-600 flex-shrink-0" />
-                                  ) : (
-                                    <ChevronRight className="h-5 w-5 text-slate-600 flex-shrink-0" />
-                                  )}
-                                  <div>
-                                    <div className="flex items-center gap-2">
-                                      <span className="text-base">{project.projectName}</span>
-                                      {project.writerName && (
-                                        <span className="text-sm text-muted-foreground font-normal">by {project.writerName}</span>
-                                      )}
-                                    </div>
-                                    {project.projectStatus && (
-                                      <Badge variant="secondary" className="text-xs mt-1">{project.projectStatus}</Badge>
-                                    )}
-                                  </div>
-                                </div>
-                                <div className="flex items-center gap-3">
-                                  <Badge className={`${progressClass} border`}>
-                                    {project.evaluatedCount}/{project.totalCount} Episodes Evaluated
-                                  </Badge>
-                                  <span className="text-sm text-muted-foreground">
-                                    {project.totalCount} {project.totalCount === 1 ? "Episode" : "Episodes"}
-                                  </span>
-                                  <Button
-                                    size="sm"
-                                    variant="secondary"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleContinueEpisodes(project);
-                                    }}
-                                    disabled={
-                                      project.projectType !== "call_report" || !project.sourceId
-                                    }
-                                  >
-                                    <Plus className="h-3 w-3 mr-1" />
-                                    Add Episode
-                                  </Button>
-                                </div>
-                              </div>
-                            </TableCell>
-                          </TableRow>
-
-                          {isExpanded &&
-                            project.episodes.map((episode) => {
-                              const isEvaluated = evaluationStatus[episode.id];
-                              return (
-                                <TableRow key={episode.id} className="hover:bg-slate-50">
-                                  <TableCell className="pl-12">
-                                    <div className="flex items-center gap-1.5">
-                                      <Badge variant="outline">EP {episode.episode_number}</Badge>
-                                      {episode.version > 1 && (
-                                        <Badge variant="secondary" className="text-[10px] px-1 py-0 h-4 bg-blue-100 text-blue-700">
-                                          v{episode.version}
-                                        </Badge>
-                                      )}
-                                      {episode.approval_status && (
-                                        <Badge className={
-                                          episode.approval_status === "approved" ? "bg-emerald-100 text-emerald-700 text-[10px] px-1 py-0 h-4" :
-                                          episode.approval_status === "needs_revision" ? "bg-amber-100 text-amber-700 text-[10px] px-1 py-0 h-4" :
-                                          "bg-rose-100 text-rose-700 text-[10px] px-1 py-0 h-4"
-                                        }>
-                                          {episode.approval_status === "approved" ? "Approved" : episode.approval_status === "needs_revision" ? "Needs Revision" : "Rejected"}
-                                        </Badge>
-                                      )}
-                                    </div>
-                                  </TableCell>
-                                  <TableCell>
-                                    {episode.attachment_url ? (
-                                      <button
-                                        onClick={() => handleDownload(episode)}
-                                        className="text-blue-600 hover:text-blue-800 hover:underline text-sm flex items-center gap-1"
-                                      >
-                                        <FileText className="h-4 w-4" />
-                                        {episode.attachment_name}
-                                      </button>
-                                    ) : (
-                                      <span className="text-muted-foreground italic text-sm">No file</span>
-                                    )}
-                                  </TableCell>
-                                  <TableCell>
-                                    {isEvaluated ? (
-                                      <Badge className="bg-green-100 text-green-800 border-green-300">
-                                        <CheckCircle2 className="h-3 w-3 mr-1" />
-                                        Evaluated
-                                      </Badge>
-                                    ) : (
-                                      <Badge variant="outline" className="text-amber-700 border-amber-300">
-                                        Not Evaluated
-                                      </Badge>
-                                    )}
-                                  </TableCell>
-                                  <TableCell className="text-right">
-                                    <div className="flex items-center justify-end gap-2">
-                                      {isEvaluated ? (
-                                        <Button
-                                          size="sm"
-                                          variant="outline"
-                                          onClick={() => router.push(`/evaluator/episodes/${episode.id}`)}
-                                        >
-                                          <Eye className="h-4 w-4 mr-1" />
-                                          View
-                                        </Button>
-                                      ) : (
-                                        <Button
-                                          size="sm"
-                                          onClick={() => router.push(`/evaluator/episodes/${episode.id}`)}
-                                        >
-                                          <ClipboardCheck className="h-4 w-4 mr-1" />
-                                          Evaluate
-                                        </Button>
-                                      )}
-                                      <DropdownMenu>
-                                        <DropdownMenuTrigger asChild>
-                                          <Button variant="ghost" size="sm">
-                                            <MoreVertical className="h-4 w-4" />
-                                          </Button>
-                                        </DropdownMenuTrigger>
-                                        <DropdownMenuContent align="end" side="bottom" collisionPadding={10} className="z-50 w-[calc(100vw-2rem)] max-w-64 md:max-w-none md:w-56">
-                                          {canEditEpisode(episode) && (
-                                            <DropdownMenuItem onClick={() => router.push(`/evaluator/episodes/${episode.id}/edit`)}>
-                                              <Pencil className="mr-2 h-4 w-4" />
-                                              Edit
-                                            </DropdownMenuItem>
-                                          )}
-                                          {episode.attachment_url && (
-                                            <DropdownMenuItem onClick={() => handleDownload(episode)}>
-                                              <Download className="mr-2 h-4 w-4" />
-                                              Download
-                                            </DropdownMenuItem>
-                                          )}
-                                        </DropdownMenuContent>
-                                      </DropdownMenu>
-                                    </div>
-                                  </TableCell>
-                                </TableRow>
-                              );
-                            })}
-                        </Fragment>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
-              </div>
-
-              {/* Mobile cards */}
-              <div className="md:hidden divide-y">
-                {projects.map((project) => {
-                  const isExpanded = expandedProjects.has(project.projectId);
-                  const progressPct = (project.evaluatedCount / project.totalCount) * 100;
-                  let progressClass = "bg-gray-100 text-gray-800 border-gray-300";
-                  if (progressPct === 100) progressClass = "bg-green-100 text-green-800 border-green-300";
-                  else if (progressPct > 0) progressClass = "bg-yellow-100 text-yellow-800 border-yellow-300";
-
-                  return (
-                    <div key={project.projectId} className="">
-                      <div
-                        className="p-4 flex items-center justify-between bg-slate-50"
-                        onClick={() => toggleProject(project.projectId)}
-                      >
-                        <div className="flex items-center gap-2">
-                          {isExpanded ? (
-                            <ChevronDown className="h-5 w-5 text-slate-600" />
-                          ) : (
-                            <ChevronRight className="h-5 w-5 text-slate-600" />
-                          )}
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <span className="font-medium">{project.projectName}</span>
-                              {project.writerName && (
-                                <span className="text-sm text-muted-foreground">by {project.writerName}</span>
-                              )}
-                            </div>
-                            {project.projectStatus && (
-                              <Badge variant="secondary" className="text-xs mt-1">{project.projectStatus}</Badge>
+                return (
+                  <div key={project.projectId} className="bg-white rounded-lg border shadow-sm overflow-hidden">
+                    {/* Project Header */}
+                    <div
+                      className="p-3 sm:p-4 flex items-center justify-between bg-slate-50 cursor-pointer hover:bg-slate-100 transition-colors"
+                      onClick={() => toggleProject(project.projectId)}
+                    >
+                      <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                        {isExpanded ? (
+                          <ChevronDown className="h-5 w-5 text-slate-600 flex-shrink-0" />
+                        ) : (
+                          <ChevronRight className="h-5 w-5 text-slate-600 flex-shrink-0" />
+                        )}
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-semibold text-base truncate">{project.projectName}</span>
+                            {project.writerName && (
+                              <span className="text-sm text-muted-foreground font-normal">by {project.writerName}</span>
                             )}
                           </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Badge className={`${progressClass} border`}>
-                            {project.evaluatedCount}/{project.totalCount}
-                          </Badge>
-                          <Button
-                            size="sm"
-                            variant="secondary"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleContinueEpisodes(project);
-                            }}
-                            disabled={
-                              project.projectType !== "call_report" || !project.sourceId
-                            }
-                          >
-                            <Plus className="h-3 w-3 mr-1" />
-                            Add Episode
-                          </Button>
+                          {project.projectStatus && (
+                            <Badge variant="secondary" className="text-xs mt-1">{project.projectStatus}</Badge>
+                          )}
                         </div>
                       </div>
+                      <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
+                        <Badge className={`${progressClass} border`}>
+                          {project.evaluatedCount}/{project.totalCount} Evaluated
+                        </Badge>
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleContinueEpisodes(project);
+                          }}
+                          disabled={project.projectType !== "call_report" || !project.sourceId}
+                        >
+                          <Plus className="h-3 w-3 mr-1" />
+                          <span className="hidden sm:inline">Add Episode</span>
+                          <span className="sm:hidden">Add</span>
+                        </Button>
+                      </div>
+                    </div>
 
-                      {isExpanded && (
-                        <div className="divide-y divide-slate-200">
-                          {project.episodes.map((episode) => {
-                            const isEvaluated = evaluationStatus[episode.id];
-                            return (
-                              <div key={episode.id} className="p-4 flex flex-col gap-3 pl-8 border-l-2 border-slate-200 bg-white">
-                                <div className="flex flex-col gap-2">
-                                  <div className="flex items-center justify-between gap-2">
-                                    <div className="flex items-center gap-2 flex-1 min-w-0">
-                                      <Badge variant="outline" className="flex-shrink-0">EP {episode.episode_number}</Badge>
-                                      {episode.version > 1 && (
-                                        <Badge variant="secondary" className="text-[10px] px-1 py-0 h-4 bg-blue-100 text-blue-700 flex-shrink-0">
-                                          v{episode.version}
-                                        </Badge>
-                                      )}
-                                      {episode.approval_status && (
-                                        <Badge className={`flex-shrink-0 ${
-                                          episode.approval_status === "approved" ? "bg-emerald-100 text-emerald-700 text-[10px] px-1 py-0 h-4" :
-                                          episode.approval_status === "needs_revision" ? "bg-amber-100 text-amber-700 text-[10px] px-1 py-0 h-4" :
-                                          "bg-rose-100 text-rose-700 text-[10px] px-1 py-0 h-4"
-                                        }`}>
-                                          {episode.approval_status === "approved" ? "Approved" : episode.approval_status === "needs_revision" ? "Needs Revision" : "Rejected"}
-                                        </Badge>
-                                      )}
-                                      <span className="font-medium text-sm truncate">
-                                        {episode.title || (
-                                          <span className="text-muted-foreground italic">Untitled</span>
-                                        )}
-                                      </span>
-                                    </div>
-                                    {isEvaluated ? (
-                                      <Badge className="bg-green-100 text-green-800 border-green-300 text-xs flex-shrink-0">Done</Badge>
-                                    ) : (
-                                      <Badge variant="outline" className="text-amber-700 border-amber-300 text-xs flex-shrink-0">Pending</Badge>
+                    {/* Episode Cards */}
+                    {isExpanded && (
+                      <div className="p-3 sm:p-4 space-y-3 bg-slate-50/50">
+                        {project.episodes.map((episode) => {
+                          const isEvaluated = evaluationStatus[episode.id];
+                          const latestRev = episode.latest_revision;
+                          const showRevised = latestRev?.attachment_url;
+                          const displayUrl = showRevised ? latestRev.attachment_url : episode.attachment_url;
+                          const displayName = showRevised ? latestRev.attachment_name : episode.attachment_name;
+
+                          return (
+                            <Card key={episode.id} className="border-slate-200">
+                              <CardContent className="p-4 space-y-3">
+                                {/* Row 1: Badges */}
+                                <div className="flex items-center justify-between flex-wrap gap-2">
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <Badge variant="outline" className="font-semibold">EP {episode.episode_number}</Badge>
+                                    {episode.version > 1 && (
+                                      <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-700">
+                                        v{episode.version}
+                                      </Badge>
+                                    )}
+                                    {episode.approval_status && (
+                                      <Badge className={
+                                        episode.approval_status === "approved" ? "bg-emerald-100 text-emerald-700 text-xs" :
+                                          episode.approval_status === "needs_revision" ? "bg-amber-100 text-amber-700 text-xs" :
+                                            "bg-rose-100 text-rose-700 text-xs"
+                                      }>
+                                        {episode.approval_status === "approved" ? "Approved" : episode.approval_status === "needs_revision" ? "Needs Revision" : "Rejected"}
+                                      </Badge>
+                                    )}
+                                    {(episode as any).revision_count > 0 && (
+                                      <Badge variant="secondary" className="text-xs bg-purple-50 text-purple-700">
+                                        {(episode as any).revision_count} Revision{(episode as any).revision_count !== 1 ? "s" : ""}
+                                      </Badge>
                                     )}
                                   </div>
+                                  {isEvaluated ? (
+                                    <Badge className="bg-green-100 text-green-800 border-green-300">
+                                      <CheckCircle2 className="h-3 w-3 mr-1" />
+                                      Evaluated
+                                    </Badge>
+                                  ) : (
+                                    <Badge variant="outline" className="text-amber-700 border-amber-300">
+                                      Not Evaluated
+                                    </Badge>
+                                  )}
                                 </div>
-                                <div className="flex flex-col gap-3">
-                                  <div className="text-sm min-w-0">
-                                    {episode.attachment_url ? (
+
+                                {/* Row 2: Attachment */}
+                                {displayUrl ? (
+                                  <div className="flex items-start gap-2 text-sm">
+                                    <FileText className="h-4 w-4 text-blue-500 mt-0.5 flex-shrink-0" />
+                                    <div>
                                       <button
                                         onClick={() => handleDownload(episode)}
-                                        className="text-blue-600 hover:text-blue-800 hover:underline flex items-center gap-1 w-full"
+                                        className="text-blue-600 hover:text-blue-800 hover:underline text-left"
                                       >
-                                        <FileText className="h-4 w-4 flex-shrink-0" />
-                                        <span className="truncate">{episode.attachment_name}</span>
+                                        {displayName}
                                       </button>
-                                    ) : (
-                                      <span className="text-muted-foreground italic">No file</span>
-                                    )}
+                                      {showRevised && (
+                                        <span className="ml-2 text-xs text-amber-600 font-medium bg-amber-50 px-1.5 py-0.5 rounded">
+                                          Revision #{latestRev.revision_number}
+                                        </span>
+                                      )}
+                                      {showRevised && latestRev.initial_assessment != null && (
+                                        <span className="ml-2 text-xs text-blue-600 font-medium bg-blue-50 px-1.5 py-0.5 rounded">
+                                          Revision Assessment: {latestRev.initial_assessment}/10{latestRev.assessed_by_name ? ` by ${latestRev.assessed_by_name}` : ""}
+                                        </span>
+                                      )}
+                                    </div>
                                   </div>
-                                  <div className="flex items-center gap-2 flex-wrap">
-                                    {isEvaluated ? (
-                                      <Button
-                                        size="sm"
-                                        variant="outline"
-                                        onClick={() => router.push(`/evaluator/episodes/${episode.id}`)}
-                                        className="touch-target flex-1 sm:flex-initial"
-                                      >
-                                        <Eye className="h-4 w-4 mr-1" />
-                                        View
-                                      </Button>
-                                    ) : (
-                                      <Button
-                                        size="sm"
-                                        onClick={() => router.push(`/evaluator/episodes/${episode.id}`)}
-                                        className="touch-target flex-1 sm:flex-initial"
-                                      >
-                                        <ClipboardCheck className="h-4 w-4 mr-1" />
-                                        Evaluate
-                                      </Button>
-                                    )}
-                                    {canEditEpisode(episode) && (
-                                      <Button size="sm" variant="outline" onClick={() => router.push(`/evaluator/episodes/${episode.id}/edit`)} className="touch-target">
-                                        <Pencil className="h-4 w-4" />
-                                      </Button>
-                                    )}
-                                    {episode.attachment_url && (
-                                      <Button size="sm" variant="ghost" onClick={() => handleDownload(episode)} className="touch-target">
-                                        <Download className="h-4 w-4" />
-                                      </Button>
-                                    )}
+                                ) : (
+                                  <div className="flex items-center gap-2 text-sm text-muted-foreground italic">
+                                    <FileText className="h-4 w-4" />
+                                    No file attached
+                                  </div>
+                                )}
 
+                                {/* Row 3: Info */}
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1 text-sm">
+                                  {episode.initial_assessment != null && (
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-muted-foreground">Initial Assessment:</span>
+                                      <span className="font-semibold text-blue-700">{episode.initial_assessment}/10</span>
+                                      <span className="text-muted-foreground">by {episode.logged_by_user?.name || "Unknown"}</span>
+                                    </div>
+                                  )}
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-muted-foreground">Logged by:</span>
+                                    <span>{episode.logged_by_user?.name || "Unknown"}</span>
+                                    <span className="text-muted-foreground">&middot;</span>
+                                    <span className="text-muted-foreground">{formatDate(episode.created_at)}</span>
                                   </div>
                                 </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
+
+                                {/* Row 4: Actions */}
+                                <div className="flex items-center justify-end gap-2 pt-2 border-t flex-wrap">
+                                  {isTeamHead && (
+                                    <ShareCrossTeamButton
+                                      callReportId={episode.call_report_id || ""}
+                                      currentTeamId={currentTeamId || undefined}
+                                      episodeId={episode.id}
+                                      callReportTitle={project.projectName}
+                                    />
+                                  )}
+                                  {canEditEpisode(episode) && (
+                                    <Button size="sm" variant="outline" onClick={() => router.push(`/evaluator/episodes/${episode.id}/edit`)}>
+                                      <Pencil className="h-4 w-4 mr-1" />
+                                      Edit
+                                    </Button>
+                                  )}
+                                  {episode.attachment_url && (
+                                    <Button size="sm" variant="outline" onClick={() => handleDownload(episode)}>
+                                      <Download className="h-4 w-4 mr-1" />
+                                      Download
+                                    </Button>
+                                  )}
+                                  {isEvaluated ? (
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => router.push(`/evaluator/episodes/${episode.id}`)}
+                                    >
+                                      <Eye className="h-4 w-4 mr-1" />
+                                      View
+                                    </Button>
+                                  ) : (
+                                    <Button
+                                      size="sm"
+                                      onClick={() => router.push(`/evaluator/episodes/${episode.id}`)}
+                                    >
+                                      <ClipboardCheck className="h-4 w-4 mr-1" />
+                                      Evaluate
+                                    </Button>
+                                  )}
+                                </div>
+                              </CardContent>
+                            </Card>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           )}
 

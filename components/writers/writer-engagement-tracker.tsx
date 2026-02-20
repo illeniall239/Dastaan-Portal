@@ -1,13 +1,13 @@
 'use client';
 
-import { useState, useCallback, memo } from 'react';
+import { useState, useCallback, memo, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { format, addMonths, subMonths, startOfMonth, endOfMonth } from 'date-fns';
-import { Plus, Save, Trash2, Loader2, Pencil, X, Check, ChevronLeft, ChevronRight } from 'lucide-react';
+import { format, startOfMonth, endOfMonth, subMonths, parseISO } from 'date-fns';
+import { Plus, Save, Trash2, Loader2, Pencil, X, Check } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
@@ -27,6 +27,20 @@ interface WriterEngagement {
   writer?: { id: string; name: string } | null;
   created_at: string;
   updated_at: string;
+}
+
+// Build last 18 months as filter options
+function buildMonthOptions() {
+  const now = new Date();
+  const options: { label: string; value: string }[] = [];
+  for (let i = 0; i < 18; i++) {
+    const d = subMonths(now, i);
+    options.push({
+      label: format(d, 'MMMM yyyy'),
+      value: format(d, 'yyyy-MM'),
+    });
+  }
+  return options;
 }
 
 // --- Row for saved engagements (display + edit mode) ---
@@ -54,11 +68,15 @@ const SavedRow = memo(function SavedRow({
   isDeleting: boolean;
 }) {
   const writerName = engagement.writer?.name || 'Unknown Writer';
+  const dateLabel = engagement.date_engaged
+    ? format(parseISO(engagement.date_engaged), 'MMM d, yyyy')
+    : '—';
 
   if (isEditing) {
     return (
-      <div className="grid grid-cols-[1fr_1fr_auto] gap-3 items-center border rounded-lg p-3 bg-muted/30">
+      <div className="grid grid-cols-[2fr_1fr_2fr_auto] gap-3 items-center border rounded-lg p-3 bg-muted/30">
         <div className="text-sm font-medium">{writerName}</div>
+        <div className="text-sm text-muted-foreground">{dateLabel}</div>
         <div>
           <Input
             value={editNotes}
@@ -92,8 +110,9 @@ const SavedRow = memo(function SavedRow({
   }
 
   return (
-    <div className="grid grid-cols-[1fr_1fr_auto] gap-3 items-center border rounded-lg p-3">
+    <div className="grid grid-cols-[2fr_1fr_2fr_auto] gap-3 items-center border rounded-lg p-3">
       <div className="text-sm font-medium">{writerName}</div>
+      <div className="text-sm text-muted-foreground">{dateLabel}</div>
       <div className="text-sm text-muted-foreground">{engagement.notes || '—'}</div>
       <div className="flex items-center gap-1">
         <Button
@@ -134,7 +153,7 @@ const NewRow = memo(function NewRow({
   const [notes, setNotes] = useState('');
 
   return (
-    <div className="grid grid-cols-[1fr_1fr_auto] gap-3 items-center border rounded-lg p-3 border-dashed">
+    <div className="grid grid-cols-[2fr_1fr_2fr_auto] gap-3 items-center border rounded-lg p-3 border-dashed">
       <div>
         <Select value={writerId} onValueChange={setWriterId}>
           <SelectTrigger>
@@ -148,6 +167,9 @@ const NewRow = memo(function NewRow({
             ))}
           </SelectContent>
         </Select>
+      </div>
+      <div className="text-sm text-muted-foreground">
+        {format(new Date(), 'MMM d, yyyy')}
       </div>
       <div>
         <Input
@@ -182,21 +204,20 @@ const NewRow = memo(function NewRow({
 
 interface WriterEngagementTrackerProps {
   userId: string;
-  initialEngagements?: WriterEngagement[];
   initialWriters?: Writer[];
 }
 
 export function WriterEngagementTracker({
   userId,
-  initialEngagements = [],
   initialWriters = [],
 }: WriterEngagementTrackerProps) {
   const queryClient = useQueryClient();
-  const [currentDate, setCurrentDate] = useState<Date>(new Date());
-  const initialMonth = format(new Date(), 'yyyy-MM');
+  const [filterMonth, setFilterMonth] = useState<string | null>(null);
   const [newRowIds, setNewRowIds] = useState<string[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editNotes, setEditNotes] = useState('');
+
+  const monthOptions = useMemo(() => buildMonthOptions(), []);
 
   // Fetch writers list
   const { data: writers = [], isLoading: writersLoading } = useQuery({
@@ -210,25 +231,22 @@ export function WriterEngagementTracker({
     staleTime: 1000 * 60 * 60,
   });
 
-  // Fetch ALL engagements for the month (no writer filter)
-  const monthStart = startOfMonth(currentDate);
-  const monthEnd = endOfMonth(currentDate);
-  const dateFrom = format(monthStart, 'yyyy-MM-dd');
-  const dateTo = format(monthEnd, 'yyyy-MM-dd');
-
-  const currentMonth = format(currentDate, 'yyyy-MM');
-  const isCurrentMonth = currentMonth === initialMonth;
+  // Build query URL based on filter
+  const queryUrl = useMemo(() => {
+    if (!filterMonth) return '/api/writers';
+    const d = new Date(`${filterMonth}-01`);
+    const dateFrom = format(startOfMonth(d), 'yyyy-MM-dd');
+    const dateTo = format(endOfMonth(d), 'yyyy-MM-dd');
+    return `/api/writers?dateFrom=${dateFrom}&dateTo=${dateTo}`;
+  }, [filterMonth]);
 
   const { data: engagements = [], isLoading: engagementsLoading, isError } = useQuery({
-    queryKey: ['writer-engagements', userId, currentMonth],
+    queryKey: ['writer-engagements', userId, filterMonth ?? 'all'],
     queryFn: async () => {
-      const response = await fetch(
-        `/api/writers?dateFrom=${dateFrom}&dateTo=${dateTo}`
-      );
+      const response = await fetch(queryUrl);
       if (!response.ok) throw new Error('Failed to fetch engagements');
       return response.json() as Promise<WriterEngagement[]>;
     },
-    initialData: isCurrentMonth && initialEngagements.length > 0 ? initialEngagements : undefined,
   });
 
   // Save (create) mutation
@@ -239,7 +257,7 @@ export function WriterEngagementTracker({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           writer_id: writerId,
-          date_engaged: format(monthStart, 'yyyy-MM-dd'),
+          date_engaged: format(new Date(), 'yyyy-MM-dd'),
           notes,
         }),
       });
@@ -331,28 +349,36 @@ export function WriterEngagementTracker({
   return (
     <div className="p-6 max-w-5xl mx-auto">
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4 flex-wrap gap-3">
           <CardTitle>Writer Engagement Tracker</CardTitle>
           <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="icon"
-              className="h-8 w-8"
-              onClick={() => setCurrentDate(prev => subMonths(prev, 1))}
+            <Select
+              value={filterMonth ?? 'all'}
+              onValueChange={(val) => setFilterMonth(val === 'all' ? null : val)}
             >
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            <div className="text-sm font-medium px-2 min-w-[120px] text-center">
-              {format(currentDate, 'MMMM yyyy')}
-            </div>
-            <Button
-              variant="outline"
-              size="icon"
-              className="h-8 w-8"
-              onClick={() => setCurrentDate(prev => addMonths(prev, 1))}
-            >
-              <ChevronRight className="h-4 w-4" />
-            </Button>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="All Time" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Time</SelectItem>
+                {monthOptions.map((opt) => (
+                  <SelectItem key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {filterMonth && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setFilterMonth(null)}
+                className="h-9 px-2 text-muted-foreground"
+              >
+                <X className="h-4 w-4 mr-1" />
+                Clear
+              </Button>
+            )}
           </div>
         </CardHeader>
         <CardContent>
@@ -370,9 +396,12 @@ export function WriterEngagementTracker({
             <div className="space-y-3">
               {/* Column headers */}
               {(engagements.length > 0 || newRowIds.length > 0) && (
-                <div className="grid grid-cols-[1fr_1fr_auto] gap-3 px-3">
+                <div className="grid grid-cols-[2fr_1fr_2fr_auto] gap-3 px-3">
                   <Label className="text-xs text-muted-foreground uppercase tracking-wide">
                     Writer
+                  </Label>
+                  <Label className="text-xs text-muted-foreground uppercase tracking-wide">
+                    Date Logged
                   </Label>
                   <Label className="text-xs text-muted-foreground uppercase tracking-wide">
                     Purpose
@@ -413,7 +442,9 @@ export function WriterEngagementTracker({
 
               {engagements.length === 0 && newRowIds.length === 0 && (
                 <div className="text-center py-8 text-muted-foreground">
-                  No engagements for {format(currentDate, 'MMMM yyyy')}.
+                  {filterMonth
+                    ? `No engagements found for ${monthOptions.find(o => o.value === filterMonth)?.label ?? filterMonth}.`
+                    : 'No engagements found.'}
                 </div>
               )}
 

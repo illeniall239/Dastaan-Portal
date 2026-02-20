@@ -13,6 +13,8 @@ const optionalScoreField = scoreField.optional();
  */
 export const episodicEvaluationSchema = z.object({
   episode_id: z.string().uuid("Invalid episode ID"),
+  revision_id: z.string().uuid().optional().nullable(),
+  cross_team_share_id: z.string().uuid().optional().nullable(),
 
   // Episode Details
   no_of_pages: z

@@ -135,6 +135,7 @@ export async function POST(request: Request) {
       attachment_name: episode.attachment_name || null,
       attachment_type: episode.attachment_type || null,
       additional_info: episode.additional_info || null,
+      initial_assessment: episode.initial_assessment || null,
       logged_by: user.id,
     }));
 
@@ -314,6 +315,8 @@ export async function GET(request: NextRequest) {
       logged_by: string;
       created_at: string;
       updated_at: string;
+      average_initial_assessment?: number | null;
+      assessment_count?: number | null;
       logged_by_user?: {
         name: string;
         email: string;
@@ -535,18 +538,49 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Fetch revision counts for all episodes in batch
+    // Fetch revision counts and latest revision attachment for all episodes in batch
     let revisionCountMap: Record<string, number> = {};
+    let latestRevisionMap: Record<string, { attachment_url: string | null; attachment_name: string | null; attachment_type: string | null; revision_number: number; initial_assessment: number | null; assessed_by_name: string | null }> = {};
     if (episodes && episodes.length > 0) {
       const episodeIds = episodes.map((ep) => ep.id);
-      const { data: revisionCounts } = await supabase
+      const { data: revisionData } = await supabase
         .from("episode_revisions")
-        .select("episode_id")
-        .in("episode_id", episodeIds);
+        .select("episode_id, attachment_url, attachment_name, attachment_type, revision_number, initial_assessment, assessed_by")
+        .in("episode_id", episodeIds)
+        .order("revision_number", { ascending: false });
 
-      if (revisionCounts) {
-        revisionCounts.forEach((r: { episode_id: string }) => {
+      if (revisionData) {
+        // Collect unique assessed_by user IDs for batch name lookup
+        const assessedByIds = new Set<string>();
+        revisionData.forEach((r: any) => {
+          if (r.assessed_by) assessedByIds.add(r.assessed_by);
+        });
+
+        // Batch fetch assessor names
+        let assessorNameMap: Record<string, string> = {};
+        if (assessedByIds.size > 0) {
+          const { data: assessorData } = await supabase
+            .from("users")
+            .select("id, name")
+            .in("id", Array.from(assessedByIds));
+          if (assessorData) {
+            assessorData.forEach((u: any) => { assessorNameMap[u.id] = u.name; });
+          }
+        }
+
+        revisionData.forEach((r: any) => {
           revisionCountMap[r.episode_id] = (revisionCountMap[r.episode_id] || 0) + 1;
+          // Keep only the latest revision (first one due to DESC order)
+          if (!latestRevisionMap[r.episode_id]) {
+            latestRevisionMap[r.episode_id] = {
+              attachment_url: r.attachment_url,
+              attachment_name: r.attachment_name,
+              attachment_type: r.attachment_type,
+              revision_number: r.revision_number,
+              initial_assessment: r.initial_assessment,
+              assessed_by_name: r.assessed_by ? (assessorNameMap[r.assessed_by] || null) : null,
+            };
+          }
         });
       }
     }
@@ -579,8 +613,9 @@ export async function GET(request: NextRequest) {
         };
       }
 
-      // Add revision count
+      // Add revision count and latest revision attachment
       (transformed as any).revision_count = revisionCountMap[episode.id] || 0;
+      (transformed as any).latest_revision = latestRevisionMap[episode.id] || null;
 
       return transformed;
     });

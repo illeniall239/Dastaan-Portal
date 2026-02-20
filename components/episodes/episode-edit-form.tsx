@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,6 +13,7 @@ import { EpisodeRevisions } from "./episode-revisions";
 import { updateEpisodeClient } from "@/lib/episodes/client";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
+import { ScoreCard } from "@/components/episodic-evaluations/score-card";
 import { Loader2, Save, ArrowLeft, FileText } from "lucide-react";
 import type { Episode } from "@/types";
 
@@ -26,8 +27,19 @@ export function EpisodeEditForm({ episode, onSuccess }: EpisodeEditFormProps) {
   const supabase = createClient();
 
   const [loading, setLoading] = useState(false);
+  const [userRole, setUserRole] = useState<string | undefined>();
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user) {
+        supabase.from("users").select("role").eq("id", user.id).single()
+          .then(({ data }) => { if (data) setUserRole(data.role); });
+      }
+    });
+  }, [supabase]);
   const [episodeNumber, setEpisodeNumber] = useState<number | string>(episode.episode_number);
   const [additionalInfo, setAdditionalInfo] = useState(episode.additional_info || "");
+  const [initialAssessment, setInitialAssessment] = useState(episode.initial_assessment || 5);
   const [file, setFile] = useState<File | null>(null);
   const [existingAttachment, setExistingAttachment] = useState({
     url: episode.attachment_url,
@@ -86,6 +98,7 @@ export function EpisodeEditForm({ episode, onSuccess }: EpisodeEditFormProps) {
       const updateData = {
         episode_number: typeof episodeNumber === "string" ? parseInt(episodeNumber) || 1 : episodeNumber,
         additional_info: additionalInfo.trim() || null,
+        initial_assessment: initialAssessment,
         attachment_url,
         attachment_name,
         attachment_type,
@@ -206,6 +219,15 @@ export function EpisodeEditForm({ episode, onSuccess }: EpisodeEditFormProps) {
               {additionalInfo.length}/5000 characters
             </p>
           </div>
+
+          {/* Initial Assessment */}
+          <ScoreCard
+            label="Initial Assessment"
+            description="Your initial rating of this episode (1-10)"
+            score={initialAssessment}
+            onChange={setInitialAssessment}
+            disabled={loading}
+          />
         </div>
       </Card>
 
@@ -214,6 +236,8 @@ export function EpisodeEditForm({ episode, onSuccess }: EpisodeEditFormProps) {
         episodeId={episode.id}
         sourceId={episode.call_report_id || episode.story_id}
         canEdit={true}
+        userRole={userRole}
+        evaluateUrl="/evaluator/episodes"
       />
 
       {/* Action Buttons */}

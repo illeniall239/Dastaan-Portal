@@ -23,6 +23,11 @@ export interface EnrichedReport {
     decision?: string;
   } | null;
   draftProgress?: { percentage: number } | null;
+  approvalStatus?: {
+    approvals: any[];
+    isFullyApproved: boolean;
+    isRejected: boolean;
+  } | null;
 }
 
 interface EvaluationSearchableListProps {
@@ -31,6 +36,8 @@ interface EvaluationSearchableListProps {
   emptyTitle: string;
   emptyDescription: string;
   showDecisionFilter?: boolean;
+  isTeamHead?: boolean;
+  currentTeamId?: string;
 }
 
 interface Filters {
@@ -45,6 +52,8 @@ export function EvaluationSearchableList({
   emptyTitle,
   emptyDescription,
   showDecisionFilter = false,
+  isTeamHead = false,
+  currentTeamId,
 }: EvaluationSearchableListProps) {
   const [filters, setFilters] = useState<Filters>({
     search: "",
@@ -222,7 +231,7 @@ export function EvaluationSearchableList({
           </Card>
         ) : (
           filteredReports.map(
-            ({ report, hasEvaluated, myEvaluation, draftProgress }) => (
+            ({ report, hasEvaluated, myEvaluation, draftProgress, approvalStatus }) => (
               <EvaluationCard
                 key={report.id}
                 report={report}
@@ -230,6 +239,9 @@ export function EvaluationSearchableList({
                 hasEvaluated={hasEvaluated}
                 myEvaluation={myEvaluation}
                 draftProgress={draftProgress}
+                isTeamHead={isTeamHead}
+                currentTeamId={currentTeamId}
+                approvalStatus={approvalStatus}
               />
             )
           )

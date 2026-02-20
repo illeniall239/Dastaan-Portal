@@ -18,9 +18,13 @@ import {
   TrendingUp,
   TrendingDown,
   Minus,
+  XCircle,
+  Clock,
 } from "lucide-react";
 import { EvaluationProgressBar } from "@/components/evaluations/evaluation-progress-bar";
 import { IndividualEvaluationProgress } from "@/components/evaluations/individual-evaluation-progress";
+import { ShareCrossTeamButton } from "@/components/call-report/share-cross-team-button";
+import { MANDATORY_APPROVERS } from "@/lib/approvals/config";
 
 interface EvaluationCardProps {
   report: any;
@@ -32,6 +36,14 @@ interface EvaluationCardProps {
     decision?: string;
   } | null;
   draftProgress?: { percentage: number } | null;
+  isTeamHead?: boolean;
+  currentTeamId?: string;
+  approvalStatus?: {
+    approvals: any[];
+    isFullyApproved: boolean;
+    isRejected: boolean;
+    managementApproved?: boolean;
+  } | null;
 }
 
 export function EvaluationCard({
@@ -40,6 +52,9 @@ export function EvaluationCard({
   hasEvaluated,
   myEvaluation,
   draftProgress,
+  isTeamHead = false,
+  currentTeamId,
+  approvalStatus,
 }: EvaluationCardProps) {
   const hasDraft = draftProgress && draftProgress.percentage > 0;
 
@@ -103,6 +118,29 @@ export function EvaluationCard({
                   <CheckCircle2 className="h-3 w-3" />
                   Evaluated
                 </span>
+              )}
+              {hasEvaluated && approvalStatus && (
+                approvalStatus.isFullyApproved ? (
+                  <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs bg-emerald-100 text-emerald-800 border border-emerald-300">
+                    <CheckCircle2 className="h-3 w-3" />
+                    Fully Approved
+                  </span>
+                ) : approvalStatus.isRejected ? (
+                  <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs bg-red-100 text-red-800 border border-red-300">
+                    <XCircle className="h-3 w-3" />
+                    Rejected
+                  </span>
+                ) : approvalStatus.managementApproved ? (
+                  <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs bg-blue-100 text-blue-800 border border-blue-300">
+                    <CheckCircle2 className="h-3 w-3" />
+                    Management Approved
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs bg-amber-100 text-amber-800 border border-amber-300">
+                    <Clock className="h-3 w-3" />
+                    Awaiting Management Approval
+                  </span>
+                )
               )}
               {!hasEvaluated && hasDraft && (
                 <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs bg-blue-100 text-blue-800 border border-blue-300">
@@ -208,6 +246,64 @@ export function EvaluationCard({
             </div>
           )}
 
+        {/* Management approval status panel — shown on completed tab when not yet fully decided */}
+        {hasEvaluated && approvalStatus && !approvalStatus.isFullyApproved && !approvalStatus.isRejected && (
+          <div className="bg-amber-50 rounded-lg p-3 border border-amber-200 mb-4">
+            <p className="text-xs font-semibold text-amber-800 mb-2">Management Approval Status</p>
+            <div className="space-y-1">
+              {MANDATORY_APPROVERS.map(approver => {
+                const vote = approvalStatus.approvals.find(
+                  (a: any) => (a.user as any)?.email === approver.email
+                );
+                return (
+                  <div key={approver.email} className="flex items-center justify-between text-xs">
+                    <span className="text-amber-700 font-medium">{approver.label}</span>
+                    {!vote ? (
+                      <span className="text-gray-400 flex items-center gap-1">
+                        <Clock className="h-3 w-3" /> Pending
+                      </span>
+                    ) : vote.decision === "approved" ? (
+                      <span className="text-green-600 flex items-center gap-1">
+                        <CheckCircle2 className="h-3 w-3" /> Approved
+                      </span>
+                    ) : (
+                      <span className="text-red-600 flex items-center gap-1">
+                        <XCircle className="h-3 w-3" /> Rejected
+                      </span>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Episodes */}
+        {report.episodes && report.episodes.length > 0 && (
+          <div className="bg-purple-50 rounded-lg p-3 border border-purple-100 mb-4">
+            <p className="text-xs font-semibold text-purple-700 mb-2">
+              {report.episodes.length} Episode{report.episodes.length !== 1 ? "s" : ""}
+            </p>
+            <div className="space-y-1">
+              {report.episodes.map((ep: any) => (
+                <div key={ep.episode_number} className="flex items-center justify-between text-xs">
+                  <div className="flex items-center gap-2">
+                    <Badge variant="outline" className="text-[10px] px-1 py-0 h-4">
+                      EP {ep.episode_number}
+                    </Badge>
+                    <span className="text-purple-600">{ep.logged_by_name}</span>
+                  </div>
+                  {(ep.average_initial_assessment ?? ep.initial_assessment) != null && (
+                    <Badge variant="secondary" className="text-[10px] px-1 py-0 h-4 bg-blue-50 text-blue-700">
+                      Initial Assessment {(ep.average_initial_assessment ?? ep.initial_assessment)}/10
+                    </Badge>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         <div className="space-y-2 mb-4">
           {report.logline && (
             <div>
@@ -228,7 +324,13 @@ export function EvaluationCard({
             </div>
           )}
         </div>
-        <div className="flex justify-end pt-4 border-t">
+        <div className="flex justify-end gap-2 pt-4 border-t">
+          {isTeamHead && (
+            <ShareCrossTeamButton
+              callReportId={report.id}
+              currentTeamId={currentTeamId}
+            />
+          )}
           {hasEvaluated ? (
             <Button size="sm" asChild variant="outline">
               <Link href={`/${portalPrefix}/my-evaluations/${myEvaluation?.id}`}>

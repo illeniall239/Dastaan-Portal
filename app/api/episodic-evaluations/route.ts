@@ -68,17 +68,30 @@ export async function POST(request: Request) {
       );
     }
 
-    // Check if evaluator has already evaluated this episode
-    const { data: existingEvaluation } = await supabase
+    // Check if evaluator has already evaluated this episode for the same revision/share scope
+    let duplicateQuery = supabase
       .from("episodic_evaluations")
       .select("id")
       .eq("episode_id", evaluationData.episode_id)
-      .eq("evaluator_id", user.id)
-      .maybeSingle();
+      .eq("evaluator_id", user.id);
+
+    if (evaluationData.revision_id) {
+      duplicateQuery = duplicateQuery.eq("revision_id", evaluationData.revision_id);
+    } else {
+      duplicateQuery = duplicateQuery.is("revision_id", null);
+    }
+
+    if (evaluationData.cross_team_share_id) {
+      duplicateQuery = duplicateQuery.eq("cross_team_share_id", evaluationData.cross_team_share_id);
+    } else {
+      duplicateQuery = duplicateQuery.is("cross_team_share_id", null);
+    }
+
+    const { data: existingEvaluation } = await duplicateQuery.maybeSingle();
 
     if (existingEvaluation) {
       return NextResponse.json(
-        { error: "You have already evaluated this episode" },
+        { error: "You have already evaluated this episode" + (evaluationData.revision_id ? " revision" : "") },
         { status: 409 }
       );
     }
@@ -91,6 +104,8 @@ export async function POST(request: Request) {
       .insert({
         episode_id: evaluationData.episode_id,
         evaluator_id: user.id,
+        revision_id: evaluationData.revision_id || null,
+        cross_team_share_id: evaluationData.cross_team_share_id || null,
         no_of_pages: evaluationData.no_of_pages,
         no_of_scenes: evaluationData.no_of_scenes,
         events: evaluationData.events || [],

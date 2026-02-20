@@ -16,7 +16,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { Plus, X, PaperclipIcon, Trash2 } from "lucide-react";
-import type { StoryForContractTerm, ContractTerm } from "@/lib/contract-terms/client";
+import type { ProjectForContractTerm, ContractTerm } from "@/lib/contract-terms/client";
 import type { DeliveryEpisode } from "@/lib/validations/contract-terms";
 import { FileUpload } from "@/components/ui/file-upload";
 import { uploadFile, getAttachmentsForEntity, deleteFile } from "@/lib/attachments/client";
@@ -27,7 +27,7 @@ import {
 } from "@/lib/validations/contract-terms";
 
 interface ContractTermFormProps {
-  stories: StoryForContractTerm[];
+  stories: ProjectForContractTerm[];
   redirectPath: string;
   mode?: "create" | "edit";
   initialData?: ContractTerm;
@@ -96,13 +96,13 @@ export function ContractTermForm({ stories, redirectPath, mode = "create", initi
     }
   };
 
-  // Auto-populate writer name and genre when story is selected (only in create mode)
+  // Auto-populate writer name and genre when project is selected (only in create mode)
   useEffect(() => {
     if (mode === "create" && selectedStoryId) {
-      const story = stories.find((s) => s.id === selectedStoryId);
-      if (story) {
-        setWriterName(story.writer_originator_name);
-        setGenre(story.genre);
+      const project = stories.find((s) => s.id === selectedStoryId);
+      if (project) {
+        setWriterName(project.writer_name);
+        setGenre(project.genre || "");
       }
     } else if (mode === "create" && !selectedStoryId) {
       setWriterName("");
@@ -218,7 +218,12 @@ export function ContractTermForm({ stories, redirectPath, mode = "create", initi
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          story_id: selectedStoryId,
+          ...((() => {
+            const project = stories.find(s => s.id === selectedStoryId);
+            return project?.item_type === "call_report"
+              ? { call_report_id: selectedStoryId }
+              : { story_id: selectedStoryId };
+          })()),
           writer_producer_name: writerName,
           genre,
           rate_range: rateRange,
@@ -296,12 +301,12 @@ export function ContractTermForm({ stories, redirectPath, mode = "create", initi
               <SelectContent>
                 {stories.length === 0 ? (
                   <div className="px-2 py-4 text-sm text-muted-foreground text-center">
-                    No approved stories available
+                    No approved projects available
                   </div>
                 ) : (
-                  stories.map((story) => (
-                    <SelectItem key={story.id} value={story.id}>
-                      {story.title} ({story.story_id})
+                  stories.map((project) => (
+                    <SelectItem key={project.id} value={project.id}>
+                      {project.title} ({project.display_id})
                     </SelectItem>
                   ))
                 )}

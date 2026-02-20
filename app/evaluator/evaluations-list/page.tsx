@@ -1,27 +1,18 @@
 import { getCurrentUser } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import Link from "next/link";
-import { ClipboardListIcon, FileTextIcon, CalendarIcon, UserIcon, Share2 } from "lucide-react";
 import { getAllCallReports } from "@/lib/meetings/server";
 import { getEvaluationsByEvaluator } from "@/lib/evaluations/server";
 import { EvaluationProgressBar } from "@/components/evaluations/evaluation-progress-bar";
 import { PendingEvaluationsNotificationEvaluator } from "@/components/evaluations/pending-evaluations-notification-evaluator";
 import { calculateEvaluationProgress } from "@/lib/evaluations/progress";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { BackButton } from "@/components/ui/back-button";
 import { EvaluationSearchableList, type EnrichedReport } from "@/components/evaluations/evaluation-searchable-list";
 
-// Add Next.js caching - revalidate every 5 minutes
-export const revalidate = 300;
+export const dynamic = "force-dynamic";
 
 export default async function EvaluatorEvaluationsListPage({ searchParams }: { searchParams: Promise<{ view?: string }> }) {
   const resolvedSearchParams = await searchParams;
@@ -61,6 +52,18 @@ export default async function EvaluatorEvaluationsListPage({ searchParams }: { s
     .eq("id", user.id)
     .single();
 
+  // Check if current user is a team head
+  let isTeamHead = false;
+  const currentTeamId = currentUser?.team_id;
+  if (currentTeamId) {
+    const { data: team } = await supabase
+      .from("teams")
+      .select("team_head_id")
+      .eq("id", currentTeamId)
+      .single();
+    isTeamHead = team?.team_head_id === user.id;
+  }
+
   let myDrafts: any[] = [];
   try {
     const { data: drafts, error: draftsError } = await supabase
@@ -82,50 +85,6 @@ export default async function EvaluatorEvaluationsListPage({ searchParams }: { s
     })
   );
 
-  // Fetch cross-team shared call reports
-  let crossTeamShares: any[] = [];
-  if (currentUser?.team_id) {
-    try {
-      const { data: shares } = await supabase
-        .from('cross_team_shares')
-        .select(`
-          id,
-          call_report_id,
-          from_team_id,
-          status,
-          shared_at,
-          notes,
-          required_evaluations,
-          completed_evaluations,
-          from_team:teams!cross_team_shares_from_team_id_fkey (id, name),
-          call_report:call_reports (
-            id,
-            call_report_id,
-            working_title,
-            writer_name,
-            logline,
-            category,
-            created_at
-          )
-        `)
-        .eq('to_team_id', currentUser.team_id)
-        .in('status', ['pending', 'in_progress']);
-
-      if (shares) {
-        const { data: myShareEvals } = await supabase
-          .from('evaluator_forms')
-          .select('cross_team_share_id')
-          .eq('evaluator_id', user.id)
-          .not('cross_team_share_id', 'is', null);
-
-        const evaluatedShareIds = new Set((myShareEvals || []).map((e: any) => e.cross_team_share_id));
-        crossTeamShares = shares.filter((s: any) => !evaluatedShareIds.has(s.id));
-      }
-    } catch (error) {
-      console.error('Error fetching cross-team shares:', error);
-    }
-  }
-
   // Determine view
   const currentView = resolvedSearchParams.view === 'completed' ? 'completed' : 'pending';
 
@@ -137,12 +96,59 @@ export default async function EvaluatorEvaluationsListPage({ searchParams }: { s
     filteredReports = callReports.filter(report => myEvaluatedReportIds.has(report.id));
   }
 
+  // For completed tab: bulk-fetch story approvals to show mgmt approval status on cards
+  const approvalsByReportId = new Map<string, any[]>();
+  if (currentView === 'completed' && filteredReports.length > 0) {
+    const completedIds = filteredReports.map(r => r.id);
+    // No join — story_approvals.user_id FK references auth.users, not public.users
+    const { data: rawApprovals } = await supabase
+      .from('story_approvals')
+      .select('call_report_id, user_id, decision, approver_type')
+      .in('call_report_id', completedIds);
+
+    // Fetch user info separately via admin client (bypasses cross-schema FK limitation)
+    const approverUserIds = [...new Set((rawApprovals || []).map(a => a.user_id))];
+    let userMap: Record<string, { name: string; email: string }> = {};
+    if (approverUserIds.length > 0) {
+      const adminClient = createAdminClient();
+      const { data: approverUsers } = await adminClient
+        .from('users')
+        .select('id, name, email')
+        .in('id', approverUserIds);
+      for (const u of approverUsers || []) {
+        userMap[u.id] = { name: u.name, email: u.email };
+      }
+    }
+
+    for (const a of rawApprovals || []) {
+      const enriched = { ...a, user: userMap[a.user_id] || null };
+      const list = approvalsByReportId.get(a.call_report_id) || [];
+      list.push(enriched);
+      approvalsByReportId.set(a.call_report_id, list);
+    }
+  }
+
+  function computeApprovalStatus(approvals: any[]) {
+    const mgmtApproved = approvals.filter(a => a.approver_type === 'management' && a.decision === 'approved').length;
+    const mgmtRejected = approvals.filter(a => a.approver_type === 'management' && a.decision === 'rejected').length;
+    const thirdApproved = approvals.filter(a => a.approver_type !== 'management' && a.decision === 'approved').length;
+    return {
+      approvals,
+      isFullyApproved: mgmtApproved >= 2 && thirdApproved >= 1,
+      isRejected: mgmtRejected > 0,
+      managementApproved: mgmtApproved >= 2,
+    };
+  }
+
   // Build enriched reports for client component
   const enrichedReports: EnrichedReport[] = filteredReports.map(report => ({
     report,
     hasEvaluated: myEvaluatedReportIds.has(report.id),
     myEvaluation: myEvaluations.find(e => e.call_report_id === report.id) || null,
     draftProgress: draftProgressMap.get(report.id) || null,
+    approvalStatus: currentView === 'completed'
+      ? computeApprovalStatus(approvalsByReportId.get(report.id) || [])
+      : null,
   }));
 
   return (
@@ -187,77 +193,6 @@ export default async function EvaluatorEvaluationsListPage({ searchParams }: { s
         </Suspense>
       )}
 
-      {/* Evaluation Requests from Other Teams */}
-      {currentView === "pending" && crossTeamShares.length > 0 && (
-        <div className="space-y-3">
-          <div className="flex items-center gap-2">
-            <Share2 className="h-5 w-5 text-purple-600" />
-            <h2 className="text-lg font-semibold text-purple-900">Evaluation Requests</h2>
-            <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">
-              {crossTeamShares.length}
-            </Badge>
-          </div>
-          <div className="grid gap-3">
-            {crossTeamShares.map((share: any) => (
-              <Card key={share.id} className="border-purple-200 bg-purple-50/30 hover:shadow-md transition-shadow">
-                <CardHeader className="pb-2">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <CardTitle className="text-lg">{share.call_report?.working_title || 'Untitled'}</CardTitle>
-                        <Badge variant="outline" className="bg-purple-100 text-purple-700 border-purple-300 text-xs">
-                          Requested by {share.from_team?.name || 'Unknown Team'}
-                        </Badge>
-                      </div>
-                      <div className="text-sm text-muted-foreground space-y-1">
-                        <div className="flex items-center gap-2">
-                          <UserIcon className="h-4 w-4" />
-                          <span>Writer: {share.call_report?.writer_name || 'N/A'}</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <FileTextIcon className="h-4 w-4" />
-                          <span>Call Report: {share.call_report?.call_report_id || '—'}</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <CalendarIcon className="h-4 w-4" />
-                          <span>Shared: {new Date(share.shared_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-xs text-gray-500">
-                        {share.completed_evaluations}/{share.required_evaluations} evaluations
-                      </div>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent className="pt-2">
-                  {share.notes && (
-                    <div className="mb-3 text-sm text-purple-700 bg-purple-50 p-2 rounded border border-purple-200">
-                      {share.notes}
-                    </div>
-                  )}
-                  {share.call_report?.logline && (
-                    <div className="mb-3">
-                      <p className="text-sm font-medium text-muted-foreground">Logline:</p>
-                      <p className="text-sm line-clamp-2">{share.call_report.logline}</p>
-                    </div>
-                  )}
-                  <div className="flex justify-end pt-3 border-t">
-                    <Button size="sm" asChild className="bg-purple-600 hover:bg-purple-700">
-                      <Link href={`/evaluator/evaluate/${share.call_report?.id}?crossTeamShareId=${share.id}`}>
-                        <ClipboardListIcon className="h-4 w-4 mr-2" />
-                        Evaluate
-                      </Link>
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </div>
-      )}
-
       {/* Searchable Evaluations List */}
       <EvaluationSearchableList
         key={currentView}
@@ -268,6 +203,8 @@ export default async function EvaluatorEvaluationsListPage({ searchParams }: { s
           ? "You have no pending evaluations at the moment."
           : "You haven't completed any evaluations yet."}
         showDecisionFilter={currentView === "completed"}
+        isTeamHead={isTeamHead}
+        currentTeamId={currentTeamId}
       />
     </div>
   );
