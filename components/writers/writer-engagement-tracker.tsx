@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { format, startOfMonth, endOfMonth, subMonths, parseISO } from 'date-fns';
+import { format, startOfMonth, endOfMonth, parseISO } from 'date-fns';
 import { Plus, Save, Trash2, Loader2, Pencil, X, Check } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
@@ -29,16 +29,18 @@ interface WriterEngagement {
   updated_at: string;
 }
 
-// Build last 18 months as filter options
+// Build month options from Jan 2026 to Dec 2028
 function buildMonthOptions() {
-  const now = new Date();
   const options: { label: string; value: string }[] = [];
-  for (let i = 0; i < 18; i++) {
-    const d = subMonths(now, i);
+  const start = new Date(2026, 0, 1); // Jan 2026
+  const end = new Date(2028, 11, 1);  // Dec 2028
+  let d = start;
+  while (d <= end) {
     options.push({
       label: format(d, 'MMMM yyyy'),
       value: format(d, 'yyyy-MM'),
     });
+    d = new Date(d.getFullYear(), d.getMonth() + 1, 1);
   }
   return options;
 }
