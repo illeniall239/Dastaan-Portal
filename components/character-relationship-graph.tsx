@@ -261,15 +261,6 @@ export function CharacterRelationshipGraph({ relationships }: CharacterRelations
         },
       };
 
-        id: edge.id,
-        source: edge.source,
-        target: edge.target,
-        type: edge.type,
-        relationshipType: rel.relationship_type,
-        color,
-        strokeWidth,
-      });
-
       return edge;
     });
 
