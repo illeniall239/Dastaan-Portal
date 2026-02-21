@@ -104,12 +104,6 @@ export default async function EditContentDepartmentNegotiationPage({
           writer_name: s.writer_originator_name,
           genre: s.genre,
           item_type: "story",
-          writers: [],
-          genres: [],
-          logline: null,
-          content_type: null,
-          target_slot: null,
-          call_report_display_id: null,
         }))}
         redirectPath="/content-department/contract-terms"
         mode="edit"

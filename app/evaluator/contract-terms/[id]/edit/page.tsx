@@ -87,12 +87,6 @@ export default async function EditEvaluatorNegotiationPage({
           writer_name: s.writer_originator_name,
           genre: s.genre,
           item_type: "story",
-          writers: [],
-          genres: [],
-          logline: null,
-          content_type: null,
-          target_slot: null,
-          call_report_display_id: null,
         }))}
         redirectPath="/evaluator/contract-terms"
         mode="edit"
