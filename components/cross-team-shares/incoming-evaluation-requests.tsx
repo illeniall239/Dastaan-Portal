@@ -105,7 +105,7 @@ export function IncomingEvaluationRequests({
           <Inbox className="h-12 w-12 text-muted-foreground mb-4" />
           <h3 className="text-lg font-semibold mb-2">No incoming evaluation requests</h3>
           <p className="text-sm text-muted-foreground max-w-sm">
-            When another team requests your team&apos;s evaluation of a call report or episodes, it will appear here.
+            When another team requests your team&apos;s evaluation of a one liner or episodes, it will appear here.
           </p>
         </CardContent>
       </Card>
