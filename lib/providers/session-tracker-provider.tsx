@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { createClient } from "@/lib/supabase/client";
 
 const HEARTBEAT_INTERVAL = 5 * 60 * 1000; // 5 minutes
 
@@ -11,8 +12,12 @@ const HEARTBEAT_INTERVAL = 5 * 60 * 1000; // 5 minutes
  */
 export function SessionTrackerProvider() {
   useEffect(() => {
-    // Send once immediately on mount, then every 5 minutes
-    const sendHeartbeat = () => {
+    const supabase = createClient();
+
+    // Check local session first — avoids a 401 on the login page
+    const sendHeartbeat = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
       fetch("/api/auth/heartbeat", { method: "POST" }).catch(() => {
         // Silently ignore — heartbeat failures are non-fatal
       });
