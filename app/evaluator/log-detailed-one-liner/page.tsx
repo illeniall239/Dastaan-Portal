@@ -860,15 +860,11 @@ export default function LogDetailedOneLinerPage() {
                   <Button
                     type="button"
                     onClick={() => {
-                      console.log('=== VISUALIZE CLICKED ===');
-                      console.log('Raw characterRelationshipRows:', characterRelationshipRows);
                       const filtered = characterRelationshipRows.filter(r =>
                         r.character_a_name.trim() && r.character_b_name.trim() &&
                         r.character_a_role && r.character_b_role &&
                         r.relationship_type && r.relationship_description.trim()
                       );
-                      console.log('Filtered relationships:', filtered);
-                      console.log('Filtered count:', filtered.length);
                       setShowVisualization(true);
                     }}
                     size="sm"
@@ -1138,7 +1134,6 @@ export default function LogDetailedOneLinerPage() {
                       created_at: new Date().toISOString(),
                       updated_at: new Date().toISOString(),
                     };
-                    console.log('Transformed relationship data:', transformedData);
                     return transformedData;
                   })}
               />

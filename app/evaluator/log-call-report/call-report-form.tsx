@@ -158,7 +158,6 @@ export function CallReportForm({
   const [attachmentsMarkedForDeletion, setAttachmentsMarkedForDeletion] = useState<string[]>([]);
 
   useEffect(() => {
-    console.log("📎 FORM - memoizedInitialAttachments updated:", memoizedInitialAttachments);
     setExistingAttachments(memoizedInitialAttachments);
     setAttachmentsMarkedForDeletion([]);
   }, [memoizedInitialAttachments]);
@@ -183,17 +182,6 @@ export function CallReportForm({
     toast.info("Attachment marked for removal. Save to apply.", { duration: 4000 });
   };
 
-  // Debug logging for edit mode (state is already initialized from initialData in useState)
-  useEffect(() => {
-    if (mode === "edit" && initialData) {
-      console.log("📝 FORM - Edit mode, initialData loaded:", {
-        category: initialData.category,
-        genre: initialData.genre,
-        target_slot: initialData.target_slot,
-        content_type: initialData.content_type,
-      });
-    }
-  }, [mode, initialData]);
 
   // Fetch writers when in edit mode
   useEffect(() => {

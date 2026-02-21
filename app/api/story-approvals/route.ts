@@ -218,7 +218,6 @@ export async function POST(request: NextRequest) {
         console.error("[story-approvals] Error fetching mandatory approver users:", usersError);
       }
 
-      console.log("[story-approvals] Mandatory approver users found:", mandatoryUsers);
 
       const recipientIds = (mandatoryUsers || []).map(u => u.id);
       const storyTitle = callReport?.working_title || callReport?.call_report_id || call_report_id;
@@ -234,7 +233,6 @@ export async function POST(request: NextRequest) {
           call_report_id,
           user.id
         );
-        console.log("[story-approvals] Notifications sent:", notifResult?.length ?? 0);
       } else {
         console.warn("[story-approvals] No mandatory approver users found for emails:", MANDATORY_APPROVER_EMAILS);
       }

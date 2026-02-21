@@ -67,7 +67,19 @@
       "Bash(npx vitest:*)",
       "Bash(npm outdated:*)",
       "Bash(npm audit:*)",
-      "Bash(npm ls:*)"
+      "Bash(npm ls:*)",
+      "Bash(fc /b \"app\\\\content-department\\\\log-call-report\\\\call-report-form.tsx\" \"app\\\\evaluator\\\\log-call-report\\\\call-report-form.tsx\")",
+      "Bash(fc:*)",
+      "Bash(copy /Y \"app\\\\content-department\\\\log-call-report\\\\call-report-form.tsx\" \"app\\\\evaluator\\\\log-call-report\\\\call-report-form.tsx\")",
+      "Bash(copy /Y \"app\\\\content-department\\\\log-call-report\\\\call-report-form.tsx\" \"app\\\\gcm\\\\log-call-report\\\\call-report-form.tsx\")",
+      "Bash(copy:*)",
+      "Bash(node_modules/.bin/next build)",
+      "Bash(echo:*)",
+      "Bash(exit 0)",
+      "Bash(node:*)",
+      "Bash(fi)",
+      "Bash(done)",
+      "Bash(cd:*)"
     ],
     "deny": [],
     "ask": []

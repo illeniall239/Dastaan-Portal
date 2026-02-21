@@ -52,7 +52,6 @@ export function ProductionMetricsCards({
    * Opens modal with list of unique writers
    */
   const handleWritersEngagedClick = () => {
-    console.log('Writers Engaged clicked', metrics.uniqueWriters);
 
     // Show modal even if no data
     setDrillDownData({
@@ -87,7 +86,6 @@ export function ProductionMetricsCards({
    * Opens modal with list of stories in discussion
    */
   const handleStoriesInDiscussionClick = () => {
-    console.log('Stories in Discussion clicked', metrics.storiesInDiscussionDetails);
 
     // Show modal even if no data
     setDrillDownData({
@@ -122,7 +120,6 @@ export function ProductionMetricsCards({
    * Opens modal with slot-wise breakdown and details
    */
   const handleScriptsInWritingClick = () => {
-    console.log('Scripts in Writing clicked', metrics.scriptsInWriting);
 
     // Show detailed list of scripts in writing
     setDrillDownData({
@@ -146,7 +143,6 @@ export function ProductionMetricsCards({
    * Opens modal with detailed list
    */
   const handleScriptsCompletedClick = () => {
-    console.log('Scripts Completed clicked', metrics.scriptsCompleted);
 
     // Show detailed list of completed scripts
     setDrillDownData({
@@ -170,7 +166,6 @@ export function ProductionMetricsCards({
    * Opens modal with list of projects currently shooting
    */
   const handleProjectsOnShootClick = () => {
-    console.log('Projects on Shoot clicked', metrics.projectsOnShootDetails);
 
     // Show modal even if no data
     setDrillDownData({
@@ -194,7 +189,6 @@ export function ProductionMetricsCards({
    * Opens modal with list of projects currently on air
    */
   const handleProjectsOnAirClick = () => {
-    console.log('Projects on Air clicked', metrics.projectsOnAirDetails);
 
     // Show modal even if no data
     setDrillDownData({
@@ -218,7 +212,6 @@ export function ProductionMetricsCards({
    * Opens modal with historical list
    */
   const handleProjectsAiredClick = () => {
-    console.log('Projects Aired clicked', metrics.projectsAired);
 
     // Show modal even if no data
     setDrillDownData({

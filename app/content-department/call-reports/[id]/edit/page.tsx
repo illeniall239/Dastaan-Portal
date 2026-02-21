@@ -70,9 +70,6 @@ export default function ContentDepartmentCallReportEditPage({ params }: CallRepo
 
         // Fetch call report
         const callReportData = await getCallReportClient(resolvedParams.id);
-        console.log("📊 EDIT PAGE - Call Report Data:", callReportData);
-        console.log("📊 EDIT PAGE - Genre:", callReportData.genre);
-        console.log("📊 EDIT PAGE - Target Slot:", callReportData.target_slot);
         setCallReport(callReportData);
 
         const { data: attachmentsData } = await supabase
@@ -94,7 +91,6 @@ export default function ContentDepartmentCallReportEditPage({ params }: CallRepo
           }) || [];
 
         setAttachments(attachmentsWithUrl);
-        console.log("📎 EDIT PAGE - Attachments fetched:", attachmentsWithUrl);
 
         // Check permissions: owner, manager/admin, or same team
         const hasEditPermission =

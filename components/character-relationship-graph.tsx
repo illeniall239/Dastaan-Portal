@@ -88,9 +88,6 @@ const nodeTypes = {
 export function CharacterRelationshipGraph({ relationships }: CharacterRelationshipGraphProps) {
   const { getNodes } = useReactFlow();
 
-  console.log('=== CharacterRelationshipGraph RENDER ===');
-  console.log('Received relationships:', relationships);
-  console.log('Relationships count:', relationships.length);
 
   // Image dimensions for export
   const imageWidth = 1920;
@@ -185,7 +182,6 @@ export function CharacterRelationshipGraph({ relationships }: CharacterRelations
     });
 
     const result = Array.from(charMap.values());
-    console.log('Extracted characters:', result);
     return result;
   }, [relationships]);
 
@@ -218,8 +214,6 @@ export function CharacterRelationshipGraph({ relationships }: CharacterRelations
       };
     });
 
-    console.log('Created initialNodes:', nodes);
-    console.log('Node IDs:', nodes.map(n => n.id));
     return nodes;
   }, [characters]);
 
@@ -267,7 +261,6 @@ export function CharacterRelationshipGraph({ relationships }: CharacterRelations
         },
       };
 
-      console.log(`Edge ${index}:`, {
         id: edge.id,
         source: edge.source,
         target: edge.target,
@@ -280,10 +273,6 @@ export function CharacterRelationshipGraph({ relationships }: CharacterRelations
       return edge;
     });
 
-    console.log('Created initialEdges:', edges);
-    console.log('Edge count:', edges.length);
-    console.log('Edge sources:', edges.map(e => e.source));
-    console.log('Edge targets:', edges.map(e => e.target));
     return edges;
   }, [relationships]);
 
@@ -292,21 +281,13 @@ export function CharacterRelationshipGraph({ relationships }: CharacterRelations
 
   // Sync nodes and edges when relationships change
   useEffect(() => {
-    console.log('useEffect: Syncing nodes with initialNodes');
-    console.log('Setting nodes to:', initialNodes);
     setNodes(initialNodes);
   }, [initialNodes, setNodes]);
 
   useEffect(() => {
-    console.log('useEffect: Syncing edges with initialEdges');
-    console.log('Setting edges to:', initialEdges);
     setEdges(initialEdges);
   }, [initialEdges, setEdges]);
 
-  console.log('Final nodes state:', nodes);
-  console.log('Final edges state:', edges);
-  console.log('Nodes count:', nodes.length);
-  console.log('Edges count:', edges.length);
 
   if (relationships.length === 0) {
     return (

@@ -508,7 +508,6 @@ export default function ContentDepartmentEpisodesPage() {
         episodes: episodesData,
       };
 
-      console.log("Sending payload:", JSON.stringify(payload, null, 2));
 
       const response = await fetch("/api/episodes", {
         method: "POST",

@@ -119,7 +119,6 @@ function getRedisClient(): Redis | null {
       url,
       token,
     });
-    console.log("[Rate Limit] Redis client initialized successfully");
     return redis;
   } catch (error) {
     console.error("[Rate Limit] Failed to initialize Redis client:", error);
@@ -324,7 +323,6 @@ export async function resetRateLimit(
     // Upstash Ratelimit uses a specific key format: {prefix}:{identifier}
     const key = `ratelimit:${identifier}`;
     await client.del(key);
-    console.log(`[Rate Limit] Reset rate limit for identifier: ${identifier}`);
   } catch (error) {
     console.error("[Rate Limit] Error resetting rate limit:", error);
   }

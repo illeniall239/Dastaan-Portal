@@ -110,7 +110,6 @@ export default function GcmCalendar() {
         organizer_name: "Content Team" // Default fallback
       }));
 
-      console.log("✅ Successfully fetched meetings:", processedData.length);
       setMeetings(processedData);
     } catch (error: any) {
       console.error("❌ Error fetching meetings:", error);
