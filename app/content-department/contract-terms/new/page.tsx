@@ -1,10 +1,8 @@
 import { createClient } from "@/lib/supabase/server";
-import { createAdminClient } from "@/lib/supabase/admin";
 import { redirect } from "next/navigation";
 import { ContractTermForm } from "@/components/contract-terms/contract-term-form";
 import { BackButton } from "@/components/ui/back-button";
 import type { ProjectForContractTerm } from "@/lib/contract-terms/client";
-import { getApprovedCallReportIds } from "@/lib/contract-terms/approved-call-reports";
 
 export const dynamic = "force-dynamic";
 
@@ -30,12 +28,18 @@ export default async function NewContentDepartmentNegotiationPage() {
   }
 
   const hasGlobalAccess = userData.role && ["admin", "management"].includes(userData.role);
-  const adminClient = createAdminClient();
 
-  // Fetch approved stories without contract terms
+  // Fetch approved stories without contract terms, joining linked call report for writers/genre
   let storiesQuery = supabase
     .from("stories")
-    .select(`id, story_id, title, writer_originator_name, genre, status, team_id, negotiations!left(id)`)
+    .select(`
+      id, story_id, title, writer_originator_name, genre, status, team_id,
+      negotiations!left(id),
+      call_reports!story_id(
+        call_report_id, logline, genre, content_type, target_slot,
+        call_report_writers(display_order, writer:writers(name))
+      )
+    `)
     .eq("status", "approved")
     .is("negotiations.id", null)
     .order("created_at", { ascending: false });
@@ -46,50 +50,39 @@ export default async function NewContentDepartmentNegotiationPage() {
 
   const { data: stories } = await storiesQuery;
 
-  // Compute approved call_report_ids directly from story_approvals + evaluator_forms
-  const approvedCrIds = await getApprovedCallReportIds(adminClient);
+  const allProjects: ProjectForContractTerm[] = (stories || []).map((s) => {
+    const crs = (s as any).call_reports || [];
+    const cr = crs[0] || null;
 
-  let callReportProjects: ProjectForContractTerm[] = [];
-  if (approvedCrIds.length > 0) {
-    const { data: existingNegs } = await adminClient
-      .from("negotiations")
-      .select("call_report_id")
-      .in("call_report_id", approvedCrIds);
+    const writers: string[] = cr
+      ? ((cr.call_report_writers || []) as any[])
+          .sort((a: any, b: any) => a.display_order - b.display_order)
+          .map((w: any) => {
+            const wr = w.writer;
+            return Array.isArray(wr) ? wr[0]?.name : wr?.name;
+          })
+          .filter(Boolean)
+      : s.writer_originator_name ? [s.writer_originator_name] : [];
 
-    const negotiatedIds = new Set((existingNegs || []).map((n) => n.call_report_id).filter(Boolean));
-    const eligibleIds = approvedCrIds.filter((id) => !negotiatedIds.has(id));
+    const genres: string[] = cr?.genre
+      ? (Array.isArray(cr.genre) ? cr.genre : [cr.genre]).filter(Boolean)
+      : s.genre ? [s.genre] : [];
 
-    if (eligibleIds.length > 0) {
-      const { data: crs } = await adminClient
-        .from("call_reports")
-        .select("id, call_report_id, working_title, genre, call_report_writers(writer_name, display_order)")
-        .in("id", eligibleIds)
-        .order("created_at", { ascending: false });
-
-      callReportProjects = (crs || []).map((cr) => ({
-        id: cr.id,
-        display_id: cr.call_report_id,
-        title: cr.working_title || "(Untitled)",
-        writer_name: ((cr.call_report_writers || []) as any[])
-          .sort((a, b) => a.display_order - b.display_order)
-          .map((w) => w.writer_name)
-          .join(", ") || "N/A",
-        genre: Array.isArray(cr.genre) ? cr.genre.join(", ") : (cr.genre || null),
-        item_type: "call_report" as const,
-      }));
-    }
-  }
-
-  const storyProjects: ProjectForContractTerm[] = (stories || []).map((s) => ({
-    id: s.id,
-    display_id: s.story_id,
-    title: s.title,
-    writer_name: s.writer_originator_name,
-    genre: s.genre,
-    item_type: "story" as const,
-  }));
-
-  const allProjects = [...storyProjects, ...callReportProjects];
+    return {
+      id: s.id,
+      display_id: s.story_id,
+      title: s.title,
+      writer_name: writers.join(", ") || s.writer_originator_name || "",
+      genre: s.genre,
+      item_type: "story" as const,
+      writers,
+      genres,
+      logline: cr?.logline || null,
+      content_type: cr?.content_type || null,
+      target_slot: cr?.target_slot || null,
+      call_report_display_id: cr?.call_report_id || null,
+    };
+  });
 
   return (
     <div className="mobile-container mobile-section">

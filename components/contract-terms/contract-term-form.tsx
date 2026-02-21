@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -39,8 +40,6 @@ export function ContractTermForm({ stories, redirectPath, mode = "create", initi
 
   // Form state - initialize with initialData if in edit mode
   const [selectedStoryId, setSelectedStoryId] = useState(initialData?.story_id || "");
-  const [writerName, setWriterName] = useState(initialData?.writer_producer_name || "");
-  const [genre, setGenre] = useState(initialData?.genre || "");
   const [rateRange, setRateRange] = useState(initialData?.rate_range || "");
   const [proposedPrice, setProposedPrice] = useState(initialData?.agreed_price?.toString() || "");
   const [estimatedEpisodes, setEstimatedEpisodes] = useState(initialData?.estimated_episodes?.toString() || "");
@@ -96,19 +95,10 @@ export function ContractTermForm({ stories, redirectPath, mode = "create", initi
     }
   };
 
-  // Auto-populate writer name and genre when project is selected (only in create mode)
-  useEffect(() => {
-    if (mode === "create" && selectedStoryId) {
-      const project = stories.find((s) => s.id === selectedStoryId);
-      if (project) {
-        setWriterName(project.writer_name);
-        setGenre(project.genre || "");
-      }
-    } else if (mode === "create" && !selectedStoryId) {
-      setWriterName("");
-      setGenre("");
-    }
-  }, [selectedStoryId, stories, mode]);
+  // Derived from selected project — no useState needed
+  const selectedProject = stories.find((s) => s.id === selectedStoryId) ?? null;
+  const writerBadges = selectedProject?.writers ?? [];
+  const genreBadges = selectedProject?.genres ?? [];
 
   const handleAddEpisode = () => {
     // Auto-increment episode number
@@ -218,14 +208,11 @@ export function ContractTermForm({ stories, redirectPath, mode = "create", initi
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          ...((() => {
-            const project = stories.find(s => s.id === selectedStoryId);
-            return project?.item_type === "call_report"
-              ? { call_report_id: selectedStoryId }
-              : { story_id: selectedStoryId };
-          })()),
-          writer_producer_name: writerName,
-          genre,
+          ...(selectedProject?.item_type === "call_report"
+            ? { call_report_id: selectedStoryId }
+            : { story_id: selectedStoryId }),
+          writer_producer_name: writerBadges.join(", "),
+          genre: genreBadges.join(", "),
           rate_range: rateRange,
           proposed_price: proposedPrice ? parseFloat(proposedPrice) : null,
           agreed_price: parseFloat(proposedPrice),
@@ -317,31 +304,59 @@ export function ContractTermForm({ stories, redirectPath, mode = "create", initi
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="writerName">Writer Name *</Label>
-              <Input
-                id="writerName"
-                value={writerName}
-                readOnly
-                disabled
-                placeholder="Auto-populated from project"
-                className="bg-muted"
-              />
+          {selectedProject && (
+            <div className="rounded-lg border bg-muted/40 p-4 space-y-3 text-sm">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">Writer(s)</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {writerBadges.length > 0
+                      ? writerBadges.map((name, i) => (
+                          <Badge key={i} variant="secondary">{name}</Badge>
+                        ))
+                      : <span className="text-muted-foreground italic">—</span>}
+                  </div>
+                </div>
+                <div>
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">Genre(s)</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {genreBadges.length > 0
+                      ? genreBadges.map((g, i) => (
+                          <Badge key={i} variant="secondary">{g}</Badge>
+                        ))
+                      : <span className="text-muted-foreground italic">—</span>}
+                  </div>
+                </div>
+              </div>
+              {selectedProject.logline && (
+                <div className="border-t pt-3">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">Logline</p>
+                  <p className="text-foreground leading-relaxed">{selectedProject.logline}</p>
+                </div>
+              )}
+              {(selectedProject.content_type || selectedProject.target_slot) && (
+                <div className="flex gap-6 border-t pt-3">
+                  {selectedProject.content_type && (
+                    <div>
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-0.5">Content Type</p>
+                      <p>{selectedProject.content_type}</p>
+                    </div>
+                  )}
+                  {selectedProject.target_slot && (
+                    <div>
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-0.5">Target Slot</p>
+                      <p>{selectedProject.target_slot}</p>
+                    </div>
+                  )}
+                </div>
+              )}
+              {selectedProject.call_report_display_id && (
+                <p className="text-xs text-muted-foreground border-t pt-2">
+                  From Writer Engagement Report: <span className="font-mono">{selectedProject.call_report_display_id}</span>
+                </p>
+              )}
             </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="genre">Genre *</Label>
-              <Input
-                id="genre"
-                value={genre}
-                readOnly
-                disabled
-                placeholder="Auto-populated from project"
-                className="bg-muted"
-              />
-            </div>
-          </div>
+          )}
         </CardContent>
       </Card>
 

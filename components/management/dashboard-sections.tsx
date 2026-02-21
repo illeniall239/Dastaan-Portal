@@ -13,6 +13,7 @@ import { getPipelineOverview } from "@/lib/management/pipeline-analytics";
 import { getAllEvaluatorStats } from "@/lib/management/evaluator-performance";
 import { getRecentActivity } from "@/lib/management/activity-analytics";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { ExportButton } from "@/components/management/export-button";
 
 // Dynamic imports for heavy client components (reduces initial bundle size)
@@ -231,18 +232,22 @@ export async function EvaluatorPerformanceSection() {
  * Contract Terms Section - Async Component
  */
 export async function ContractTermsSection() {
-  const supabase = await createClient();
+  const adminClient = createAdminClient();
 
-  const { data: contractTerms } = await supabase
+  const { data: contractTerms } = await adminClient
     .from("negotiations")
     .select(
       `
       *,
-      stories!inner(
+      stories!left(
         story_id,
         title,
         writer_originator_name,
         genre
+      ),
+      call_reports!left(
+        call_report_id,
+        working_title
       )
     `
     )

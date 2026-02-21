@@ -49,9 +49,16 @@ export interface ProjectForContractTerm {
   id: string;           // UUID of the story or call_report
   display_id: string;   // ST-2025-0001 or CR-2026-7915
   title: string;
-  writer_name: string;
-  genre: string | null;
+  writer_name: string;              // comma-joined, kept for backward compat
+  genre: string | string[] | null;  // kept for backward compat
   item_type: "story" | "call_report";
+  // Enriched from linked call report:
+  writers: string[];                // ordered names from call_report_writers
+  genres: string[];                 // from call_reports.genre TEXT[]
+  logline: string | null;
+  content_type: string | null;
+  target_slot: string | null;
+  call_report_display_id: string | null;  // "CR-2026-XXXX"
 }
 
 /**

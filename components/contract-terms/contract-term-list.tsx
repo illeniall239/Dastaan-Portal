@@ -18,7 +18,7 @@ export function ContractTermList({ contractTerms, basePath }: ContractTermListPr
       case "in_progress":
         return <Badge variant="default">In Progress</Badge>;
       case "agreed":
-        return <Badge className="bg-green-600">Agreed</Badge>;
+        return <Badge className="bg-green-600 text-white">Agreed</Badge>;
       case "failed":
         return <Badge variant="destructive">Failed</Badge>;
       default:
@@ -61,7 +61,7 @@ export function ContractTermList({ contractTerms, basePath }: ContractTermListPr
             <div className="flex items-start justify-between">
               <div className="space-y-1">
                 <CardTitle className="text-lg">
-                  {(negotiation as any).stories?.title || "Unknown Project"}
+                  {(negotiation as any).stories?.title || (negotiation as any).call_reports?.working_title || "Unknown Project"}
                 </CardTitle>
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <span>{negotiation.negotiation_id}</span>

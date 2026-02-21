@@ -42,7 +42,7 @@ export function ContractTermDetails({
       case "in_progress":
         return <Badge variant="default" className="text-lg">In Progress</Badge>;
       case "agreed":
-        return <Badge className="bg-green-600 text-lg">Agreed</Badge>;
+        return <Badge className="bg-green-600 text-white text-lg">Agreed</Badge>;
       case "failed":
         return <Badge variant="destructive" className="text-lg">Failed</Badge>;
       default:

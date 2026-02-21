@@ -33,7 +33,7 @@ export function ContractTermsOverview({ contractTerms }: ContractTermsOverviewPr
       case "in_progress":
         return <Badge variant="default">In Progress</Badge>;
       case "agreed":
-        return <Badge className="bg-green-600">Agreed</Badge>;
+        return <Badge className="bg-green-600 text-white">Agreed</Badge>;
       case "failed":
         return <Badge variant="destructive">Failed</Badge>;
       default:
@@ -143,7 +143,7 @@ export function ContractTermsOverview({ contractTerms }: ContractTermsOverviewPr
                 >
                   <div className="flex-1 min-w-0">
                     <p className="font-medium text-sm sm:text-base">
-                      {negotiation.stories?.title || "Unknown Project"}
+                      {negotiation.stories?.title || (negotiation as any).call_reports?.working_title || "Unknown Project"}
                     </p>
                     <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mt-1 text-xs sm:text-sm text-muted-foreground">
                       <span className="truncate">{negotiation.negotiation_id}</span>
