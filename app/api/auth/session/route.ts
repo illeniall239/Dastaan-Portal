@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { setUserSession } from "@/lib/session";
 import { logger } from "@/lib/logger";
 import { applyRateLimit, addRateLimitHeaders, withCors } from "@/lib/api-middleware";
@@ -39,7 +40,21 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Set session cookie
+    // Record login event in user_sessions
+    let sessionId: string | undefined;
+    try {
+      const adminClient = createAdminClient();
+      const { data: newSession } = await adminClient
+        .from("user_sessions")
+        .insert({ user_id: profile.id })
+        .select("id")
+        .single();
+      sessionId = newSession?.id;
+    } catch (err) {
+      logger.warn("Failed to record user session:", err);
+    }
+
+    // Set session cookie (include sessionId for heartbeat/logout)
     await setUserSession({
       id: profile.id,
       email: profile.email,
@@ -47,6 +62,7 @@ export async function POST(request: NextRequest) {
       role: profile.role,
       position: profile.position,
       department: profile.department,
+      sessionId,
     });
 
     // Return user profile including role for client-side routing

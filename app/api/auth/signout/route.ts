@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
-import { clearUserSession } from "@/lib/session";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { clearUserSession, getUserSession } from "@/lib/session";
 import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
 import { applyRateLimit, addRateLimitHeaders, withCors } from "@/lib/api-middleware";
@@ -24,6 +25,20 @@ export async function POST(request: Request) {
     const userContext = extractUserContext(request);
 
     if (user) {
+      // Record logout time before clearing the session cookie
+      try {
+        const session = await getUserSession();
+        if (session?.sessionId) {
+          const adminClient = createAdminClient();
+          await adminClient
+            .from("user_sessions")
+            .update({ logout_at: new Date().toISOString() })
+            .eq("id", session.sessionId);
+        }
+      } catch (err) {
+        logger.warn("Failed to record logout time:", err);
+      }
+
       await supabase.auth.signOut();
       // Clear session cookie
       await clearUserSession();

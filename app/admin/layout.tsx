@@ -36,6 +36,11 @@ export default async function AdminLayout({
       icon: "fileText",
     },
     {
+      title: "Login Activity",
+      href: "/admin/login-activity",
+      icon: "activity",
+    },
+    {
       title: "Settings",
       href: "/admin/settings",
       icon: "settings",
