@@ -30,6 +30,33 @@ export async function GET(request: NextRequest) {
     const writerId = searchParams.get('writerId');
     const dateFrom = searchParams.get('dateFrom');
     const dateTo = searchParams.get('dateTo');
+    const distinctMonths = searchParams.get('distinct_months');
+
+    // TEAM ISOLATION: Only admin/management/programmer see all engagements
+    const hasGlobalAccess = currentUser?.role && ['admin', 'management', 'programmer'].includes(currentUser.role);
+
+    // Return distinct months that have actual engagement records
+    if (distinctMonths === 'true') {
+      let monthQuery = supabase
+        .from('writer_engagements')
+        .select('date_engaged');
+
+      if (!hasGlobalAccess && currentUser?.team_id) {
+        monthQuery = monthQuery.eq('team_id', currentUser.team_id);
+      }
+
+      const { data: monthData } = await monthQuery;
+      const months = [
+        ...new Set(
+          (monthData || []).map((r: { date_engaged: string }) => r.date_engaged.slice(0, 7))
+        ),
+      ].sort((a, b) => b.localeCompare(a)); // descending (most recent first)
+
+      return addRateLimitHeaders(
+        NextResponse.json({ months }),
+        rate.result
+      );
+    }
 
     let query = supabase
       .from('writer_engagements')
@@ -48,8 +75,6 @@ export async function GET(request: NextRequest) {
       .order('date_engaged', { ascending: false })
       .order('time_slot', { ascending: true });
 
-    // TEAM ISOLATION: Only admin/management/programmer see all engagements
-    const hasGlobalAccess = currentUser?.role && ['admin', 'management', 'programmer'].includes(currentUser.role);
     if (!hasGlobalAccess && currentUser?.team_id) {
       query = query.eq('team_id', currentUser.team_id);
     }

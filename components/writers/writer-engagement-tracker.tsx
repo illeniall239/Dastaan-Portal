@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { format, startOfMonth, endOfMonth, parseISO } from 'date-fns';
-import { Plus, Save, Trash2, Loader2, Pencil, X, Check } from 'lucide-react';
+import { Plus, Save, Trash2, Loader2, Pencil, X, Check, Download } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
@@ -27,22 +27,6 @@ interface WriterEngagement {
   writer?: { id: string; name: string } | null;
   created_at: string;
   updated_at: string;
-}
-
-// Build month options from Jan 2026 to Dec 2028
-function buildMonthOptions() {
-  const options: { label: string; value: string }[] = [];
-  const start = new Date(2026, 0, 1); // Jan 2026
-  const end = new Date(2028, 11, 1);  // Dec 2028
-  let d = start;
-  while (d <= end) {
-    options.push({
-      label: format(d, 'MMMM yyyy'),
-      value: format(d, 'yyyy-MM'),
-    });
-    d = new Date(d.getFullYear(), d.getMonth() + 1, 1);
-  }
-  return options;
 }
 
 // --- Row for saved engagements (display + edit mode) ---
@@ -215,11 +199,25 @@ export function WriterEngagementTracker({
 }: WriterEngagementTrackerProps) {
   const queryClient = useQueryClient();
   const [filterMonth, setFilterMonth] = useState<string | null>(null);
+  const [filterDate, setFilterDate] = useState<string | null>(null);
   const [newRowIds, setNewRowIds] = useState<string[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editNotes, setEditNotes] = useState('');
 
-  const monthOptions = useMemo(() => buildMonthOptions(), []);
+  // Fetch distinct months that have actual engagement records
+  const { data: monthsData } = useQuery({
+    queryKey: ['writer-engagement-months'],
+    queryFn: async () => {
+      const res = await fetch('/api/writers?distinct_months=true');
+      const json = await res.json();
+      return (json.months || []) as string[];
+    },
+    staleTime: 60_000,
+  });
+  const monthOptions = (monthsData || []).map((m) => ({
+    value: m,
+    label: format(new Date(`${m}-01`), 'MMMM yyyy'),
+  }));
 
   // Fetch writers list
   const { data: writers = [], isLoading: writersLoading } = useQuery({
@@ -250,6 +248,17 @@ export function WriterEngagementTracker({
       return response.json() as Promise<WriterEngagement[]>;
     },
   });
+
+  // Distinct dates available in the currently loaded month's records
+  const availableDates = useMemo(() => {
+    if (!filterMonth || !engagements.length) return [];
+    return [...new Set(engagements.map((e) => e.date_engaged))].sort((a, b) => a.localeCompare(b));
+  }, [filterMonth, engagements]);
+
+  // Client-side day filter
+  const displayedEngagements = filterDate
+    ? engagements.filter((e) => e.date_engaged === filterDate)
+    : engagements;
 
   // Save (create) mutation
   const saveMutation = useMutation({
@@ -339,6 +348,34 @@ export function WriterEngagementTracker({
     }
   }, [editingId, editNotes, editMutation]);
 
+  const [isExporting, setIsExporting] = useState(false);
+
+  const handleExport = useCallback(async () => {
+    setIsExporting(true);
+    try {
+      const params = new URLSearchParams();
+      if (filterMonth) {
+        const d = new Date(`${filterMonth}-01`);
+        params.set('dateFrom', format(startOfMonth(d), 'yyyy-MM-dd'));
+        params.set('dateTo', format(endOfMonth(d), 'yyyy-MM-dd'));
+      }
+      const url = `/api/writers/export${params.size > 0 ? `?${params}` : ''}`;
+      const res = await fetch(url);
+      if (!res.ok) throw new Error('Export failed');
+      const blob = await res.blob();
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = res.headers.get('Content-Disposition')?.match(/filename="(.+?)"/)?.[1]
+        ?? 'writer-engagements.xlsx';
+      link.click();
+      URL.revokeObjectURL(link.href);
+    } catch {
+      toast.error('Failed to export engagements');
+    } finally {
+      setIsExporting(false);
+    }
+  }, [filterMonth]);
+
   if (writersLoading) {
     return (
       <div className="p-6 max-w-5xl mx-auto text-center">
@@ -352,11 +389,27 @@ export function WriterEngagementTracker({
     <div className="p-6 max-w-5xl mx-auto">
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4 flex-wrap gap-3">
-          <CardTitle>Writer Engagement Tracker</CardTitle>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
+            <CardTitle>Writer Engagement Tracker</CardTitle>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleExport}
+              disabled={isExporting}
+            >
+              {isExporting
+                ? <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                : <Download className="h-4 w-4 mr-2" />}
+              Export
+            </Button>
+          </div>
+          <div className="flex items-center gap-2 flex-wrap">
             <Select
               value={filterMonth ?? 'all'}
-              onValueChange={(val) => setFilterMonth(val === 'all' ? null : val)}
+              onValueChange={(val) => {
+                setFilterMonth(val === 'all' ? null : val);
+                setFilterDate(null);
+              }}
             >
               <SelectTrigger className="w-[180px]">
                 <SelectValue placeholder="All Time" />
@@ -370,11 +423,29 @@ export function WriterEngagementTracker({
                 ))}
               </SelectContent>
             </Select>
+            {filterMonth && availableDates.length > 0 && (
+              <Select
+                value={filterDate ?? 'all'}
+                onValueChange={(val) => setFilterDate(val === 'all' ? null : val)}
+              >
+                <SelectTrigger className="w-[160px]">
+                  <SelectValue placeholder="All Days" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Days</SelectItem>
+                  {availableDates.map((d) => (
+                    <SelectItem key={d} value={d}>
+                      {format(parseISO(d), 'MMM d, yyyy')}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
             {filterMonth && (
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => setFilterMonth(null)}
+                onClick={() => { setFilterMonth(null); setFilterDate(null); }}
                 className="h-9 px-2 text-muted-foreground"
               >
                 <X className="h-4 w-4 mr-1" />
@@ -397,7 +468,7 @@ export function WriterEngagementTracker({
           ) : (
             <div className="space-y-3">
               {/* Column headers */}
-              {(engagements.length > 0 || newRowIds.length > 0) && (
+              {(displayedEngagements.length > 0 || newRowIds.length > 0) && (
                 <div className="grid grid-cols-[2fr_1fr_2fr_auto] gap-3 px-3">
                   <Label className="text-xs text-muted-foreground uppercase tracking-wide">
                     Writer
@@ -413,7 +484,7 @@ export function WriterEngagementTracker({
               )}
 
               {/* Saved engagement rows */}
-              {engagements.map(engagement => (
+              {displayedEngagements.map(engagement => (
                 <SavedRow
                   key={engagement.id}
                   engagement={engagement}
@@ -442,9 +513,11 @@ export function WriterEngagementTracker({
                 />
               ))}
 
-              {engagements.length === 0 && newRowIds.length === 0 && (
+              {displayedEngagements.length === 0 && newRowIds.length === 0 && (
                 <div className="text-center py-8 text-muted-foreground">
-                  {filterMonth
+                  {filterDate
+                    ? `No engagements found for ${format(parseISO(filterDate), 'MMM d, yyyy')}.`
+                    : filterMonth
                     ? `No engagements found for ${monthOptions.find(o => o.value === filterMonth)?.label ?? filterMonth}.`
                     : 'No engagements found.'}
                 </div>
