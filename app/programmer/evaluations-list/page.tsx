@@ -140,7 +140,7 @@ export default async function ProgrammerEvaluationsListPage({ searchParams }: { 
         reports={enrichedReports}
         portalPrefix="programmer"
         emptyTitle="No projects found"
-        emptyDescription="There are no call reports available at the moment."
+        emptyDescription="There are no one-liners available at the moment."
         showDecisionFilter={currentFilter === "mine"}
       />
     </div>

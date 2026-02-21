@@ -412,7 +412,7 @@ async function DashboardContent({ userId }: { userId: string }) {
         {/* Pending Evaluations List */}
         <ModernContentCard
           title="Pending Evaluations"
-          subtitle="Select a call report to evaluate"
+          subtitle="Select a one-liner to evaluate"
         >
           {pendingData.length > 0 ? (
             <div className="space-y-2">

@@ -157,7 +157,7 @@ export default async function ProgrammerEvaluationDetailPage({ params }: { param
               <div className="flex items-start gap-3">
                 <FileTextIcon className="h-5 w-5 text-muted-foreground mt-0.5" />
                 <div>
-                  <p className="text-sm font-medium">Call Report</p>
+                  <p className="text-sm font-medium">One-Liner</p>
                   <p className="text-sm text-muted-foreground">
                     {evaluation.call_reports?.call_report_id || "N/A"}
                   </p>

@@ -135,9 +135,9 @@ export default function ContentDepartmentCallReportEditPage({ params }: CallRepo
       <div className="container mx-auto px-4 py-8">
         <Card className="p-12 text-center">
           <FileText className="mx-auto h-16 w-16 text-gray-400 mb-4" />
-          <h2 className="text-2xl font-bold mb-2">Call Report Not Found</h2>
+          <h2 className="text-2xl font-bold mb-2">One-Liner Not Found</h2>
           <p className="text-muted-foreground mb-6">
-            The call report you&apos;re looking for doesn&apos;t exist or you don&apos;t have permission to edit it.
+            The one-liner you&apos;re looking for doesn&apos;t exist or you don&apos;t have permission to edit it.
           </p>
           <BackButton fallbackHref="/content-department/call-reports" />
         </Card>

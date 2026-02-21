@@ -7,7 +7,7 @@ export function PendingEvaluationsSkeleton() {
       <CardHeader>
         <CardTitle className="text-xl font-bold">Pending Evaluations</CardTitle>
         <CardDescription className="text-slate-600">
-          Call reports assigned to you for evaluation
+          One-liners assigned to you for evaluation
         </CardDescription>
       </CardHeader>
       <CardContent>

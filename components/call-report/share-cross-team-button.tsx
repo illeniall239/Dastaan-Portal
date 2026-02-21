@@ -294,7 +294,7 @@ export function ShareCrossTeamButton({ callReportId, currentTeamId, episodeId, c
             {/* Call report + revisions (only for non-episode-only mode) */}
             {!isEpisodeOnly && (
               <div>
-                <Label className="mb-2 block">Call Report</Label>
+                <Label className="mb-2 block">One-Liner</Label>
                 {loadingCRRevisions ? (
                   <div className="flex items-center gap-2 text-xs text-muted-foreground">
                     <Loader2 className="h-3 w-3 animate-spin" /> Loading...

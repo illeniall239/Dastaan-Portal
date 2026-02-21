@@ -69,11 +69,11 @@ export function ContentTypeDistributionChart({ ideas }: ContentTypeDistributionC
 
       setModalData({
         title: `${contentType} - Active Story Ideas`,
-        subtitle: `${details.length} active call reports for this content type`,
+        subtitle: `${details.length} active one-liners for this content type`,
         type: "table",
         data: details,
         columns: [
-          { key: "call_report_id", label: "Call Report ID" },
+          { key: "call_report_id", label: "One-Liner ID" },
           { key: "working_title", label: "Working Title" },
           { key: "writer_name", label: "Writer Name" },
           { key: "genre", label: "Genre" },

@@ -23,7 +23,7 @@ export function EpisodeProductionChart({ data }: EpisodeProductionChartProps) {
   const chartData = data.map(item => ({
     week: new Date(item.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
     date: item.date,
-    "Call Reports": item.callReportEpisodes,
+    "One-Liners": item.callReportEpisodes,
     "Stories": item.storyEpisodes,
   }));
 
@@ -34,9 +34,9 @@ export function EpisodeProductionChart({ data }: EpisodeProductionChartProps) {
       subtitle: `Breakdown of episodes logged during this week`,
       type: "table",
       data: [
-        { source: "Call Reports", count: data["Call Reports"], percentage: `${((data["Call Reports"] / (data["Call Reports"] + data["Stories"])) * 100).toFixed(0)}%` },
-        { source: "Stories", count: data["Stories"], percentage: `${((data["Stories"] / (data["Call Reports"] + data["Stories"])) * 100).toFixed(0)}%` },
-        { source: "Total", count: data["Call Reports"] + data["Stories"], percentage: "100%" },
+        { source: "One-Liners", count: data["One-Liners"], percentage: `${((data["One-Liners"] / (data["One-Liners"] + data["Stories"])) * 100).toFixed(0)}%` },
+        { source: "Stories", count: data["Stories"], percentage: `${((data["Stories"] / (data["One-Liners"] + data["Stories"])) * 100).toFixed(0)}%` },
+        { source: "Total", count: data["One-Liners"] + data["Stories"], percentage: "100%" },
       ],
       columns: [
         { key: "source", label: "Source" },
@@ -86,7 +86,7 @@ export function EpisodeProductionChart({ data }: EpisodeProductionChartProps) {
               }}
             />
             <Legend />
-            <Bar dataKey="Call Reports" fill="#3b82f6" radius={[4, 4, 0, 0]} onClick={handleBarClick} cursor="pointer" />
+            <Bar dataKey="One-Liners" fill="#3b82f6" radius={[4, 4, 0, 0]} onClick={handleBarClick} cursor="pointer" />
             <Bar dataKey="Stories" fill="#8b5cf6" radius={[4, 4, 0, 0]} onClick={handleBarClick} cursor="pointer" />
           </BarChart>
         </ResponsiveContainer>

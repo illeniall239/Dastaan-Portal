@@ -508,7 +508,7 @@ export function CallReportDetailDialog({ report, isOpen, onClose }: CallReportDe
               {/* Call Report eval groups */}
               {crEvals.length > 0 || (!loadingEvals) ? (
                 <div className="space-y-2">
-                  <p className="text-sm font-semibold text-slate-600 uppercase tracking-wide text-xs">Call Report</p>
+                  <p className="text-sm font-semibold text-slate-600 uppercase tracking-wide text-xs">One-Liner</p>
                   {(() => {
                     const groups: EvalGroup[] = [
                       { label: 'Original', revisionId: null, items: crEvals.filter(e => !e.revision_id) },
@@ -561,7 +561,7 @@ export function CallReportDetailDialog({ report, isOpen, onClose }: CallReportDe
             </CardContent>
           </Card>
 
-          {/* Call Report Revisions */}
+          {/* One-Liner Revisions */}
           <ContentRevisions
             entityId={report.id}
             apiBasePath="/api/call-reports"

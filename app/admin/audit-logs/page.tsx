@@ -211,7 +211,7 @@ export default function AuditLogsPage() {
                   <SelectItem value="user">User</SelectItem>
                   <SelectItem value="external_evaluation">External Evaluation</SelectItem>
                   <SelectItem value="story">Story</SelectItem>
-                  <SelectItem value="call_report">Call Report</SelectItem>
+                  <SelectItem value="call_report">One-Liner</SelectItem>
                   <SelectItem value="evaluation">Evaluation</SelectItem>
                 </SelectContent>
               </Select>

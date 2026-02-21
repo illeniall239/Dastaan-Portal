@@ -103,7 +103,7 @@ export default function ContentDepartmentError({
               size="sm"
             >
               <Link href="/content-department/call-reports">
-                Call Reports
+                One-Liners
               </Link>
             </Button>
           </div>

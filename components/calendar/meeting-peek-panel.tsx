@@ -181,7 +181,7 @@ export function MeetingPeekPanel({ meeting, onClose }: MeetingPeekPanelProps) {
         </Button>
         <Button variant="outline" asChild className="w-full touch-target">
           <Link href="/content-department/log-call-report">
-            Log Call Report
+            Log One-Liner
           </Link>
         </Button>
       </div>

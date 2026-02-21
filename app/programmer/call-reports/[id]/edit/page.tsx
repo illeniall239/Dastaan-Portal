@@ -129,9 +129,9 @@ export default function ProgrammerCallReportEditPage({ params }: CallReportEditP
             <div className="container mx-auto px-4 py-8">
                 <Card className="p-12 text-center">
                     <FileText className="mx-auto h-16 w-16 text-gray-400 mb-4" />
-                    <h2 className="text-2xl font-bold mb-2">Call Report Not Found</h2>
+                    <h2 className="text-2xl font-bold mb-2">One-Liner Not Found</h2>
                     <p className="text-muted-foreground mb-6">
-                        The call report you&apos;re looking for doesn&apos;t exist or you don&apos;t have permission to edit it.
+                        The one-liner you&apos;re looking for doesn&apos;t exist or you don&apos;t have permission to edit it.
                     </p>
                     <BackButton fallbackHref="/programmer/call-reports" />
                 </Card>
@@ -145,7 +145,7 @@ export default function ProgrammerCallReportEditPage({ params }: CallReportEditP
             <div className="flex flex-col gap-4 sm:gap-6 mb-8">
                 <BackButton fallbackHref={`/programmer/call-reports/${callReportId}`} variant="outline" size="sm" className="w-fit" />
                 <div className="space-y-1">
-                    <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Edit Call Report</h1>
+                    <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Edit One-Liner</h1>
                     <p className="text-muted-foreground text-sm sm:text-base">
                         Update report details and meeting information
                     </p>

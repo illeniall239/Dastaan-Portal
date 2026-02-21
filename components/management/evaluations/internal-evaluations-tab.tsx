@@ -166,9 +166,9 @@ export function InternalEvaluationsTab({ currentUser }: InternalEvaluationsTabPr
               <CardContent className="py-12">
                 <div className="text-center text-muted-foreground">
                   <FileText className="mx-auto h-16 w-16 mb-4 opacity-50" />
-                  <p className="text-lg font-medium mb-2">No Call Report Evaluations Found</p>
+                  <p className="text-lg font-medium mb-2">No One-Liner Evaluations Found</p>
                   <p className="text-sm">
-                    Evaluations will appear here once call reports have been evaluated
+                    Evaluations will appear here once one-liners have been evaluated
                   </p>
                 </div>
               </CardContent>

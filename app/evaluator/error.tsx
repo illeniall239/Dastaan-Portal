@@ -94,7 +94,7 @@ export default function EvaluatorError({
               size="sm"
             >
               <Link href="/evaluator/call-reports">
-                Call Reports
+                One-Liners
               </Link>
             </Button>
             <Button

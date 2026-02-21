@@ -70,11 +70,11 @@ export function TimeSlotAllocationChart({ ideas }: TimeSlotAllocationChartProps)
 
       setModalData({
         title: `${slot} Time Slot - Active Story Ideas`,
-        subtitle: `${details.length} active call reports for this time slot`,
+        subtitle: `${details.length} active one-liners for this time slot`,
         type: "table",
         data: details,
         columns: [
-          { key: "call_report_id", label: "Call Report ID" },
+          { key: "call_report_id", label: "One-Liner ID" },
           { key: "working_title", label: "Working Title" },
           { key: "writer_name", label: "Writer Name" },
           { key: "genre", label: "Genre" },

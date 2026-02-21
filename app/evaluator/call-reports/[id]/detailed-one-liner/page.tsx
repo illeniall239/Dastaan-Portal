@@ -81,7 +81,7 @@ export default async function CallReportDetailedOneLinerPage({
         <div className="mb-6">
           <h1 className="text-xl sm:text-2xl font-bold mb-2">Detailed One-Liner</h1>
           <div className="flex flex-wrap gap-2 text-sm text-muted-foreground">
-            <span>Call Report: {callReport.call_report_id}</span>
+            <span>One-Liner: {callReport.call_report_id}</span>
             <span>•</span>
             <span>{callReport.working_title}</span>
             <span>•</span>

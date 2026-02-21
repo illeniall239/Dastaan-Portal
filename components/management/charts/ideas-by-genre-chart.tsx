@@ -36,14 +36,14 @@ export function IdeasByGenreChart({ data }: IdeasByGenreChartProps) {
       // Transform data for modal
       setModalData({
         title: `${genre} - Active Story Ideas`,
-        subtitle: `${details.length} active call reports awaiting evaluation`,
+        subtitle: `${details.length} active one-liners awaiting evaluation`,
         type: "table",
         data: details.map(d => ({
           ...d,
           display_rating: d.average_initial_assessment ?? d.overall_rating
         })),
         columns: [
-          { key: "call_report_id", label: "Call Report ID" },
+          { key: "call_report_id", label: "One-Liner ID" },
           { key: "working_title", label: "Working Title" },
           { key: "writer_name", label: "Writer Name" },
           {

@@ -76,7 +76,7 @@ export function TeamTrendLineChart({
               <Line
                 type="monotone"
                 dataKey="call_reports"
-                name="Call Reports"
+                name="One-Liners"
                 stroke="#3b82f6"
                 strokeWidth={2}
                 dot={{ fill: '#3b82f6', r: 4 }}

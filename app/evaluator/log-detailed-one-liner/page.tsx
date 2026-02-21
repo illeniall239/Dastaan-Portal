@@ -455,7 +455,7 @@ export default function LogDetailedOneLinerPage() {
           <div className="space-y-1">
             <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Log Detailed One-Liner</h1>
             <p className="text-muted-foreground text-sm sm:text-base">
-              Create a comprehensive one-liner analysis with narrative breakdown for a call report.
+              Create a comprehensive one-liner analysis with narrative breakdown for a one-liner.
             </p>
           </div>
         </div>

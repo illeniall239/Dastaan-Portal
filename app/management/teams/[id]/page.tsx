@@ -106,7 +106,7 @@ export default async function TeamDetailPage({ params }: { params: { id: string 
       metric: "Reports",
       team: comparison.team.call_reports_created || 0,
       average: comparison.type_average.call_reports,
-      fullLabel: "Call Reports",
+      fullLabel: "One-Liners",
     },
     {
       metric: "Evals",
@@ -173,7 +173,7 @@ export default async function TeamDetailPage({ params }: { params: { id: string 
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-blue-900">Call Reports</p>
+                  <p className="text-sm font-medium text-blue-900">One-Liners</p>
                   <p className="text-2xl font-bold text-blue-900">
                     {teamPerformance.call_reports_created || 0}
                   </p>

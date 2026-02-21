@@ -49,14 +49,14 @@ export function ArchiveGenreChart({ data }: ArchiveGenreChartProps) {
       // Transform data for modal
       setModalData({
         title: `${genre} - Archived/Rejected Stories`,
-        subtitle: `${details.length} total (${details.filter(d => d.type === 'story_archive').length} story archives, ${details.filter(d => d.type === 'call_report_rejection').length} call report rejections)`,
+        subtitle: `${details.length} total (${details.filter(d => d.type === 'story_archive').length} story archives, ${details.filter(d => d.type === 'call_report_rejection').length} one-liner rejections)`,
         type: "table",
         data: details,
         columns: [
           {
             key: "type",
             label: "Type",
-            format: (value: string) => value === 'story_archive' ? 'Story Archive' : 'Call Report Rejection'
+            format: (value: string) => value === 'story_archive' ? 'Story Archive' : 'One-Liner Rejection'
           },
           { key: "title", label: "Title" },
           { key: "writer_name", label: "Writer" },

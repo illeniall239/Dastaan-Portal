@@ -512,7 +512,7 @@ export function EvaluatorEvaluationForm({
           <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg flex items-center gap-2">
             <FilePenLine className="h-4 w-4 text-amber-600 shrink-0" />
             <p className="text-sm text-amber-800">
-              Evaluating a <span className="font-semibold">specific revision</span> of this call report
+              Evaluating a <span className="font-semibold">specific revision</span> of this one-liner
             </p>
           </div>
         )}
@@ -1136,7 +1136,7 @@ export function EvaluatorEvaluationForm({
                 <div>
                   <h3 className="font-semibold text-amber-800">Late Evaluation</h3>
                   <p className="text-sm text-amber-700 mt-1">
-                    This call report was logged {daysSinceCreation} days ago (more than 3 days).
+                    This one-liner was logged {daysSinceCreation} days ago (more than 3 days).
                     Please provide a reason for the delay in submitting your evaluation.
                   </p>
                 </div>

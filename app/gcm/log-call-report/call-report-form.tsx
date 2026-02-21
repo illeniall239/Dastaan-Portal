@@ -367,7 +367,7 @@ export function CallReportForm({
           }
         } catch (error) {
           console.error("Error updating writers:", error);
-          toast.error("Call report updated but failed to update writers.");
+          toast.error("One-liner updated but failed to update writers.");
         }
 
         // Upload new files if any
@@ -455,7 +455,7 @@ export function CallReportForm({
             }
           } catch (error) {
             console.error("Error adding writers:", error);
-            toast.error("Call report created but failed to add writers. Please edit to add them.");
+            toast.error("One-liner created but failed to add writers. Please edit to add them.");
           }
         }
 

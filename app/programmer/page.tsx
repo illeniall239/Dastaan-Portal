@@ -272,7 +272,7 @@ async function DashboardContent({ userId }: { userId: string }) {
 
         {/* Recent Call Reports (All Teams) */}
         <ModernContentCard
-          title="Recent Call Reports"
+          title="Recent One-Liners"
           subtitle="Latest reports from all teams"
         >
           {processedReports.length > 0 ? (
@@ -308,7 +308,7 @@ async function DashboardContent({ userId }: { userId: string }) {
             </div>
           ) : (
             <p className="text-sm text-gray-500 text-center py-8">
-              No call reports found.
+              No one-liners found.
             </p>
           )}
         </ModernContentCard>
