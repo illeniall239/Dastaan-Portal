@@ -256,7 +256,7 @@ export function PendingEvaluationsList() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Pending Evaluations</h1>
+          <h1 className="text-2xl font-bold text-slate-900">Pending Approvals</h1>
           <p className="text-sm text-slate-500 mt-0.5">
             Stories evaluated by the team that are awaiting your approval
           </p>

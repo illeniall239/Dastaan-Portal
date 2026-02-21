@@ -18,7 +18,7 @@ const baseNavItems = [
 ];
 
 const pendingEvaluationsItem = {
-  title: "Pending Evaluations",
+  title: "Pending Approvals",
   href: "/management/pending-evaluations",
   icon: "inbox",
 };
