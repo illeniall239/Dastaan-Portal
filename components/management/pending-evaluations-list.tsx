@@ -11,6 +11,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
+import { Input } from "@/components/ui/input";
 import {
   Inbox,
   Loader2,
@@ -18,6 +19,7 @@ import {
   CheckCircle2,
   Star,
   User,
+  Search,
 } from "lucide-react";
 import { StoryApprovalPanel } from "@/components/approvals/story-approval-panel";
 
@@ -32,6 +34,12 @@ interface PendingCallReport {
   finalDecision: string | null;
   lastEvaluatedAt: string;
   evaluationCount: number;
+}
+
+interface ReviewedCallReport extends PendingCallReport {
+  myDecision: 'approved' | 'rejected' | null;
+  myNotes: string | null;
+  decidedAt: string | null;
 }
 
 interface ReviewEvaluation {
@@ -164,13 +172,35 @@ function ScoreBox({ label, score, comment }: { label: string; score: number | nu
 
 export function PendingEvaluationsList() {
   const [callReports, setCallReports] = useState<PendingCallReport[]>([]);
+  const [reviewedCallReports, setReviewedCallReports] = useState<ReviewedCallReport[]>([]);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
+
+  const [search, setSearch] = useState("");
+  const [decisionFilter, setDecisionFilter] = useState<"all" | "approved" | "rejected">("all");
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [selectedTitle, setSelectedTitle] = useState<string>("");
   const [reviewData, setReviewData] = useState<ReviewData | null>(null);
   const [loadingReview, setLoadingReview] = useState(false);
+
+  // Derived filtered lists
+  const q = search.toLowerCase();
+  const filteredPending = callReports.filter(
+    (cr) =>
+      !q ||
+      cr.workingTitle.toLowerCase().includes(q) ||
+      cr.callReportId.toLowerCase().includes(q)
+  );
+  const filteredReviewed = reviewedCallReports.filter((cr) => {
+    const matchesSearch =
+      !q ||
+      cr.workingTitle.toLowerCase().includes(q) ||
+      cr.callReportId.toLowerCase().includes(q);
+    const matchesDecision =
+      decisionFilter === "all" || cr.myDecision === decisionFilter;
+    return matchesSearch && matchesDecision;
+  });
 
   const fetchQueue = useCallback(async () => {
     setLoading(true);
@@ -183,6 +213,7 @@ export function PendingEvaluationsList() {
         return;
       }
       setCallReports(data.callReports);
+      setReviewedCallReports(data.reviewedCallReports || []);
     } catch (error) {
       console.error("Failed to fetch approval queue:", error);
       setFetchError("Failed to load pending evaluations.");
@@ -236,6 +267,40 @@ export function PendingEvaluationsList() {
         </Button>
       </div>
 
+      {/* Search + Filter */}
+      <div className="flex flex-col sm:flex-row gap-3">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
+          <Input
+            placeholder="Search by title or report ID..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-9"
+          />
+        </div>
+        <div className="flex gap-1.5 shrink-0">
+          {(["all", "approved", "rejected"] as const).map((f) => (
+            <Button
+              key={f}
+              size="sm"
+              variant={decisionFilter === f ? "default" : "outline"}
+              onClick={() => setDecisionFilter(f)}
+              className={
+                decisionFilter !== f
+                  ? ""
+                  : f === "approved"
+                  ? "bg-green-600 hover:bg-green-700"
+                  : f === "rejected"
+                  ? "bg-red-600 hover:bg-red-700"
+                  : ""
+              }
+            >
+              {f === "all" ? "All" : f === "approved" ? "Approved" : "Rejected"}
+            </Button>
+          ))}
+        </div>
+      </div>
+
       {/* List */}
       {fetchError ? (
         <Card>
@@ -248,20 +313,26 @@ export function PendingEvaluationsList() {
         <div className="flex items-center justify-center py-24">
           <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
         </div>
-      ) : callReports.length === 0 ? (
+      ) : filteredPending.length === 0 ? (
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-20 gap-3 text-slate-500">
             <CheckCircle2 className="h-10 w-10 text-green-500" />
-            <p className="font-medium text-slate-700">All caught up!</p>
-            <p className="text-sm">No evaluations are pending your review.</p>
+            <p className="font-medium text-slate-700">
+              {callReports.length === 0 ? "All caught up!" : "No matches"}
+            </p>
+            <p className="text-sm">
+              {callReports.length === 0
+                ? "No evaluations are pending your review."
+                : "No pending evaluations match your search."}
+            </p>
           </CardContent>
         </Card>
       ) : (
         <div className="space-y-3">
           <p className="text-sm text-slate-500">
-            {callReports.length} stor{callReports.length !== 1 ? "ies" : "y"} awaiting your review
+            {filteredPending.length} stor{filteredPending.length !== 1 ? "ies" : "y"} awaiting your review
           </p>
-          {callReports.map((cr) => (
+          {filteredPending.map((cr) => (
             <Card key={cr.id} className="hover:shadow-sm transition-shadow">
               <CardContent className="py-4 px-5">
                 <div className="flex items-center justify-between gap-4">
@@ -286,6 +357,77 @@ export function PendingEvaluationsList() {
                   </div>
                   <Button size="sm" onClick={() => handleReview(cr)} className="shrink-0">
                     Review
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      {/* My Decisions — read-only view of stories already voted on */}
+      {reviewedCallReports.length > 0 && (
+        <div className="space-y-3 pt-4 border-t">
+          <p className="text-sm font-semibold text-slate-700">
+            My Decisions ({filteredReviewed.length}
+            {filteredReviewed.length !== reviewedCallReports.length && ` of ${reviewedCallReports.length}`})
+          </p>
+          {filteredReviewed.length === 0 && (
+            <p className="text-sm text-slate-400 italic">No decisions match your search or filter.</p>
+          )}
+          {filteredReviewed.map((cr) => (
+            <Card
+              key={cr.id}
+              className={`hover:shadow-sm transition-shadow border-l-4 ${
+                cr.myDecision === "approved"
+                  ? "border-l-green-500"
+                  : "border-l-red-500"
+              }`}
+            >
+              <CardContent className="py-4 px-5">
+                <div className="flex items-center justify-between gap-4">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-medium text-slate-900 truncate">
+                        {cr.workingTitle}
+                      </span>
+                      <Badge variant="outline" className="text-xs font-mono shrink-0">
+                        {cr.callReportId}
+                      </Badge>
+                      <Badge
+                        variant="outline"
+                        className={`text-xs shrink-0 ${
+                          cr.myDecision === "approved"
+                            ? "bg-green-100 text-green-800 border-green-300"
+                            : "bg-red-100 text-red-800 border-red-300"
+                        }`}
+                      >
+                        {cr.myDecision === "approved" ? "Approved" : "Rejected"}
+                      </Badge>
+                    </div>
+                    <div className="flex items-center gap-4 mt-1.5 text-sm text-slate-500">
+                      {cr.averageScore !== null && (
+                        <span className={`font-semibold ${scoreColor(cr.averageScore)}`}>
+                          Avg {cr.averageScore.toFixed(1)}
+                        </span>
+                      )}
+                      {cr.decidedAt && (
+                        <span>Decided {formatDate(cr.decidedAt)}</span>
+                      )}
+                    </div>
+                    {cr.myNotes && (
+                      <p className="text-xs text-slate-500 mt-1.5 italic">
+                        Notes: {cr.myNotes}
+                      </p>
+                    )}
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleReview(cr)}
+                    className="shrink-0"
+                  >
+                    View
                   </Button>
                 </div>
               </CardContent>

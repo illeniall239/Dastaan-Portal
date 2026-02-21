@@ -70,11 +70,55 @@ export async function GET(_request: NextRequest) {
     const myApprovedIds = new Set((myApprovals || []).map((a) => a.call_report_id));
     const pendingIds = evaluatedIds.filter((id) => !myApprovedIds.has(id));
 
-    if (pendingIds.length === 0) {
-      return NextResponse.json({ success: true, callReports: [] });
+    // Step 3a: Fetch reviewed items (already voted on) with their decisions
+    const reviewedIds = evaluatedIds.filter((id) => myApprovedIds.has(id));
+    let reviewedResult: any[] = [];
+
+    if (reviewedIds.length > 0) {
+      const { data: myDecisions } = await adminClient
+        .from("story_approvals")
+        .select("call_report_id, decision, notes, created_at")
+        .eq("user_id", user.id)
+        .in("call_report_id", reviewedIds);
+
+      const decisionMap = new Map(
+        (myDecisions || []).map((d) => [d.call_report_id, d])
+      );
+
+      const { data: reviewedCRs } = await adminClient
+        .from("call_reports")
+        .select("id, working_title, call_report_id, created_at")
+        .in("id", reviewedIds)
+        .order("created_at", { ascending: false });
+
+      reviewedResult = (reviewedCRs || []).map((cr: any) => {
+        const dec = decisionMap.get(cr.id);
+        const stats = statsByCallReport[cr.id];
+        const scores = stats?.scores || [];
+        const avgScore =
+          scores.length > 0
+            ? Math.round((scores.reduce((a: number, b: number) => a + b, 0) / scores.length) * 10) / 10
+            : null;
+        return {
+          id: cr.id,
+          workingTitle: cr.working_title || cr.call_report_id,
+          callReportId: cr.call_report_id,
+          createdAt: cr.created_at,
+          averageScore: avgScore,
+          lastEvaluatedAt: stats?.latestAt || cr.created_at,
+          evaluationCount: scores.length,
+          myDecision: dec?.decision ?? null,
+          myNotes: dec?.notes ?? null,
+          decidedAt: dec?.created_at ?? null,
+        };
+      });
     }
 
-    // Step 3: Fetch call report details (no nested selects)
+    if (pendingIds.length === 0) {
+      return NextResponse.json({ success: true, callReports: [], reviewedCallReports: reviewedResult });
+    }
+
+    // Step 3b: Fetch pending call report details
     const { data: callReports, error: crErr } = await adminClient
       .from("call_reports")
       .select("id, working_title, call_report_id, created_at")
@@ -102,7 +146,7 @@ export async function GET(_request: NextRequest) {
       };
     });
 
-    return NextResponse.json({ success: true, callReports: result });
+    return NextResponse.json({ success: true, callReports: result, reviewedCallReports: reviewedResult });
   } catch (error) {
     console.error("Error in approval-queue GET:", error);
     return NextResponse.json(

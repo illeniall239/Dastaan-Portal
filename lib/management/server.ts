@@ -116,11 +116,11 @@ export async function getExecutiveSummary(): Promise<ExecutiveSummary> {
             .neq("status", "archived")
             .neq("status", "rejected"),
 
-          // Pending negotiations
+          // Negotiations (in progress + agreed) for pipeline value
           supabase
             .from("negotiations")
-            .select("agreed_price")
-            .eq("status", "in_progress"),
+            .select("proposed_price, agreed_price, status")
+            .in("status", ["in_progress", "agreed"]),
 
           // All contracts (for total value)
           supabase
@@ -133,11 +133,11 @@ export async function getExecutiveSummary(): Promise<ExecutiveSummary> {
             .select("*", { count: "exact", head: true })
             .eq("status", "overdue"),
 
-          // Active contracts count
+          // Active negotiations count (agreements + in-progress)
           supabase
-            .from("contracts")
+            .from("negotiations")
             .select("*", { count: "exact", head: true })
-            .eq("status", "active"),
+            .in("status", ["agreed", "in_progress"]),
 
           // Weekly activities (last 7 days)
           supabase
@@ -147,7 +147,13 @@ export async function getExecutiveSummary(): Promise<ExecutiveSummary> {
         ]);
 
         // Calculate pipeline value
-        const pendingValue = (negotiationsRes.data || []).reduce((sum: number, n: any) => sum + (parseFloat(n.agreed_price) || 0), 0);
+        const pendingValue = (negotiationsRes.data || []).reduce((sum: number, n: any) => {
+          // Use agreed_price for agreed negotiations, proposed_price for in-progress
+          const val = n.status === "agreed"
+            ? (parseFloat(n.agreed_price) || parseFloat(n.proposed_price) || 0)
+            : (parseFloat(n.proposed_price) || 0);
+          return sum + val;
+        }, 0);
         const committedValue = (contractsRes.data || []).reduce((sum: number, c: any) => sum + (parseFloat(c.total_value) || 0), 0);
 
         return {

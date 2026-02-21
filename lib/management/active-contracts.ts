@@ -1,5 +1,4 @@
 import { createAdminClient } from '@/lib/supabase/admin';
-import { handleError } from '@/lib/errors';
 
 export interface ActiveContract {
   id: string;
@@ -14,82 +13,109 @@ export interface ActiveContract {
   milestone_progress: number;
   paid_amount: number;
   remaining_amount: number;
+  source: 'contract' | 'negotiation';
 }
 
-export async function getActiveContracts() {
+export async function getActiveContracts(): Promise<ActiveContract[]> {
   const supabase = createAdminClient();
+  const results: ActiveContract[] = [];
 
-  const { data: contracts, error } = await supabase
+  // --- 1. Fetch actual contracts (if any exist) ---
+  const { data: contracts, error: contractsError } = await supabase
     .from('contracts')
     .select(`
-      id,
-      contract_number,
-      total_amount,
-      signed_date,
-      status,
-      updated_at,
-      story:stories (
+      *,
+      stories!left (
+        id,
+        story_id,
+        title
+      )
+    `)
+    .order('created_at', { ascending: false });
+
+  if (contractsError) {
+    console.error('[active-contracts] contracts query error:', contractsError.message);
+  } else {
+    for (const contract of contracts || []) {
+      const story = (contract as any).stories;
+      const totalValue = parseFloat((contract as any).total_value) || 0;
+      const signedDate =
+        (contract as any).party_b_signature_date ||
+        (contract as any).party_a_signature_date ||
+        (contract as any).contract_start_date ||
+        (contract as any).created_at;
+
+      results.push({
+        id: contract.id,
+        contract_id: (contract as any).contract_id || `CON-${contract.id.slice(0, 8).toUpperCase()}`,
+        story_title: story?.title || (contract as any).project_title || 'Unknown',
+        story_id: story?.story_id || 'N/A',
+        total_amount: totalValue,
+        signed_date: signedDate,
+        status: (contract as any).status || 'unknown',
+        milestones_completed: 0,
+        milestones_total: 0,
+        milestone_progress: 0,
+        paid_amount: 0,
+        remaining_amount: totalValue,
+        source: 'contract',
+      });
+    }
+  }
+
+  // --- 2. Fetch agreed negotiations as completed contract terms ---
+  const { data: negotiations, error: negotiationsError } = await supabase
+    .from('negotiations')
+    .select(`
+      *,
+      stories!left (
         id,
         story_id,
         title
       ),
-      payment_schedules (
-        id,
-        milestone_number,
-        status
-      ),
-      payments (
-        amount,
-        status
+      call_reports!left (
+        call_report_id,
+        working_title
       )
     `)
-    .eq('status', 'active')
-    .order('signed_date', { ascending: false });
+    .in('status', ['agreed', 'in_progress'])
+    .order('updated_at', { ascending: false });
 
-  if (error) {
-    return handleError(error, {
-      context: 'getActiveContracts',
-      fallbackValue: [],
-      userMessage: 'Failed to fetch active contracts',
-    });
+  if (negotiationsError) {
+    console.error('[active-contracts] negotiations query error:', negotiationsError.message);
+  } else {
+    for (const neg of negotiations || []) {
+      const story = (neg as any).stories;
+      const callReport = (neg as any).call_reports;
+      const value =
+        parseFloat((neg as any).agreed_price) ||
+        parseFloat((neg as any).proposed_price) ||
+        0;
+
+      results.push({
+        id: neg.id,
+        contract_id: (neg as any).negotiation_id || `NEG-${neg.id.slice(0, 8).toUpperCase()}`,
+        story_title:
+          story?.title || callReport?.working_title || 'Unknown',
+        story_id:
+          story?.story_id || callReport?.call_report_id || 'N/A',
+        total_amount: value,
+        signed_date: (neg as any).updated_at || (neg as any).created_at,
+        status: (neg as any).status,
+        milestones_completed: 0,
+        milestones_total: 0,
+        milestone_progress: 0,
+        paid_amount: 0,
+        remaining_amount: value,
+        source: 'negotiation',
+      });
+    }
   }
 
-  const activeContracts: ActiveContract[] = (contracts || []).map(contract => {
-    const story = contract.story as any;
-    const paymentSchedules = (contract.payment_schedules as any[]) || [];
-    const payments = (contract.payments as any[]) || [];
-
-    // Calculate milestone progress
-    const milestonesTotal = paymentSchedules.length;
-    const milestonesCompleted = paymentSchedules.filter(
-      (ps: any) => ps.status === 'completed' || ps.status === 'paid'
-    ).length;
-    const milestoneProgress = milestonesTotal > 0
-      ? Math.round((milestonesCompleted / milestonesTotal) * 100)
-      : 0;
-
-    // Calculate paid amount
-    const paidAmount = payments
-      .filter((p: any) => p.status === 'paid')
-      .reduce((sum: number, p: any) => sum + (p.amount || 0), 0);
-
-    return {
-      id: contract.id,
-      contract_id: contract.contract_number || `CON-${contract.id.slice(0, 8).toUpperCase()}`,
-      story_title: story?.title || 'Unknown',
-      story_id: story?.story_id || 'N/A',
-      total_amount: contract.total_amount,
-      signed_date: contract.signed_date || contract.updated_at,
-      status: contract.status,
-      milestones_completed: milestonesCompleted,
-      milestones_total: milestonesTotal,
-      milestone_progress: milestoneProgress,
-      paid_amount: paidAmount,
-      remaining_amount: contract.total_amount - paidAmount,
-    };
-  });
-
-  return activeContracts;
+  // Sort by signed_date descending
+  return results.sort(
+    (a, b) => new Date(b.signed_date).getTime() - new Date(a.signed_date).getTime()
+  );
 }
 
 export async function getActiveContractsStats() {

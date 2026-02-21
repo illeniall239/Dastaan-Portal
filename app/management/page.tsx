@@ -36,6 +36,8 @@ import {
 } from "@/components/management/skeletons";
 import { ErrorBoundary } from "@/components/errors/error-boundary";
 import { SectionErrorFallback } from "@/components/errors/section-error-fallback";
+import { MANDATORY_APPROVER_EMAILS } from "@/lib/approvals/config";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 // Add Next.js caching
 export const revalidate = 300; // 5 minutes for better performance
@@ -63,6 +65,40 @@ export default async function ManagementDashboard({
     getDepartmentWorkload(),
     getProductionMetrics(), // No team filter - global access for management
   ]);
+
+  // Detect if current user is a mandatory approver (Humera / Salman)
+  const isMandatoryApprover = MANDATORY_APPROVER_EMAILS.includes(user.email ?? "");
+
+  let mandatoryApproverPendingCount = 0;
+  if (isMandatoryApprover) {
+    try {
+      const adminClient = createAdminClient();
+
+      // Get all evaluated call_report_ids
+      const { data: viewRows } = await adminClient
+        .from("call_report_evaluations_with_type")
+        .select("call_report_id")
+        .not("call_report_id", "is", null);
+
+      const evaluatedIds = [
+        ...new Set((viewRows || []).map((r: any) => r.call_report_id as string)),
+      ];
+
+      if (evaluatedIds.length > 0) {
+        // IDs this user has already voted on
+        const { data: myApprovals } = await adminClient
+          .from("story_approvals")
+          .select("call_report_id")
+          .eq("user_id", user.id)
+          .in("call_report_id", evaluatedIds);
+
+        const myApprovedIds = new Set((myApprovals || []).map((a: any) => a.call_report_id));
+        mandatoryApproverPendingCount = evaluatedIds.filter((id) => !myApprovedIds.has(id)).length;
+      }
+    } catch {
+      // Non-fatal — fall back to 0
+    }
+  }
 
   // Format currency helper
   const formatCurrency = (amount: number) => {
@@ -180,7 +216,10 @@ export default async function ManagementDashboard({
             </Card>
           </Link>
 
-          <Link href="/management/approvals" className="transition-transform hover:scale-105">
+          <Link
+            href={isMandatoryApprover ? "/management/pending-evaluations" : "/management/approvals"}
+            className="transition-transform hover:scale-105"
+          >
             <Card className="bg-gradient-to-br from-indigo-50 to-indigo-100 border-indigo-200 cursor-pointer hover:shadow-lg transition-shadow">
               <CardHeader className="flex flex-row items-center justify-between pb-2 p-3 sm:p-4 lg:p-6">
                 <CardTitle className="text-sm font-medium text-indigo-900">
@@ -190,9 +229,11 @@ export default async function ManagementDashboard({
               </CardHeader>
               <CardContent className="p-3 sm:p-4 lg:p-6 pt-0">
                 <div className="text-xl sm:text-2xl md:text-3xl font-bold text-indigo-900">
-                  {workload.executives.pendingApprovals}
+                  {isMandatoryApprover ? mandatoryApproverPendingCount : workload.executives.pendingApprovals}
                 </div>
-                <p className="text-xs text-indigo-700 mt-1">Awaiting committee decision</p>
+                <p className="text-xs text-indigo-700 mt-1">
+                  {isMandatoryApprover ? "Awaiting your review" : "Awaiting committee decision"}
+                </p>
               </CardContent>
             </Card>
           </Link>
