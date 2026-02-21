@@ -125,7 +125,7 @@ export function RequestedEvaluationsView() {
       <Card>
         <CardContent className="flex flex-col items-center justify-center py-12 text-center">
           <Share2 className="h-12 w-12 text-muted-foreground mb-4" />
-          <h3 className="text-lg font-semibold mb-2">No evaluation requests yet</h3>
+          <h3 className="text-lg font-semibold mb-2">No cross-team shares yet</h3>
           <p className="text-sm text-muted-foreground max-w-sm">
             Use the &ldquo;Request Evaluation&rdquo; button on a writer engagement report or episode to ask another team for their evaluation.
           </p>

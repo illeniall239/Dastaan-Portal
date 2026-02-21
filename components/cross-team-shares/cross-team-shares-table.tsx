@@ -165,7 +165,7 @@ export function CrossTeamSharesTable({ readOnly = false }: CrossTeamSharesTableP
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-base">
-            Evaluation Requests ({filteredShares.length})
+            Cross-Team Shares Tracking ({filteredShares.length})
           </CardTitle>
         </CardHeader>
         <CardContent className="p-0">
@@ -188,7 +188,7 @@ export function CrossTeamSharesTable({ readOnly = false }: CrossTeamSharesTableP
                 {filteredShares.length === 0 ? (
                   <tr>
                     <td colSpan={readOnly ? 8 : 9} className="p-6 text-center text-gray-500">
-                      No evaluation requests found
+                      No cross-team shares found
                     </td>
                   </tr>
                 ) : (

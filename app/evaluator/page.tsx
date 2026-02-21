@@ -316,7 +316,7 @@ async function DashboardContent({ userId }: { userId: string }) {
 
         {crossTeamSharesData.length > 0 && (
           <ModernStatCard
-            title="Evaluation Requests"
+            title="Cross-Team Shares Tracking"
             value={crossTeamSharesData.length}
             icon={Share2}
             href="/evaluator/evaluations-list"
@@ -334,12 +334,12 @@ async function DashboardContent({ userId }: { userId: string }) {
       {/* Evaluation Requests Section */}
       {crossTeamSharesData.length > 0 && (
         <div className="space-y-2">
-          <h2 className="text-lg font-semibold text-gray-900">Evaluation Requests</h2>
+          <h2 className="text-lg font-semibold text-gray-900">Cross-Team Shares Tracking</h2>
           <div className="bg-purple-50 border border-purple-200 rounded-2xl p-4 space-y-3">
             <div className="flex items-center gap-2 mb-2">
               <Share2 className="h-5 w-5 text-purple-600" />
               <p className="text-sm font-medium text-purple-800">
-                {crossTeamSharesData.length} evaluation request{crossTeamSharesData.length !== 1 ? "s" : ""} from other teams
+                {crossTeamSharesData.length} cross-team share{crossTeamSharesData.length !== 1 ? "s" : ""} from other teams
               </p>
             </div>
             {crossTeamSharesData.slice(0, 5).map((share: any) => (
@@ -372,7 +372,7 @@ async function DashboardContent({ userId }: { userId: string }) {
                   href="/evaluator/evaluations-list"
                   className="text-sm text-purple-700 hover:underline font-medium"
                 >
-                  View all {crossTeamSharesData.length} evaluation requests →
+                  View all {crossTeamSharesData.length} cross-team shares →
                 </Link>
               </div>
             )}

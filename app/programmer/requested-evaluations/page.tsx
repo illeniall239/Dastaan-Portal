@@ -13,9 +13,9 @@ export default async function ProgrammerRequestedEvaluationsPage() {
       <div className="flex flex-col gap-4 sm:gap-6 mb-8">
         <BackButton fallbackHref="/programmer" variant="outline" size="sm" className="w-fit" />
         <div className="space-y-1">
-          <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Requested Evaluations</h1>
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Cross-Team Shares Tracking</h1>
           <p className="text-muted-foreground text-sm sm:text-base">
-            View results for cross-team evaluation requests your team has sent.
+            View results for cross-team shares your team has sent.
           </p>
         </div>
       </div>

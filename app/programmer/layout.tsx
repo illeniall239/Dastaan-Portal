@@ -55,7 +55,7 @@ const programmerNavItems = [
     icon: "map",
   },
   {
-    title: "Evaluation Requests",
+    title: "Cross-Team Shares Tracking",
     href: "/programmer/cross-team-shares",
     icon: "share2",
   },

@@ -6,10 +6,10 @@ export default function ProgrammerCrossTeamSharesPage() {
     <div className="mobile-container mobile-section space-y-6 animate-fade-in">
       <div>
         <h1 className="text-xl sm:text-2xl font-bold text-gray-900">
-          Evaluation Requests
+          Cross-Team Shares Tracking
         </h1>
         <p className="text-gray-500 mt-1">
-          Track evaluation requests sent between teams
+          Track cross-team shares between teams
         </p>
       </div>
 
@@ -21,7 +21,7 @@ export default function ProgrammerCrossTeamSharesPage() {
 
       {/* All requests (sent and received) */}
       <div>
-        <h2 className="text-base font-semibold text-gray-800 mb-3">All Evaluation Requests</h2>
+        <h2 className="text-base font-semibold text-gray-800 mb-3">All Cross-Team Shares</h2>
         <CrossTeamSharesTable />
       </div>
     </div>

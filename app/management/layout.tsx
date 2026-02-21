@@ -13,7 +13,7 @@ const baseNavItems = [
   { title: "Idea Roadmap",        href: "/management/roadmap",            icon: "map" },
   { title: "Project Status",      href: "/management/status-updater",     icon: "listChecks" },
   { title: "Evaluations",         href: "/management/evaluations",        icon: "clipboardCheck" },
-  { title: "Evaluation Requests", href: "/management/cross-team-shares",  icon: "share2" },
+  { title: "Cross-Team Shares Tracking", href: "/management/cross-team-shares",  icon: "share2" },
   { title: "Teams",               href: "/management/teams",              icon: "users" },
 ];
 
