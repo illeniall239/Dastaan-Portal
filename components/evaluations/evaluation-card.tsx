@@ -333,7 +333,7 @@ export function EvaluationCard({
           )}
           {hasEvaluated ? (
             <Button size="sm" asChild variant="outline">
-              <Link href={`/${portalPrefix}/my-evaluations/${myEvaluation?.id}`}>
+              <Link href={`/${portalPrefix}/evaluate/${report.id}`}>
                 <FileTextIcon className="h-4 w-4 mr-2" />
                 View Details
               </Link>

@@ -488,11 +488,20 @@ export function EvaluatorEvaluationForm({
 
   return (
     <form onSubmit={handleSubmit}>
-      <div className={isReadOnly ? "pointer-events-none select-none opacity-60" : ""}>
+      {/* Header — always interactive, never dimmed */}
       <div className="flex flex-col gap-4 sm:gap-6 mb-8 max-w-4xl mx-auto px-4 sm:px-6 py-6">
-        <BackButton fallbackHref={`/${portalPrefix}/evaluations-list`} variant="outline" size="sm" className="w-fit" />
+        <div className="flex items-center justify-between">
+          <BackButton fallbackHref={`/${portalPrefix}/evaluations-list`} variant="outline" size="sm" className="w-fit" />
+          {isReadOnly && (
+            <Button type="button" variant="outline" size="sm" onClick={() => setIsEditing(true)}>
+              Edit
+            </Button>
+          )}
+        </div>
         <div className="space-y-1">
-          <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Evaluate Project</h1>
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight">
+            {isReadOnly ? "Evaluation Details" : "Evaluate Project"}
+          </h1>
           <div className="flex items-center gap-2">
             <p className="text-muted-foreground text-sm sm:text-base">
               Assessment for &ldquo;{callReport.working_title}&rdquo;
@@ -506,6 +515,8 @@ export function EvaluatorEvaluationForm({
         </div>
       </div>
 
+      {/* Form body — dimmed + non-interactive when read-only */}
+      <div className={isReadOnly ? "pointer-events-none select-none opacity-60" : ""}>
       <div className="space-y-6 max-w-4xl mx-auto px-4 sm:px-6">
         {/* Revision evaluation banner */}
         {revisionId && (
@@ -1302,19 +1313,6 @@ export function EvaluatorEvaluationForm({
         </Suspense>
       </div>
       </div>
-      {isReadOnly && (
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 pb-6">
-          <Card className="p-4 bg-blue-50 border-blue-200">
-            <p className="text-sm text-center text-blue-800 font-medium">
-              This evaluation was submitted on{" "}
-              {existingEvaluation?.submitted_at
-                ? new Date(existingEvaluation.submitted_at).toLocaleString()
-                : "an earlier date"}{" "}
-              and cannot be modified.
-            </p>
-          </Card>
-        </div>
-      )}
     </form>
   );
 }
