@@ -152,6 +152,7 @@ export default async function ManagementEvaluateCallReportPage({
         detailedOneLiner={detailedOneLiner}
         isManagementEvaluation={true}
         existingEvaluation={existingEvaluation}
+        portalPrefix="management"
       />
     </div>
   );

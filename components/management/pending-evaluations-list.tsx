@@ -21,7 +21,9 @@ import {
   User,
   Search,
 } from "lucide-react";
+import Link from "next/link";
 import { StoryApprovalPanel } from "@/components/approvals/story-approval-panel";
+import { ContentRevisions } from "@/components/ui/content-revisions";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -170,7 +172,12 @@ function ScoreBox({ label, score, comment }: { label: string; score: number | nu
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-export function PendingEvaluationsList() {
+interface PendingEvaluationsListProps {
+  userRole?: string;
+  userId?: string;
+}
+
+export function PendingEvaluationsList({ userRole, userId }: PendingEvaluationsListProps) {
   const [callReports, setCallReports] = useState<PendingCallReport[]>([]);
   const [reviewedCallReports, setReviewedCallReports] = useState<ReviewedCallReport[]>([]);
   const [loading, setLoading] = useState(true);
@@ -355,9 +362,16 @@ export function PendingEvaluationsList() {
                       <span>Evaluated {timeAgo(cr.lastEvaluatedAt)}</span>
                     </div>
                   </div>
-                  <Button size="sm" onClick={() => handleReview(cr)} className="shrink-0">
-                    Review
-                  </Button>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <Button size="sm" variant="outline" asChild>
+                      <Link href={`/management/evaluate/call-report/${cr.id}`}>
+                        Evaluate
+                      </Link>
+                    </Button>
+                    <Button size="sm" onClick={() => handleReview(cr)}>
+                      Review
+                    </Button>
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -807,6 +821,21 @@ export function PendingEvaluationsList() {
                   </div>
                 )}
               </div>
+
+              <Separator />
+
+              {/* ── Revisions ──────────────────────────────────────────── */}
+              {selectedId && (
+                <ContentRevisions
+                  entityId={selectedId}
+                  apiBasePath="/api/call-reports"
+                  storageBucket="attachments"
+                  canEdit={false}
+                  userRole={userRole || "management"}
+                  evaluateUrl="/management/evaluate/call-report"
+                  entityType="call-report"
+                />
+              )}
 
               <Separator />
 

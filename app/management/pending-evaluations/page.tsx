@@ -10,5 +10,5 @@ export default async function PendingEvaluationsPage() {
     redirect("/dashboard");
   }
 
-  return <PendingEvaluationsList />;
+  return <PendingEvaluationsList userRole={user.role} userId={user.id} />;
 }
