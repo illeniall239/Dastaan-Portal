@@ -80,7 +80,7 @@ export function CallReportCard({ report, portalPrefix = "evaluator", isTeamHead 
             <div className="flex-1">
               <div className="flex items-center gap-2 mb-1 flex-wrap">
                 <CardTitle className="text-xl">{report.title}</CardTitle>
-                {report.team && (
+                {(portalPrefix === "programmer" || portalPrefix === "management") && report.team && (
                   <TeamBadge team={report.team} size="sm" />
                 )}
                 {evalStatus && (
@@ -138,6 +138,9 @@ export function CallReportCard({ report, portalPrefix = "evaluator", isTeamHead 
             </div>
             <div className="text-right text-sm text-muted-foreground">
               <div>Logged: {formattedDateTime}</div>
+              {report.logged_by && (
+                <div>By: {report.logged_by}</div>
+              )}
             </div>
           </div>
         </CardHeader>

@@ -586,6 +586,8 @@ export async function getAllCallReports() {
       latest_revision_date: revisionMap[report.id]?.latest_date || null,
       episodes: episodeMap[report.id] || [],
       approval_status: approvalStatusMap[report.id] || null,
+      team: (report as any).team || null,
+      logged_by: (report as any).logged_by || null,
     };
   });
 
