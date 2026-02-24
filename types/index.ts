@@ -603,6 +603,30 @@ export interface StoryApprovalStatus {
   currentUserName?: string | null;
 }
 
+// Evaluation detail for a specific revision
+export interface RevisionEvaluation {
+  id: string;
+  evaluator_name: string;
+  evaluator_email: string;
+  average_score: number | null;
+  conflict_of_content_score: number | null;
+  conflict_of_content_comment: string | null;
+  characterization_score: number | null;
+  characterization_comment: string | null;
+  story_progression_score: number | null;
+  story_progression_comment: string | null;
+  whats_next_element_score: number | null;
+  whats_next_element_comment: string | null;
+  overall_oneliner_grade_score: number | null;
+  overall_oneliner_grade_comment: string | null;
+  decision: string | null;
+  decision_notes: string | null;
+  comments: string | null;
+  big_idea: string | null;
+  theme: string | null;
+  submitted_at: string | null;
+}
+
 // Episode Revision types
 export interface EpisodeRevision {
   id: string;
@@ -619,6 +643,7 @@ export interface EpisodeRevision {
   assessed_at?: string | null;
   evaluation_count?: number;
   average_evaluation_score?: number | null;
+  evaluations?: RevisionEvaluation[];
   uploaded_by_user?: {
     name: string;
     email: string;
@@ -658,6 +683,7 @@ export interface CallReportRevision {
   assessed_at?: string | null;
   evaluation_count?: number;
   average_evaluation_score?: number | null;
+  evaluations?: RevisionEvaluation[];
   uploaded_by_user?: {
     name: string;
     email: string;

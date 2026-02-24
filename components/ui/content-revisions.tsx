@@ -22,7 +22,7 @@ import {
   ClipboardCheck,
 } from "lucide-react";
 import { formatDate } from "@/lib/utils/format-date";
-import type { EpisodeRevision } from "@/types";
+import type { EpisodeRevision, RevisionEvaluation } from "@/types";
 
 interface ContentRevisionsProps {
   entityId: string;
@@ -40,6 +40,65 @@ interface ContentRevisionsProps {
   evaluateUrl?: string;
   /** Entity type for evaluation context: "call-report" or "episode" */
   entityType?: "call-report" | "episode";
+}
+
+function RevScoreBox({ label, score, comment }: { label: string; score: number | null; comment?: string | null }) {
+  return (
+    <div className="bg-gray-50 rounded p-1.5">
+      <p className="text-muted-foreground text-[10px] mb-0.5">{label}</p>
+      <p className="font-semibold text-xs">{score !== null && score !== undefined ? `${score}/10` : "N/A"}</p>
+      {comment && <p className="text-[10px] text-muted-foreground mt-0.5 italic">{comment}</p>}
+    </div>
+  );
+}
+
+function RevisionEvalCard({ ev }: { ev: RevisionEvaluation }) {
+  return (
+    <div className="border rounded-lg p-3 space-y-2 bg-white text-xs">
+      <div className="flex items-start justify-between">
+        <div>
+          <p className="font-medium text-sm">{ev.evaluator_name}</p>
+          <p className="text-muted-foreground">{ev.evaluator_email}</p>
+          {ev.submitted_at && <p className="text-muted-foreground">{formatDate(ev.submitted_at)}</p>}
+        </div>
+        {ev.average_score != null && (
+          <div className="text-right">
+            <div className="flex items-center gap-1 font-bold text-sm">
+              <Star className="h-3.5 w-3.5 text-yellow-500 fill-yellow-500" />
+              {ev.average_score.toFixed(1)}
+            </div>
+            <p className="text-muted-foreground">Avg Score</p>
+          </div>
+        )}
+      </div>
+      <div className="grid grid-cols-2 gap-1.5">
+        <RevScoreBox label="Conflict of Content" score={ev.conflict_of_content_score} comment={ev.conflict_of_content_comment} />
+        <RevScoreBox label="Characterization" score={ev.characterization_score} comment={ev.characterization_comment} />
+        <RevScoreBox label="Story Progression" score={ev.story_progression_score} comment={ev.story_progression_comment} />
+        <RevScoreBox label="What's Next Element" score={ev.whats_next_element_score} comment={ev.whats_next_element_comment} />
+        <div className="col-span-2">
+          <RevScoreBox label="Overall Oneliner Grade" score={ev.overall_oneliner_grade_score} comment={ev.overall_oneliner_grade_comment} />
+        </div>
+      </div>
+      {ev.comments && (
+        <div className="bg-slate-50 rounded p-2">
+          <p className="font-medium text-slate-700 mb-0.5">Comments</p>
+          <p className="text-slate-600">{ev.comments}</p>
+        </div>
+      )}
+      {ev.decision && (
+        <div className="flex items-center gap-2">
+          <Badge
+            variant={ev.decision === "approve" ? "default" : ev.decision === "reject" ? "destructive" : "secondary"}
+            className="text-xs"
+          >
+            {ev.decision === "approve" ? "Approved" : ev.decision === "reject" ? "Rejected" : "Needs Improvement"}
+          </Badge>
+          {ev.decision_notes && <span className="text-muted-foreground">{ev.decision_notes}</span>}
+        </div>
+      )}
+    </div>
+  );
 }
 
 /**
@@ -105,6 +164,8 @@ export function ContentRevisions({
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [expanded, setExpanded] = useState(!compact);
   const [savingAssessmentId, setSavingAssessmentId] = useState<string | null>(null);
+
+  const [expandedEvalRevisionId, setExpandedEvalRevisionId] = useState<string | null>(null);
 
   const [file, setFile] = useState<File | null>(null);
   const [comment, setComment] = useState("");
@@ -484,6 +545,42 @@ export function ContentRevisions({
               <ClipboardCheck className="h-3 w-3 mr-1" />
               {hasEvaluations ? "Re-evaluate Revision" : "Evaluate Revision"}
             </Button>
+          </div>
+        )}
+
+        {/* Row 4: Collapsible evaluations for this revision */}
+        {!isCompact && revision.evaluations && revision.evaluations.length > 0 && (
+          <div className="border-t pt-2 mt-1">
+            <button
+              type="button"
+              onClick={() =>
+                setExpandedEvalRevisionId(
+                  expandedEvalRevisionId === revision.id ? null : revision.id
+                )
+              }
+              className="flex items-center gap-1.5 text-xs text-slate-600 hover:text-slate-900 transition-colors"
+            >
+              {expandedEvalRevisionId === revision.id ? (
+                <ChevronDown className="h-3.5 w-3.5" />
+              ) : (
+                <ChevronRight className="h-3.5 w-3.5" />
+              )}
+              <span className="font-medium">
+                {revision.evaluations.length} Evaluation{revision.evaluations.length !== 1 ? "s" : ""}
+              </span>
+              {revision.average_evaluation_score != null && (
+                <span className="text-slate-400">
+                  &middot; Avg {revision.average_evaluation_score}/10
+                </span>
+              )}
+            </button>
+            {expandedEvalRevisionId === revision.id && (
+              <div className="mt-2 space-y-2">
+                {revision.evaluations.map((ev: RevisionEvaluation) => (
+                  <RevisionEvalCard key={ev.id} ev={ev} />
+                ))}
+              </div>
+            )}
           </div>
         )}
       </div>

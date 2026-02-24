@@ -74,41 +74,79 @@ export async function GET(
       );
     }
 
-    // Aggregate evaluation data per revision
+    // Aggregate full evaluation data per revision
     const revisionIds = (revisions || []).map((r: any) => r.id);
-    let evalSummaryMap: Record<string, { count: number; avg: number | null }> = {};
+    let evalsByRevision: Record<string, any[]> = {};
 
     if (revisionIds.length > 0) {
       const { data: evalData } = await supabase
         .from("evaluator_forms")
-        .select("revision_id, average_score")
+        .select(
+          `
+          id, revision_id, average_score,
+          conflict_of_content_score, conflict_of_content_comment,
+          characterization_score, characterization_comment,
+          story_progression_score, story_progression_comment,
+          whats_next_element_score, whats_next_element_comment,
+          overall_oneliner_grade_score, overall_oneliner_grade_comment,
+          decision, decision_notes, comments, big_idea, theme, submitted_at,
+          evaluator:users!evaluator_id(name, email)
+        `
+        )
         .in("revision_id", revisionIds)
-        .not("revision_id", "is", null);
+        .not("revision_id", "is", null)
+        .not("submitted_at", "is", null)
+        .order("submitted_at", { ascending: true });
 
       if (evalData) {
         for (const ev of evalData) {
           if (!ev.revision_id) continue;
-          if (!evalSummaryMap[ev.revision_id]) {
-            evalSummaryMap[ev.revision_id] = { count: 0, avg: null };
-          }
-          evalSummaryMap[ev.revision_id].count++;
-        }
-        // Calculate averages
-        for (const revId of Object.keys(evalSummaryMap)) {
-          const revEvals = evalData.filter((e: any) => e.revision_id === revId && e.average_score != null);
-          if (revEvals.length > 0) {
-            const sum = revEvals.reduce((s: number, e: any) => s + (e.average_score || 0), 0);
-            evalSummaryMap[revId].avg = Number((sum / revEvals.length).toFixed(2));
-          }
+          if (!evalsByRevision[ev.revision_id]) evalsByRevision[ev.revision_id] = [];
+          evalsByRevision[ev.revision_id].push({
+            id: ev.id,
+            evaluator_name: (ev.evaluator as any)?.name || "Unknown",
+            evaluator_email: (ev.evaluator as any)?.email || "",
+            average_score: ev.average_score ?? null,
+            conflict_of_content_score: ev.conflict_of_content_score ?? null,
+            conflict_of_content_comment: ev.conflict_of_content_comment || null,
+            characterization_score: ev.characterization_score ?? null,
+            characterization_comment: ev.characterization_comment || null,
+            story_progression_score: ev.story_progression_score ?? null,
+            story_progression_comment: ev.story_progression_comment || null,
+            whats_next_element_score: ev.whats_next_element_score ?? null,
+            whats_next_element_comment: ev.whats_next_element_comment || null,
+            overall_oneliner_grade_score: ev.overall_oneliner_grade_score ?? null,
+            overall_oneliner_grade_comment: ev.overall_oneliner_grade_comment || null,
+            decision: ev.decision || null,
+            decision_notes: ev.decision_notes || null,
+            comments: ev.comments || null,
+            big_idea: ev.big_idea || null,
+            theme: ev.theme || null,
+            submitted_at: ev.submitted_at || null,
+          });
         }
       }
     }
 
-    const enrichedRevisions = (revisions || []).map((r: any) => ({
-      ...r,
-      evaluation_count: evalSummaryMap[r.id]?.count || 0,
-      average_evaluation_score: evalSummaryMap[r.id]?.avg ?? null,
-    }));
+    const enrichedRevisions = (revisions || []).map((r: any) => {
+      const revEvals = evalsByRevision[r.id] || [];
+      const evalsWithScore = revEvals.filter((e: any) => e.average_score != null);
+      const avg =
+        evalsWithScore.length > 0
+          ? Number(
+              (
+                evalsWithScore.reduce((s: number, e: any) => s + e.average_score, 0) /
+                evalsWithScore.length
+              ).toFixed(2)
+            )
+          : null;
+      return {
+        ...r,
+        evaluation_count: revEvals.length,
+        average_evaluation_score: avg,
+        evaluations: revEvals,
+      };
+    });
 
     return NextResponse.json({ revisions: enrichedRevisions });
   } catch (error) {
