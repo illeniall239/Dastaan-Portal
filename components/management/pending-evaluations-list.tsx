@@ -22,8 +22,8 @@ import {
   Search,
 } from "lucide-react";
 import Link from "next/link";
-import { StoryApprovalPanel } from "@/components/approvals/story-approval-panel";
 import { ContentRevisions } from "@/components/ui/content-revisions";
+import { CallReportDiscussion } from "@/components/call-reports/call-report-discussion";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -36,6 +36,7 @@ interface PendingCallReport {
   finalDecision: string | null;
   lastEvaluatedAt: string;
   evaluationCount: number;
+  discussionCount: number;
 }
 
 interface ReviewedCallReport extends PendingCallReport {
@@ -263,7 +264,7 @@ export function PendingEvaluationsList({ userRole, userId }: PendingEvaluationsL
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Pending Approvals</h1>
+          <h1 className="text-2xl font-bold text-slate-900">Approval Tracking</h1>
           <p className="text-sm text-slate-500 mt-0.5">
             Stories evaluated by the team that are awaiting your approval
           </p>
@@ -341,7 +342,7 @@ export function PendingEvaluationsList({ userRole, userId }: PendingEvaluationsL
           </p>
           {filteredPending.map((cr) => (
             <Card key={cr.id} className="hover:shadow-sm transition-shadow">
-              <CardContent className="py-4 px-5">
+              <CardContent className="py-4 px-5 space-y-3">
                 <div className="flex items-center justify-between gap-4">
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2 flex-wrap">
@@ -373,6 +374,15 @@ export function PendingEvaluationsList({ userRole, userId }: PendingEvaluationsL
                     </Button>
                   </div>
                 </div>
+                {userId && (
+                  <CallReportDiscussion
+                    callReportId={cr.id}
+                    currentUserId={userId}
+                    currentUserRole={userRole}
+                    compact={true}
+                    defaultExpanded={true}
+                  />
+                )}
               </CardContent>
             </Card>
           ))}
@@ -398,7 +408,7 @@ export function PendingEvaluationsList({ userRole, userId }: PendingEvaluationsL
                   : "border-l-red-500"
               }`}
             >
-              <CardContent className="py-4 px-5">
+              <CardContent className="py-4 px-5 space-y-3">
                 <div className="flex items-center justify-between gap-4">
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2 flex-wrap">
@@ -444,6 +454,15 @@ export function PendingEvaluationsList({ userRole, userId }: PendingEvaluationsL
                     View
                   </Button>
                 </div>
+                {userId && (
+                  <CallReportDiscussion
+                    callReportId={cr.id}
+                    currentUserId={userId}
+                    currentUserRole={userRole}
+                    compact={true}
+                    defaultExpanded={true}
+                  />
+                )}
               </CardContent>
             </Card>
           ))}
@@ -839,23 +858,17 @@ export function PendingEvaluationsList({ userRole, userId }: PendingEvaluationsL
 
               <Separator />
 
-              {/* ── Section 3: Approval Gate ──────────────────────────────── */}
-              {selectedId && (
-                <StoryApprovalPanel
+              {/* ── Discussion Thread ──────────────────────────────────── */}
+              {selectedId && userId && (
+                <CallReportDiscussion
                   callReportId={selectedId}
-                  evaluationCompleted={true}
+                  currentUserId={userId}
+                  currentUserRole={userRole}
                 />
               )}
+
             </div>
-          ) : (
-            /* Fallback: show approval panel even if detail fetch failed */
-            selectedId && (
-              <StoryApprovalPanel
-                callReportId={selectedId}
-                evaluationCompleted={true}
-              />
-            )
-          )}
+          ) : null}
         </DialogContent>
       </Dialog>
     </div>

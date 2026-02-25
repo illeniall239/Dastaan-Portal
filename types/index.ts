@@ -588,6 +588,12 @@ export interface StoryApproval {
   };
 }
 
+export interface ApprovalHistoryRound {
+  revisionId: string | null;
+  revisionNumber: number | null;
+  approvals: StoryApproval[];
+}
+
 export interface StoryApprovalStatus {
   approvals: StoryApproval[];
   totalApprovals: number;
@@ -601,6 +607,8 @@ export interface StoryApprovalStatus {
   currentUserApproval?: StoryApproval | null;
   isCurrentUserMandatoryApprover: boolean; // true for Humera/Salman only
   currentUserName?: string | null;
+  currentRevisionId?: string | null;
+  approvalHistory?: ApprovalHistoryRound[];
 }
 
 // Evaluation detail for a specific revision
@@ -690,6 +698,38 @@ export interface CallReportRevision {
   };
 }
 
+export interface CallReportDiscussion {
+  id: string;
+  call_report_id: string;
+  user_id: string;
+  message: string;
+  revision_id?: string | null;
+  is_system_message?: boolean;
+  created_at: string;
+  updated_at: string;
+  user?: {
+    name: string;
+    email: string;
+    role: string;
+  };
+}
+
+export interface EpisodeDiscussion {
+  id: string;
+  episode_id: string;
+  user_id: string;
+  message: string;
+  revision_id?: string | null;
+  is_system_message?: boolean;
+  created_at: string;
+  updated_at: string;
+  user?: {
+    name: string;
+    email: string;
+    role: string;
+  };
+}
+
 // Event types
 export interface EventItem {
   title: string;
@@ -749,6 +789,8 @@ export interface EpisodicEvaluation {
   updated_by?: string;
   evaluation_round?: number;
   revision_id?: string | null;
+  decision?: "approve" | "reject" | "needs_revision" | null;
+  decision_notes?: string | null;
 }
 
 export interface EpisodicEvaluationDraft {

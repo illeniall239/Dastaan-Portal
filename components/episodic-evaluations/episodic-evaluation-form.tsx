@@ -25,6 +25,7 @@ import {
 import type { Episode, EpisodicEvaluation } from "@/types";
 import { toast } from "sonner";
 import { Loader2, Save, FilePenLine, Download, FileText, Paperclip } from "lucide-react";
+import { DiscussionThread } from "@/components/call-reports/call-report-discussion";
 import {
   AlertDialog,
   AlertDialogContent,
@@ -41,6 +42,8 @@ interface EpisodicEvaluationFormProps {
   existingEvaluation?: EpisodicEvaluation;
   onSubmit: (data: EpisodicEvaluationFormData) => Promise<void>;
   disabled?: boolean;
+  currentUserId?: string;
+  currentUserRole?: string;
 }
 
 export function EpisodicEvaluationForm({
@@ -48,6 +51,8 @@ export function EpisodicEvaluationForm({
   existingEvaluation,
   onSubmit,
   disabled = false,
+  currentUserId,
+  currentUserRole,
 }: EpisodicEvaluationFormProps) {
   const [submitting, setSubmitting] = useState(false);
   const [savingDraft, setSavingDraft] = useState(false);
@@ -110,6 +115,14 @@ export function EpisodicEvaluationForm({
   );
   const [overallAssessmentScore, setOverallAssessmentScore] = useState(
     existingEvaluation?.overall_assessment_score || 5
+  );
+
+  // Final decision state
+  const [decision, setDecision] = useState<"approve" | "reject" | "needs_revision" | "">(
+    (existingEvaluation?.decision as "approve" | "reject" | "needs_revision") || ""
+  );
+  const [decisionNotes, setDecisionNotes] = useState(
+    existingEvaluation?.decision_notes || ""
   );
 
   // Per-criterion comment state
@@ -209,6 +222,8 @@ export function EpisodicEvaluationForm({
         freezesComment,
         whatsNextComment,
         overallAssessmentComment,
+        decision,
+        decisionNotes,
         accumulatedTimeMinutes: timeSpentMinutes,
       };
 
@@ -260,6 +275,8 @@ export function EpisodicEvaluationForm({
       setFreezesComment(pendingDraftData.freezesComment || "");
       setWhatsNextComment(pendingDraftData.whatsNextComment || "");
       setOverallAssessmentComment(pendingDraftData.overallAssessmentComment || "");
+      setDecision(pendingDraftData.decision || "");
+      setDecisionNotes(pendingDraftData.decisionNotes || "");
 
       // Load accumulated time from draft
       setInitialTimeFromDraft(pendingDraftData.accumulatedTimeMinutes || 0);
@@ -280,6 +297,15 @@ export function EpisodicEvaluationForm({
 
     if (isReadOnly) {
       toast.error("Cannot modify submitted evaluation");
+      return;
+    }
+
+    if (!decision) {
+      toast.error("Please select a decision before submitting");
+      return;
+    }
+    if ((decision === "reject" || decision === "needs_revision") && !decisionNotes.trim()) {
+      toast.error("Please provide notes for your decision");
       return;
     }
 
@@ -314,6 +340,10 @@ export function EpisodicEvaluationForm({
       overall_assessment_comment: overallAssessmentComment || undefined,
       time_spent_minutes: timeSpentMinutes,
       started_at: new Date().toISOString(),
+      decision: decision as "approve" | "reject" | "needs_revision",
+      decision_notes: (decision === "reject" || decision === "needs_revision")
+        ? decisionNotes
+        : undefined,
     };
 
     const validation = episodicEvaluationSchema.safeParse(formData);
@@ -719,6 +749,177 @@ export function EpisodicEvaluationForm({
           ratingScaleItems={oneLinerRatingScaleItems}
         />
       </div>
+
+      {/* Final Decision */}
+      <div className="space-y-4">
+        <h3 className="text-xl font-bold">Final Decision *</h3>
+        <p className="text-sm text-muted-foreground">
+          Based on your evaluation, select your recommendation for this episode.
+        </p>
+
+        <Card className="p-4 border-2 border-slate-200">
+          <div className="space-y-4">
+            <div className="space-y-3">
+              <Label className="text-base font-semibold">Your Decision *</Label>
+              <div className="space-y-3">
+                {/* Approve */}
+                <label
+                  className={`flex items-start p-4 rounded-lg border-2 transition-all ${
+                    isReadOnly ? "cursor-default" : "cursor-pointer"
+                  } ${
+                    decision === "approve"
+                      ? "border-green-500 bg-green-50"
+                      : "border-gray-200 hover:border-green-300 hover:bg-green-50/30"
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="decision"
+                    value="approve"
+                    checked={decision === "approve"}
+                    onChange={() => { setDecision("approve"); setDecisionNotes(""); }}
+                    disabled={isReadOnly}
+                    className="mt-1 h-4 w-4 text-green-600 focus:ring-green-500"
+                  />
+                  <div className="ml-3">
+                    <div className="font-semibold text-green-700">Approve</div>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Recommend this episode for approval
+                    </p>
+                  </div>
+                </label>
+
+                {/* Needs Revision */}
+                <label
+                  className={`flex items-start p-4 rounded-lg border-2 transition-all ${
+                    isReadOnly ? "cursor-default" : "cursor-pointer"
+                  } ${
+                    decision === "needs_revision"
+                      ? "border-yellow-500 bg-yellow-50"
+                      : "border-gray-200 hover:border-yellow-300 hover:bg-yellow-50/30"
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="decision"
+                    value="needs_revision"
+                    checked={decision === "needs_revision"}
+                    onChange={() => setDecision("needs_revision")}
+                    disabled={isReadOnly}
+                    className="mt-1 h-4 w-4 text-yellow-600 focus:ring-yellow-500"
+                  />
+                  <div className="ml-3">
+                    <div className="font-semibold text-yellow-700">Needs Revision</div>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Episode has potential but requires revisions
+                    </p>
+                  </div>
+                </label>
+
+                {/* Reject */}
+                <label
+                  className={`flex items-start p-4 rounded-lg border-2 transition-all ${
+                    isReadOnly ? "cursor-default" : "cursor-pointer"
+                  } ${
+                    decision === "reject"
+                      ? "border-red-500 bg-red-50"
+                      : "border-gray-200 hover:border-red-300 hover:bg-red-50/30"
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="decision"
+                    value="reject"
+                    checked={decision === "reject"}
+                    onChange={() => setDecision("reject")}
+                    disabled={isReadOnly}
+                    className="mt-1 h-4 w-4 text-red-600 focus:ring-red-500"
+                  />
+                  <div className="ml-3">
+                    <div className="font-semibold text-red-700">Reject</div>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Do not recommend this episode
+                    </p>
+                  </div>
+                </label>
+              </div>
+            </div>
+
+            {/* Decision Notes */}
+            {(decision === "reject" || decision === "needs_revision") && (
+              <div
+                className={`space-y-2 p-3 rounded-lg border ${
+                  decision === "reject"
+                    ? "bg-red-50 border-red-200"
+                    : "bg-yellow-50 border-yellow-200"
+                }`}
+              >
+                <Label
+                  htmlFor="decisionNotes"
+                  className={`text-base font-semibold ${
+                    decision === "reject" ? "text-red-900" : "text-yellow-900"
+                  }`}
+                >
+                  {decision === "reject"
+                    ? "Justification for Rejection *"
+                    : "What Revisions Are Needed? *"}
+                </Label>
+                <Textarea
+                  id="decisionNotes"
+                  value={decisionNotes}
+                  onChange={(e) => setDecisionNotes(e.target.value)}
+                  placeholder={
+                    decision === "reject"
+                      ? "Please explain your reasons for rejecting this episode..."
+                      : "Please explain what revisions are needed for this episode..."
+                  }
+                  rows={4}
+                  className="bg-white"
+                  disabled={isReadOnly}
+                  required
+                />
+                <p
+                  className={`text-xs ${
+                    decision === "reject" ? "text-red-700" : "text-yellow-700"
+                  }`}
+                >
+                  Providing detailed justification helps improve future episodes
+                </p>
+              </div>
+            )}
+
+            {/* Score vs decision warnings */}
+            {decision === "approve" && overallAverage < 5.0 && (
+              <div className="p-3 bg-amber-50 border border-amber-300 rounded-lg">
+                <p className="text-sm text-amber-800 font-medium">
+                  Warning: You cannot approve an episode with an average score below 5.0 (current: {overallAverage.toFixed(1)})
+                </p>
+              </div>
+            )}
+
+            {decision === "reject" && overallAverage >= 7.0 && (
+              <div className="p-3 bg-blue-50 border border-blue-300 rounded-lg">
+                <p className="text-sm text-blue-800">
+                  Note: You selected Reject but the score is {overallAverage.toFixed(1)}/10 (high). Please confirm your decision is correct.
+                </p>
+              </div>
+            )}
+          </div>
+        </Card>
+      </div>
+
+      {/* Discussion Thread */}
+      {currentUserId && (
+        <DiscussionThread
+          entityId={episode.id}
+          apiBasePath="/api/episodes"
+          currentUserId={currentUserId}
+          currentUserRole={currentUserRole}
+          compact={true}
+          defaultExpanded={true}
+          title="Episode Feedback"
+        />
+      )}
 
       {/* Submit and Save Draft Buttons */}
       {!isReadOnly && (

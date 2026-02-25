@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { applyRateLimit } from "@/lib/api-middleware";
 import { RateLimitPresets } from "@/lib/rate-limit-redis";
 import { logAuditAction, getRequestContext } from "@/lib/audit/server";
 import { logger } from "@/lib/logger";
+import { createNotifications } from "@/lib/notifications/server";
 
 export const dynamic = "force-dynamic";
 
@@ -161,47 +163,68 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create notifications for team members
+    // Notify team members + team head + management of new meeting
+    // Uses admin client to bypass RLS (notifications table blocks authenticated-user inserts)
     try {
-      const { data: teamMembers } = await supabase
+      const adminClient = createAdminClient();
+
+      // Get all members of this team
+      const { data: teamUsers } = await adminClient
         .from("users")
-        .select("id, role, team_id")
-        .eq("status", "active")
-        .or(`team_id.eq.${teamId},role.in.(admin,management)`);
+        .select("id")
+        .eq("team_id", teamId)
+        .eq("status", "active");
 
-      if (teamMembers && teamMembers.length > 0) {
-        const recipients = teamMembers.filter((u) => u.id !== user.id);
-        if (recipients.length > 0) {
-          const meetingDate = new Date(body.meeting_date);
-          const formattedDate = meetingDate.toLocaleDateString("en-US", {
-            month: "short",
-            day: "numeric",
-            year: "numeric",
-          });
-          const formattedTime = meetingDate.toLocaleTimeString("en-US", {
-            hour: "numeric",
-            minute: "2-digit",
-            hour12: true,
-          });
+      // Get team head explicitly (ensures notification even if team_id edge cases exist)
+      const { data: teamRecord } = await adminClient
+        .from("teams")
+        .select("team_head_id")
+        .eq("id", teamId)
+        .single();
 
-          const notifications = recipients.map((member) => ({
-            user_id: member.id,
-            type: "info",
-            title: `New meeting scheduled: ${body.title}`,
-            message: body.contact_name
-              ? `Meeting with ${body.contact_name} on ${formattedDate} at ${formattedTime}`
-              : `Meeting on ${formattedDate} at ${formattedTime}`,
-            entity_type: "meeting_scheduled",
-            entity_id: meeting.id,
-            created_by: user.id,
-            is_read: false,
-          }));
+      // Get all management + admin users
+      const { data: mgmtUsers } = await adminClient
+        .from("users")
+        .select("id")
+        .in("role", ["management", "admin"])
+        .eq("status", "active");
 
-          await supabase.from("notifications").insert(notifications);
-        }
+      const recipientSet = new Set<string>([
+        ...(teamUsers || []).map((u: { id: string }) => u.id),
+        ...(teamRecord?.team_head_id ? [teamRecord.team_head_id] : []),
+        ...(mgmtUsers || []).map((u: { id: string }) => u.id),
+      ]);
+      recipientSet.delete(user.id); // exclude creator
+
+      const recipients = Array.from(recipientSet);
+
+      if (recipients.length > 0) {
+        const meetingDate = new Date(body.meeting_date);
+        const formattedDate = meetingDate.toLocaleDateString("en-US", {
+          month: "short",
+          day: "numeric",
+          year: "numeric",
+        });
+        const formattedTime = meetingDate.toLocaleTimeString("en-US", {
+          hour: "numeric",
+          minute: "2-digit",
+          hour12: true,
+        });
+
+        await createNotifications(
+          recipients,
+          "info",
+          `New meeting scheduled: ${body.title}`,
+          body.contact_name
+            ? `Meeting with ${body.contact_name} on ${formattedDate} at ${formattedTime}`
+            : `Meeting on ${formattedDate} at ${formattedTime}`,
+          "meeting_scheduled",
+          meeting.id,
+          user.id
+        );
       }
     } catch (notifError) {
-      logger.error("Failed to create notifications:", { error: notifError });
+      logger.error("Failed to create meeting notifications:", { error: notifError });
     }
 
     // Audit log

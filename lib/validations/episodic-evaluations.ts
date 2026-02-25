@@ -81,6 +81,12 @@ export const episodicEvaluationSchema = z.object({
   // Time tracking (optional)
   time_spent_minutes: z.number().min(0).optional(),
   started_at: z.string().datetime().optional(),
+
+  // Final decision
+  decision: z.enum(["approve", "reject", "needs_revision"], {
+    required_error: "Please select a decision",
+  }),
+  decision_notes: z.string().optional(),
 });
 
 export type EpisodicEvaluationFormData = z.infer<typeof episodicEvaluationSchema>;
@@ -156,6 +162,10 @@ export const updateEpisodicEvaluationSchema = z.object({
 
   // Rating description (computed field, can be updated manually)
   rating_description: z.string().max(200).optional(),
+
+  // Final decision
+  decision: z.enum(["approve", "reject", "needs_revision"]).optional(),
+  decision_notes: z.string().optional(),
 }).refine(
   (data) => Object.keys(data).length > 0,
   {

@@ -1,6 +1,5 @@
 import { createClient } from "@/lib/supabase/client";
 import { logger } from "@/lib/logger";
-import { MANDATORY_APPROVER_EMAILS } from "@/lib/approvals/config";
 
 export interface Evaluation {
   id: string;
@@ -187,123 +186,16 @@ export async function createEvaluationClient(evaluationData: CreateEvaluationInp
     throw new Error(`Failed to create evaluation: ${error.message}`);
   }
 
-  // Get the call report for notifications and audit log
-  interface CallReportInfo {
-    working_title: string;
-    writer_name: string;
-  }
-  let callReport: CallReportInfo | null = null;
-
-  // Create notifications for content department members
-  try {
-    // Get the call report to include project details in notification
-    const { data: callReportData } = await supabase
-      .from("call_reports")
-      .select("working_title, writer_name")
-      .eq("id", evaluationData.call_report_id)
-      .single();
-
-    callReport = callReportData;
-
-    // Get current evaluator ID
-    const { data: { user } } = await supabase.auth.getUser();
-    const evaluatorId = user?.id;
-
-    // Get all relevant users (management, content_manager, content_creator)
-    // Exclude the evaluator who submitted the evaluation
-    const { data: relevantUsers } = await supabase
-      .from("users")
-      .select("id")
-      .in("role", ["management", "content_manager", "content_creator"])
-      .eq("status", "active");
-
-    if (relevantUsers && relevantUsers.length > 0 && callReport) {
-      // Exclude the evaluator from notification list
-      const recipientUsers = relevantUsers.filter(u => u.id !== evaluatorId);
-
-      if (recipientUsers.length > 0) {
-        const notifications = recipientUsers.map((user) => ({
-          user_id: user.id,
-          type: "success",
-          title: `New evaluation submitted: ${callReport?.working_title || "Unknown"}`,
-          message: `Evaluation completed with average score: ${data.average_score}/10`,
-          entity_type: "evaluation_submitted",
-          entity_id: data.id,
-          created_by: evaluatorId,
-          is_read: false,
-        }));
-
-        await supabase.from("notifications").insert(notifications);
-      }
-    }
-  } catch (notifError) {
-    logger.error("Failed to create notifications:", notifError);
-    // Don't fail the evaluation creation if notification fails
-  }
-
-  // Notify approval gate participants (Humera, Salman, and programmers)
-  try {
-    const { data: { user: currentUser } } = await supabase.auth.getUser();
-
-    // Get Humera and Salman's user IDs by email
-    const { data: mandatoryUsers } = await supabase
-      .from("users")
-      .select("id")
-      .in("email", MANDATORY_APPROVER_EMAILS)
-      .eq("status", "active");
-
-    // Get all programmer user IDs
-    const { data: programmerUsers } = await supabase
-      .from("users")
-      .select("id")
-      .eq("role", "programmer")
-      .eq("status", "active");
-
-    const approvalRecipientIds = new Set<string>();
-    mandatoryUsers?.forEach(u => approvalRecipientIds.add(u.id));
-    programmerUsers?.forEach(u => approvalRecipientIds.add(u.id));
-
-    // Exclude the evaluator who submitted
-    if (currentUser?.id) approvalRecipientIds.delete(currentUser.id);
-
-    if (approvalRecipientIds.size > 0 && callReport) {
-      const approvalNotifications = Array.from(approvalRecipientIds).map(userId => ({
-        user_id: userId,
-        type: "info",
-        title: `Story awaiting your approval: ${callReport?.working_title || "Unknown"}`,
-        message: `An evaluation has been completed. Please review and approve/reject this story.`,
-        entity_type: "story_approval_pending",
-        entity_id: evaluationData.call_report_id,
-        created_by: currentUser?.id || null,
-        is_read: false,
-      }));
-
-      await supabase.from("notifications").insert(approvalNotifications);
-    }
-  } catch (approvalNotifError) {
-    logger.error("Failed to create approval gate notifications:", approvalNotifError);
-  }
-
-  // Create audit log entry
-  try {
-    const auditLog = {
-      entity_type: "evaluation",
-      entity_id: data.id,
-      action: "submitted_evaluation",
-      performed_by: evaluationData.evaluator_id,
-      timestamp: new Date().toISOString(),
-      details: {
-        project_title: callReport?.working_title || "",
-        average_score: data.average_score,
-        evaluator: callReport?.writer_name || ""
-      }
-    };
-
-    await supabase.from("audit_logs").insert(auditLog);
-  } catch (auditError) {
-    logger.error("Failed to create audit log:", auditError);
-    // Don't fail the evaluation creation if audit logging fails
-  }
+  // Trigger server-side notifications via API route (uses admin client to bypass RLS)
+  // Fire-and-forget — errors here must not affect evaluation creation
+  fetch('/api/evaluations/notify', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      evaluationId: data.id,
+      callReportId: evaluationData.call_report_id,
+    }),
+  }).catch(() => {});
 
   return data;
 }

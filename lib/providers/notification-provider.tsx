@@ -54,7 +54,8 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     const supabase = createClient();
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
       if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-        queryClient.invalidateQueries({ queryKey: ['notifications'] });
+        queryClient.refetchQueries({ queryKey: ['notifications'] });
+        queryClient.refetchQueries({ queryKey: ['notifications', 'unread-count'] });
       }
     });
     return () => subscription.unsubscribe();

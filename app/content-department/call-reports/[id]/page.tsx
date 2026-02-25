@@ -22,6 +22,7 @@ import { SegregatedEvaluationsDisplay } from "@/components/evaluations/segregate
 import { ContentRevisions } from "@/components/ui/content-revisions";
 import { ShareCrossTeamButton } from "@/components/call-report/share-cross-team-button";
 import { StoryApprovalPanel } from "@/components/approvals/story-approval-panel";
+import { CallReportDiscussion } from "@/components/call-reports/call-report-discussion";
 
 
 // Helper to convert stored image path to secure proxy URL
@@ -460,6 +461,13 @@ export default async function CallReportDetailPage({ params }: { params: Promise
         <StoryApprovalPanel
           callReportId={resolvedParams.id}
           evaluationCompleted={evaluationCompleted}
+        />
+
+        {/* Discussion Thread */}
+        <CallReportDiscussion
+          callReportId={resolvedParams.id}
+          currentUserId={user.id}
+          currentUserRole={user.role}
         />
       </div>
     </div>

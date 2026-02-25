@@ -217,13 +217,13 @@ export default async function ManagementDashboard({
           </Link>
 
           <Link
-            href={isMandatoryApprover ? "/management/pending-evaluations" : "/management/approvals"}
+            href="/management/pending-evaluations"
             className="transition-transform hover:scale-105"
           >
             <Card className="bg-gradient-to-br from-indigo-50 to-indigo-100 border-indigo-200 cursor-pointer hover:shadow-lg transition-shadow">
               <CardHeader className="flex flex-row items-center justify-between pb-2 p-3 sm:p-4 lg:p-6">
                 <CardTitle className="text-sm font-medium text-indigo-900">
-                  Pending Approvals
+                  Approval Tracking
                 </CardTitle>
                 <Clock className="h-4 w-4 md:h-5 md:w-5 text-indigo-600" />
               </CardHeader>

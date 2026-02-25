@@ -42,8 +42,8 @@ export function useNotifications({
 
     enabled,
 
-    // Cache notifications for 30 seconds before considering them stale
-    staleTime: 30 * 1000,
+    // Always fetch fresh on mount (fixes delay after login)
+    staleTime: 0,
 
     // Keep notifications in cache for 5 minutes after last use
     gcTime: 5 * 60 * 1000,

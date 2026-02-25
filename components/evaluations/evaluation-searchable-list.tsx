@@ -38,6 +38,8 @@ interface EvaluationSearchableListProps {
   showDecisionFilter?: boolean;
   isTeamHead?: boolean;
   currentTeamId?: string;
+  currentUserId?: string;
+  currentUserRole?: string;
 }
 
 interface Filters {
@@ -54,6 +56,8 @@ export function EvaluationSearchableList({
   showDecisionFilter = false,
   isTeamHead = false,
   currentTeamId,
+  currentUserId,
+  currentUserRole,
 }: EvaluationSearchableListProps) {
   const [filters, setFilters] = useState<Filters>({
     search: "",
@@ -242,6 +246,8 @@ export function EvaluationSearchableList({
                 isTeamHead={isTeamHead}
                 currentTeamId={currentTeamId}
                 approvalStatus={approvalStatus}
+                currentUserId={currentUserId}
+                currentUserRole={currentUserRole}
               />
             )
           )

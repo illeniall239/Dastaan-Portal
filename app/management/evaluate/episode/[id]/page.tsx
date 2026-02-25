@@ -12,6 +12,7 @@ import { Loader2, FileText } from "lucide-react";
 import { BackButton } from "@/components/ui/back-button";
 import type { Episode, EpisodicEvaluation } from "@/types";
 import type { EpisodicEvaluationFormData } from "@/lib/validations/episodic-evaluations";
+import { MANDATORY_APPROVER_EMAILS } from "@/lib/approvals/config";
 
 interface EpisodePageProps {
   params: Promise<{ id: string }>;
@@ -26,6 +27,8 @@ export default function ManagementEvaluateEpisodePage({ params }: EpisodePagePro
   const [existingEvaluation, setExistingEvaluation] = useState<EpisodicEvaluation | null>(null);
   const [loading, setLoading] = useState(true);
   const [userRole, setUserRole] = useState<string | null>(null);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [isMandatoryApprover, setIsMandatoryApprover] = useState(false);
 
   useEffect(() => {
     params.then((resolvedParams) => {
@@ -44,7 +47,7 @@ export default function ManagementEvaluateEpisodePage({ params }: EpisodePagePro
 
       const { data: userData } = await supabase
         .from("users")
-        .select("role")
+        .select("role, email")
         .eq("id", user.id)
         .single();
 
@@ -53,7 +56,9 @@ export default function ManagementEvaluateEpisodePage({ params }: EpisodePagePro
         return;
       }
 
+      setCurrentUserId(user.id);
       setUserRole(userData.role);
+      setIsMandatoryApprover(MANDATORY_APPROVER_EMAILS.includes(userData.email || ""));
     }
 
     checkUser();
@@ -124,10 +129,23 @@ export default function ManagementEvaluateEpisodePage({ params }: EpisodePagePro
         throw new Error(data.error || "Failed to submit evaluation");
       }
 
+      // Sync decision to episode.approval_status — only for mandatory approvers (Humera & Salman)
+      if (formData.decision && episodeId && isMandatoryApprover) {
+        const approvalStatus =
+          formData.decision === "approve" ? "approved" :
+          formData.decision === "reject" ? "rejected" :
+          "needs_revision";
+        await fetch(`/api/episodes/${episodeId}/approval`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ approval_status: approvalStatus }),
+        });
+      }
+
       toast.success("Management evaluation submitted successfully!");
 
       setTimeout(() => {
-        router.push("/management");
+        router.push("/management/pending-evaluations?tab=episodes");
       }, 1500);
     } catch (error: any) {
       console.error("Error submitting evaluation:", error);
@@ -177,6 +195,8 @@ export default function ManagementEvaluateEpisodePage({ params }: EpisodePagePro
         onSubmit={handleSubmit}
         existingEvaluation={existingEvaluation || undefined}
         disabled={!!existingEvaluation}
+        currentUserId={currentUserId ?? undefined}
+        currentUserRole={userRole ?? undefined}
       />
     </div>
   );

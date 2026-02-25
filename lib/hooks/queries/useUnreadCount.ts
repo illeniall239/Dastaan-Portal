@@ -40,8 +40,8 @@ export function useUnreadCount({
 
     enabled,
 
-    // Cache unread count for 30 seconds before considering it stale
-    staleTime: 30 * 1000,
+    // Always fetch fresh on mount (fixes delay after login)
+    staleTime: 0,
 
     // Keep count in cache for 5 minutes after last use
     gcTime: 5 * 60 * 1000,

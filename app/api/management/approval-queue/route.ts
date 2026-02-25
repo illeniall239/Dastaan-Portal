@@ -49,6 +49,18 @@ export async function GET(_request: NextRequest) {
       return NextResponse.json({ success: true, callReports: [] });
     }
 
+    // Batch query discussion counts for all evaluated call reports
+    const { data: discussionRows } = await adminClient
+      .from("call_report_discussions")
+      .select("call_report_id")
+      .in("call_report_id", evaluatedIds);
+
+    const discussionCountMap: Record<string, number> = {};
+    for (const row of discussionRows || []) {
+      const crid = row.call_report_id as string;
+      discussionCountMap[crid] = (discussionCountMap[crid] || 0) + 1;
+    }
+
     // Build per-call-report stats from the view rows
     const statsByCallReport: Record<string, { scores: number[]; latestAt: string }> = {};
     for (const row of viewRows || []) {
@@ -110,6 +122,7 @@ export async function GET(_request: NextRequest) {
           myDecision: dec?.decision ?? null,
           myNotes: dec?.notes ?? null,
           decidedAt: dec?.created_at ?? null,
+          discussionCount: discussionCountMap[cr.id] || 0,
         };
       });
     }
@@ -143,6 +156,7 @@ export async function GET(_request: NextRequest) {
         averageScore: avgScore,
         lastEvaluatedAt: stats?.latestAt || cr.created_at,
         evaluationCount: scores.length,
+        discussionCount: discussionCountMap[cr.id] || 0,
       };
     });
 

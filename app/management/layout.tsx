@@ -2,7 +2,6 @@ import { getCurrentUser } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import "./print.css";
 import { SidebarWrapper } from "./sidebar-wrapper";
-import { MANDATORY_APPROVER_EMAILS } from "@/lib/approvals/config";
 
 const baseNavItems = [
   { title: "Dashboard",           href: "/management",                    icon: "home" },
@@ -18,7 +17,7 @@ const baseNavItems = [
 ];
 
 const pendingEvaluationsItem = {
-  title: "Pending Approvals",
+  title: "Approval Tracking",
   href: "/management/pending-evaluations",
   icon: "inbox",
 };
@@ -36,11 +35,8 @@ export default async function ManagementLayout({
     redirect("/dashboard");
   }
 
-  // Pending Evaluations is only visible to the mandatory approvers (Humera & Salman)
-  const isMandatoryApprover = MANDATORY_APPROVER_EMAILS.includes(user.email || "");
-  const navItems = isMandatoryApprover
-    ? [...baseNavItems.slice(0, 7), pendingEvaluationsItem, ...baseNavItems.slice(7)]
-    : baseNavItems;
+  // Approval Tracking is visible to all management members
+  const navItems = [...baseNavItems.slice(0, 7), pendingEvaluationsItem, ...baseNavItems.slice(7)];
 
   return (
     <SidebarWrapper

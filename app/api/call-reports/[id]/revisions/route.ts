@@ -5,6 +5,7 @@ import { idParamSchema } from "@/lib/validations/uuid-params";
 import { applyRateLimit } from "@/lib/api-middleware";
 import { RateLimitPresets } from "@/lib/rate-limit-redis";
 import { logAuditAction, getRequestContext } from "@/lib/audit/server";
+import { createNotifications, getUserIdsByRoles, excludeUserFromList } from "@/lib/notifications/server";
 import { z } from "zod";
 
 export const dynamic = "force-dynamic";
@@ -263,6 +264,52 @@ export async function POST(
       });
     } catch (auditError) {
       logger.error("Audit log error:", auditError);
+    }
+
+    // Notify management + content managers of the new revision
+    try {
+      const recipients = excludeUserFromList(
+        await getUserIdsByRoles(["management", "content_manager"]),
+        user.id
+      );
+      if (recipients.length > 0) {
+        const displayId = callReport.call_report_id || id;
+        await createNotifications(
+          recipients,
+          "info",
+          `New revision uploaded: ${displayId}`,
+          `Revision ${nextRevisionNumber} has been submitted for review on call report ${displayId}.`,
+          "call_report",
+          id,
+          user.id
+        );
+      }
+    } catch (notifErr) {
+      logger.error("Failed to send revision notifications", { error: notifErr });
+    }
+
+    // Auto-post system message in the discussion thread
+    try {
+      const { data: uploaderUser } = await supabase
+        .from("users")
+        .select("name")
+        .eq("id", user.id)
+        .single();
+      const uploaderName = uploaderUser?.name || "Someone";
+      const revisionComment = validation.data.comment;
+      const commentSnippet = revisionComment
+        ? ` — "${revisionComment.slice(0, 80)}${revisionComment.length > 80 ? "…" : ""}"`
+        : "";
+
+      await supabase.from("call_report_discussions").insert({
+        call_report_id: id,
+        user_id: user.id,
+        revision_id: revision.id,
+        message: `📄 Revision ${revision.revision_number} uploaded by ${uploaderName}${commentSnippet}`,
+        is_system_message: true,
+      });
+    } catch {
+      // Non-fatal — don't fail the whole request
     }
 
     return NextResponse.json({ revision }, { status: 201 });

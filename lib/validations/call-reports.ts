@@ -93,3 +93,9 @@ export const updateCallReportSchema = z.object({
 });
 
 export type UpdateCallReportFormData = z.infer<typeof updateCallReportSchema>;
+
+export const createDiscussionSchema = z.object({
+  message: z.string().trim().min(1, "Message cannot be empty").max(2000, "Message must be 2000 characters or fewer"),
+});
+
+export type CreateDiscussionFormData = z.infer<typeof createDiscussionSchema>;

@@ -7,6 +7,7 @@ import { z } from "zod";
 import { applyRateLimit } from '@/lib/api-middleware';
 import { RateLimitPresets } from '@/lib/rate-limit-redis';
 import { logAuditAction, getRequestContext } from "@/lib/audit/server";
+import { MANDATORY_APPROVER_EMAILS } from "@/lib/approvals/config";
 
 const approvalSchema = z.object({
   approval_status: z.enum(["approved", "rejected", "needs_revision"]),
@@ -41,16 +42,23 @@ export async function PATCH(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  // Check role — only content_manager, management, and admin can approve
+  // Check role — content_manager and admin always allowed;
+  // management role only allowed for mandatory approvers (Humera & Salman)
   const { data: userData } = await supabase
     .from("users")
-    .select("role")
+    .select("role, email")
     .eq("id", user.id)
     .single();
 
-  if (!userData || !["content_manager", "management", "admin"].includes(userData.role)) {
+  const isMandatoryApprover = MANDATORY_APPROVER_EMAILS.includes(userData?.email || "");
+  const canApprove =
+    userData?.role === "admin" ||
+    userData?.role === "content_manager" ||
+    (userData?.role === "management" && isMandatoryApprover);
+
+  if (!userData || !canApprove) {
     return NextResponse.json(
-      { error: "Forbidden: Only content managers, management, and admins can set approval status" },
+      { error: "Forbidden: Only mandatory approvers, content managers, and admins can set episode approval status" },
       { status: 403 }
     );
   }

@@ -1,12 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { logger } from "@/lib/logger";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { createMultipleEpisodesSchema, episodesQuerySchema } from "@/lib/validations/episodes";
 import { withApiPerf, applyRateLimit, addRateLimitHeaders, withCors } from "@/lib/api-middleware";
 import { RateLimitPresets } from "@/lib/rate-limit-redis";
 import { parsePaginationParams, applyPagination, createPaginatedResponse } from "@/lib/utils/pagination";
 import { revalidatePath } from 'next/cache';
 import { logAuditAction, getRequestContext } from "@/lib/audit/server";
+import { createNotifications, getUserIdsByRoles } from "@/lib/notifications/server";
 import {
   unauthorizedError,
   forbiddenError,
@@ -203,6 +205,50 @@ export async function POST(request: Request) {
           },
         },
       }).catch(err => logger.error("Audit log failed", { error: err }));
+    }
+
+    // Notify team head + management when episodes are logged
+    try {
+      const adminClient = createAdminClient();
+      const teamId = userData.team_id;
+      const recipientSet = new Set<string>();
+
+      // Notify the team head of the creator's team
+      if (teamId) {
+        const { data: teamRecord } = await adminClient
+          .from("teams")
+          .select("team_head_id")
+          .eq("id", teamId)
+          .single();
+        if (teamRecord?.team_head_id) {
+          recipientSet.add(teamRecord.team_head_id);
+        }
+      }
+
+      // Always notify management + content managers
+      const mgmtIds = await getUserIdsByRoles(["management", "content_manager"]);
+      mgmtIds.forEach(id => recipientSet.add(id));
+
+      // Exclude the creator
+      recipientSet.delete(user.id);
+
+      const recipients = Array.from(recipientSet);
+      if (recipients.length > 0) {
+        const count = createdEpisodes.length;
+        const epNumbers = createdEpisodes.map(ep => `EP${ep.episode_number}`).join(", ");
+
+        await createNotifications(
+          recipients,
+          "info",
+          `New episode${count > 1 ? "s" : ""} logged: ${epNumbers}`,
+          `${count} episode${count > 1 ? "s" : ""} (${epNumbers}) ${count > 1 ? "have" : "has"} been logged for review.`,
+          "episode",
+          createdEpisodes[0].id,
+          user.id
+        );
+      }
+    } catch (notifErr) {
+      logger.error("Failed to send episode creation notifications", { error: notifErr });
     }
 
     const res = NextResponse.json({

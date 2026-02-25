@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -8,6 +9,12 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import Link from "next/link";
 import {
   ClipboardListIcon,
@@ -20,11 +27,35 @@ import {
   Minus,
   XCircle,
   Clock,
+  Eye,
+  Loader2,
+  Star,
 } from "lucide-react";
 import { EvaluationProgressBar } from "@/components/evaluations/evaluation-progress-bar";
 import { IndividualEvaluationProgress } from "@/components/evaluations/individual-evaluation-progress";
 import { ShareCrossTeamButton } from "@/components/call-report/share-cross-team-button";
 import { MANDATORY_APPROVERS } from "@/lib/approvals/config";
+import { CallReportDiscussion } from "@/components/call-reports/call-report-discussion";
+
+function ScoreBox({
+  label,
+  score,
+  comment,
+}: {
+  label: string;
+  score: number | null;
+  comment?: string | null;
+}) {
+  return (
+    <div className="bg-gray-50 rounded p-2">
+      <p className="text-muted-foreground text-xs mb-1">{label}</p>
+      <p className="font-semibold text-sm">
+        {score !== null && score !== undefined ? `${score}/10` : "N/A"}
+      </p>
+      {comment && <p className="text-xs text-muted-foreground mt-1 italic">{comment}</p>}
+    </div>
+  );
+}
 
 interface EvaluationCardProps {
   report: any;
@@ -44,6 +75,8 @@ interface EvaluationCardProps {
     isRejected: boolean;
     managementApproved?: boolean;
   } | null;
+  currentUserId?: string;
+  currentUserRole?: string;
 }
 
 export function EvaluationCard({
@@ -55,6 +88,8 @@ export function EvaluationCard({
   isTeamHead = false,
   currentTeamId,
   approvalStatus,
+  currentUserId,
+  currentUserRole,
 }: EvaluationCardProps) {
   const hasDraft = draftProgress && draftProgress.percentage > 0;
 
@@ -84,6 +119,27 @@ export function EvaluationCard({
   const evalStatus = report.evaluation_status;
   const finalDecisionMadeAt = report.final_decision_made_at;
 
+  // Management eval dialog state
+  const [mgmtEvalDialog, setMgmtEvalDialog] = useState<{
+    open: boolean;
+    loading: boolean;
+    approverLabel: string;
+    evaluation: any | null;
+  }>({ open: false, loading: false, approverLabel: "", evaluation: null });
+
+  const handleViewMgmtEval = async (approverEmail: string, approverLabel: string) => {
+    setMgmtEvalDialog({ open: true, loading: true, approverLabel, evaluation: null });
+    try {
+      const res = await fetch(`/api/call-reports/${report.id}/management-evaluations`);
+      const data = await res.json();
+      const ev =
+        (data.evaluations || []).find((e: any) => e.evaluator_email === approverEmail) || null;
+      setMgmtEvalDialog({ open: true, loading: false, approverLabel, evaluation: ev });
+    } catch {
+      setMgmtEvalDialog((prev) => ({ ...prev, loading: false }));
+    }
+  };
+
   const getScoreColor = (score: number | null) => {
     if (score === null) return "text-gray-600";
     if (score >= 7.0) return "text-green-600";
@@ -103,6 +159,8 @@ export function EvaluationCard({
     if (score >= 6) return "bg-yellow-100 text-yellow-800 border-yellow-300";
     return "bg-red-100 text-red-800 border-red-300";
   };
+
+  const ev = mgmtEvalDialog.evaluation;
 
   return (
     <Card className="hover:shadow-md transition-shadow">
@@ -250,7 +308,7 @@ export function EvaluationCard({
         {hasEvaluated && approvalStatus && !approvalStatus.isFullyApproved && !approvalStatus.isRejected && (
           <div className="bg-amber-50 rounded-lg p-3 border border-amber-200 mb-4">
             <p className="text-xs font-semibold text-amber-800 mb-2">Management Approval Status</p>
-            <div className="space-y-1">
+            <div className="space-y-1.5">
               {MANDATORY_APPROVERS.map(approver => {
                 const vote = approvalStatus.approvals.find(
                   (a: any) => (a.user as any)?.email === approver.email
@@ -258,19 +316,32 @@ export function EvaluationCard({
                 return (
                   <div key={approver.email} className="flex items-center justify-between text-xs">
                     <span className="text-amber-700 font-medium">{approver.label}</span>
-                    {!vote ? (
-                      <span className="text-gray-400 flex items-center gap-1">
-                        <Clock className="h-3 w-3" /> Pending
-                      </span>
-                    ) : vote.decision === "approved" ? (
-                      <span className="text-green-600 flex items-center gap-1">
-                        <CheckCircle2 className="h-3 w-3" /> Approved
-                      </span>
-                    ) : (
-                      <span className="text-red-600 flex items-center gap-1">
-                        <XCircle className="h-3 w-3" /> Rejected
-                      </span>
-                    )}
+                    <div className="flex items-center gap-2">
+                      {!vote ? (
+                        <span className="text-gray-400 flex items-center gap-1">
+                          <Clock className="h-3 w-3" /> Pending
+                        </span>
+                      ) : vote.decision === "approved" ? (
+                        <span className="text-green-600 flex items-center gap-1">
+                          <CheckCircle2 className="h-3 w-3" /> Approved
+                        </span>
+                      ) : (
+                        <span className="text-red-600 flex items-center gap-1">
+                          <XCircle className="h-3 w-3" /> Rejected
+                        </span>
+                      )}
+                      {vote && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-5 px-1.5 text-[10px] text-blue-600 hover:text-blue-800 hover:bg-blue-50"
+                          onClick={() => handleViewMgmtEval(approver.email, approver.label)}
+                        >
+                          <Eye className="h-3 w-3 mr-0.5" />
+                          View Eval
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 );
               })}
@@ -324,6 +395,7 @@ export function EvaluationCard({
             </div>
           )}
         </div>
+
         <div className="flex justify-end gap-2 pt-4 border-t">
           {isTeamHead && (
             <ShareCrossTeamButton
@@ -351,7 +423,122 @@ export function EvaluationCard({
             </Button>
           )}
         </div>
+
+        {/* Discussion thread — visible on completed evaluations for logged-in users */}
+        {hasEvaluated && currentUserId && (
+          <div className="mt-4">
+            <CallReportDiscussion
+              callReportId={report.id}
+              currentUserId={currentUserId}
+              currentUserRole={currentUserRole}
+              compact={true}
+              defaultExpanded={true}
+            />
+          </div>
+        )}
       </CardContent>
+
+      {/* Management evaluation viewer dialog */}
+      <Dialog
+        open={mgmtEvalDialog.open}
+        onOpenChange={(open) =>
+          !open && setMgmtEvalDialog((prev) => ({ ...prev, open: false }))
+        }
+      >
+        <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{mgmtEvalDialog.approverLabel}&apos;s Evaluation</DialogTitle>
+          </DialogHeader>
+
+          {mgmtEvalDialog.loading ? (
+            <div className="flex justify-center py-8">
+              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+            </div>
+          ) : ev ? (
+            <div className="space-y-4 text-sm">
+              {/* Average score */}
+              {ev.average_score !== null && ev.average_score !== undefined && (
+                <div className="flex items-center gap-2 pb-2 border-b">
+                  <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />
+                  <span className="font-bold text-base">{Number(ev.average_score).toFixed(1)}</span>
+                  <span className="text-muted-foreground text-xs">Average Score</span>
+                </div>
+              )}
+
+              {/* Criteria grid */}
+              <div className="grid grid-cols-2 gap-2">
+                <ScoreBox
+                  label="Conflict of Content"
+                  score={ev.conflict_of_content_score}
+                  comment={ev.conflict_of_content_comment}
+                />
+                <ScoreBox
+                  label="Characterization"
+                  score={ev.characterization_score}
+                  comment={ev.characterization_comment}
+                />
+                <ScoreBox
+                  label="Story Progression"
+                  score={ev.story_progression_score}
+                  comment={ev.story_progression_comment}
+                />
+                <ScoreBox
+                  label="What&apos;s Next Element"
+                  score={ev.whats_next_element_score}
+                  comment={ev.whats_next_element_comment}
+                />
+              </div>
+
+              {ev.overall_oneliner_grade_score !== null &&
+                ev.overall_oneliner_grade_score !== undefined && (
+                  <ScoreBox
+                    label="Overall Oneliner Grade"
+                    score={ev.overall_oneliner_grade_score}
+                    comment={ev.overall_oneliner_grade_comment}
+                  />
+                )}
+
+              {/* Decision */}
+              {ev.decision && (
+                <div className="flex items-center gap-2 pt-1">
+                  <span className="text-muted-foreground">Decision:</span>
+                  <Badge
+                    variant={
+                      ev.decision === "approve"
+                        ? "default"
+                        : ev.decision === "reject"
+                        ? "destructive"
+                        : "secondary"
+                    }
+                    className="text-xs"
+                  >
+                    {ev.decision === "approve"
+                      ? "Approved"
+                      : ev.decision === "reject"
+                      ? "Rejected"
+                      : "Needs Improvement"}
+                  </Badge>
+                  {ev.decision_notes && (
+                    <span className="text-xs text-muted-foreground">{ev.decision_notes}</span>
+                  )}
+                </div>
+              )}
+
+              {/* Comments */}
+              {ev.comments && (
+                <div className="bg-slate-50 rounded p-2">
+                  <p className="font-medium text-slate-700 text-xs mb-0.5">Comments</p>
+                  <p className="text-slate-600 text-xs">{ev.comments}</p>
+                </div>
+              )}
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground text-center py-4">
+              No evaluation submitted yet.
+            </p>
+          )}
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }

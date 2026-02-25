@@ -26,12 +26,30 @@ export default function ProgrammerEpisodicEvaluationPage({ params }: EpisodePage
     const [existingEvaluation, setExistingEvaluation] = useState<EpisodicEvaluation | null>(null);
     const [isEditing, setIsEditing] = useState(false);
     const [loading, setLoading] = useState(true);
+    const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+    const [currentUserRole, setCurrentUserRole] = useState<string | null>(null);
 
     useEffect(() => {
         params.then((resolvedParams) => {
             setEpisodeId(resolvedParams.episodeId);
         });
     }, [params]);
+
+    // Fetch current user info for the discussion thread
+    useEffect(() => {
+        const fetchCurrentUser = async () => {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) return;
+            setCurrentUserId(user.id);
+            const { data: profile } = await supabase
+                .from("users")
+                .select("role")
+                .eq("id", user.id)
+                .single();
+            if (profile) setCurrentUserRole(profile.role);
+        };
+        fetchCurrentUser();
+    }, [supabase]);
 
     const fetchEpisodeAndEvaluation = useCallback(async () => {
         if (!episodeId) return;
@@ -182,6 +200,8 @@ export default function ProgrammerEpisodicEvaluationPage({ params }: EpisodePage
                 existingEvaluation={existingEvaluation || undefined}
                 onSubmit={handleSubmit}
                 disabled={!!existingEvaluation && !isEditing}
+                currentUserId={currentUserId ?? undefined}
+                currentUserRole={currentUserRole ?? undefined}
             />
         </div>
     );

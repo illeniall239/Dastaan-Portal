@@ -40,6 +40,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { formatDate } from "@/lib/utils/format-date";
+import { CallReportDiscussion } from "@/components/call-reports/call-report-discussion";
 
 interface CallReportWriter {
   writer_id: string;
@@ -309,6 +310,29 @@ export function EvaluatorEvaluationForm({
           is_late: isEvaluationLate,
           delay_reason: isEvaluationLate ? formData.delayReason : undefined,
         });
+      }
+
+      // Sync management decision to story approvals pipeline
+      if (isManagementEvaluation) {
+        try {
+          const approvalDecision = formData.decision === "approve" ? "approved" : "rejected";
+          const approvalRes = await fetch("/api/story-approvals", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              call_report_id: callReport.id,
+              decision: approvalDecision,
+              notes: formData.decisionNotes || null,
+            }),
+          });
+          if (!approvalRes.ok) {
+            const approvalData = await approvalRes.json();
+            console.error("Approval pipeline sync failed:", approvalData.error);
+          }
+        } catch (approvalError) {
+          console.error("Error syncing to approval pipeline:", approvalError);
+          // Non-fatal — evaluation was saved successfully
+        }
       }
 
       toast.success("Evaluation submitted successfully!");
@@ -1173,6 +1197,15 @@ export function EvaluatorEvaluationForm({
             </div>
           </Card>
         )}
+
+        {/* Discussion Thread */}
+        <CallReportDiscussion
+          callReportId={callReport.id}
+          currentUserId={userId}
+          currentUserRole={isManagementEvaluation ? "management" : "evaluator"}
+          compact={true}
+          defaultExpanded={true}
+        />
 
         {/* Form Actions */}
         {!isReadOnly && (

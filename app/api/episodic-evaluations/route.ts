@@ -8,6 +8,7 @@ import { revalidatePath } from 'next/cache';
 import { applyRateLimit } from '@/lib/api-middleware';
 import { RateLimitPresets } from '@/lib/rate-limit-redis';
 import { logAuditAction, getRequestContext } from "@/lib/audit/server";
+import { createNotifications, getUserIdsByRoles, excludeUserFromList } from "@/lib/notifications/server";
 
 /**
  * POST /api/episodic-evaluations
@@ -137,6 +138,9 @@ export async function POST(request: Request) {
         characterization_remarks: evaluationData.characterization_remarks || null,
         time_spent_minutes: evaluationData.time_spent_minutes || null,
         started_at: evaluationData.started_at || null,
+        // Final decision
+        decision: evaluationData.decision || null,
+        decision_notes: evaluationData.decision_notes || null,
       })
       .select(`
         *,
@@ -166,6 +170,28 @@ export async function POST(request: Request) {
       performedBy: user.id,
       details: { ...requestContext, newValues: { episode_id: evaluationData.episode_id, conflict_of_content_score: evaluationData.conflict_of_content_score, characterization_score: evaluationData.characterization_score, story_progression_score: evaluationData.story_progression_score, overall_assessment_score: evaluationData.overall_assessment_score } },
     }).catch(err => logger.error("Audit log failed", { error: err }));
+
+    // Notify the team about the new episodic evaluation (anonymous — no evaluator name revealed)
+    try {
+      const recipientIds = await getUserIdsByRoles(["management", "content_manager", "content_creator"]);
+      const filtered = excludeUserFromList(recipientIds, user.id);
+      if (filtered.length > 0) {
+        const epNum = (evaluation.episode as any)?.episode_number;
+        const dramaTitle = (evaluation.episode as any)?.call_report?.working_title || "Unknown";
+        const epLabel = epNum ? `EP${epNum}` : "Episode";
+        await createNotifications(
+          filtered,
+          "success",
+          `New episodic evaluation: ${dramaTitle} — ${epLabel}`,
+          `${epLabel} of "${dramaTitle}" has been evaluated. Review the scores in the evaluation section.`,
+          "episode",
+          evaluationData.episode_id,
+          user.id
+        );
+      }
+    } catch (notifErr) {
+      logger.error("Failed to send episodic evaluation notifications", { error: notifErr });
+    }
 
     // Revalidate evaluation list pages to show new evaluations immediately
     revalidatePath('/content-department/episodic-evaluations');

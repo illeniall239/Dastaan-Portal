@@ -15,7 +15,7 @@ import {
   Loader2,
   RefreshCw,
 } from "lucide-react";
-import type { StoryApprovalStatus } from "@/types";
+import type { StoryApprovalStatus, ApprovalHistoryRound } from "@/types";
 import { MANDATORY_APPROVERS } from "@/lib/approvals/config";
 
 interface StoryApprovalPanelProps {
@@ -104,6 +104,7 @@ export function StoryApprovalPanel({ callReportId, evaluationCompleted }: StoryA
     currentUserApproval,
     isCurrentUserMandatoryApprover,
     currentUserName,
+    approvalHistory,
   } = status;
 
   // Group approvals
@@ -308,6 +309,36 @@ export function StoryApprovalPanel({ callReportId, evaluationCompleted }: StoryA
               </div>
             ))}
           </div>
+        )}
+
+        {/* Previous Approval Rounds (from older revisions) */}
+        {approvalHistory && approvalHistory.length > 0 && (
+          <details className="pt-2 border-t">
+            <summary className="text-xs text-slate-500 cursor-pointer hover:text-slate-700 select-none">
+              Previous approval rounds ({approvalHistory.length} round{approvalHistory.length !== 1 ? "s" : ""})
+            </summary>
+            <div className="mt-2 space-y-3">
+              {(approvalHistory as ApprovalHistoryRound[]).map((round, idx) => (
+                <div key={round.revisionId ?? `base-${idx}`} className="border-l-2 border-slate-200 pl-3">
+                  <p className="text-xs font-medium text-slate-500 mb-1">
+                    {round.revisionNumber === 0
+                      ? "Original (pre-revision)"
+                      : `Revision ${round.revisionNumber}`}
+                  </p>
+                  {round.approvals.map(a => (
+                    <div key={a.id} className="text-xs text-slate-400 flex items-center gap-1">
+                      <span className={a.decision === "approved" ? "text-green-500" : "text-red-400"}>
+                        {a.decision === "approved" ? "✓" : "✗"}
+                      </span>
+                      <span>{a.user?.name || "Unknown"}:</span>
+                      <span>{a.decision}</span>
+                      {a.notes && <span className="italic">— {a.notes}</span>}
+                    </div>
+                  ))}
+                </div>
+              ))}
+            </div>
+          </details>
         )}
       </CardContent>
     </Card>

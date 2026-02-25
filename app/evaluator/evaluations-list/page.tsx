@@ -205,6 +205,8 @@ export default async function EvaluatorEvaluationsListPage({ searchParams }: { s
         showDecisionFilter={currentView === "completed"}
         isTeamHead={isTeamHead}
         currentTeamId={currentTeamId}
+        currentUserId={user.id}
+        currentUserRole={user.role}
       />
     </div>
   );
