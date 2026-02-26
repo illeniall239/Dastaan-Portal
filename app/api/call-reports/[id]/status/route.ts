@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { NextRequest, NextResponse } from "next/server";
 import { logger } from "@/lib/logger";
 import { requireApiAuth } from "@/lib/api/auth";
@@ -24,7 +24,7 @@ export async function PATCH(
     const body = await request.json();
     const { status, remarks } = body;
 
-    if (!status && remarks === undefined) {
+    if (status === undefined && remarks === undefined) {
       return NextResponse.json(
         { error: "Status or remarks is required" },
         { status: 400 }
@@ -32,14 +32,15 @@ export async function PATCH(
     }
 
     // Build update object
-    const updateData: Record<string, string> = {
+    const updateData: Record<string, string | null> = {
       updated_at: new Date().toISOString()
     };
-    if (status) updateData.status = status;
-    if (remarks !== undefined) updateData.remarks = remarks;
+    if (status !== undefined) updateData.status = status || null;
+    if (remarks !== undefined) updateData.remarks = remarks || null;
 
-    // Update the call report using server client (RLS allows updates for authenticated users with correct role)
-    const supabase = await createClient();
+    // Update the call report using admin client to bypass the restrictive RLS UPDATE policy
+    // (RLS only allows content_manager/admin/creator; management & programmer are blocked via RLS but allowed here)
+    const supabase = createAdminClient();
     const { data, error } = await supabase
       .from("call_reports")
       .update(updateData)

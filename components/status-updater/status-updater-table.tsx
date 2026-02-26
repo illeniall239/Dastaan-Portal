@@ -736,6 +736,7 @@ export function StatusUpdaterTable({ ideas, role, readOnly = false }: StatusUpda
                               </div>
                             ) : (
                               <textarea
+                                key={idea.status ?? ""}
                                 defaultValue={idea.status || ""}
                                 className={cn(
                                   "w-[160px] min-h-[32px] text-[11px] rounded-md border border-input bg-background px-3 py-2 resize-none overflow-hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
@@ -814,6 +815,7 @@ export function StatusUpdaterTable({ ideas, role, readOnly = false }: StatusUpda
                               </div>
                             ) : (
                               <textarea
+                                key={idea.remarks ?? ""}
                                 defaultValue={idea.remarks || ""}
                                 className={cn(
                                   "w-[180px] min-h-[32px] text-[11px] rounded-md border border-input bg-background px-3 py-2 resize-none overflow-hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
