@@ -11,13 +11,11 @@ import {
 import Link from "next/link";
 import { CalendarIcon, UserIcon, MapPinIcon, FileTextIcon, PaperclipIcon, Pencil } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
-import { createAdminClient } from "@/lib/supabase/admin";
 import { getAttachmentsForEntityServer } from "@/lib/attachments/server";
 import { BackButton } from "@/components/ui/back-button";
 import { formatDateTimeLong, formatDate } from "@/lib/utils/format-date";
 import { ShareCrossTeamButton } from "@/components/call-report/share-cross-team-button";
 import { ContentRevisions } from "@/components/ui/content-revisions";
-import { StoryApprovalPanel } from "@/components/approvals/story-approval-panel";
 import { CallReportDiscussion } from "@/components/call-reports/call-report-discussion";
 
 
@@ -154,19 +152,6 @@ export default async function ProgrammerCallReportDetailPage({ params }: { param
     report.meeting_date ||
     report.updated_at ||
     report.inserted_at;
-
-  // Check if evaluation is completed (for approval gate)
-  // Use evaluator_forms (not evaluation_logs) to avoid chicken-and-egg:
-  // evaluation_logs is only created after someone approves, but the approval
-  // panel only shows when evaluationCompleted=true. Using evaluator_forms breaks the deadlock.
-  const adminClient = createAdminClient();
-  const { data: submittedForms } = await adminClient
-    .from("evaluator_forms")
-    .select("id")
-    .eq("call_report_id", resolvedParams.id)
-    .not("submitted_at", "is", null)
-    .limit(1);
-  const evaluationCompleted = !!(submittedForms && submittedForms.length > 0);
 
   // Programmers and admins can edit
   const canEdit = ["programmer", "admin"].includes(user.role);
@@ -417,12 +402,6 @@ export default async function ProgrammerCallReportDetailPage({ params }: { param
           userRole={user.role}
           evaluateUrl="/evaluator/evaluate"
           entityType="call-report"
-        />
-
-        {/* Story Approval Gate */}
-        <StoryApprovalPanel
-          callReportId={resolvedParams.id}
-          evaluationCompleted={evaluationCompleted}
         />
 
         {/* Discussion Thread */}

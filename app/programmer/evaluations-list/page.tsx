@@ -1,7 +1,6 @@
 import { getCurrentUser } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { Globe } from "lucide-react";
 import { getAllCallReports, type CallReportWithRelations } from "@/lib/meetings/server";
 import { getEvaluationsByEvaluator } from "@/lib/evaluations/server";
 import { calculateEvaluationProgress } from "@/lib/evaluations/progress";
@@ -102,10 +101,7 @@ export default async function ProgrammerEvaluationsListPage({ searchParams }: { 
       <div className="flex flex-col gap-4 sm:gap-6 mb-8">
         <BackButton fallbackHref="/programmer" variant="outline" size="sm" className="w-fit" />
         <div className="space-y-1">
-          <div className="flex items-center gap-2">
-            <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Evaluation List</h1>
-            <Globe className="h-5 w-5 text-indigo-600" />
-          </div>
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Evaluation List</h1>
           <p className="text-muted-foreground text-sm sm:text-base">
             View and evaluate One-Liners across all teams
           </p>
