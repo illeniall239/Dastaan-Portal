@@ -58,6 +58,36 @@ async function fetchContentByType(adminSupabase: any, contentType: string, conte
     const storyData = (episode as any).stories;
     const callReportData = (episode as any).call_reports;
 
+    // Generate a signed URL for the episode script so external (unauthenticated)
+    // users can download it without needing public bucket access.
+    let signedAttachmentUrl: string | null = null;
+    if (episode.attachment_url) {
+      try {
+        let filePath: string | null = null;
+        const storedValue = episode.attachment_url as string;
+
+        if (storedValue.startsWith("http")) {
+          const url = new URL(storedValue);
+          const pathParts = url.pathname.split("/");
+          const bucketIndex = pathParts.indexOf("episodes");
+          if (bucketIndex !== -1) {
+            filePath = pathParts.slice(bucketIndex + 1).join("/");
+          }
+        } else {
+          filePath = storedValue;
+        }
+
+        if (filePath) {
+          const { data: signedData } = await adminSupabase.storage
+            .from("episodes")
+            .createSignedUrl(filePath, 3600);
+          signedAttachmentUrl = signedData?.signedUrl || null;
+        }
+      } catch {
+        // Fall back to raw URL if signed URL generation fails
+      }
+    }
+
     return {
       type: "episode",
       content_id: episode.id,
@@ -66,7 +96,7 @@ async function fetchContentByType(adminSupabase: any, contentType: string, conte
       story_title: storyData?.title || callReportData?.working_title,
       genre: storyData?.genre || callReportData?.genre,
       writer: storyData?.writer_originator_name || callReportData?.writer_name,
-      attachment_url: episode.attachment_url,
+      attachment_url: signedAttachmentUrl || episode.attachment_url,
       attachment_name: episode.attachment_name,
       additional_info: episode.additional_info,
     };

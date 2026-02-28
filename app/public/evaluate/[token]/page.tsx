@@ -51,18 +51,33 @@ export default function ExternalEvaluatePage({ params }: ExternalEvaluatePagePro
   const [freezesScore, setFreezesScore] = useState<number>(5);
   const [whatsNextScore, setWhatsNextScore] = useState<number>(5);
   const [epOverallAssessmentScore, setEpOverallAssessmentScore] = useState<number>(5);
-  const [summaryAnalysis, setSummaryAnalysis] = useState("");
+  const [mainEventScore, setMainEventScore] = useState<number>(5);
+  const [smallEventScore, setSmallEventScore] = useState<number>(5);
+  const [dragnessScore, setDragnessScore] = useState<number>(5);
+  // Episode per-criterion comments
+  const [conflictComment, setConflictComment] = useState("");
+  const [characterizationComment, setCharacterizationComment] = useState("");
+  const [storyProgressionComment, setStoryProgressionComment] = useState("");
+  const [mainEventComment, setMainEventComment] = useState("");
+  const [smallEventComment, setSmallEventComment] = useState("");
+  const [dragnessComment, setDragnessComment] = useState("");
+  const [freezesComment, setFreezesComment] = useState("");
+  const [whatsNextComment, setWhatsNextComment] = useState("");
+  const [overallAssessmentComment, setOverallAssessmentComment] = useState("");
 
   // --- One-Liner Evaluation State ---
-  const [slot, setSlot] = useState("");
   // One-Liner Scores
   const [premiseConflictScore, setPremiseConflictScore] = useState<number>(5);
   const [storylinePlotScore, setStorylinePlotScore] = useState<number>(5);
   const [episodicProgressionScore, setEpisodicProgressionScore] = useState<number>(5);
   const [charactersScore, setCharactersScore] = useState<number>(5);
   const [crOverallAssessmentScore, setCrOverallAssessmentScore] = useState<number>(5);
-
-  const [comments, setComments] = useState("");
+  // Call report per-criterion comments
+  const [crConflictComment, setCrConflictComment] = useState("");
+  const [crCharacterizationComment, setCrCharacterizationComment] = useState("");
+  const [crStoryProgressionComment, setCrStoryProgressionComment] = useState("");
+  const [crWhatsNextComment, setCrWhatsNextComment] = useState("");
+  const [crOverallComment, setCrOverallComment] = useState("");
 
   // --- One-Liner Evaluation State ---
   const [olComments, setOlComments] = useState("");
@@ -92,30 +107,40 @@ export default function ExternalEvaluatePage({ params }: ExternalEvaluatePagePro
 
     if (content.type === "episode") {
       evaluationData.evaluation_data = {
-        scores: {
-          conflict: conflictScore,
-          characterization: characterizationScore,
-          story_progression: storyProgressionScore,
-          freezes: freezesScore,
-          whats_next: whatsNextScore,
-          overall_assessment: epOverallAssessmentScore,
-        },
+        conflict_of_content_score: conflictScore,
+        conflict_of_content_comment: conflictComment,
+        characterization_score: characterizationScore,
+        characterization_comment: characterizationComment,
+        story_progression_score: storyProgressionScore,
+        story_progression_comment: storyProgressionComment,
+        main_event_score: mainEventScore,
+        main_event_comment: mainEventComment,
+        small_event_score: smallEventScore,
+        small_event_comment: smallEventComment,
+        dragness_score: dragnessScore,
+        dragness_comment: dragnessComment,
+        freezes_score: freezesScore,
+        freezes_comment: freezesComment,
+        whats_next_element_score: whatsNextScore,
+        whats_next_element_comment: whatsNextComment,
+        overall_assessment_score: epOverallAssessmentScore,
+        overall_assessment_comment: overallAssessmentComment,
         average_score: parseFloat(episodeAverageScore),
         grade: episodeGrade,
-        summary_analysis: summaryAnalysis,
       };
     } else if (content.type === "call_report") {
       evaluationData.evaluation_data = {
-        slot,
-        scores: {
-          conflict_of_content: premiseConflictScore,
-          characterization: storylinePlotScore,
-          story_progression: episodicProgressionScore,
-          whats_next_element: charactersScore,
-          overall_oneliner_grade: crOverallAssessmentScore,
-        },
+        conflict_of_content_score: premiseConflictScore,
+        conflict_of_content_comment: crConflictComment,
+        characterization_score: storylinePlotScore,
+        characterization_comment: crCharacterizationComment,
+        story_progression_score: episodicProgressionScore,
+        story_progression_comment: crStoryProgressionComment,
+        whats_next_element_score: charactersScore,
+        whats_next_element_comment: crWhatsNextComment,
+        overall_oneliner_grade_score: crOverallAssessmentScore,
+        overall_oneliner_grade_comment: crOverallComment,
         average_score: parseFloat(callReportAverageScore),
-        comments,
       };
     } else if (content.type === "one_liner") {
       evaluationData.evaluation_data = {
@@ -140,21 +165,35 @@ export default function ExternalEvaluatePage({ params }: ExternalEvaluatePagePro
     if (!data) return;
 
     if (contentItem.type === "episode") {
-      setConflictScore(data.scores?.conflict || 5);
-      setCharacterizationScore(data.scores?.characterization || 5);
-      setStoryProgressionScore(data.scores?.story_progression || 5);
-      setFreezesScore(data.scores?.freezes || 5);
-      setWhatsNextScore(data.scores?.whats_next || 5);
-      setEpOverallAssessmentScore(data.scores?.overall_assessment || 5);
-      setSummaryAnalysis(data.summary_analysis || "");
+      setConflictScore(data.conflict_of_content_score || 5);
+      setConflictComment(data.conflict_of_content_comment || "");
+      setCharacterizationScore(data.characterization_score || 5);
+      setCharacterizationComment(data.characterization_comment || "");
+      setStoryProgressionScore(data.story_progression_score || 5);
+      setStoryProgressionComment(data.story_progression_comment || "");
+      setMainEventScore(data.main_event_score || 5);
+      setMainEventComment(data.main_event_comment || "");
+      setSmallEventScore(data.small_event_score || 5);
+      setSmallEventComment(data.small_event_comment || "");
+      setDragnessScore(data.dragness_score || 5);
+      setDragnessComment(data.dragness_comment || "");
+      setFreezesScore(data.freezes_score || 5);
+      setFreezesComment(data.freezes_comment || "");
+      setWhatsNextScore(data.whats_next_element_score || 5);
+      setWhatsNextComment(data.whats_next_element_comment || "");
+      setEpOverallAssessmentScore(data.overall_assessment_score || 5);
+      setOverallAssessmentComment(data.overall_assessment_comment || "");
     } else if (contentItem.type === "call_report") {
-      setSlot(data.slot || "");
-      setPremiseConflictScore(data.scores?.conflict_of_content || 5);
-      setStorylinePlotScore(data.scores?.characterization || 5);
-      setEpisodicProgressionScore(data.scores?.story_progression || 5);
-      setCharactersScore(data.scores?.whats_next_element || 5);
-      setCrOverallAssessmentScore(data.scores?.overall_oneliner_grade || 5);
-      setComments(data.comments || "");
+      setPremiseConflictScore(data.conflict_of_content_score || 5);
+      setCrConflictComment(data.conflict_of_content_comment || "");
+      setStorylinePlotScore(data.characterization_score || 5);
+      setCrCharacterizationComment(data.characterization_comment || "");
+      setEpisodicProgressionScore(data.story_progression_score || 5);
+      setCrStoryProgressionComment(data.story_progression_comment || "");
+      setCharactersScore(data.whats_next_element_score || 5);
+      setCrWhatsNextComment(data.whats_next_element_comment || "");
+      setCrOverallAssessmentScore(data.overall_oneliner_grade_score || 5);
+      setCrOverallComment(data.overall_oneliner_grade_comment || "");
     } else if (contentItem.type === "one_liner") {
       setOlComments(data.comments || "");
     }
@@ -178,13 +217,16 @@ export default function ExternalEvaluatePage({ params }: ExternalEvaluatePagePro
       conflictScore,
       characterizationScore,
       storyProgressionScore,
+      mainEventScore,
+      smallEventScore,
+      dragnessScore,
       freezesScore,
       whatsNextScore,
       epOverallAssessmentScore,
     ];
     const sum = scores.reduce((acc, score) => acc + score, 0);
     return (sum / scores.length).toFixed(2);
-  }, [conflictScore, characterizationScore, storyProgressionScore, freezesScore, whatsNextScore, epOverallAssessmentScore]);
+  }, [conflictScore, characterizationScore, storyProgressionScore, mainEventScore, smallEventScore, dragnessScore, freezesScore, whatsNextScore, epOverallAssessmentScore]);
 
   // Calculate grades
   const episodeGrade = useMemo(() => {
@@ -316,13 +358,24 @@ export default function ExternalEvaluatePage({ params }: ExternalEvaluatePagePro
 
       if (linkData.content_type === "episode") {
         evaluationData = {
-          summary_analysis: summaryAnalysis,
           conflict_of_content_score: conflictScore,
+          conflict_of_content_comment: conflictComment || undefined,
           characterization_score: characterizationScore,
+          characterization_comment: characterizationComment || undefined,
           story_progression_score: storyProgressionScore,
+          story_progression_comment: storyProgressionComment || undefined,
+          main_event_score: mainEventScore,
+          main_event_comment: mainEventComment || undefined,
+          small_event_score: smallEventScore,
+          small_event_comment: smallEventComment || undefined,
+          dragness_score: dragnessScore,
+          dragness_comment: dragnessComment || undefined,
           freezes_score: freezesScore,
+          freezes_comment: freezesComment || undefined,
           whats_next_element_score: whatsNextScore,
+          whats_next_element_comment: whatsNextComment || undefined,
           overall_assessment_score: epOverallAssessmentScore,
+          overall_assessment_comment: overallAssessmentComment || undefined,
         };
       } else if (linkData.content_type === "one_liner") {
         // One-liner evaluation - just comments
@@ -330,21 +383,17 @@ export default function ExternalEvaluatePage({ params }: ExternalEvaluatePagePro
           comments: olComments || null,
         };
       } else if (linkData.content_type === "call_report") {
-        // Validate call_report evaluation
-        if (!slot) {
-          toast.error("Please select a suggested slot");
-          setSubmitting(false);
-          return;
-        }
-
         evaluationData = {
-          slot: slot,
           conflict_of_content_score: premiseConflictScore,
+          conflict_of_content_comment: crConflictComment || undefined,
           characterization_score: storylinePlotScore,
+          characterization_comment: crCharacterizationComment || undefined,
           story_progression_score: episodicProgressionScore,
+          story_progression_comment: crStoryProgressionComment || undefined,
           whats_next_element_score: charactersScore,
+          whats_next_element_comment: crWhatsNextComment || undefined,
           overall_oneliner_grade_score: crOverallAssessmentScore,
-          comments: comments || null,
+          overall_oneliner_grade_comment: crOverallComment || undefined,
         };
       }
 
@@ -445,7 +494,7 @@ export default function ExternalEvaluatePage({ params }: ExternalEvaluatePagePro
         <div className="mb-6 text-center">
           <h1 className="text-xl sm:text-2xl font-bold mb-2">External Evaluation</h1>
           <p className="text-muted-foreground">
-            You've been invited to provide feedback on this {linkData.content_type === "episode" ? "episode" : linkData.content_type === "call_report" ? "One-Liner" : "One-Liner"}
+            You've been invited to provide feedback on this {content?.type === "episode" ? "episode" : "One-Liner"}
           </p>
         </div>
 
@@ -709,7 +758,7 @@ export default function ExternalEvaluatePage({ params }: ExternalEvaluatePagePro
           </Card>
 
           {/* Episode Evaluation Form */}
-          {linkData.content_type === "episode" && (
+          {content?.type === "episode" && (
             <>
               {/* Rating Scale Guide */}
               <Card className="p-4 border-2 border-blue-100 bg-blue-50/30 mb-6">
@@ -741,80 +790,195 @@ export default function ExternalEvaluatePage({ params }: ExternalEvaluatePagePro
                   <CardDescription>Rate each criterion from 1 (poor) to 10 (excellent)</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
-                  <ScoreCard
-                    label="Conflict of Content"
-                    description="How engaging and well-developed is the central conflict?"
-                    score={conflictScore}
-                    onChange={setConflictScore}
-                    disabled={submitting}
-                  />
+                  <div className="space-y-2">
+                    <ScoreCard
+                      label="Conflict of Content"
+                      description="How engaging and well-developed is the central conflict?"
+                      score={conflictScore}
+                      onChange={setConflictScore}
+                      disabled={submitting}
+                    />
+                    <div className="ml-4">
+                      <Textarea
+                        placeholder="Comments on Conflict of Content (optional)..."
+                        rows={2}
+                        value={conflictComment}
+                        onChange={(e) => setConflictComment(e.target.value)}
+                        disabled={submitting}
+                        className="text-sm"
+                      />
+                    </div>
+                  </div>
 
-                  <ScoreCard
-                    label="Characterization"
-                    description="How compelling and relatable are the characters?"
-                    score={characterizationScore}
-                    onChange={setCharacterizationScore}
-                    disabled={submitting}
-                  />
+                  <div className="space-y-2">
+                    <ScoreCard
+                      label="Characterization"
+                      description="How compelling and relatable are the characters?"
+                      score={characterizationScore}
+                      onChange={setCharacterizationScore}
+                      disabled={submitting}
+                    />
+                    <div className="ml-4">
+                      <Textarea
+                        placeholder="Comments on Characterization (optional)..."
+                        rows={2}
+                        value={characterizationComment}
+                        onChange={(e) => setCharacterizationComment(e.target.value)}
+                        disabled={submitting}
+                        className="text-sm"
+                      />
+                    </div>
+                  </div>
 
-                  <ScoreCard
-                    label="Story Progression"
-                    description="How effectively does the narrative move the story forward?"
-                    score={storyProgressionScore}
-                    onChange={setStoryProgressionScore}
-                    disabled={submitting}
-                  />
+                  <div className="space-y-2">
+                    <ScoreCard
+                      label="Story Progression"
+                      description="How effectively does the narrative move the story forward?"
+                      score={storyProgressionScore}
+                      onChange={setStoryProgressionScore}
+                      disabled={submitting}
+                    />
+                    <div className="ml-4">
+                      <Textarea
+                        placeholder="Comments on Story Progression (optional)..."
+                        rows={2}
+                        value={storyProgressionComment}
+                        onChange={(e) => setStoryProgressionComment(e.target.value)}
+                        disabled={submitting}
+                        className="text-sm"
+                      />
+                    </div>
+                  </div>
 
-                  <ScoreCard
-                    label="Freezes (Cliffhangers)"
-                    description="How effective are the cliffhangers in creating suspense?"
-                    score={freezesScore}
-                    onChange={setFreezesScore}
-                    disabled={submitting}
-                  />
+                  <div className="space-y-2">
+                    <ScoreCard
+                      label="Main Event"
+                      description="How impactful and well-executed is the main event of the episode?"
+                      score={mainEventScore}
+                      onChange={setMainEventScore}
+                      disabled={submitting}
+                    />
+                    <div className="ml-4">
+                      <Textarea
+                        placeholder="Comments on Main Event (optional)..."
+                        rows={2}
+                        value={mainEventComment}
+                        onChange={(e) => setMainEventComment(e.target.value)}
+                        disabled={submitting}
+                        className="text-sm"
+                      />
+                    </div>
+                  </div>
 
-                  <ScoreCard
-                    label="What's Next Element"
-                    description="How strong is the anticipation for the next episode?"
-                    score={whatsNextScore}
-                    onChange={setWhatsNextScore}
-                    disabled={submitting}
-                  />
+                  <div className="space-y-2">
+                    <ScoreCard
+                      label="Small Event"
+                      description="How effective are the supporting events in building the narrative?"
+                      score={smallEventScore}
+                      onChange={setSmallEventScore}
+                      disabled={submitting}
+                    />
+                    <div className="ml-4">
+                      <Textarea
+                        placeholder="Comments on Small Event (optional)..."
+                        rows={2}
+                        value={smallEventComment}
+                        onChange={(e) => setSmallEventComment(e.target.value)}
+                        disabled={submitting}
+                        className="text-sm"
+                      />
+                    </div>
+                  </div>
 
-                  <ScoreCard
-                    label="Final Impression"
-                    description="What is your overall impression of this episode?"
-                    score={epOverallAssessmentScore}
-                    onChange={setEpOverallAssessmentScore}
-                    disabled={submitting}
-                  />
+                  <div className="space-y-2">
+                    <ScoreCard
+                      label="Dragness"
+                      description="How well does the episode maintain pacing and avoid unnecessary drag?"
+                      score={dragnessScore}
+                      onChange={setDragnessScore}
+                      disabled={submitting}
+                    />
+                    <div className="ml-4">
+                      <Textarea
+                        placeholder="Comments on Dragness (optional)..."
+                        rows={2}
+                        value={dragnessComment}
+                        onChange={(e) => setDragnessComment(e.target.value)}
+                        disabled={submitting}
+                        className="text-sm"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <ScoreCard
+                      label="Freeze"
+                      description="How effective are the cliffhangers/freeze moments in creating suspense?"
+                      score={freezesScore}
+                      onChange={setFreezesScore}
+                      disabled={submitting}
+                    />
+                    <div className="ml-4">
+                      <Textarea
+                        placeholder="Comments on Freeze (optional)..."
+                        rows={2}
+                        value={freezesComment}
+                        onChange={(e) => setFreezesComment(e.target.value)}
+                        disabled={submitting}
+                        className="text-sm"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <ScoreCard
+                      label="What's Next Element"
+                      description="How strong is the anticipation for the next episode?"
+                      score={whatsNextScore}
+                      onChange={setWhatsNextScore}
+                      disabled={submitting}
+                    />
+                    <div className="ml-4">
+                      <Textarea
+                        placeholder="Comments on What's Next Element (optional)..."
+                        rows={2}
+                        value={whatsNextComment}
+                        onChange={(e) => setWhatsNextComment(e.target.value)}
+                        disabled={submitting}
+                        className="text-sm"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <ScoreCard
+                      label="Overall Assessment"
+                      description="What is your overall impression of this episode?"
+                      score={epOverallAssessmentScore}
+                      onChange={setEpOverallAssessmentScore}
+                      disabled={submitting}
+                    />
+                    <div className="ml-4">
+                      <Textarea
+                        placeholder="Comments on Overall Assessment (optional)..."
+                        rows={2}
+                        value={overallAssessmentComment}
+                        onChange={(e) => setOverallAssessmentComment(e.target.value)}
+                        disabled={submitting}
+                        className="text-sm"
+                      />
+                    </div>
+                  </div>
                 </CardContent>
               </Card>
 
               {/* Overall Assessment Display */}
               <OverallAssessment average={parseFloat(episodeAverageScore)} grade={episodeGrade} />
-
-              {/* Summary and Feedback */}
-              <Card className="mt-8 mb-6">
-                <CardHeader>
-                  <CardTitle>Summary and Feedback</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <Label htmlFor="summary">Your Feedback</Label>
-                  <Textarea
-                    id="summary"
-                    value={summaryAnalysis}
-                    onChange={(e) => setSummaryAnalysis(e.target.value)}
-                    placeholder="Write your summary and feedback for this episode..."
-                    rows={6}
-                  />
-                </CardContent>
-              </Card>
             </>
           )}
 
           {/* One-Liner Evaluation Form */}
-          {linkData.content_type === "one_liner" && (
+          {content?.type === "one_liner" && (
             <>
               <Card className="mb-6">
                 <CardHeader>
@@ -835,8 +999,8 @@ export default function ExternalEvaluatePage({ params }: ExternalEvaluatePagePro
             </>
           )}
 
-          {/* One-Liner Evaluation Form */}
-          {linkData.content_type === "call_report" && (
+          {/* Call Report Evaluation Form */}
+          {content?.type === "call_report" && (
             <>
               {/* Rating Scale Guide */}
               <Card className="p-4 border-2 border-blue-100 bg-blue-50/30 mb-6">
@@ -867,84 +1031,110 @@ export default function ExternalEvaluatePage({ params }: ExternalEvaluatePagePro
                   <CardDescription>Rate each criterion on a scale of 1-10</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
-                  <ScoreCard
-                    label="Conflict of Content"
-                    description="How interesting and engaging is the core premise and conflict?"
-                    score={premiseConflictScore}
-                    onChange={setPremiseConflictScore}
-                    disabled={submitting}
-                  />
+                  <div className="space-y-2">
+                    <ScoreCard
+                      label="Conflict of Content"
+                      description="How compelling and engaging is the core conflict driving the content?"
+                      score={premiseConflictScore}
+                      onChange={setPremiseConflictScore}
+                      disabled={submitting}
+                    />
+                    <div className="ml-4">
+                      <Textarea
+                        placeholder="Comments on Conflict of Content (optional)..."
+                        rows={2}
+                        value={crConflictComment}
+                        onChange={(e) => setCrConflictComment(e.target.value)}
+                        disabled={submitting}
+                        className="text-sm"
+                      />
+                    </div>
+                  </div>
 
-                  <ScoreCard
-                    label="Characterization"
-                    description="How compelling and coherent is the overall plot structure?"
-                    score={storylinePlotScore}
-                    onChange={setStorylinePlotScore}
-                    disabled={submitting}
-                  />
+                  <div className="space-y-2">
+                    <ScoreCard
+                      label="Characterization"
+                      description="How well-developed, relatable, and distinct are the characters?"
+                      score={storylinePlotScore}
+                      onChange={setStorylinePlotScore}
+                      disabled={submitting}
+                    />
+                    <div className="ml-4">
+                      <Textarea
+                        placeholder="Comments on Characterization (optional)..."
+                        rows={2}
+                        value={crCharacterizationComment}
+                        onChange={(e) => setCrCharacterizationComment(e.target.value)}
+                        disabled={submitting}
+                        className="text-sm"
+                      />
+                    </div>
+                  </div>
 
-                  <ScoreCard
-                    label="Story Progression"
-                    description="How well does the story flow across multiple episodes?"
-                    score={episodicProgressionScore}
-                    onChange={setEpisodicProgressionScore}
-                    disabled={submitting}
-                  />
+                  <div className="space-y-2">
+                    <ScoreCard
+                      label="Story Progression"
+                      description="How well does the story flow and progress across the narrative?"
+                      score={episodicProgressionScore}
+                      onChange={setEpisodicProgressionScore}
+                      disabled={submitting}
+                    />
+                    <div className="ml-4">
+                      <Textarea
+                        placeholder="Comments on Story Progression (optional)..."
+                        rows={2}
+                        value={crStoryProgressionComment}
+                        onChange={(e) => setCrStoryProgressionComment(e.target.value)}
+                        disabled={submitting}
+                        className="text-sm"
+                      />
+                    </div>
+                  </div>
 
-                  <ScoreCard
-                    label="What's Next Element"
-                    description="How well-developed and relatable are the main characters?"
-                    score={charactersScore}
-                    onChange={setCharactersScore}
-                    disabled={submitting}
-                  />
+                  <div className="space-y-2">
+                    <ScoreCard
+                      label="What's Next Element"
+                      description="How effectively does the story create curiosity about what happens next?"
+                      score={charactersScore}
+                      onChange={setCharactersScore}
+                      disabled={submitting}
+                    />
+                    <div className="ml-4">
+                      <Textarea
+                        placeholder="Comments on What's Next Element (optional)..."
+                        rows={2}
+                        value={crWhatsNextComment}
+                        onChange={(e) => setCrWhatsNextComment(e.target.value)}
+                        disabled={submitting}
+                        className="text-sm"
+                      />
+                    </div>
+                  </div>
 
-                  <ScoreCard
-                    label="Overall Oneliner Grade"
-                    description="What is your overall impression of this project's potential?"
-                    score={crOverallAssessmentScore}
-                    onChange={setCrOverallAssessmentScore}
-                    disabled={submitting}
-                  />
+                  <div className="space-y-2">
+                    <ScoreCard
+                      label="Overall Oneliner Grade"
+                      description="What is your overall grade for this oneliner as a complete package?"
+                      score={crOverallAssessmentScore}
+                      onChange={setCrOverallAssessmentScore}
+                      disabled={submitting}
+                    />
+                    <div className="ml-4">
+                      <Textarea
+                        placeholder="Comments on Overall Oneliner Grade (optional)..."
+                        rows={2}
+                        value={crOverallComment}
+                        onChange={(e) => setCrOverallComment(e.target.value)}
+                        disabled={submitting}
+                        className="text-sm"
+                      />
+                    </div>
+                  </div>
                 </CardContent>
               </Card>
 
               {/* Overall Assessment Display */}
               <CallReportOverallAssessment average={parseFloat(callReportAverageScore)} />
-
-              <Card className="mt-8 mb-6">
-                <CardHeader>
-                  <CardTitle>Additional Details</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {/* Suggested Slot */}
-                  <div className="space-y-2">
-                    <Label>Suggested Slot *</Label>
-                    <select
-                      value={slot}
-                      onChange={(e) => setSlot(e.target.value)}
-                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                      required
-                    >
-                      <option value="">Select slot</option>
-                      <option value="6:00 PM">6:00 PM</option>
-                      <option value="7:00 PM">7:00 PM</option>
-                      <option value="8:00 PM">8:00 PM</option>
-                      <option value="9:00 PM">9:00 PM</option>
-                      <option value="10:00 PM">10:00 PM</option>
-                    </select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>Additional Comments</Label>
-                    <Textarea
-                      value={comments}
-                      onChange={(e) => setComments(e.target.value)}
-                      rows={3}
-                    />
-                  </div>
-                </CardContent>
-              </Card>
             </>
           )}
 

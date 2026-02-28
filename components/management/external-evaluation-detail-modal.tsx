@@ -19,8 +19,6 @@ import {
   Building,
   Calendar,
   Award,
-  Clock,
-  FileText,
 } from "lucide-react";
 
 interface ExternalEvaluationDetailModalProps {
@@ -29,67 +27,62 @@ interface ExternalEvaluationDetailModalProps {
   onClose: () => void;
 }
 
-// Helper function to normalize evaluation data from both flat and nested structures
+// Helper function to normalize evaluation data from flat structure
 function normalizeEvaluationData(data: any, contentType: string) {
-  // If data already has nested structure with scores object, return as-is
-  if (data.scores) {
-    return data;
-  }
-
-  // Otherwise, transform flat structure to nested structure
   if (contentType === "episode") {
     const scores = {
-      conflict: data.conflict_of_content_score || 0,
-      characterization: data.characterization_score || 0,
-      story_progression: data.story_progression_score || 0,
-      freezes: data.freezes_score || 0,
-      whats_next: data.whats_next_element_score || 0,
-      overall_assessment: data.overall_assessment_score || 0,
+      conflict_of_content: data.conflict_of_content_score ?? 0,
+      characterization: data.characterization_score ?? 0,
+      story_progression: data.story_progression_score ?? 0,
+      main_event: data.main_event_score ?? 0,
+      small_event: data.small_event_score ?? 0,
+      dragness: data.dragness_score ?? 0,
+      freezes: data.freezes_score ?? 0,
+      whats_next: data.whats_next_element_score ?? 0,
+      overall_assessment: data.overall_assessment_score ?? 0,
     };
-
-    // Calculate average from flat scores
-    const scoreValues = Object.values(scores).filter(v => typeof v === 'number') as number[];
-    const average = scoreValues.length > 0
-      ? scoreValues.reduce((a, b) => a + b, 0) / scoreValues.length
-      : 0;
-
-    return {
-      scores,
-      average_score: average,
-      grade: calculateGrade(average),
-      summary_analysis: data.summary_analysis,
+    const comments = {
+      conflict_of_content: data.conflict_of_content_comment || "",
+      characterization: data.characterization_comment || "",
+      story_progression: data.story_progression_comment || "",
+      main_event: data.main_event_comment || "",
+      small_event: data.small_event_comment || "",
+      dragness: data.dragness_comment || "",
+      freezes: data.freezes_comment || "",
+      whats_next: data.whats_next_element_comment || "",
+      overall_assessment: data.overall_assessment_comment || "",
     };
+    const scoreValues = Object.values(scores) as number[];
+    const average = scoreValues.reduce((a, b) => a + b, 0) / scoreValues.length;
+    return { scores, comments, average_score: average, grade: calculateGrade(average) };
   }
 
   if (contentType === "call_report") {
     const scores = {
-      conflict_of_content: data.conflict_of_content_score || 0,
-      characterization: data.characterization_score || 0,
-      story_progression: data.story_progression_score || 0,
-      whats_next_element: data.whats_next_element_score || 0,
-      overall_oneliner_grade: data.overall_oneliner_grade_score || 0,
+      conflict_of_content: data.conflict_of_content_score ?? 0,
+      characterization: data.characterization_score ?? 0,
+      story_progression: data.story_progression_score ?? 0,
+      whats_next_element: data.whats_next_element_score ?? 0,
+      overall_oneliner_grade: data.overall_oneliner_grade_score ?? 0,
     };
-
-    // Calculate average from flat scores
-    const scoreValues = Object.values(scores).filter(v => typeof v === 'number') as number[];
-    const average = scoreValues.length > 0
-      ? scoreValues.reduce((a, b) => a + b, 0) / scoreValues.length
-      : 0;
-
-    return {
-      scores,
-      average_score: average,
-      slot: data.slot,
-      comments: data.comments,
+    const comments = {
+      conflict_of_content: data.conflict_of_content_comment || "",
+      characterization: data.characterization_comment || "",
+      story_progression: data.story_progression_comment || "",
+      whats_next_element: data.whats_next_element_comment || "",
+      overall_oneliner_grade: data.overall_oneliner_grade_comment || "",
     };
+    const scoreValues = Object.values(scores) as number[];
+    const average = scoreValues.reduce((a, b) => a + b, 0) / scoreValues.length;
+    return { scores, comments, average_score: average };
   }
 
-  // One-liner - just return as-is
+  // One-liner
   return data;
 }
 
 // ScoreDisplay component matching the form's design
-function ScoreDisplay({ label, description, score }: { label: string; description?: string; score: number }) {
+function ScoreDisplay({ label, description, score, comment }: { label: string; description?: string; score: number; comment?: string }) {
   const grade = calculateGrade(score);
   const gradeColorClasses = getGradeColorClasses(grade);
 
@@ -169,6 +162,12 @@ function ScoreDisplay({ label, description, score }: { label: string; descriptio
             {grade}
           </div>
         </div>
+
+        {comment && (
+          <div className="ml-2 mt-1 p-2 bg-muted rounded text-sm text-muted-foreground whitespace-pre-wrap">
+            {comment}
+          </div>
+        )}
       </div>
     </Card>
   );
@@ -351,6 +350,7 @@ export function ExternalEvaluationDetailModal({
 
   const renderEpisodeEvaluation = () => {
     const scores = data.scores || {};
+    const comments = data.comments || {};
     const average = data.average_score || 0;
     const grade = data.grade;
 
@@ -369,59 +369,69 @@ export function ExternalEvaluationDetailModal({
             <ScoreDisplay
               label="Conflict of Content"
               description="How engaging and well-developed is the central conflict?"
-              score={scores.conflict || 0}
+              score={scores.conflict_of_content || 0}
+              comment={comments.conflict_of_content}
             />
             <ScoreDisplay
               label="Characterization"
               description="How compelling and relatable are the characters?"
               score={scores.characterization || 0}
+              comment={comments.characterization}
             />
             <ScoreDisplay
               label="Story Progression"
               description="How effectively does the narrative move the story forward?"
               score={scores.story_progression || 0}
+              comment={comments.story_progression}
             />
             <ScoreDisplay
-              label="Freezes (Cliffhangers)"
-              description="How effective are the cliffhangers in creating suspense?"
+              label="Main Event"
+              description="How impactful and well-executed is the main event of the episode?"
+              score={scores.main_event || 0}
+              comment={comments.main_event}
+            />
+            <ScoreDisplay
+              label="Small Event"
+              description="How effective are the supporting events in building the narrative?"
+              score={scores.small_event || 0}
+              comment={comments.small_event}
+            />
+            <ScoreDisplay
+              label="Dragness"
+              description="How well does the episode maintain pacing and avoid unnecessary drag?"
+              score={scores.dragness || 0}
+              comment={comments.dragness}
+            />
+            <ScoreDisplay
+              label="Freeze"
+              description="How effective are the cliffhangers/freeze moments in creating suspense?"
               score={scores.freezes || 0}
+              comment={comments.freezes}
             />
             <ScoreDisplay
               label="What's Next Element"
               description="How strong is the anticipation for the next episode?"
               score={scores.whats_next || 0}
+              comment={comments.whats_next}
             />
             <ScoreDisplay
-              label="Final Impression"
+              label="Overall Assessment"
               description="What is your overall impression of this episode?"
               score={scores.overall_assessment || 0}
+              comment={comments.overall_assessment}
             />
           </CardContent>
         </Card>
 
         {/* Overall Assessment */}
         <OverallAssessmentCard average={average} grade={grade} />
-
-        {/* Summary and Feedback */}
-        {data.summary_analysis && (
-          <Card className="mt-8 mb-6">
-            <CardHeader>
-              <CardTitle>Summary and Feedback</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Label>Your Feedback</Label>
-              <div className="mt-2 p-3 bg-muted rounded-md min-h-[100px]">
-                <p className="text-sm whitespace-pre-wrap">{data.summary_analysis}</p>
-              </div>
-            </CardContent>
-          </Card>
-        )}
       </>
     );
   };
 
   const renderCallReportEvaluation = () => {
     const scores = data.scores || {};
+    const comments = data.comments || {};
     const average = data.average_score || 0;
 
     return (
@@ -440,63 +450,37 @@ export function ExternalEvaluationDetailModal({
               label="Conflict of Content"
               description="How interesting and engaging is the core premise and conflict?"
               score={scores.conflict_of_content || 0}
+              comment={comments.conflict_of_content}
             />
             <ScoreDisplay
               label="Characterization"
-              description="How compelling and coherent is the overall plot structure?"
+              description="How compelling and relatable are the characters in this project?"
               score={scores.characterization || 0}
+              comment={comments.characterization}
             />
             <ScoreDisplay
               label="Story Progression"
-              description="How well does the story flow across multiple episodes?"
+              description="How effectively does the narrative develop across the story?"
               score={scores.story_progression || 0}
+              comment={comments.story_progression}
             />
             <ScoreDisplay
               label="What's Next Element"
-              description="How well-developed and relatable are the main characters?"
+              description="How well does the story create anticipation and drive viewer engagement?"
               score={scores.whats_next_element || 0}
+              comment={comments.whats_next_element}
             />
             <ScoreDisplay
               label="Overall Oneliner Grade"
               description="What is your overall impression of this project's potential?"
               score={scores.overall_oneliner_grade || 0}
+              comment={comments.overall_oneliner_grade}
             />
           </CardContent>
         </Card>
 
         {/* Overall Assessment */}
         <OverallAssessmentCard average={average} />
-
-        {/* Additional Details */}
-        <Card className="mt-8 mb-6">
-          <CardHeader>
-            <CardTitle>Additional Details</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {/* Suggested Slot */}
-            {data.slot && (
-              <div>
-                <Label>Suggested Slot *</Label>
-                <div className="mt-2 flex items-center gap-2">
-                  <Clock className="h-4 w-4 text-muted-foreground" />
-                  <Badge variant="outline" className="text-base px-3 py-1">
-                    {data.slot}
-                  </Badge>
-                </div>
-              </div>
-            )}
-
-            {/* Additional Comments */}
-            {data.comments && (
-              <div>
-                <Label>Additional Comments</Label>
-                <div className="mt-2 p-3 bg-muted rounded-md min-h-[60px]">
-                  <p className="text-sm whitespace-pre-wrap">{data.comments}</p>
-                </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
       </>
     );
   };

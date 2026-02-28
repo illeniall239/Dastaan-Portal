@@ -22,9 +22,14 @@ export async function GET(request: NextRequest) {
 
     // Path-based download (public access for external evaluators)
     // Validate path is within allowed folders for security
+    // Both singular (call_report/) and plural (call_reports/) forms are checked
+    // because the upload route stores paths as `${entityType}/...` (singular).
     if (filePath.startsWith("call_reports/") ||
+        filePath.startsWith("call_report/") ||
         filePath.startsWith("one_liners/") ||
-        filePath.startsWith("episodes/")) {
+        filePath.startsWith("one_liner/") ||
+        filePath.startsWith("episodes/") ||
+        filePath.startsWith("episode/")) {
 
       // Use admin client for public access
       const adminSupabase = createAdminClient();

@@ -235,8 +235,12 @@ export async function POST(request: NextRequest) {
         !body.evaluation_data.conflict_of_content_score ||
         !body.evaluation_data.characterization_score ||
         !body.evaluation_data.story_progression_score ||
+        !body.evaluation_data.main_event_score ||
+        !body.evaluation_data.small_event_score ||
+        !body.evaluation_data.dragness_score ||
         !body.evaluation_data.freezes_score ||
-        !body.evaluation_data.whats_next_element_score
+        !body.evaluation_data.whats_next_element_score ||
+        !body.evaluation_data.overall_assessment_score
       ) {
         return NextResponse.json(
           { error: "Missing required evaluation fields for episode" },
@@ -249,8 +253,12 @@ export async function POST(request: NextRequest) {
         body.evaluation_data.conflict_of_content_score,
         body.evaluation_data.characterization_score,
         body.evaluation_data.story_progression_score,
+        body.evaluation_data.main_event_score,
+        body.evaluation_data.small_event_score,
+        body.evaluation_data.dragness_score,
         body.evaluation_data.freezes_score,
         body.evaluation_data.whats_next_element_score,
+        body.evaluation_data.overall_assessment_score,
       ];
 
       for (const score of scores) {
@@ -262,14 +270,6 @@ export async function POST(request: NextRequest) {
         }
       }
     } else if (link.content_type === "call_report") {
-      // Validate call_report evaluation data structure
-      if (!body.evaluation_data.slot) {
-        return NextResponse.json(
-          { error: "Missing required field: suggested slot" },
-          { status: 400 }
-        );
-      }
-
       // Validate evaluation scores (1-10)
       const requiredScores = [
         'conflict_of_content_score',
@@ -289,7 +289,6 @@ export async function POST(request: NextRequest) {
         }
       }
     } else if (link.content_type === "one_liner") {
-      // Validate one_liner evaluation - only comments field is optional
       // No required fields for one_liner
     }
 

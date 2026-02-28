@@ -53,15 +53,6 @@ interface EvaluationData {
   evaluation_data: Record<string, unknown>;
   average_score?: number;
   submitted_at?: string;
-  conflict_of_content_score?: number;
-  characterization_score?: number;
-  story_progression_score?: number;
-  freezes_score?: number;
-  whats_next_element_score?: number;
-  overall_assessment_score?: number;
-  summary_analysis?: string;
-  slot?: string;
-  comments?: string;
 }
 
 interface ExternalSubmission {
@@ -122,6 +113,9 @@ export function ExternalEvaluationsManager({
         conflict_of_content_score: (data.conflict_of_content_score as number) ?? 0,
         characterization_score: (data.characterization_score as number) ?? 0,
         story_progression_score: (data.story_progression_score as number) ?? 0,
+        main_event_score: (data.main_event_score as number) ?? 0,
+        small_event_score: (data.small_event_score as number) ?? 0,
+        dragness_score: (data.dragness_score as number) ?? 0,
         freezes_score: (data.freezes_score as number) ?? 0,
         whats_next_element_score: (data.whats_next_element_score as number) ?? 0,
         overall_assessment_score: (data.overall_assessment_score as number) ?? 0,
@@ -134,7 +128,6 @@ export function ExternalEvaluationsManager({
       return {
         scores,
         average_score: average,
-        summary_analysis: data.summary_analysis as string | undefined,
       };
     }
 
@@ -362,7 +355,7 @@ export function ExternalEvaluationsManager({
 
                               {/* Scores */}
                               {evaluation.content_type === "episode" ? (
-                                <div className="grid md:grid-cols-2 gap-2 text-sm">
+                                <div className="grid md:grid-cols-3 gap-2 text-sm">
                                   <div className="bg-gray-50 rounded p-2">
                                     <p className="text-muted-foreground mb-1">Conflict of Content</p>
                                     <p className="font-semibold">{"conflict_of_content_score" in scores ? String(scores.conflict_of_content_score) : "N/A"}/10</p>
@@ -376,7 +369,19 @@ export function ExternalEvaluationsManager({
                                     <p className="font-semibold">{"story_progression_score" in scores ? String(scores.story_progression_score) : "N/A"}/10</p>
                                   </div>
                                   <div className="bg-gray-50 rounded p-2">
-                                    <p className="text-muted-foreground mb-1">Freezes</p>
+                                    <p className="text-muted-foreground mb-1">Main Event</p>
+                                    <p className="font-semibold">{"main_event_score" in scores ? String(scores.main_event_score) : "N/A"}/10</p>
+                                  </div>
+                                  <div className="bg-gray-50 rounded p-2">
+                                    <p className="text-muted-foreground mb-1">Small Event</p>
+                                    <p className="font-semibold">{"small_event_score" in scores ? String(scores.small_event_score) : "N/A"}/10</p>
+                                  </div>
+                                  <div className="bg-gray-50 rounded p-2">
+                                    <p className="text-muted-foreground mb-1">Dragness</p>
+                                    <p className="font-semibold">{"dragness_score" in scores ? String(scores.dragness_score) : "N/A"}/10</p>
+                                  </div>
+                                  <div className="bg-gray-50 rounded p-2">
+                                    <p className="text-muted-foreground mb-1">Freeze</p>
                                     <p className="font-semibold">{"freezes_score" in scores ? String(scores.freezes_score) : "N/A"}/10</p>
                                   </div>
                                   <div className="bg-gray-50 rounded p-2">
@@ -384,7 +389,7 @@ export function ExternalEvaluationsManager({
                                     <p className="font-semibold">{"whats_next_element_score" in scores ? String(scores.whats_next_element_score) : "N/A"}/10</p>
                                   </div>
                                   <div className="bg-gray-50 rounded p-2">
-                                    <p className="text-muted-foreground mb-1">Final Impression</p>
+                                    <p className="text-muted-foreground mb-1">Overall Assessment</p>
                                     <p className="font-semibold">{"overall_assessment_score" in scores ? String(scores.overall_assessment_score) : "N/A"}/10</p>
                                   </div>
                                 </div>
@@ -418,18 +423,6 @@ export function ExternalEvaluationsManager({
                                 <div className="bg-blue-50 border border-blue-200 rounded p-3 text-sm">
                                   <p className="text-xs font-semibold text-blue-900 mb-1">Additional Comments</p>
                                   <p className="text-blue-900 whitespace-pre-wrap">{normalized.comments}</p>
-                                </div>
-                              )}
-                              {normalized.summary_analysis && (
-                                <div className="bg-blue-50 border border-blue-200 rounded p-3 text-sm">
-                                  <p className="text-xs font-semibold text-blue-900 mb-1">Summary & Analysis</p>
-                                  <p className="text-blue-900 whitespace-pre-wrap">{normalized.summary_analysis}</p>
-                                </div>
-                              )}
-                              {normalized.slot && (
-                                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                                  <Clock className="h-4 w-4" />
-                                  <span>Suggested Slot: {normalized.slot}</span>
                                 </div>
                               )}
                             </div>

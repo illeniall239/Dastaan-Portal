@@ -89,39 +89,39 @@ export function SegregatedEpisodicEvaluationsDisplay({
           <div className="grid grid-cols-3 gap-2 text-xs">
             <div className="bg-gray-50 rounded p-2">
               <p className="text-muted-foreground mb-1">Conflict of Content</p>
-              <p className="font-semibold">{evaluation.conflict_of_content_score}/10</p>
+              <p className="font-semibold">{evaluation.conflict_of_content_score != null ? `${evaluation.conflict_of_content_score}/10` : "N/A"}</p>
             </div>
             <div className="bg-gray-50 rounded p-2">
               <p className="text-muted-foreground mb-1">Characterization</p>
-              <p className="font-semibold">{evaluation.characterization_score}/10</p>
+              <p className="font-semibold">{evaluation.characterization_score != null ? `${evaluation.characterization_score}/10` : "N/A"}</p>
             </div>
             <div className="bg-gray-50 rounded p-2">
               <p className="text-muted-foreground mb-1">Story Progression</p>
-              <p className="font-semibold">{evaluation.story_progression_score}/10</p>
+              <p className="font-semibold">{evaluation.story_progression_score != null ? `${evaluation.story_progression_score}/10` : "N/A"}</p>
             </div>
             <div className="bg-gray-50 rounded p-2">
               <p className="text-muted-foreground mb-1">Main Event</p>
-              <p className="font-semibold">{evaluation.main_event_score}/10</p>
+              <p className="font-semibold">{evaluation.main_event_score != null ? `${evaluation.main_event_score}/10` : "N/A"}</p>
             </div>
             <div className="bg-gray-50 rounded p-2">
               <p className="text-muted-foreground mb-1">Small Event</p>
-              <p className="font-semibold">{evaluation.small_event_score}/10</p>
+              <p className="font-semibold">{evaluation.small_event_score != null ? `${evaluation.small_event_score}/10` : "N/A"}</p>
             </div>
             <div className="bg-gray-50 rounded p-2">
               <p className="text-muted-foreground mb-1">Dragness</p>
-              <p className="font-semibold">{evaluation.dragness_score}/10</p>
+              <p className="font-semibold">{evaluation.dragness_score != null ? `${evaluation.dragness_score}/10` : "N/A"}</p>
             </div>
             <div className="bg-gray-50 rounded p-2">
               <p className="text-muted-foreground mb-1">Freezes</p>
-              <p className="font-semibold">{evaluation.freezes_score}/10</p>
+              <p className="font-semibold">{evaluation.freezes_score != null ? `${evaluation.freezes_score}/10` : "N/A"}</p>
             </div>
             <div className="bg-gray-50 rounded p-2">
               <p className="text-muted-foreground mb-1">What's Next Element</p>
-              <p className="font-semibold">{evaluation.whats_next_element_score}/10</p>
+              <p className="font-semibold">{evaluation.whats_next_element_score != null ? `${evaluation.whats_next_element_score}/10` : "N/A"}</p>
             </div>
             <div className="bg-gray-50 rounded p-2">
               <p className="text-muted-foreground mb-1">Overall Assessment</p>
-              <p className="font-semibold">{evaluation.overall_assessment_score}/10</p>
+              <p className="font-semibold">{evaluation.overall_assessment_score != null ? `${evaluation.overall_assessment_score}/10` : "N/A"}</p>
             </div>
           </div>
 
