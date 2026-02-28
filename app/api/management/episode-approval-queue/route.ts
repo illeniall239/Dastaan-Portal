@@ -110,6 +110,7 @@ export async function GET(_request: NextRequest) {
         id: ep.id,
         episodeNumber: ep.episode_number,
         title: ep.title || null,
+        callReportId: ep.call_report_id || null,
         callReportTitle: cr.workingTitle,
         callReportDisplayId: cr.displayId,
         evaluationCount: scores.length,

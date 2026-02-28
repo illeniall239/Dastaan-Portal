@@ -24,6 +24,7 @@ import {
 import Link from "next/link";
 import { ContentRevisions } from "@/components/ui/content-revisions";
 import { CallReportDiscussion } from "@/components/call-reports/call-report-discussion";
+import { ShareCrossTeamButton } from "@/components/call-report/share-cross-team-button";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -369,6 +370,7 @@ export function PendingEvaluationsList({ userRole, userId }: PendingEvaluationsL
                         Evaluate
                       </Link>
                     </Button>
+                    <ShareCrossTeamButton callReportId={cr.id} />
                     <Button size="sm" onClick={() => handleReview(cr)}>
                       Review
                     </Button>
@@ -445,14 +447,16 @@ export function PendingEvaluationsList({ userRole, userId }: PendingEvaluationsL
                       </p>
                     )}
                   </div>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => handleReview(cr)}
-                    className="shrink-0"
-                  >
-                    View
-                  </Button>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <ShareCrossTeamButton callReportId={cr.id} />
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleReview(cr)}
+                    >
+                      View
+                    </Button>
+                  </div>
                 </div>
                 {userId && (
                   <CallReportDiscussion

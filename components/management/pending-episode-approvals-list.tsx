@@ -32,6 +32,7 @@ import {
 import Link from "next/link";
 import { DiscussionThread } from "@/components/call-reports/call-report-discussion";
 import { ContentRevisions } from "@/components/ui/content-revisions";
+import { ShareCrossTeamButton } from "@/components/call-report/share-cross-team-button";
 import { formatDistanceToNow } from "date-fns";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -40,6 +41,7 @@ interface EpisodeQueueItem {
   id: string;
   episodeNumber: number;
   title: string | null;
+  callReportId: string | null;
   callReportTitle: string;
   callReportDisplayId: string;
   evaluationCount: number;
@@ -774,6 +776,13 @@ function EpisodeSubCard({
           <Button size="sm" variant="outline" asChild>
             <Link href={`/management/evaluate/episode/${ep.id}`}>Evaluate</Link>
           </Button>
+          {ep.callReportId && (
+            <ShareCrossTeamButton
+              callReportId={ep.callReportId}
+              episodeId={ep.id}
+              callReportTitle={ep.callReportTitle}
+            />
+          )}
           <Button size="sm" onClick={() => onReview(ep)}>
             {reviewed ? "View" : "Review"}
           </Button>

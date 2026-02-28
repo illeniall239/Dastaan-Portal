@@ -246,30 +246,33 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Get user's team
+    // Get user's team and role
     const { data: userProfile } = await supabase
       .from('users')
       .select('team_id')
       .eq('id', user.id)
       .single();
 
-    if (!userProfile?.team_id) {
+    const isAdmin = ['admin', 'management'].includes(user.role);
+
+    // Non-admin users must be on a team
+    if (!isAdmin && !userProfile?.team_id) {
       return new Response(JSON.stringify({ error: 'User is not assigned to a team' }), {
         status: 400,
         headers: { 'Content-Type': 'application/json' },
       });
     }
 
-    const from_team_id = userProfile.team_id;
+    let from_team_id: string | null = userProfile?.team_id || null;
 
-    if (from_team_id === to_team_id) {
+    if (from_team_id && from_team_id === to_team_id) {
       return new Response(JSON.stringify({ error: 'Cannot share to your own team' }), {
         status: 400,
         headers: { 'Content-Type': 'application/json' },
       });
     }
 
-    // Verify the call report exists (if provided)
+    // Verify the call report exists (if provided); also use its team as from_team for management
     if (call_report_id) {
       const { data: callReport } = await supabase
         .from('call_reports')
@@ -283,10 +286,14 @@ export async function POST(request: NextRequest) {
           headers: { 'Content-Type': 'application/json' },
         });
       }
+
+      // Management users without a team_id borrow the call report's team
+      if (!from_team_id && isAdmin && callReport.team_id) {
+        from_team_id = callReport.team_id;
+      }
     }
 
     // Verify user is team head or admin/management
-    const isAdmin = ['admin', 'management'].includes(user.role);
     if (!isAdmin) {
       const { data: team } = await supabase
         .from('teams')
@@ -312,6 +319,23 @@ export async function POST(request: NextRequest) {
     if (!targetTeam) {
       return new Response(JSON.stringify({ error: 'Target team not found' }), {
         status: 404,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
+    // For episode-only shares by management with no team_id yet, derive from first episode's call report
+    if (!from_team_id && isAdmin && normalizedEpisodeShares.length > 0) {
+      const { data: epRow } = await supabase
+        .from('episodes')
+        .select('call_report_id, call_reports!inner(team_id)')
+        .eq('id', normalizedEpisodeShares[0].episode_id)
+        .single();
+      from_team_id = (epRow?.call_reports as any)?.team_id || null;
+    }
+
+    if (!from_team_id) {
+      return new Response(JSON.stringify({ error: 'Unable to determine source team for this share' }), {
+        status: 400,
         headers: { 'Content-Type': 'application/json' },
       });
     }
