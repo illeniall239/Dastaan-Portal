@@ -40,7 +40,7 @@ export default function NewUserPage() {
     formState: { errors, isValid },
   } = useForm<AdminCreateUserFormData>({
     resolver: zodResolver(adminCreateUserSchema),
-    mode: "onBlur",
+    mode: "all",
     defaultValues: {
       name: "",
       email: "",
