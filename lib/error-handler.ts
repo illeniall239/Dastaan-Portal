@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { logError } from './errors/server';
 
 export type ErrorCode =
   | 'UNIQUE_VIOLATION'
@@ -87,11 +88,25 @@ export function parseAuthError(error: any, context: ErrorContext): StructuredErr
 }
 
 /**
- * Create NextResponse from structured error
- * Only includes technicalDetails in development mode
+ * Create NextResponse from structured error.
+ * Optionally pass request and userId to enrich the error log entry.
+ * Only includes technicalDetails in development mode.
  */
-export function createErrorResponse(error: StructuredError, statusCode = 500): NextResponse {
+export function createErrorResponse(
+  error: StructuredError,
+  statusCode = 500,
+  request?: Request,
+  userId?: string
+): NextResponse {
   const isDev = process.env.NODE_ENV === 'development';
+
+  logError({
+    error: new Error(error.technicalDetails || error.message),
+    request,
+    userId,
+    statusCode,
+    context: { code: error.code, operation: error.context.operation },
+  }).catch(() => {});
 
   return NextResponse.json(
     {

@@ -41,6 +41,16 @@ export default async function AdminLayout({
       icon: "activity",
     },
     {
+      title: "Error Logs",
+      href: "/admin/error-logs",
+      icon: "alertTriangle",
+    },
+    {
+      title: "Activity Logs",
+      href: "/admin/activity",
+      icon: "listChecks",
+    },
+    {
       title: "Settings",
       href: "/admin/settings",
       icon: "settings",

@@ -8,6 +8,7 @@ import { QueryProvider } from "@/lib/providers/query-provider";
 import { NotificationProvider } from "@/lib/providers/notification-provider";
 import { SidebarProvider } from "@/lib/providers/sidebar-provider";
 import { SessionTrackerProvider } from "@/lib/providers/session-tracker-provider";
+import { ActivityTrackerProvider } from "@/lib/providers/activity-tracker-provider";
 import RouteProgress from "@/components/ui/route-progress";
 import LayoutClient from "./layout-client";
 import { Suspense } from "react";
@@ -54,6 +55,7 @@ export default function RootLayout({
           <QueryProvider>
             <NotificationProvider>
               <SessionTrackerProvider />
+              <ActivityTrackerProvider />
               <SidebarProvider>
                 {children}
                 <Toaster />

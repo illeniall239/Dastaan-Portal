@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { rateLimit, getClientIdentifier, RateLimitConfig, RateLimitResult } from "./rate-limit-redis";
+import { logError } from "./errors/server";
 
 /**
  * Apply rate limiting to an API route
@@ -125,13 +126,19 @@ export async function validateRequest<T>(
 }
 
 /**
- * Handle API errors consistently
+ * Handle API errors consistently.
+ * Optionally pass request and userId to enrich the error log entry.
  */
-export function handleApiError(error: unknown): NextResponse {
+export async function handleApiError(
+  error: unknown,
+  request?: Request,
+  userId?: string
+): Promise<NextResponse> {
   console.error("API Error:", error);
 
+  logError({ error, request, userId, statusCode: 500 }).catch(() => {});
+
   if (error instanceof Error) {
-    // Known error
     return NextResponse.json(
       {
         error: "Internal server error",
@@ -141,7 +148,6 @@ export function handleApiError(error: unknown): NextResponse {
     );
   }
 
-  // Unknown error
   return NextResponse.json(
     {
       error: "Internal server error",
