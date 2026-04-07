@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import Link from "next/link";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -13,7 +12,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { ArrowUpDown, ArrowUp, ArrowDown, ExternalLink } from "lucide-react";
+import { ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import type { TeamPerformance } from "@/types";
 
 interface TeamComparisonTableProps {
@@ -166,13 +165,12 @@ export function TeamComparisonTable({ teams, filteredType }: TeamComparisonTable
                       <SortIcon field="avg_evaluation_score" />
                     </Button>
                   </TableHead>
-                  <TableHead className="text-center text-xs">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {sortedTeams.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                       No teams found
                     </TableCell>
                   </TableRow>
@@ -196,13 +194,6 @@ export function TeamComparisonTable({ teams, filteredType }: TeamComparisonTable
                       </TableCell>
                       <TableCell className="text-center">
                         {team.avg_evaluation_score ? team.avg_evaluation_score.toFixed(1) : '-'}
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <Button variant="ghost" size="sm" asChild>
-                          <Link href={`/management/teams/${team.team_id}`}>
-                            <ExternalLink className="h-4 w-4" />
-                          </Link>
-                        </Button>
                       </TableCell>
                     </TableRow>
                   ))
