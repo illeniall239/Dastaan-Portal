@@ -1,3 +1,4 @@
+"use client";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -41,14 +42,12 @@ export default function NotFound() {
               </Link>
             </Button>
             <Button
-              asChild
               variant="outline"
               className="w-full"
+              onClick={() => window.history.back()}
             >
-              <Link href="javascript:history.back()">
-                <ArrowLeft className="mr-2 h-4 w-4" />
-                Go Back
-              </Link>
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Go Back
             </Button>
           </div>
 
