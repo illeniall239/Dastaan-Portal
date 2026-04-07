@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { getAllTeamPerformanceServer, getTeamPerformanceSummary, getTeamComparison } from "@/lib/management/team-performance";
+import { getAllTeamPerformanceServer, getTeamComparison } from "@/lib/management/team-performance";
 import { TeamStatsCards } from "@/components/management/team-performance/team-stats-cards";
 import { TeamComparisonTable } from "@/components/management/team-performance/team-comparison-table";
 import { TeamComparisonBarChart } from "@/components/management/charts/team-comparison-bar-chart";
@@ -36,13 +36,33 @@ export default async function TeamAnalyticsPage() {
   let teams: any[] = [], summary: any, comparison: any[] = [], typeDistribution: any[] = [];
 
   try {
-    [teams, summary] = await Promise.all([
-      getAllTeamPerformanceServer(),
-      getTeamPerformanceSummary(),
-    ]);
+    teams = await getAllTeamPerformanceServer();
+
+    // Compute summary from the teams data (avoids using the browser/anon client)
+    summary = {
+      total_teams: teams.length,
+      total_call_reports: teams.reduce((s: number, t: any) => s + (t.call_reports_created || 0), 0),
+      total_evaluations: teams.reduce((s: number, t: any) => s + (t.evaluations_completed || 0), 0),
+      total_one_liners: teams.reduce((s: number, t: any) => s + (t.one_liners_logged || 0), 0),
+      total_stories_approved: teams.reduce((s: number, t: any) => s + (t.stories_approved || 0), 0),
+      total_stories_rejected: teams.reduce((s: number, t: any) => s + (t.stories_rejected || 0), 0),
+      avg_evaluation_score: teams.length > 0
+        ? teams.reduce((s: number, t: any) => s + (t.avg_evaluation_score || 0), 0) / teams.length
+        : 0,
+      avg_call_reports_per_team: teams.length > 0
+        ? teams.reduce((s: number, t: any) => s + (t.call_reports_created || 0), 0) / teams.length
+        : 0,
+      avg_evaluations_per_team: teams.length > 0
+        ? teams.reduce((s: number, t: any) => s + (t.evaluations_completed || 0), 0) / teams.length
+        : 0,
+      teams_by_type: teams.reduce((acc: Record<string, number>, t: any) => {
+        acc[t.team_type] = (acc[t.team_type] || 0) + 1;
+        return acc;
+      }, {}),
+    };
 
     // Prepare comparison data
-    comparison = teams.map((team, index) => ({
+    comparison = teams.map((team: any, index: number) => ({
       team_id: team.team_id,
       team_name: team.team_name,
       team_type: team.team_type,
@@ -51,7 +71,7 @@ export default async function TeamAnalyticsPage() {
       one_liners: team.one_liners_logged || 0,
       stories_approved: team.stories_approved || 0,
       rank: index + 1,
-    })).sort((a, b) => b.call_reports - a.call_reports);
+    })).sort((a: any, b: any) => b.call_reports - a.call_reports);
 
     // Prepare team type distribution data
     const totalTeams = summary.total_teams;
