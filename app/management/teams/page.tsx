@@ -6,7 +6,7 @@ import { TeamComparisonBarChart } from "@/components/management/charts/team-comp
 import { ExportButton } from "@/components/management/export-button";
 import { TeamTypeFilterClient } from "./team-type-filter-client";
 import { BackButton } from "@/components/ui/back-button";
-import { LoginActivityList } from "@/components/admin/login-activity-list";
+import { TeamActivitySection } from "@/components/management/team-activity/team-activity-section";
 
 // Revalidate every 5 minutes
 export const revalidate = 300;
@@ -151,9 +151,9 @@ export default async function TeamAnalyticsPage() {
         </div>
       </div>
 
-      {/* Login Activity */}
-      <div id="login-activity" className="pt-2">
-        <LoginActivityList />
+      {/* Team Accountability Dashboard */}
+      <div id="team-accountability" className="pt-2">
+        <TeamActivitySection />
       </div>
     </div>
   );
