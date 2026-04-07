@@ -90,84 +90,60 @@ export default async function TeamAnalyticsPage() {
   }
 
   return (
-    <div className="mobile-container mobile-section">
+    <div className="p-3 sm:p-4 space-y-3">
       {/* Page Header */}
-      <div className="flex flex-col gap-4 sm:gap-6 mb-8">
-        <BackButton fallbackHref="/management" variant="outline" size="sm" className="w-fit" />
-        <div className="space-y-1">
-          <h1 className="text-xl sm:text-2xl font-bold text-gray-900 tracking-tight">Team Performance Analytics</h1>
-          <p className="text-muted-foreground text-sm sm:text-base">
-            Comprehensive overview of all team metrics and performance indicators
-          </p>
+      <div className="flex items-center gap-3">
+        <BackButton fallbackHref="/management" variant="outline" size="sm" />
+        <div>
+          <h1 className="text-base font-bold text-gray-900">Team Performance Analytics</h1>
+          <p className="text-xs text-muted-foreground">Overview of all team metrics</p>
         </div>
       </div>
 
-      {/* Overall Statistics Section */}
-      <div id="team-stats-overview" className="mb-8">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-2xl font-semibold text-gray-900">Overview</h2>
+      {/* Overview Stats */}
+      <div id="team-stats-overview">
+        <div className="flex items-center justify-between mb-2">
+          <h2 className="text-sm font-semibold text-gray-900">Overview</h2>
           <div className="no-print">
-            <ExportButton
-              elementId="team-stats-overview"
-              filename="team-stats-overview"
-              formats={["png", "pdf"]}
-              compact
-            />
+            <ExportButton elementId="team-stats-overview" filename="team-stats-overview" formats={["png", "pdf"]} compact />
           </div>
         </div>
         <TeamStatsCards stats={summary} />
       </div>
 
-      {/* Charts Section */}
-      <div id="team-charts" className="mb-8">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-2xl font-semibold text-gray-900">Visual Analytics</h2>
+      {/* Charts */}
+      <div id="team-charts">
+        <div className="flex items-center justify-between mb-2">
+          <h2 className="text-sm font-semibold text-gray-900">Visual Analytics</h2>
           <div className="no-print">
-            <ExportButton
-              elementId="team-charts"
-              filename="team-charts"
-              formats={["png", "pdf"]}
-              compact
-            />
+            <ExportButton elementId="team-charts" filename="team-charts" formats={["png", "pdf"]} compact />
           </div>
         </div>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
           <TeamComparisonBarChart
             data={comparison}
             metric="call_reports"
             title="Teams by Writer Engagement Reports"
-            description="Teams sorted by total writer engagement reports created"
+            description="Sorted by total writer engagement reports"
           />
           <TeamComparisonBarChart
             data={comparison}
             metric="evaluations"
             title="Teams by Evaluations"
-            description="Teams sorted by evaluations completed"
+            description="Sorted by evaluations completed"
           />
         </div>
       </div>
 
-      {/* Team Comparison Table Section */}
-      <div id="team-comparison" className="mb-8">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4">
-          <h2 className="text-2xl font-semibold text-gray-900">Detailed Comparison</h2>
-          <div className="flex items-center gap-4">
-            <div className="no-print">
-              <ExportButton
-                elementId="team-comparison"
-                filename="team-comparison"
-                formats={["png", "pdf"]}
-                compact
-              />
-            </div>
+      {/* Detailed Comparison Table */}
+      <div id="team-comparison">
+        <div className="flex items-center justify-between mb-2">
+          <h2 className="text-sm font-semibold text-gray-900">Detailed Comparison</h2>
+          <div className="no-print">
+            <ExportButton elementId="team-comparison" filename="team-comparison" formats={["png", "pdf"]} compact />
           </div>
         </div>
         <TeamTypeFilterClient teams={teams} />
-      </div>
-
-      {/* Data Source Note */}
-      <div className="mt-8 text-center text-sm text-gray-500">
-        Data refreshes every 5 minutes. Last updated: {new Date().toLocaleString()}
       </div>
     </div>
   );

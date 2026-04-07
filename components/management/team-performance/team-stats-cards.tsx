@@ -66,25 +66,25 @@ export function TeamStatsCards({ stats }: TeamStatsCardsProps) {
   ];
 
   return (
-    <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+    <div className="grid gap-2 grid-cols-2 md:grid-cols-4">
       {cards.map((card, index) => (
         <Card
           key={index}
           className={`bg-gradient-to-br ${card.gradient} ${card.border}`}
         >
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className={`text-sm font-medium ${card.textColor}`}>
+          <CardHeader className="flex flex-row items-center justify-between p-3 pb-1">
+            <CardTitle className={`text-xs font-medium ${card.textColor}`}>
               {card.title}
             </CardTitle>
-            <card.icon className={`h-5 w-5 ${card.iconColor}`} />
+            <card.icon className={`h-4 w-4 ${card.iconColor}`} />
           </CardHeader>
-          <CardContent>
-            <div className={`text-3xl font-bold ${card.textColor}`}>
+          <CardContent className="p-3 pt-0">
+            <div className={`text-2xl font-bold ${card.textColor}`}>
               {typeof card.value === 'number' && card.value >= 1000
                 ? `${(card.value / 1000).toFixed(1)}k`
                 : card.value}
             </div>
-            <p className={`text-xs mt-1 ${card.textColor} opacity-70`}>
+            <p className={`text-xs mt-0.5 ${card.textColor} opacity-70`}>
               {card.description}
             </p>
           </CardContent>

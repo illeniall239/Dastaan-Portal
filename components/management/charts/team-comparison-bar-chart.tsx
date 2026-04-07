@@ -1,6 +1,6 @@
 "use client";
 
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { TrendingUp } from "lucide-react";
 
@@ -70,42 +70,36 @@ export function TeamComparisonBarChart({
 
   return (
     <Card>
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <div>
-            <CardTitle className="flex items-center gap-2">
-              <TrendingUp className="h-5 w-5 text-teal-600" />
-              {title || `Teams by ${METRIC_LABELS[metric]}`}
-            </CardTitle>
-            {description && (
-              <CardDescription className="mt-1">{description}</CardDescription>
-            )}
-          </div>
-        </div>
+      <CardHeader className="p-3 pb-1">
+        <CardTitle className="flex items-center gap-1.5 text-sm">
+          <TrendingUp className="h-4 w-4 text-teal-600" />
+          {title || `Teams by ${METRIC_LABELS[metric]}`}
+        </CardTitle>
+        {description && <CardDescription className="text-xs mt-0.5">{description}</CardDescription>}
       </CardHeader>
-      <CardContent>
+      <CardContent className="p-3 pt-1">
         {chartData.length === 0 ? (
           <div className="flex items-center justify-center h-64 text-muted-foreground">
             No data available
           </div>
         ) : (
-          <ResponsiveContainer width="100%" height={400}>
+          <ResponsiveContainer width="100%" height={200}>
             <BarChart
               data={chartData}
               layout="vertical"
-              margin={{ top: 5, right: 20, left: 80, bottom: 5 }}
+              margin={{ top: 2, right: 16, left: 0, bottom: 2 }}
             >
               <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-              <XAxis type="number" stroke="#6b7280" />
+              <XAxis type="number" stroke="#6b7280" tick={{ fontSize: 11 }} />
               <YAxis
                 dataKey="name"
                 type="category"
                 stroke="#6b7280"
-                width={90}
-                tick={{ fontSize: 12 }}
+                width={80}
+                tick={{ fontSize: 11 }}
               />
               <Tooltip content={<CustomTooltip />} cursor={{ fill: '#f3f4f6' }} />
-              <Bar dataKey="value" radius={[0, 8, 8, 0]}>
+              <Bar dataKey="value" radius={[0, 4, 4, 0]}>
                 {chartData.map((entry, index) => (
                   <Cell key={`cell-${index}`} fill={entry.color} />
                 ))}
@@ -113,14 +107,6 @@ export function TeamComparisonBarChart({
             </BarChart>
           </ResponsiveContainer>
         )}
-        <div className="mt-4 flex flex-wrap gap-3 justify-center">
-          {Object.entries(TEAM_TYPE_COLORS).map(([type, color]) => (
-            <div key={type} className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded" style={{ backgroundColor: color }} />
-              <span className="text-xs text-gray-600 capitalize">{type}</span>
-            </div>
-          ))}
-        </div>
       </CardContent>
     </Card>
   );
