@@ -21,7 +21,7 @@ export async function GET(_request: NextRequest) {
       .eq("id", user.id)
       .single();
 
-    if (currentUser?.role !== "admin") {
+    if (!["admin", "management"].includes(currentUser?.role)) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
@@ -30,10 +30,19 @@ export async function GET(_request: NextRequest) {
     // Fetch all users
     const { data: users, error: usersErr } = await adminClient
       .from("users")
-      .select("id, name, email, role, position, created_at")
+      .select("id, name, email, role, position, created_at, team_id")
       .order("name");
 
     if (usersErr) throw usersErr;
+
+    // Fetch all teams for team badge display
+    const { data: teamsData } = await adminClient
+      .from("teams")
+      .select("id, name, team_type");
+    const teamsMap: Record<string, { name: string; team_type: string }> = {};
+    for (const t of teamsData || []) {
+      teamsMap[t.id] = { name: t.name, team_type: t.team_type };
+    }
 
     // Fetch last_sign_in_at from Supabase Auth (covers logins before our tracking existed)
     const { data: authData } = await adminClient.auth.admin.listUsers({ perPage: 1000 });
@@ -108,6 +117,7 @@ export async function GET(_request: NextRequest) {
         email: u.email,
         role: u.role,
         position: u.position,
+        team: (u as any).team_id ? (teamsMap[(u as any).team_id] ?? null) : null,
         account_created: u.created_at,
         total_sessions: userSessions.length,
         total_minutes: totalMinutes,

@@ -21,7 +21,7 @@ interface TeamComparisonTableProps {
   filteredType?: string;
 }
 
-type SortField = 'team_name' | 'call_reports_created' | 'evaluations_completed' | 'one_liners_logged' | 'stories_approved' | 'avg_evaluation_score' | 'team_member_count';
+type SortField = 'team_name' | 'call_reports_created' | 'evaluations_completed' | 'stories_approved' | 'avg_evaluation_score' | 'team_member_count';
 type SortDirection = 'asc' | 'desc';
 
 const TEAM_TYPE_COLORS: Record<string, string> = {
@@ -149,17 +149,6 @@ export function TeamComparisonTable({ teams, filteredType }: TeamComparisonTable
                       variant="ghost"
                       size="sm"
                       className="h-8 hover:bg-teal-50"
-                      onClick={() => handleSort('one_liners_logged')}
-                    >
-                      One-Liners
-                      <SortIcon field="one_liners_logged" />
-                    </Button>
-                  </TableHead>
-                  <TableHead className="text-center text-xs">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-8 hover:bg-teal-50"
                       onClick={() => handleSort('stories_approved')}
                     >
                       Approved
@@ -183,7 +172,7 @@ export function TeamComparisonTable({ teams, filteredType }: TeamComparisonTable
               <TableBody>
                 {sortedTeams.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                       No teams found
                     </TableCell>
                   </TableRow>
@@ -200,30 +189,8 @@ export function TeamComparisonTable({ teams, filteredType }: TeamComparisonTable
                         </Badge>
                       </TableCell>
                       <TableCell className="text-center">{team.team_member_count || 0}</TableCell>
-                      <TableCell className="text-center">
-                        <div>
-                          <div className="font-semibold">{team.call_reports_created || 0}</div>
-                          <div className="text-xs text-gray-500">
-                            {team.call_reports_last_30_days || 0} last 30d
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <div>
-                          <div className="font-semibold">{team.evaluations_completed || 0}</div>
-                          <div className="text-xs text-gray-500">
-                            {team.evaluations_last_30_days || 0} last 30d
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <div>
-                          <div className="font-semibold">{team.one_liners_logged || 0}</div>
-                          <div className="text-xs text-gray-500">
-                            {team.one_liners_last_30_days || 0} last 30d
-                          </div>
-                        </div>
-                      </TableCell>
+                      <TableCell className="text-center font-semibold">{team.call_reports_created || 0}</TableCell>
+                      <TableCell className="text-center font-semibold">{team.evaluations_completed || 0}</TableCell>
                       <TableCell className="text-center">
                         {team.stories_approved || 0}
                       </TableCell>

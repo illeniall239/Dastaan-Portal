@@ -6,6 +6,7 @@ import { TeamComparisonBarChart } from "@/components/management/charts/team-comp
 import { ExportButton } from "@/components/management/export-button";
 import { TeamTypeFilterClient } from "./team-type-filter-client";
 import { BackButton } from "@/components/ui/back-button";
+import { LoginActivityList } from "@/components/admin/login-activity-list";
 
 // Revalidate every 5 minutes
 export const revalidate = 300;
@@ -90,7 +91,7 @@ export default async function TeamAnalyticsPage() {
   }
 
   return (
-    <div className="p-3 sm:p-4 space-y-3">
+    <div className="p-4 sm:p-6 space-y-4 sm:space-y-6 w-full max-w-full overflow-x-hidden animate-fade-in">
       {/* Page Header */}
       <div className="flex items-center gap-3">
         <BackButton fallbackHref="/management" variant="outline" size="sm" />
@@ -108,7 +109,9 @@ export default async function TeamAnalyticsPage() {
             <ExportButton elementId="team-stats-overview" filename="team-stats-overview" formats={["png", "pdf"]} compact />
           </div>
         </div>
-        <TeamStatsCards stats={summary} />
+        <div className="w-full min-w-0">
+          <TeamStatsCards stats={summary} />
+        </div>
       </div>
 
       {/* Charts */}
@@ -119,7 +122,7 @@ export default async function TeamAnalyticsPage() {
             <ExportButton elementId="team-charts" filename="team-charts" formats={["png", "pdf"]} compact />
           </div>
         </div>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 min-w-0 w-full">
           <TeamComparisonBarChart
             data={comparison}
             metric="call_reports"
@@ -143,7 +146,17 @@ export default async function TeamAnalyticsPage() {
             <ExportButton elementId="team-comparison" filename="team-comparison" formats={["png", "pdf"]} compact />
           </div>
         </div>
-        <TeamTypeFilterClient teams={teams} />
+        <div className="w-full min-w-0 overflow-x-auto">
+          <TeamTypeFilterClient teams={teams} />
+        </div>
+      </div>
+
+      {/* Login Activity */}
+      <div id="login-activity">
+        <div className="flex items-center justify-between mb-2">
+          <h2 className="text-sm font-semibold text-gray-900">Login Activity</h2>
+        </div>
+        <LoginActivityList />
       </div>
     </div>
   );

@@ -16,6 +16,7 @@ import {
   User,
   Loader2,
 } from "lucide-react";
+import { TeamBadge } from "@/components/shared/team-badge";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -34,6 +35,7 @@ interface UserActivity {
   email: string;
   role: string;
   position: string | null;
+  team: { name: string; team_type: string } | null;
   account_created: string;
   total_sessions: number;
   total_minutes: number;
@@ -165,6 +167,7 @@ function UserRow({ u }: { u: UserActivity }) {
               <span className={`text-[10px] px-1.5 py-0.5 rounded border font-medium ${roleBadgeColor(u.role)}`}>
                 {u.role.replace(/_/g, " ")}
               </span>
+              {u.team && <TeamBadge team={u.team as any} size="sm" />}
               {u.is_online && (
                 <span className="text-[10px] px-1.5 py-0.5 rounded bg-green-100 text-green-700 border border-green-200 font-medium">
                   Online now
