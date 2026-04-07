@@ -152,10 +152,7 @@ export default async function TeamAnalyticsPage() {
       </div>
 
       {/* Login Activity */}
-      <div id="login-activity">
-        <div className="flex items-center justify-between mb-2">
-          <h2 className="text-sm font-semibold text-gray-900">Login Activity</h2>
-        </div>
+      <div id="login-activity" className="pt-2">
         <LoginActivityList />
       </div>
     </div>
