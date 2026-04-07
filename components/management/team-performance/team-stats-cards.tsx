@@ -5,8 +5,6 @@ import {
   Users,
   FileText,
   CheckCircle,
-  MessageSquare,
-  TrendingUp,
   Award,
 } from "lucide-react";
 
@@ -56,16 +54,6 @@ export function TeamStatsCards({ stats }: TeamStatsCardsProps) {
       textColor: "text-purple-900",
     },
     {
-      title: "One-Liners",
-      value: stats.total_one_liners,
-      icon: MessageSquare,
-      description: "Total one-liners logged",
-      gradient: "from-orange-50 to-orange-100",
-      border: "border-orange-200",
-      iconColor: "text-orange-600",
-      textColor: "text-orange-900",
-    },
-    {
       title: "Stories Approved",
       value: stats.total_stories_approved,
       icon: Award,
@@ -74,16 +62,6 @@ export function TeamStatsCards({ stats }: TeamStatsCardsProps) {
       border: "border-teal-200",
       iconColor: "text-teal-600",
       textColor: "text-teal-900",
-    },
-    {
-      title: "Avg Evaluation Score",
-      value: stats.avg_evaluation_score.toFixed(1),
-      icon: TrendingUp,
-      description: "Average score across all teams",
-      gradient: "from-indigo-50 to-indigo-100",
-      border: "border-indigo-200",
-      iconColor: "text-indigo-600",
-      textColor: "text-indigo-900",
     },
   ];
 

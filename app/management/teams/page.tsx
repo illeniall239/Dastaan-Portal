@@ -1,10 +1,8 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { getAllTeamPerformanceServer, getTeamComparison } from "@/lib/management/team-performance";
+import { getAllTeamPerformanceServer } from "@/lib/management/team-performance";
 import { TeamStatsCards } from "@/components/management/team-performance/team-stats-cards";
-import { TeamComparisonTable } from "@/components/management/team-performance/team-comparison-table";
 import { TeamComparisonBarChart } from "@/components/management/charts/team-comparison-bar-chart";
-import { TeamTypePieChart } from "@/components/management/charts/team-type-pie-chart";
 import { ExportButton } from "@/components/management/export-button";
 import { TeamTypeFilterClient } from "./team-type-filter-client";
 import { BackButton } from "@/components/ui/back-button";
@@ -33,7 +31,7 @@ export default async function TeamAnalyticsPage() {
   }
 
   // Fetch team performance data
-  let teams: any[] = [], summary: any, comparison: any[] = [], typeDistribution: any[] = [];
+  let teams: any[] = [], summary: any, comparison: any[] = [];
 
   try {
     teams = await getAllTeamPerformanceServer();
@@ -73,13 +71,6 @@ export default async function TeamAnalyticsPage() {
       rank: index + 1,
     })).sort((a: any, b: any) => b.call_reports - a.call_reports);
 
-    // Prepare team type distribution data
-    const totalTeams = summary.total_teams;
-    typeDistribution = Object.entries(summary.teams_by_type).map(([type, count]) => ({
-      type,
-      count: count as number,
-      percentage: totalTeams > 0 ? ((count as number) / totalTeams) * 100 : 0,
-    }));
   } catch (error) {
     console.error("Error fetching team data:", error);
     teams = [];
@@ -96,7 +87,6 @@ export default async function TeamAnalyticsPage() {
       teams_by_type: {},
     };
     comparison = [];
-    typeDistribution = [];
   }
 
   return (
@@ -148,25 +138,11 @@ export default async function TeamAnalyticsPage() {
             title="Teams by Writer Engagement Reports"
             description="Teams sorted by total writer engagement reports created"
           />
-          <TeamTypePieChart
-            data={typeDistribution}
-            title="Team Distribution"
-            description="Teams by type category"
-          />
-        </div>
-
-        <div className="mt-4 grid grid-cols-1 lg:grid-cols-2 gap-4">
           <TeamComparisonBarChart
             data={comparison}
             metric="evaluations"
             title="Teams by Evaluations"
             description="Teams sorted by evaluations completed"
-          />
-          <TeamComparisonBarChart
-            data={comparison}
-            metric="one_liners"
-            title="Teams by One-Liners"
-            description="Teams sorted by one-liners logged"
           />
         </div>
       </div>
