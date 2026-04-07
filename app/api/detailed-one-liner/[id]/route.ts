@@ -531,6 +531,7 @@ export async function PATCH(
     // Revalidate detailed one-liner list pages to show updated entry immediately
     revalidatePath('/content-department/detailed-one-liner');
     revalidatePath('/evaluator/detailed-one-liner');
+    revalidatePath('/programmer/detailed-one-liner');
 
     return NextResponse.json({
       message: "Detailed one-liner updated successfully",

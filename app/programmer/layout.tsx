@@ -25,6 +25,11 @@ const programmerNavItems = [
     icon: "fileText",
   },
   {
+    title: "Log Detailed One-Liner",
+    href: "/programmer/log-detailed-one-liner",
+    icon: "filePenLine",
+  },
+  {
     title: "One-Liner Evaluations",
     href: "/programmer/evaluations-list",
     icon: "clipboardList",

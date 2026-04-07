@@ -169,6 +169,12 @@ export default async function ProgrammerCallReportDetailPage({ params }: { param
                 currentTeamId={userTeamId}
               />
             )}
+            <Button variant="outline" size="sm" asChild>
+              <Link href={`/programmer/call-reports/${resolvedParams.id}/detailed-one-liner`}>
+                <FileTextIcon className="h-4 w-4 mr-2" />
+                Detailed One-Liner
+              </Link>
+            </Button>
             {canEdit && (
               <Button variant="default" size="sm" asChild>
                 <Link href={`/programmer/call-reports/${resolvedParams.id}/edit`}>

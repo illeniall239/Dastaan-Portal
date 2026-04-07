@@ -30,9 +30,9 @@ export async function POST(request: NextRequest) {
     .eq("id", user.id)
     .single();
 
-  if (!userData || !["evaluator", "content_manager", "admin"].includes(userData.role)) {
+  if (!userData || !["evaluator", "content_manager", "programmer", "admin"].includes(userData.role)) {
     return NextResponse.json(
-      { error: "Forbidden - Only evaluators and content managers can create detailed one-liners" },
+      { error: "Forbidden - Only evaluators, content managers, and programmers can create detailed one-liners" },
       { status: 403 }
     );
   }
@@ -264,6 +264,7 @@ export async function POST(request: NextRequest) {
     // Revalidate detailed one-liner list pages to show new entry immediately
     revalidatePath('/content-department/detailed-one-liner');
     revalidatePath('/evaluator/detailed-one-liner');
+    revalidatePath('/programmer/detailed-one-liner');
 
     return NextResponse.json(
       {
