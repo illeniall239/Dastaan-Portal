@@ -96,18 +96,21 @@ export async function GET(request: NextRequest) {
       const durationWindowStart = fromDate ? new Date(fromDate).getTime() : 0;
 
       let periodMinutes = 0;
+      let periodSessions = 0;
       for (const s of userSessions) {
         if (new Date(s.login_at).getTime() < durationWindowStart) continue;
         const end = s.logout_at ? new Date(s.logout_at).getTime() : new Date(s.last_seen_at).getTime();
         const start = new Date(s.login_at).getTime();
         const sessionMinutes = Math.max(0, Math.round((end - start) / 60000));
         periodMinutes += Math.min(sessionMinutes, MAX_SESSION_MINUTES);
+        periodSessions += 1;
       }
+      const avgSessionMinutes = periodSessions > 0 ? Math.round(periodMinutes / periodSessions) : 0;
       loginDataByUser[u.id] = {
         total_sessions: userSessions.length,
         effective_last_login: mostRecent?.login_at ?? null,
         is_online: lastSeenAt ? (NOW.getTime() - lastSeenAt.getTime()) < TEN_MINUTES_MS : false,
-        period_minutes: periodMinutes,
+        period_minutes: avgSessionMinutes,
       };
     }
 
