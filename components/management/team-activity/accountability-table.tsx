@@ -15,10 +15,11 @@ interface MemberData {
   one_liners: number;
   episodes_logged: number;
   episodes_evaluated: number;
+  pending_eps_evals: number;
   last_activity: string | null;
   is_idle: boolean;
   total_sessions: number;
-  weekly_minutes: number;
+  period_minutes: number;
   effective_last_login: string | null;
   is_online: boolean;
 }
@@ -34,6 +35,7 @@ interface TeamData {
   one_liners: number;
   episodes_logged: number;
   episodes_evaluated: number;
+  pending_eps_evals: number;
   online_count: number;
   last_activity: string | null;
   members: MemberData[];
@@ -117,9 +119,13 @@ function TeamRows({ team }: { team: TeamData }) {
           <span className="font-semibold text-slate-800 tabular-nums">{team.evaluations}</span>
         </td>
         <td className="px-4 py-3 text-center">
-          {team.pending_evals > 0
-            ? <span className="font-semibold tabular-nums text-amber-600">{team.pending_evals}</span>
-            : <span className="tabular-nums text-slate-300">0</span>}
+          {team.pending_evals > 0 ? (
+            <span className="inline-flex items-center justify-center px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-semibold bg-red-100 text-red-700">
+              {team.pending_evals} pending
+            </span>
+          ) : (
+            <span className="text-slate-300 text-sm font-medium tabular-nums">0</span>
+          )}
         </td>
         <td className="px-4 py-3 text-center">
           <span className="font-semibold text-slate-800 tabular-nums">{team.episodes_logged}</span>
@@ -127,6 +133,7 @@ function TeamRows({ team }: { team: TeamData }) {
         <td className="px-4 py-3 text-center">
           <span className="font-semibold text-slate-800 tabular-nums">{team.episodes_evaluated}</span>
         </td>
+        {/* Pending Eps Eval cell hidden for now */}
         <td className="px-4 py-3 text-right hidden md:table-cell">
           <p className="text-xs text-slate-500">{timeAgo(team.last_activity)}</p>
         </td>
@@ -167,12 +174,17 @@ function TeamRows({ team }: { team: TeamData }) {
           <td className="px-4 py-2 text-center"><Num value={m.call_reports} /></td>
           <td className="px-4 py-2 text-center"><Num value={m.evaluations} /></td>
           <td className="px-4 py-2 text-center">
-            {m.pending_evals > 0
-              ? <span className="font-semibold tabular-nums text-amber-600">{m.pending_evals}</span>
-              : <span className="tabular-nums text-slate-300">0</span>}
+            {m.pending_evals > 0 ? (
+              <span className="inline-flex items-center justify-center px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-semibold bg-red-100 text-red-700">
+                {m.pending_evals} pending
+              </span>
+            ) : (
+              <span className="text-slate-300 text-sm font-medium tabular-nums">0</span>
+            )}
           </td>
           <td className="px-4 py-2 text-center"><Num value={m.episodes_logged} /></td>
           <td className="px-4 py-2 text-center"><Num value={m.episodes_evaluated} /></td>
+          {/* Pending Eps Eval cell hidden for now */}
           <td className="px-4 py-2 text-right hidden md:table-cell">
             {m.effective_last_login ? (
               <div>
@@ -186,7 +198,7 @@ function TeamRows({ team }: { team: TeamData }) {
             )}
           </td>
           <td className="px-4 py-2 text-right hidden md:table-cell">
-            <p className="text-xs text-slate-500">{formatDuration(m.weekly_minutes)}</p>
+            <p className="text-xs text-slate-500">{formatDuration(m.period_minutes)}</p>
           </td>
         </tr>
       ))}
@@ -226,8 +238,9 @@ export function AccountabilityTable({ data }: AccountabilityTableProps) {
                   <th className="px-4 py-2 text-center text-[10px] uppercase tracking-wide text-amber-500 font-medium whitespace-nowrap">Pending Evals</th>
                   <th className="px-4 py-2 text-center text-[10px] uppercase tracking-wide text-slate-400 font-medium whitespace-nowrap">Eps Logged</th>
                   <th className="px-4 py-2 text-center text-[10px] uppercase tracking-wide text-slate-400 font-medium whitespace-nowrap">Eps Eval</th>
+                  {/* Pending Eps Eval column hidden for now — data available via pending_eps_evals */}
                   <th className="px-4 py-2 text-right text-[10px] uppercase tracking-wide text-slate-400 font-medium hidden md:table-cell whitespace-nowrap">Last Login</th>
-                  <th className="px-4 py-2 text-right text-[10px] uppercase tracking-wide text-slate-400 font-medium hidden md:table-cell whitespace-nowrap">Login Duration (Last 7d)</th>
+                  <th className="px-4 py-2 text-right text-[10px] uppercase tracking-wide text-slate-400 font-medium hidden md:table-cell whitespace-nowrap">Login Duration</th>
                 </tr>
               </thead>
               <tbody>

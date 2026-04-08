@@ -85,28 +85,29 @@ export async function GET(request: NextRequest) {
       total_sessions: number;
       effective_last_login: string | null;
       is_online: boolean;
-      weekly_minutes: number;
+      period_minutes: number;
     }> = {};
     for (const u of users || []) {
       const userSessions = sessionsByUser[u.id] || [];
       const mostRecent = userSessions[0] || null;
       const lastSeenAt = mostRecent?.last_seen_at ? new Date(mostRecent.last_seen_at) : null;
 
-      const windowStart = NOW.getTime() - SEVEN_DAYS_MS;
+      // Duration window matches the selected period filter (fromDate), not a hardcoded 7-day window
+      const durationWindowStart = fromDate ? new Date(fromDate).getTime() : 0;
 
-      let weeklyMinutes = 0;
+      let periodMinutes = 0;
       for (const s of userSessions) {
-        if (new Date(s.login_at).getTime() < windowStart) continue;
+        if (new Date(s.login_at).getTime() < durationWindowStart) continue;
         const end = s.logout_at ? new Date(s.logout_at).getTime() : new Date(s.last_seen_at).getTime();
         const start = new Date(s.login_at).getTime();
         const sessionMinutes = Math.max(0, Math.round((end - start) / 60000));
-        weeklyMinutes += Math.min(sessionMinutes, MAX_SESSION_MINUTES);
+        periodMinutes += Math.min(sessionMinutes, MAX_SESSION_MINUTES);
       }
       loginDataByUser[u.id] = {
         total_sessions: userSessions.length,
         effective_last_login: mostRecent?.login_at ?? null,
         is_online: lastSeenAt ? (NOW.getTime() - lastSeenAt.getTime()) < TEN_MINUTES_MS : false,
-        weekly_minutes: weeklyMinutes,
+        period_minutes: periodMinutes,
       };
     }
 
@@ -117,6 +118,7 @@ export async function GET(request: NextRequest) {
     const olByUser: Record<string, number> = {};
     const epsLoggedByUser: Record<string, number> = {};
     const epsEvalByUser: Record<string, number> = {};
+    const pendingEpsEvalsByUser: Record<string, number> = {};
     const lastActivityByUser: Record<string, string> = {};
 
     const updateLast = (userId: string, ts: string) => {
@@ -156,6 +158,15 @@ export async function GET(request: NextRequest) {
       updateLast(ee.evaluator_id, ee.submitted_at!);
     }
 
+    // Build pending eps evals per user: episodes logged in period with no evaluation yet
+    const evaluatedEpisodeIdSet = new Set((episodicEvals || []).map(ee => ee.episode_id));
+    for (const ep of episodes || []) {
+      if (!ep.logged_by || !inPeriod(ep.created_at)) continue;
+      if (!evaluatedEpisodeIdSet.has(ep.id)) {
+        pendingEpsEvalsByUser[ep.logged_by] = (pendingEpsEvalsByUser[ep.logged_by] || 0) + 1;
+      }
+    }
+
     // ── Group users by team ────────────────────────────────────────────────────
     const usersByTeam: Record<string, typeof users> = {};
     for (const u of users || []) {
@@ -169,7 +180,7 @@ export async function GET(request: NextRequest) {
       const members = (usersByTeam[team.id] || []).map(u => {
         const lastAct = lastActivityByUser[u.id] || null;
         const isIdle = !lastAct || (NOW.getTime() - new Date(lastAct).getTime() > SEVEN_DAYS_MS);
-        const login = loginDataByUser[u.id] || { total_sessions: 0, weekly_minutes: 0, effective_last_login: null, is_online: false };
+        const login = loginDataByUser[u.id] || { total_sessions: 0, period_minutes: 0, effective_last_login: null, is_online: false };
         return {
           user_id: u.id,
           name: u.name,
@@ -180,10 +191,11 @@ export async function GET(request: NextRequest) {
           one_liners: olByUser[u.id] || 0,
           episodes_logged: epsLoggedByUser[u.id] || 0,
           episodes_evaluated: epsEvalByUser[u.id] || 0,
+          pending_eps_evals: pendingEpsEvalsByUser[u.id] || 0,
           last_activity: lastAct,
           is_idle: isIdle,
           total_sessions: login.total_sessions,
-          weekly_minutes: login.weekly_minutes,
+          period_minutes: login.period_minutes,
           effective_last_login: login.effective_last_login,
           is_online: login.is_online,
         };
@@ -207,6 +219,7 @@ export async function GET(request: NextRequest) {
         one_liners: members.reduce((s, m) => s + m.one_liners, 0),
         episodes_logged: members.reduce((s, m) => s + m.episodes_logged, 0),
         episodes_evaluated: members.reduce((s, m) => s + m.episodes_evaluated, 0),
+        pending_eps_evals: members.reduce((s, m) => s + m.pending_eps_evals, 0),
         online_count: onlineCount,
         last_activity: lastTeamAct,
         members,
