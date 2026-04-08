@@ -7,9 +7,10 @@ import { ExportButton } from "@/components/management/export-button";
 import { TeamTypeFilterClient } from "./team-type-filter-client";
 import { BackButton } from "@/components/ui/back-button";
 import { TeamActivitySection } from "@/components/management/team-activity/team-activity-section";
+import { KeyPersonnelSection } from "@/components/management/key-personnel/key-personnel-section";
 
 // Revalidate every 5 minutes
-export const revalidate = 300;
+export const dynamic = "force-dynamic";
 
 export default async function TeamAnalyticsPage() {
   // Authentication check
@@ -23,13 +24,15 @@ export default async function TeamAnalyticsPage() {
   // Check if user has management role
   const { data: userData } = await supabase
     .from("users")
-    .select("role")
+    .select("role, email")
     .eq("id", user.id)
     .single();
 
   if (!userData || !["admin", "management"].includes(userData.role)) {
     redirect("/dashboard");
   }
+
+  const isCEO = userData?.email === "mir@geo.tv";
 
   // Fetch team performance data
   let teams: any[] = [], summary: any, comparison: any[] = [];
@@ -150,6 +153,13 @@ export default async function TeamAnalyticsPage() {
           <TeamTypeFilterClient teams={teams} />
         </div>
       </div>
+
+      {/* Key Personnel Activity (CEO only) */}
+      {isCEO && (
+        <div id="key-personnel" className="pt-2">
+          <KeyPersonnelSection />
+        </div>
+      )}
 
       {/* Team Accountability Dashboard */}
       <div id="team-accountability" className="pt-2">
