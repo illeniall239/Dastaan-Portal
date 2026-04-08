@@ -66,7 +66,7 @@ export async function GET(request: NextRequest) {
         .select("episode_id, evaluator_id, submitted_at"),
       admin
         .from("user_sessions")
-        .select("user_id, login_at, last_seen_at, logout_at")
+        .select("user_id, login_at, last_seen_at, logout_at, active_minutes")
         .in("user_id", userIds)
         .order("login_at", { ascending: false }),
       admin
@@ -131,16 +131,14 @@ export async function GET(request: NextRequest) {
       const lastSeenAt = mostRecent?.last_seen_at ? new Date(mostRecent.last_seen_at) : null;
       const isOnline = lastSeenAt ? (NOW.getTime() - lastSeenAt.getTime()) < TEN_MINUTES_MS : false;
 
-      let weeklyMinutes = 0;
+      let periodActiveMinutes = 0;
       let periodSessions = 0;
       for (const s of userSessions) {
         if (new Date(s.login_at).getTime() < windowStart) continue;
-        const end = s.logout_at ? new Date(s.logout_at).getTime() : new Date(s.last_seen_at).getTime();
-        const start = new Date(s.login_at).getTime();
-        weeklyMinutes += Math.min(MAX_SESSION_MINUTES, Math.max(0, Math.round((end - start) / 60000)));
+        periodActiveMinutes += (s as any).active_minutes ?? 0;
         periodSessions += 1;
       }
-      const avgSessionMinutes = periodSessions > 0 ? Math.round(weeklyMinutes / periodSessions) : 0;
+      const avgSessionMinutes = periodSessions > 0 ? Math.round(periodActiveMinutes / periodSessions) : 0;
 
       const lastAct = lastActivityByUser[u.id] || null;
       const isIdle = !lastAct || (NOW.getTime() - new Date(lastAct).getTime() > SEVEN_DAYS_MS);
