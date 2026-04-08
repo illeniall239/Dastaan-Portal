@@ -240,7 +240,7 @@ export function AccountabilityTable({ data }: AccountabilityTableProps) {
                   <th className="px-4 py-2 text-center text-[10px] uppercase tracking-wide text-slate-400 font-medium whitespace-nowrap">Eps Eval</th>
                   {/* Pending Eps Eval column hidden for now — data available via pending_eps_evals */}
                   <th className="px-4 py-2 text-right text-[10px] uppercase tracking-wide text-slate-400 font-medium hidden md:table-cell whitespace-nowrap">Last Login</th>
-                  <th className="px-4 py-2 text-right text-[10px] uppercase tracking-wide text-slate-400 font-medium hidden md:table-cell whitespace-nowrap">Avg Session</th>
+                  <th className="px-4 py-2 text-right text-[10px] uppercase tracking-wide text-slate-400 font-medium hidden md:table-cell whitespace-nowrap">Median Session</th>
                 </tr>
               </thead>
               <tbody>

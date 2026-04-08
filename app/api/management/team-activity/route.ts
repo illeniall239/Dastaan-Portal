@@ -79,7 +79,16 @@ export async function GET(request: NextRequest) {
       sessionsByUser[s.user_id].push(s);
     }
 
-    const MAX_SESSION_MINUTES = 480; // cap each session at 8h to avoid inflated durations from abandoned tabs
+    const FALLBACK_CAP_MINUTES = 120; // 2h cap for sessions without active_minutes tracking
+
+    const medianOf = (values: number[]): number => {
+      if (values.length === 0) return 0;
+      const sorted = [...values].sort((a, b) => a - b);
+      const mid = Math.floor(sorted.length / 2);
+      return sorted.length % 2 === 0
+        ? Math.round((sorted[mid - 1] + sorted[mid]) / 2)
+        : sorted[mid];
+    };
 
     const loginDataByUser: Record<string, {
       total_sessions: number;
@@ -95,14 +104,20 @@ export async function GET(request: NextRequest) {
       // Duration window matches the selected period filter (fromDate), not a hardcoded 7-day window
       const durationWindowStart = fromDate ? new Date(fromDate).getTime() : 0;
 
-      let periodActiveMinutes = 0;
-      let periodSessions = 0;
+      const sessionDurations: number[] = [];
       for (const s of userSessions) {
         if (new Date(s.login_at).getTime() < durationWindowStart) continue;
-        periodActiveMinutes += (s as any).active_minutes ?? 0;
-        periodSessions += 1;
+        const activeMinutes = (s as any).active_minutes ?? 0;
+        if (activeMinutes > 0) {
+          sessionDurations.push(activeMinutes);
+        } else {
+          // Fallback: capped elapsed time for sessions without visibility tracking
+          const end = s.logout_at ? new Date(s.logout_at).getTime() : new Date(s.last_seen_at).getTime();
+          const elapsed = Math.max(0, Math.round((end - new Date(s.login_at).getTime()) / 60000));
+          sessionDurations.push(Math.min(elapsed, FALLBACK_CAP_MINUTES));
+        }
       }
-      const avgSessionMinutes = periodSessions > 0 ? Math.round(periodActiveMinutes / periodSessions) : 0;
+      const avgSessionMinutes = medianOf(sessionDurations);
       loginDataByUser[u.id] = {
         total_sessions: userSessions.length,
         effective_last_login: mostRecent?.login_at ?? null,
