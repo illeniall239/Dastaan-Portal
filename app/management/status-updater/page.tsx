@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { StatusUpdaterTable } from "@/components/status-updater/status-updater-table";
-import { getActiveIdeasDetails } from "@/lib/management/active-ideas-details";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 
