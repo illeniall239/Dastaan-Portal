@@ -3,7 +3,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import {
-  getTeamPerformance,
+  getTeamPerformanceServer,
   getTeamPerformanceTrends,
   compareTeamToTypeAverage,
 } from "@/lib/management/team-performance";
@@ -16,8 +16,7 @@ import { TeamMemberList } from "@/components/management/team-performance/team-me
 import { ExportButton } from "@/components/management/export-button";
 import { ArrowLeft, Users, FileText, CheckCircle, MessageSquare, Award, TrendingUp } from "lucide-react";
 
-// Revalidate every 5 minutes
-export const revalidate = 300;
+export const dynamic = "force-dynamic";
 
 const TEAM_TYPE_LABELS: Record<string, string> = {
   production: "Production Team",
@@ -35,7 +34,7 @@ const TEAM_TYPE_COLORS: Record<string, string> = {
   other: "bg-gray-100 text-gray-800 border-gray-300",
 };
 
-export default async function TeamDetailPage({ params }: { params: { id: string } }) {
+export default async function TeamDetailPage({ params }: { params: Promise<{ id: string }> }) {
   // Authentication check
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -55,14 +54,14 @@ export default async function TeamDetailPage({ params }: { params: { id: string 
     redirect("/dashboard");
   }
 
-  const teamId = params.id;
+  const { id: teamId } = await params;
 
   // Fetch team data
   let teamPerformance, trends, comparison, members, teamHead;
 
   try {
     // Fetch performance data
-    teamPerformance = await getTeamPerformance(teamId);
+    teamPerformance = await getTeamPerformanceServer(teamId);
 
     if (!teamPerformance) {
       notFound();

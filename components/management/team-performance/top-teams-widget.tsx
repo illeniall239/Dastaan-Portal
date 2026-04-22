@@ -4,7 +4,7 @@ import Link from "next/link";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, Users, FileText, CheckCircle, MessageSquare } from "lucide-react";
+import { ArrowRight, Users, FileText, CheckCircle } from "lucide-react";
 import type { TeamPerformance } from "@/types";
 
 interface TopTeamsWidgetProps {
@@ -74,23 +74,17 @@ export function TopTeamsWidget({ teams }: TopTeamsWidgetProps) {
                       </div>
 
                       {/* Metrics */}
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-2">
+                      <div className="grid grid-cols-3 gap-2 mt-2">
                         <div className="flex items-center gap-1 text-[10px] sm:text-xs">
                           <FileText className="h-3 w-3 text-blue-600 flex-shrink-0" />
                           <span className="text-gray-600">
-                            {team.call_reports_created || 0} Reports
+                            {team.call_reports_created || 0} One-Liners
                           </span>
                         </div>
                         <div className="flex items-center gap-1 text-[10px] sm:text-xs">
                           <CheckCircle className="h-3 w-3 text-green-600 flex-shrink-0" />
                           <span className="text-gray-600">
                             {team.evaluations_completed || 0} Evals
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-1 text-[10px] sm:text-xs">
-                          <MessageSquare className="h-3 w-3 text-orange-600 flex-shrink-0" />
-                          <span className="text-gray-600">
-                            {team.one_liners_logged || 0} One-Liners
                           </span>
                         </div>
                         <div className="flex items-center gap-1 text-[10px] sm:text-xs">

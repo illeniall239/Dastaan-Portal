@@ -87,7 +87,7 @@ export async function getAllTeamPerformanceServer(): Promise<TeamPerformance[]> 
 }
 
 /**
- * Fetch performance data for a specific team
+ * Fetch performance data for a specific team (client-side)
  */
 export async function getTeamPerformance(teamId: string): Promise<TeamPerformance | null> {
   const supabase = createClient();
@@ -104,6 +104,33 @@ export async function getTeamPerformance(teamId: string): Promise<TeamPerformanc
     }
     return handleError(error, {
       context: "getTeamPerformance",
+      fallbackValue: null,
+      userMessage: "Failed to fetch team performance data",
+      metadata: { teamId },
+    });
+  }
+
+  return data;
+}
+
+/**
+ * Server-side: Fetch performance data for a specific team using admin client (bypasses RLS)
+ */
+export async function getTeamPerformanceServer(teamId: string): Promise<TeamPerformance | null> {
+  const supabase = createAdminClient();
+
+  const { data, error } = await supabase
+    .from("team_performance")
+    .select("*")
+    .eq("team_id", teamId)
+    .single();
+
+  if (error) {
+    if (error.code === 'PGRST116') {
+      return null; // Team not found
+    }
+    return handleError(error, {
+      context: "getTeamPerformanceServer",
       fallbackValue: null,
       userMessage: "Failed to fetch team performance data",
       metadata: { teamId },
@@ -283,7 +310,7 @@ export async function getTeamPerformanceTrends(
   teamId: string,
   months: number = 6
 ): Promise<TeamTrend[]> {
-  const supabase = createClient();
+  const supabase = createAdminClient();
 
   // Calculate date range
   const endDate = new Date();
@@ -441,7 +468,7 @@ export async function getTeamHierarchyWithPerformance(rootTeamId?: string) {
  * Compare team performance against type average
  */
 export async function compareTeamToTypeAverage(teamId: string) {
-  const supabase = createClient();
+  const supabase = createAdminClient();
 
   // Get team performance
   const { data: teamPerf, error: teamError } = await supabase
