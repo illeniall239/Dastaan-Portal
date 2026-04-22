@@ -145,7 +145,7 @@ export function StatusUpdaterTable({ ideas, role, readOnly = false }: StatusUpda
       ) || idea.writer_name?.toLowerCase().includes(searchTerm.toLowerCase());
 
       const matchesSearch = searchTerm === "" ||
-        idea.working_title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (idea.working_title ?? "").toLowerCase().includes(searchTerm.toLowerCase()) ||
         writerNamesMatch ||
         (idea.director && idea.director.toLowerCase().includes(searchTerm.toLowerCase()));
 
@@ -173,8 +173,8 @@ export function StatusUpdaterTable({ ideas, role, readOnly = false }: StatusUpda
 
       switch (sortBy) {
         case "title":
-          aVal = a.working_title.toLowerCase();
-          bVal = b.working_title.toLowerCase();
+          aVal = (a.working_title ?? "").toLowerCase();
+          bVal = (b.working_title ?? "").toLowerCase();
           break;
         case "rating":
           aVal = (a.average_initial_assessment ?? a.overall_rating) || 0;

@@ -291,7 +291,8 @@ export function isOverdue(deadline: string | null): boolean {
  * @param status - Workflow status
  * @returns Script stage key
  */
-export function getScriptStage(status: string): ScriptStageKey {
+export function getScriptStage(status: string | null | undefined): ScriptStageKey {
+  if (!status) return 'active';
   const normalizedStatus = status.toLowerCase();
 
   // Completed: Script final, script completed
