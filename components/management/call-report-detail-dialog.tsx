@@ -155,8 +155,11 @@ export function CallReportDetailDialog({ report, isOpen, onClose }: CallReportDe
     if (isOpen && report?.id) {
       setLoadingEpisodes(true);
       fetch(`/api/episodes?call_report_id=${report.id}&_t=${Date.now()}`)
-        .then(r => r.json())
-        .then(data => setEpisodes(data.data || data || []))
+        .then(r => {
+          if (!r.ok) throw new Error(`HTTP ${r.status}`);
+          return r.json();
+        })
+        .then(data => setEpisodes(Array.isArray(data.data) ? data.data : []))
         .catch(() => setEpisodes([]))
         .finally(() => setLoadingEpisodes(false));
     } else {
@@ -172,9 +175,9 @@ export function CallReportDetailDialog({ report, isOpen, onClose }: CallReportDe
     setLoadingEvals(true);
     const t = Date.now();
     Promise.all([
-      fetch(`/api/management/call-reports-with-evaluations?call_report_id=${report.id}&_t=${t}`).then(r => r.json()),
-      fetch(`/api/management/episodes-with-evaluations?call_report_id=${report.id}&_t=${t}`).then(r => r.json()),
-      fetch(`/api/call-reports/${report.id}/revisions?_t=${t}`).then(r => r.json()),
+      fetch(`/api/management/call-reports-with-evaluations?call_report_id=${report.id}&_t=${t}`).then(r => { if (!r.ok) throw new Error(); return r.json(); }),
+      fetch(`/api/management/episodes-with-evaluations?call_report_id=${report.id}&_t=${t}`).then(r => { if (!r.ok) throw new Error(); return r.json(); }),
+      fetch(`/api/call-reports/${report.id}/revisions?_t=${t}`).then(r => { if (!r.ok) throw new Error(); return r.json(); }),
     ]).then(([crData, epData, crRevData]) => {
       const crReport = crData.callReports?.[0];
       const allCrEvals = [
