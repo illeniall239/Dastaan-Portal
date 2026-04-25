@@ -112,7 +112,7 @@ export async function GET(request: NextRequest) {
           sessionDurations.push(activeMinutes);
         } else {
           // Fallback: capped elapsed time for sessions without visibility tracking
-          const end = s.logout_at ? new Date(s.logout_at).getTime() : new Date(s.last_seen_at).getTime();
+          const end = s.logout_at ? new Date(s.logout_at).getTime() : NOW.getTime();
           const elapsed = Math.max(0, Math.round((end - new Date(s.login_at).getTime()) / 60000));
           sessionDurations.push(Math.min(elapsed, FALLBACK_CAP_MINUTES));
         }

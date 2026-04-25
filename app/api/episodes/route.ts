@@ -303,7 +303,7 @@ export async function GET(request: NextRequest) {
     .eq("id", user.id)
     .single();
 
-  if (!userData || !["content_creator", "content_manager", "gcm", "evaluator", "programmer", "executive", "admin"].includes(userData.role)) {
+  if (!userData || !["content_creator", "content_manager", "gcm", "evaluator", "programmer", "executive", "management", "admin"].includes(userData.role)) {
     return forbiddenError();
   }
 

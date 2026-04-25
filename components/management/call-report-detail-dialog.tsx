@@ -143,6 +143,7 @@ function EvalGroupPanel({ group, showDecision }: { group: EvalGroup; showDecisio
 export function CallReportDetailDialog({ report, isOpen, onClose }: CallReportDetailDialogProps) {
   const [episodes, setEpisodes] = useState<any[]>([]);
   const [loadingEpisodes, setLoadingEpisodes] = useState(false);
+  const [attachments, setAttachments] = useState<any[]>([]);
 
   // ── evaluations state ────────────────────────────────────────────────────
   const [crEvals, setCrEvals] = useState<any[]>([]);
@@ -150,6 +151,23 @@ export function CallReportDetailDialog({ report, isOpen, onClose }: CallReportDe
   const [crRevisions, setCrRevisions] = useState<any[]>([]);
   const [epRevisionsMap, setEpRevisionsMap] = useState<Record<string, any[]>>({});
   const [loadingEvals, setLoadingEvals] = useState(false);
+
+  useEffect(() => {
+    if (!isOpen || !report?.id) {
+      setAttachments([]);
+      return;
+    }
+    // If parent pre-loaded attachments (story-bank pattern), use them directly
+    if (report.attachments !== undefined) {
+      setAttachments(Array.isArray(report.attachments) ? report.attachments : []);
+      return;
+    }
+    // Otherwise self-fetch (team-projects pattern — no pre-loaded attachments)
+    fetch(`/api/attachments?entity_type=call_report&entity_id=${report.id}&_t=${Date.now()}`)
+      .then(r => { if (!r.ok) throw new Error(); return r.json(); })
+      .then(data => setAttachments(Array.isArray(data.attachments) ? data.attachments : []))
+      .catch(() => setAttachments([]));
+  }, [isOpen, report?.id]);
 
   useEffect(() => {
     if (isOpen && report?.id) {
@@ -452,17 +470,17 @@ export function CallReportDetailDialog({ report, isOpen, onClose }: CallReportDe
           )}
 
           {/* Attachments */}
-          {report.attachments && report.attachments.length > 0 && (
+          {attachments.length > 0 && (
             <Card>
               <CardHeader>
                 <CardTitle className="text-lg flex items-center gap-2">
                   <Paperclip className="h-5 w-5" />
-                  Attachments ({report.attachments.length})
+                  Attachments ({attachments.length})
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
-                  {report.attachments.map((attachment: any) => {
+                  {attachments.map((attachment: any) => {
                     const fileSizeKB = attachment.file_size ? (attachment.file_size / 1024).toFixed(1) : "Unknown";
                     const uploadDate = formatDateTime(attachment.uploaded_at);
                     const uploaderName = attachment.uploader?.name || "Unknown";
@@ -547,10 +565,10 @@ export function CallReportDetailDialog({ report, isOpen, onClose }: CallReportDe
                     ].filter(g => g.items.length > 0);
                     return (
                       <div key={ep.id} className="space-y-1.5">
-                        <p className="text-sm font-medium">
+                        <div className="text-sm font-medium">
                           <Badge variant="outline" className="mr-1.5 text-xs">EP {ep.episode_number}</Badge>
                           {ep.title || ''}
-                        </p>
+                        </div>
                         {groups.length > 0 ? groups.map(g => (
                           <EvalGroupPanel key={g.revisionId ?? 'base'} group={g} />
                         )) : (
@@ -632,6 +650,27 @@ export function CallReportDetailDialog({ report, isOpen, onClose }: CallReportDe
                           entityType="episode"
                         />
                       </div>
+                      {/* Episode primary attachment */}
+                      {ep.attachment_name && (
+                        <div className="px-4 pb-3">
+                          <p className="text-xs font-medium text-muted-foreground flex items-center gap-1.5 mb-1.5">
+                            <Paperclip className="h-3.5 w-3.5" />
+                            Attachment
+                          </p>
+                          <div className="flex items-center justify-between gap-2 px-3 py-2 border rounded-md text-xs bg-white hover:bg-gray-50">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <FileText className="h-3.5 w-3.5 text-blue-600 flex-shrink-0" />
+                              <span className="truncate font-medium">{ep.attachment_name}</span>
+                            </div>
+                            <button
+                              onClick={() => window.open(`/api/episodes/download/${ep.id}`, "_blank")}
+                              className="text-blue-600 hover:text-blue-800 hover:underline flex-shrink-0"
+                            >
+                              Download
+                            </button>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>

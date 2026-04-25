@@ -165,3 +165,11 @@ export const DynamicRecentActivityCard = dynamic(
     ssr: false,
   }
 );
+
+export const DynamicTeamWiseProjects = dynamic(
+  () => import("@/components/management/team-projects/team-wise-projects").then((mod) => mod.TeamWiseProjects),
+  {
+    loading: () => <WidgetLoader />,
+    ssr: false,
+  }
+);

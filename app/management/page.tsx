@@ -14,8 +14,6 @@ import {
 import { ManagementHeader } from "@/components/management/management-header";
 import { ExportButton } from "@/components/management/export-button";
 import { getExecutiveSummary, getDepartmentWorkload } from "@/lib/management/server";
-import { ProductionMetricsCards } from "@/components/dashboard/production-metrics-cards";
-import { getProductionMetrics } from "@/lib/production-metrics/server";
 import {
   CriticalAlertsSection,
   TeamPerformanceSection,
@@ -24,6 +22,7 @@ import {
   EvaluatorPerformanceSection,
   ContractTermsSection,
   WriterFinancialSection,
+  TeamProjectsSection,
 } from "@/components/management/dashboard-sections";
 import {
   CriticalAlertsSkeleton,
@@ -33,6 +32,7 @@ import {
   EvaluatorPerformanceSkeleton,
   ContractTermsSkeleton,
   WriterFinancialSkeleton,
+  TeamProjectsSkeleton,
 } from "@/components/management/skeletons";
 import { ErrorBoundary } from "@/components/errors/error-boundary";
 import { SectionErrorFallback } from "@/components/errors/section-error-fallback";
@@ -60,10 +60,9 @@ export default async function ManagementDashboard({
 
   // Fetch ONLY critical above-the-fold data
   // Other sections will stream in via Suspense
-  const [summary, workload, productionMetrics] = await Promise.all([
+  const [summary, workload] = await Promise.all([
     getExecutiveSummary(),
     getDepartmentWorkload(),
-    getProductionMetrics(), // No team filter - global access for management
   ]);
 
   // Detect if current user is a mandatory approver (Humera / Salman)
@@ -240,28 +239,16 @@ export default async function ManagementDashboard({
         </div>
       </div>
 
-      {/* Production Pipeline Metrics */}
-      <div id="production-pipeline" className="mb-6 sm:mb-8">
-        <div className="flex items-center justify-between mb-3 sm:mb-4">
-          <h2 className="text-base sm:text-lg lg:text-xl font-bold text-gray-900">
-            Production Pipeline Overview
-          </h2>
-          <div className="no-print">
-            <ExportButton
-              elementId="production-pipeline"
-              filename="production-pipeline"
-              formats={["png", "pdf"]}
-              compact
-            />
-          </div>
-        </div>
-        <ProductionMetricsCards metrics={productionMetrics} showAllMetrics={true} />
-      </div>
-
       {/* Below-the-fold sections - Stream in progressively */}
       <ErrorBoundary fallback={<SectionErrorFallback title="Critical Alerts" />}>
         <Suspense fallback={<CriticalAlertsSkeleton />}>
           <CriticalAlertsSection />
+        </Suspense>
+      </ErrorBoundary>
+
+      <ErrorBoundary fallback={<SectionErrorFallback title="Team-wise Projects" />}>
+        <Suspense fallback={<TeamProjectsSkeleton />}>
+          <TeamProjectsSection />
         </Suspense>
       </ErrorBoundary>
 

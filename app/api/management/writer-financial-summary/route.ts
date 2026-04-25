@@ -51,6 +51,9 @@ export async function GET(request: NextRequest) {
     // OPTIMIZED: Use admin client to query materialized view (bypasses RLS)
     const adminClient = createAdminClient();
 
+    // Refresh the materialized view before querying so data is always current
+    await adminClient.rpc("refresh_writer_financial_summary");
+
     // Query materialized view for pre-aggregated financial data
     const { data: summary, error } = await adminClient
       .from("writer_financial_summary")

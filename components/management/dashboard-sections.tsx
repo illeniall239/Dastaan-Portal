@@ -6,6 +6,7 @@
 
 import { getCriticalAlerts } from "@/lib/management/server";
 import { getTopPerformingTeams } from "@/lib/management/team-performance";
+import { getTeamProjects } from "@/lib/management/team-projects";
 import { getScriptingPhaseData, ScriptingPhaseData } from "@/lib/management/scripting-analytics";
 import { getDramasWithEpisodesAndDetails } from "@/lib/management/episode-pipeline";
 import { getArchiveByGenre } from "@/lib/management/archive-analytics";
@@ -28,6 +29,7 @@ import {
   DynamicEvaluatorLeaderboard,
   DynamicContractTermsOverview,
   DynamicWriterFinancialSummaryWidget,
+  DynamicTeamWiseProjects,
 } from "@/components/management/dynamic-components";
 
 /**
@@ -277,6 +279,37 @@ export async function WriterFinancialSection() {
         </div>
       </div>
       <DynamicWriterFinancialSummaryWidget />
+    </div>
+  );
+}
+
+/**
+ * Team-wise Projects Section - Async Component
+ */
+export async function TeamProjectsSection() {
+  const teams = await getTeamProjects();
+
+  return (
+    <div id="team-projects-section" className="mb-6 sm:mb-8">
+      <div className="flex items-center justify-between mb-3 sm:mb-4">
+        <div>
+          <h2 className="text-base sm:text-lg lg:text-xl font-bold text-gray-900">
+            Team-wise Projects
+          </h2>
+          <p className="text-muted-foreground mt-1 text-xs sm:text-sm">
+            Browse all one-liners and episodes grouped by team
+          </p>
+        </div>
+        <div className="no-print">
+          <ExportButton
+            elementId="team-projects-section"
+            filename="team-projects"
+            formats={["png", "pdf"]}
+            compact
+          />
+        </div>
+      </div>
+      <DynamicTeamWiseProjects teams={teams} />
     </div>
   );
 }
