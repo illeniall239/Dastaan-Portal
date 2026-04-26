@@ -64,7 +64,6 @@ export async function GET(request: NextRequest) {
 
     const NOW = new Date();
     const TEN_MINUTES_MS = 10 * 60 * 1000;
-    const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
 
     const inPeriod = (dateStr: string | null) => {
       if (!dateStr) return false;
@@ -194,8 +193,8 @@ export async function GET(request: NextRequest) {
     const memberActivity = (teams || []).map(team => {
       const members = (usersByTeam[team.id] || []).map(u => {
         const lastAct = lastActivityByUser[u.id] || null;
-        const isIdle = !lastAct || (NOW.getTime() - new Date(lastAct).getTime() > SEVEN_DAYS_MS);
         const login = loginDataByUser[u.id] || { total_sessions: 0, period_minutes: 0, effective_last_login: null, is_online: false };
+        const isIdle = !login.effective_last_login;
         return {
           user_id: u.id,
           name: u.name,

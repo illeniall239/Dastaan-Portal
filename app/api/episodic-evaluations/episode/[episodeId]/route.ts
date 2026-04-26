@@ -74,15 +74,20 @@ export async function GET(
       .from("episodic_evaluations")
       .select(`
         *,
-        evaluator:users!evaluator_id(name, email),
+        evaluator:users!evaluator_id(name, email, role),
         episode:episodes(
           *,
           call_report:call_reports(working_title, writer_name),
           story:stories(title, status)
         )
       `)
-      .eq("episode_id", episodeId)
-      .eq("evaluator_id", user.id);
+      .eq("episode_id", episodeId);
+
+    // Programmers share evaluations as a team — find any programmer's evaluation
+    // All other roles fetch only their own
+    if (userData.role !== "programmer") {
+      evalQuery = evalQuery.eq("evaluator_id", user.id);
+    }
 
     if (revisionId) {
       evalQuery = evalQuery.eq("revision_id", revisionId);
@@ -96,12 +101,16 @@ export async function GET(
       evalQuery = evalQuery.is("cross_team_share_id", null);
     }
 
-    const { data: evaluation, error } = await evalQuery.maybeSingle();
+    // For programmers, pick the first programmer's evaluation if multiple exist
+    const { data: evaluations, error } = await evalQuery.limit(10);
+    const evaluation = userData.role === "programmer"
+      ? (evaluations || []).find((e: any) => e.evaluator?.role === "programmer") ?? null
+      : (evaluations || [])[0] ?? null;
 
     if (error) {
       logger.error(`Error fetching episodic evaluation: ${error instanceof Error ? error.message : String(error)}`);
       return NextResponse.json(
-        { error: "Failed to fetch episodic evaluation", details: error.message },
+        { error: "Failed to fetch episodic evaluation", details: (error as any).message },
         { status: 500 }
       );
     }

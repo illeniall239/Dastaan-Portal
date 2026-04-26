@@ -1488,7 +1488,6 @@ export default function EvaluatorEpisodesPage() {
                       <TableHead>Episode #</TableHead>
                       <TableHead>Project</TableHead>
                       <TableHead>Score</TableHead>
-                      <TableHead>Grade</TableHead>
                       <TableHead>Submitted</TableHead>
                       <TableHead className="text-right">Action</TableHead>
                     </TableRow>
@@ -1500,7 +1499,7 @@ export default function EvaluatorEpisodesPage() {
                           className="bg-slate-50 hover:bg-slate-100 cursor-pointer border-t-2 border-slate-200"
                           onClick={() => toggleEvalProject(project.projectId)}
                         >
-                          <TableCell colSpan={6} className="font-semibold py-4">
+                          <TableCell colSpan={5} className="font-semibold py-4">
                             <div className="flex items-center justify-between">
                               <div className="flex items-center gap-3">
                                 {expandedEvalProjects.has(project.projectId) ? (
@@ -1537,11 +1536,6 @@ export default function EvaluatorEpisodesPage() {
                               <TableCell>
                                 <span className="font-bold text-lg">{evaluation.overall_average.toFixed(2)}</span>
                                 <span className="text-sm text-muted-foreground">/10</span>
-                              </TableCell>
-                              <TableCell>
-                                <Badge className={`bg-orange-500 text-white border-orange-600 font-bold`}>
-                                  {evaluation.overall_grade}
-                                </Badge>
                               </TableCell>
                               <TableCell className="text-sm text-muted-foreground">
                                 {formatDate(evaluation.submitted_at)}
@@ -1605,9 +1599,6 @@ export default function EvaluatorEpisodesPage() {
                                 )}
                               </span>
                             </div>
-                            <Badge className={`bg-orange-500 text-white border-orange-600 font-bold text-sm px-4 py-1`}>
-                              {evaluation.overall_grade}
-                            </Badge>
                             <div className="text-lg font-bold">
                               {evaluation.overall_average.toFixed(2)}<span className="text-muted-foreground text-base">/10</span>
                             </div>

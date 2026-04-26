@@ -428,12 +428,14 @@ export default function NewUserPage() {
                       <Select
                         onValueChange={field.onChange}
                         defaultValue={field.value}
-                        disabled={teamsLoading || watch("department") === "gcm"}
+                        disabled={teamsLoading || watch("department") === "gcm" || watch("department") === "programming_team"}
                       >
-                        <SelectTrigger className={`touch-target ${errors.team_id ? 'border-red-500' : ''} ${(watch("department") === "gcm") ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                        <SelectTrigger className={`touch-target ${errors.team_id ? 'border-red-500' : ''} ${(watch("department") === "gcm" || watch("department") === "programming_team") ? 'opacity-50 cursor-not-allowed' : ''}`}>
                           <SelectValue placeholder={
                             watch("department") === "gcm"
                               ? "GCM users auto-assigned to shared team"
+                              : watch("department") === "programming_team"
+                              ? "Programmer users auto-assigned to Programming Team"
                               : (teamsLoading ? "Loading teams..." : "Select a team (optional)")
                           } />
                         </SelectTrigger>
@@ -441,6 +443,10 @@ export default function NewUserPage() {
                           {watch("department") === "gcm" ? (
                             <div className="px-2 py-3 text-sm text-muted-foreground">
                               GCM users are automatically assigned to the shared GCM team
+                            </div>
+                          ) : watch("department") === "programming_team" ? (
+                            <div className="px-2 py-3 text-sm text-muted-foreground">
+                              Programmer users are automatically assigned to the shared Programming Team
                             </div>
                           ) : (
                             teams.length === 0 && !teamsLoading ? (
@@ -452,11 +458,12 @@ export default function NewUserPage() {
                                 <SelectItem key={team.id} value={team.id}>
                                   <div className="flex items-center gap-2">
                                     <div className={`h-2 w-2 rounded-full ${
-                                      team.team_type === 'production' ? 'bg-blue-500' :
-                                      team.team_type === 'channel' ? 'bg-purple-500' :
-                                      team.team_type === 'adaptation' ? 'bg-green-500' :
-                                      team.team_type === 'evaluator' ? 'bg-yellow-500' :
-                                      'bg-slate-500'
+                                      team.team_type === 'content'    ? 'bg-blue-500'   :
+                                      team.team_type === 'evaluator'  ? 'bg-yellow-500' :
+                                      team.team_type === 'programmer' ? 'bg-indigo-500' :
+                                      team.team_type === 'gcm'        ? 'bg-teal-500'   :
+                                      team.team_type === 'management' ? 'bg-slate-500'  :
+                                      'bg-gray-500'
                                     }`} />
                                     {formatTeamName(team)}
                                   </div>
@@ -476,6 +483,10 @@ export default function NewUserPage() {
                   {watch("department") === "gcm" ? (
                     <p className="text-xs text-muted-foreground">
                       GCM users are automatically assigned to the shared GCM team for proper isolation
+                    </p>
+                  ) : watch("department") === "programming_team" ? (
+                    <p className="text-xs text-muted-foreground">
+                      Programmer users are automatically assigned to the shared Programming Team
                     </p>
                   ) : (
                     <p className="text-xs text-muted-foreground">

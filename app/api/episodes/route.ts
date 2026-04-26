@@ -385,6 +385,7 @@ export async function GET(request: NextRequest) {
         status: string;
       };
       is_evaluated?: boolean;
+      evaluated_by_name?: string | null;
     }
 
     let episodes: EpisodeData[] = [];
@@ -564,23 +565,36 @@ export async function GET(request: NextRequest) {
     }
 
     // Fetch evaluation status if requested (single batch query instead of N+1)
-    let evaluationStatusMap: Record<string, boolean> = {};
+    let evaluationStatusMap: Record<string, { evaluated: boolean; evaluatedByName?: string }> = {};
     if (includeEvaluationStatus && episodes && episodes.length > 0) {
       const episodeIds = episodes.map((ep) => ep.id);
-      const { data: evaluations } = await supabase
-        .from("episodic_evaluations")
-        .select("episode_id")
-        .eq("evaluator_id", user.id)
-        .in("episode_id", episodeIds);
 
-      interface EvaluationStatus {
-        episode_id: string;
-      }
+      if (userData.role === "programmer") {
+        // Programmers share evaluations — check if any programmer has evaluated each episode
+        const { data: evaluations } = await supabase
+          .from("episodic_evaluations")
+          .select("episode_id, evaluator:users!evaluator_id(name, role)")
+          .in("episode_id", episodeIds);
 
-      if (evaluations) {
-        evaluations.forEach((evaluation: EvaluationStatus) => {
-          evaluationStatusMap[evaluation.episode_id] = true;
-        });
+        if (evaluations) {
+          for (const ev of evaluations as any[]) {
+            if (ev.evaluator?.role === "programmer") {
+              evaluationStatusMap[ev.episode_id] = { evaluated: true, evaluatedByName: ev.evaluator.name };
+            }
+          }
+        }
+      } else {
+        const { data: evaluations } = await supabase
+          .from("episodic_evaluations")
+          .select("episode_id")
+          .eq("evaluator_id", user.id)
+          .in("episode_id", episodeIds);
+
+        if (evaluations) {
+          for (const ev of evaluations as any[]) {
+            evaluationStatusMap[ev.episode_id] = { evaluated: true };
+          }
+        }
       }
     }
 
@@ -653,9 +667,11 @@ export async function GET(request: NextRequest) {
 
       // Add evaluation status if requested
       if (includeEvaluationStatus) {
+        const evalEntry = evaluationStatusMap[episode.id];
         transformed = {
           ...transformed,
-          is_evaluated: !!evaluationStatusMap[episode.id],
+          is_evaluated: !!(evalEntry?.evaluated),
+          evaluated_by_name: evalEntry?.evaluatedByName ?? null,
         };
       }
 

@@ -189,6 +189,34 @@ export async function POST(request: Request) {
           role: 'gcm',
         });
       }
+    } else if (role === 'programmer') {
+      // Programmer users always belong to the shared Programming Team
+      const { data: programmingTeam } = await adminClient
+        .from('teams')
+        .select('id')
+        .eq('name', 'Programming Team')
+        .single();
+
+      if (programmingTeam?.id) {
+        const { error: updateError } = await adminClient
+          .from('users')
+          .update({ team_id: programmingTeam.id })
+          .eq('id', newUser.user.id);
+
+        if (updateError) {
+          logger.dbError('programmer_team_assignment', updateError, {
+            userId: newUser.user.id,
+            teamId: programmingTeam.id,
+            email,
+          });
+        }
+      } else {
+        logger.warn('Programming Team not found for user assignment', {
+          userId: newUser.user.id,
+          email,
+          role: 'programmer',
+        });
+      }
     } else {
       // For non-GCM users, update team_id if explicitly provided and not auto-created
       if (team_id) {

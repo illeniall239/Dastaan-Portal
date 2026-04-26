@@ -2,7 +2,6 @@
 
 import { useState, useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -23,21 +22,6 @@ interface TeamComparisonTableProps {
 type SortField = 'team_name' | 'call_reports_created' | 'evaluations_completed' | 'stories_approved' | 'avg_evaluation_score' | 'team_member_count';
 type SortDirection = 'asc' | 'desc';
 
-const TEAM_TYPE_COLORS: Record<string, string> = {
-  production: "bg-blue-100 text-blue-800 border-blue-300",
-  channel: "bg-purple-100 text-purple-800 border-purple-300",
-  adaptation: "bg-green-100 text-green-800 border-green-300",
-  evaluator: "bg-yellow-100 text-yellow-800 border-yellow-300",
-  other: "bg-gray-100 text-gray-800 border-gray-300",
-};
-
-const TEAM_TYPE_LABELS: Record<string, string> = {
-  production: "Production",
-  channel: "Channel",
-  adaptation: "Adaptation",
-  evaluator: "Evaluator",
-  other: "Other",
-};
 
 export function TeamComparisonTable({ teams, filteredType }: TeamComparisonTableProps) {
   const [sortField, setSortField] = useState<SortField>('team_name');
@@ -109,7 +93,6 @@ export function TeamComparisonTable({ teams, filteredType }: TeamComparisonTable
                       <SortIcon field="team_name" />
                     </Button>
                   </TableHead>
-                  <TableHead className="text-center text-xs">Type</TableHead>
                   <TableHead className="text-center text-xs">
                     <Button
                       variant="ghost"
@@ -170,7 +153,7 @@ export function TeamComparisonTable({ teams, filteredType }: TeamComparisonTable
               <TableBody>
                 {sortedTeams.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
                       No teams found
                     </TableCell>
                   </TableRow>
@@ -178,14 +161,6 @@ export function TeamComparisonTable({ teams, filteredType }: TeamComparisonTable
                   sortedTeams.map((team) => (
                     <TableRow key={team.team_id} className="hover:bg-teal-50/50">
                       <TableCell className="font-medium">{team.team_name}</TableCell>
-                      <TableCell className="text-center">
-                        <Badge
-                          variant="outline"
-                          className={`text-xs ${TEAM_TYPE_COLORS[team.team_type]}`}
-                        >
-                          {TEAM_TYPE_LABELS[team.team_type]}
-                        </Badge>
-                      </TableCell>
                       <TableCell className="text-center">{team.team_member_count || 0}</TableCell>
                       <TableCell className="text-center font-semibold">{team.call_reports_created || 0}</TableCell>
                       <TableCell className="text-center font-semibold">{team.evaluations_completed || 0}</TableCell>

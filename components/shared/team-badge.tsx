@@ -4,11 +4,12 @@ import type { Team, TeamType } from "@/types";
 
 // Team type color mappings based on existing design system
 const TEAM_TYPE_COLORS: Record<TeamType, string> = {
-  production: "bg-blue-100 text-blue-800 border-blue-300",
-  channel: "bg-purple-100 text-purple-800 border-purple-300",
-  adaptation: "bg-green-100 text-green-800 border-green-300",
-  evaluator: "bg-yellow-100 text-yellow-800 border-yellow-300",
-  other: "bg-gray-100 text-gray-800 border-gray-300",
+  content:    "bg-blue-100 text-blue-800 border-blue-300",
+  evaluator:  "bg-yellow-100 text-yellow-800 border-yellow-300",
+  programmer: "bg-indigo-100 text-indigo-800 border-indigo-300",
+  gcm:        "bg-teal-100 text-teal-800 border-teal-300",
+  management: "bg-slate-100 text-slate-800 border-slate-300",
+  other:      "bg-gray-100 text-gray-800 border-gray-300",
 };
 
 // Size variant classes

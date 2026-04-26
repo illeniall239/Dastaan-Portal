@@ -175,7 +175,9 @@ export default function ProgrammerEpisodicEvaluationPage({ params }: EpisodePage
                     <BackButton fallbackHref="/programmer/episodes" variant="outline" size="sm" className="w-fit" />
                     {existingEvaluation && !isEditing && (
                         <div className="flex items-center gap-3">
-                            <Badge className="bg-green-100 text-green-800 border-green-300">Submitted</Badge>
+                            <Badge className="bg-green-100 text-green-800 border-green-300">
+                                Evaluated{existingEvaluation.evaluator?.name ? ` by ${existingEvaluation.evaluator.name}` : ""}
+                            </Badge>
                             <Button size="sm" variant="outline" onClick={() => setIsEditing(true)}>
                                 Edit
                             </Button>
@@ -188,7 +190,7 @@ export default function ProgrammerEpisodicEvaluationPage({ params }: EpisodePage
                     </h1>
                     <p className="text-muted-foreground text-sm sm:text-base">
                         {existingEvaluation
-                            ? (isEditing ? "You can update and resubmit your evaluation" : "Your submitted evaluation for this episode")
+                            ? (isEditing ? "Update and resubmit the team evaluation" : "Programming team evaluation for this episode")
                             : "Complete the episodic evaluation form below"}
                     </p>
                 </div>
@@ -199,7 +201,9 @@ export default function ProgrammerEpisodicEvaluationPage({ params }: EpisodePage
                 episode={episode}
                 existingEvaluation={existingEvaluation || undefined}
                 onSubmit={handleSubmit}
-                disabled={!!existingEvaluation && !isEditing}
+                disabled={false}
+                showSubmit={!existingEvaluation || isEditing}
+                viewOnly={!!existingEvaluation && !isEditing}
                 currentUserId={currentUserId ?? undefined}
                 currentUserRole={currentUserRole ?? undefined}
             />

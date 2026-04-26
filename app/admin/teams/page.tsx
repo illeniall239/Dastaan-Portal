@@ -132,22 +132,24 @@ export default function AdminTeamsPage() {
 
   const getTeamTypeBadgeColor = (type: string) => {
     const colors: Record<string, string> = {
-      production: "bg-blue-100 text-blue-800 border-blue-300",
-      channel: "bg-purple-100 text-purple-800 border-purple-300",
-      adaptation: "bg-green-100 text-green-800 border-green-300",
-      evaluator: "bg-yellow-100 text-yellow-800 border-yellow-300",
-      other: "bg-gray-100 text-gray-800 border-gray-300",
+      content:    "bg-blue-100 text-blue-800 border-blue-300",
+      evaluator:  "bg-yellow-100 text-yellow-800 border-yellow-300",
+      programmer: "bg-indigo-100 text-indigo-800 border-indigo-300",
+      gcm:        "bg-teal-100 text-teal-800 border-teal-300",
+      management: "bg-slate-100 text-slate-800 border-slate-300",
+      other:      "bg-gray-100 text-gray-800 border-gray-300",
     };
     return colors[type] || "bg-gray-100 text-gray-800 border-gray-300";
   };
 
   const getTeamTypeLabel = (type: string) => {
     const labels: Record<string, string> = {
-      production: "Production Team",
-      channel: "Channel Team",
-      adaptation: "Adaptation Team",
-      evaluator: "Evaluator Team",
-      other: "Other",
+      content:    "Content Team",
+      evaluator:  "Evaluator Team",
+      programmer: "Programming Team",
+      gcm:        "GCM Team",
+      management: "Management Team",
+      other:      "Other",
     };
     return labels[type] || type;
   };

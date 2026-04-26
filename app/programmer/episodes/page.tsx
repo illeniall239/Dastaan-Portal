@@ -82,7 +82,7 @@ interface Story {
 }
 
 interface EvaluationStatus {
-    [episodeId: string]: boolean;
+    [episodeId: string]: { evaluated: boolean; evaluatedByName?: string | null };
 }
 
 interface ProjectGroup {
@@ -212,7 +212,7 @@ export default function ProgrammerEpisodesPage() {
             // Build evaluation status from API response (already included)
             const status: EvaluationStatus = {};
             fetchedEpisodes.forEach((ep: any) => {
-                status[ep.id] = ep.is_evaluated || false;
+                status[ep.id] = { evaluated: ep.is_evaluated || false, evaluatedByName: ep.evaluated_by_name ?? null };
             });
 
             if (append) {
@@ -641,7 +641,7 @@ export default function ProgrammerEpisodesPage() {
             const group = projectsMap.get(projectId)!;
             group.episodes.push(ep);
             group.totalCount++;
-            if (evaluationStatus[ep.id]) group.evaluatedCount++;
+            if (evaluationStatus[ep.id]?.evaluated) group.evaluatedCount++;
         });
 
         projectsMap.forEach((group) => {
@@ -955,7 +955,9 @@ export default function ProgrammerEpisodesPage() {
                                                         </TableCell>
                                                     </TableRow>
                                                     {isExpanded && project.episodes.map((episode) => {
-                                                        const isEvaluated = evaluationStatus[episode.id];
+                                                        const evalEntry = evaluationStatus[episode.id];
+                                                        const isEvaluated = evalEntry?.evaluated;
+                                                        const evaluatedByName = evalEntry?.evaluatedByName;
                                                         return (
                                                             <TableRow key={episode.id} className="hover:bg-slate-50">
                                                                 <TableCell className="pl-12">
@@ -985,12 +987,12 @@ export default function ProgrammerEpisodesPage() {
                                                                     ) : <span className="text-muted-foreground italic text-sm">No file</span>}
                                                                 </TableCell>
                                                                 <TableCell>
-                                                                    {isEvaluated ? <Badge className="bg-green-100 text-green-800 border-green-300"><CheckCircle2 className="h-3 w-3 mr-1" /> Evaluated</Badge> : <Badge variant="outline" className="text-amber-700 border-amber-300">Not Evaluated</Badge>}
+                                                                    {isEvaluated ? <Badge className="bg-green-100 text-green-800 border-green-300"><CheckCircle2 className="h-3 w-3 mr-1" /> Evaluated{evaluatedByName ? ` by ${evaluatedByName}` : ""}</Badge> : <Badge variant="outline" className="text-amber-700 border-amber-300">Not Evaluated</Badge>}
                                                                 </TableCell>
                                                                 <TableCell className="text-right">
                                                                     <div className="flex items-center justify-end gap-2">
                                                                         <Button size="sm" variant={isEvaluated ? "outline" : "default"} onClick={() => router.push(`/programmer/episodes/${episode.id}`)}>
-                                                                            {isEvaluated ? <><Eye className="h-4 w-4 mr-1" /> View</> : <><ClipboardCheck className="h-4 w-4 mr-1" /> Evaluate</>}
+                                                                            {isEvaluated ? <><Pencil className="h-4 w-4 mr-1" /> Edit</> : <><ClipboardCheck className="h-4 w-4 mr-1" /> Evaluate</>}
                                                                         </Button>
                                                                         <DropdownMenu>
                                                                             <DropdownMenuTrigger asChild>
@@ -1052,7 +1054,9 @@ export default function ProgrammerEpisodesPage() {
                                             {isExpanded && (
                                                 <div className="divide-y divide-slate-200">
                                                     {project.episodes.map((episode) => {
-                                                        const isEvaluated = evaluationStatus[episode.id];
+                                                        const evalEntry = evaluationStatus[episode.id];
+                                                        const isEvaluated = evalEntry?.evaluated;
+                                                        const evaluatedByName = evalEntry?.evaluatedByName;
                                                         return (
                                                             <div key={episode.id} className="p-4 flex flex-col gap-3 pl-8 border-l-2 border-slate-200 bg-white">
                                                                 <div className="flex items-center justify-between gap-2">
@@ -1074,11 +1078,11 @@ export default function ProgrammerEpisodesPage() {
                                                                         )}
                                                                         <span className="font-medium text-sm truncate">{episode.title || <span className="text-muted-foreground italic">Untitled</span>}</span>
                                                                     </div>
-                                                                    {isEvaluated ? <Badge className="bg-green-100 text-green-800 border-green-300 text-xs">Done</Badge> : <Badge variant="outline" className="text-amber-700 border-amber-300 text-xs">Pending</Badge>}
+                                                                    {isEvaluated ? <Badge className="bg-green-100 text-green-800 border-green-300 text-xs">{evaluatedByName ? `By ${evaluatedByName}` : "Done"}</Badge> : <Badge variant="outline" className="text-amber-700 border-amber-300 text-xs">Pending</Badge>}
                                                                 </div>
                                                                 <div className="flex items-center gap-2 flex-wrap">
                                                                     <Button size="sm" variant={isEvaluated ? "outline" : "default"} onClick={() => router.push(`/programmer/episodes/${episode.id}`)} className="flex-1">
-                                                                        {isEvaluated ? <>View</> : <>Evaluate</>}
+                                                                        {isEvaluated ? <>Edit</> : <>Evaluate</>}
                                                                     </Button>
                                                                     {canEditEpisode(episode) && (
                                                                         <Button size="sm" variant="outline" onClick={() => router.push(`/programmer/episodes/${episode.id}/edit`)}>Edit</Button>
@@ -1195,7 +1199,6 @@ export default function ProgrammerEpisodesPage() {
                                         <TableRow>
                                             <TableHead>EP #</TableHead>
                                             <TableHead>Score</TableHead>
-                                            <TableHead>Grade</TableHead>
                                             <TableHead>Date</TableHead>
                                             <TableHead className="text-right">Action</TableHead>
                                         </TableRow>
@@ -1204,7 +1207,7 @@ export default function ProgrammerEpisodesPage() {
                                         {evalProjects.map((project) => (
                                             <Fragment key={project.projectId}>
                                                 <TableRow className="bg-slate-50 cursor-pointer" onClick={() => toggleEvalProject(project.projectId)}>
-                                                    <TableCell colSpan={5} className="font-semibold">
+                                                    <TableCell colSpan={4} className="font-semibold">
                                                         <div className="flex items-center gap-2">
                                                             {expandedEvalProjects.has(project.projectId) ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
                                                             {project.projectName} {project.writerName && <span className="text-muted-foreground font-normal">by {project.writerName}</span>}
@@ -1215,7 +1218,6 @@ export default function ProgrammerEpisodesPage() {
                                                     <TableRow key={ev.id}>
                                                         <TableCell className="pl-8"><Badge variant="outline">EP {ev.episode?.episode_number}</Badge></TableCell>
                                                         <TableCell><span className="font-bold">{ev.overall_average.toFixed(2)}</span>/10</TableCell>
-                                                        <TableCell><Badge className="bg-orange-500">{ev.overall_grade}</Badge></TableCell>
                                                         <TableCell className="text-sm text-muted-foreground">{formatDate(ev.submitted_at)}</TableCell>
                                                         <TableCell className="text-right"><Button size="sm" variant="outline" onClick={() => router.push(`/programmer/episodes/${ev.episode_id}`)}>View</Button></TableCell>
                                                     </TableRow>
@@ -1233,7 +1235,7 @@ export default function ProgrammerEpisodesPage() {
                                             <div key={ev.id} className="p-4 flex items-center justify-between bg-white">
                                                 <div className="flex flex-col gap-1">
                                                     <span className="text-sm font-medium">EP {ev.episode?.episode_number}</span>
-                                                    <span className="text-xs text-muted-foreground">{ev.overall_average.toFixed(2)} - {ev.overall_grade}</span>
+                                                    <span className="text-xs text-muted-foreground">{ev.overall_average.toFixed(2)}/10</span>
                                                 </div>
                                                 <Button size="sm" variant="outline" onClick={() => router.push(`/programmer/episodes/${ev.episode_id}`)}>View</Button>
                                             </div>

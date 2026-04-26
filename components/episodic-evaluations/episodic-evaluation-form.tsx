@@ -42,6 +42,8 @@ interface EpisodicEvaluationFormProps {
   existingEvaluation?: EpisodicEvaluation;
   onSubmit: (data: EpisodicEvaluationFormData) => Promise<void>;
   disabled?: boolean;
+  showSubmit?: boolean;
+  viewOnly?: boolean;
   currentUserId?: string;
   currentUserRole?: string;
 }
@@ -51,6 +53,8 @@ export function EpisodicEvaluationForm({
   existingEvaluation,
   onSubmit,
   disabled = false,
+  showSubmit = true,
+  viewOnly = false,
   currentUserId,
   currentUserRole,
 }: EpisodicEvaluationFormProps) {
@@ -59,7 +63,7 @@ export function EpisodicEvaluationForm({
   const [showDraftDialog, setShowDraftDialog] = useState(false);
   const [pendingDraftData, setPendingDraftData] = useState<any>(null);
   const [initialTimeFromDraft, setInitialTimeFromDraft] = useState(0);
-  const isReadOnly = disabled || !!existingEvaluation;
+  const isReadOnly = disabled;
 
   // Track time spent on form
   const timeSpentMinutes = useFormTimeTracking({
@@ -496,6 +500,9 @@ export function EpisodicEvaluationForm({
         )}
       </Card>
 
+      {/* Editable sections wrapper — pointer-events-none when view-only (no graying) */}
+      <div className={viewOnly ? "pointer-events-none" : ""}>
+
       {/* Section 1: Episode Metrics */}
       <div className="space-y-4">
         <h3 className="text-xl font-bold">Section 1: Episode Metrics</h3>
@@ -908,6 +915,8 @@ export function EpisodicEvaluationForm({
         </Card>
       </div>
 
+      </div>{/* end viewOnly wrapper */}
+
       {/* Discussion Thread */}
       {currentUserId && (
         <DiscussionThread
@@ -922,7 +931,7 @@ export function EpisodicEvaluationForm({
       )}
 
       {/* Submit and Save Draft Buttons */}
-      {!isReadOnly && (
+      {showSubmit && (
         <div className="flex justify-end gap-4 pt-6 border-t sticky bottom-0 bg-white/80 backdrop-blur supports-[backdrop-filter]:bg-white/60 p-3 sm:p-0 sm:static sm:bg-transparent sm:backdrop-blur-0 sm:border-0">
           <Button
             type="button"
@@ -965,15 +974,6 @@ export function EpisodicEvaluationForm({
         </div>
       )}
 
-      {isReadOnly && existingEvaluation && (
-        <Card className="p-4 bg-blue-50 border-blue-200">
-          <p className="text-sm text-center text-blue-800 font-medium">
-            This evaluation was submitted on{" "}
-            {new Date(existingEvaluation.submitted_at).toLocaleString()}
-            {" "}and cannot be modified.
-          </p>
-        </Card>
-      )}
 
       {/* Draft Found Dialog */}
       <AlertDialog open={showDraftDialog} onOpenChange={setShowDraftDialog}>

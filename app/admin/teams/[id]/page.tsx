@@ -27,7 +27,7 @@ interface Team {
   name: string;
   description?: string | null;
   parent_team_id?: string | null;
-  team_type: "production" | "channel" | "adaptation" | "evaluator" | "other";
+  team_type: "content" | "evaluator" | "programmer" | "gcm" | "management" | "other";
   team_head_id?: string | null;
   member_count?: number;
   sub_teams_count?: number;
@@ -285,28 +285,34 @@ export default function EditTeamPage() {
                         <SelectValue placeholder="Select a team type" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="production">
+                        <SelectItem value="content">
                           <div className="flex items-center gap-2">
                             <div className="h-2 w-2 rounded-full bg-blue-500" />
-                            Production Team
-                          </div>
-                        </SelectItem>
-                        <SelectItem value="channel">
-                          <div className="flex items-center gap-2">
-                            <div className="h-2 w-2 rounded-full bg-purple-500" />
-                            Channel Team
-                          </div>
-                        </SelectItem>
-                        <SelectItem value="adaptation">
-                          <div className="flex items-center gap-2">
-                            <div className="h-2 w-2 rounded-full bg-green-500" />
-                            Adaptation Team
+                            Content Team
                           </div>
                         </SelectItem>
                         <SelectItem value="evaluator">
                           <div className="flex items-center gap-2">
                             <div className="h-2 w-2 rounded-full bg-yellow-500" />
                             Evaluator Team
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="programmer">
+                          <div className="flex items-center gap-2">
+                            <div className="h-2 w-2 rounded-full bg-indigo-500" />
+                            Programming Team
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="gcm">
+                          <div className="flex items-center gap-2">
+                            <div className="h-2 w-2 rounded-full bg-teal-500" />
+                            GCM Team
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="management">
+                          <div className="flex items-center gap-2">
+                            <div className="h-2 w-2 rounded-full bg-slate-500" />
+                            Management Team
                           </div>
                         </SelectItem>
                         <SelectItem value="other">
@@ -363,11 +369,12 @@ export default function EditTeamPage() {
                             <SelectItem key={team.id} value={team.id}>
                               <div className="flex items-center gap-2">
                                 <div className={`h-2 w-2 rounded-full ${
-                                  team.team_type === 'production' ? 'bg-blue-500' :
-                                  team.team_type === 'channel' ? 'bg-purple-500' :
-                                  team.team_type === 'adaptation' ? 'bg-green-500' :
-                                  team.team_type === 'evaluator' ? 'bg-yellow-500' :
-                                  'bg-slate-500'
+                                  team.team_type === 'content'    ? 'bg-blue-500'   :
+                                  team.team_type === 'evaluator'  ? 'bg-yellow-500' :
+                                  team.team_type === 'programmer' ? 'bg-indigo-500' :
+                                  team.team_type === 'gcm'        ? 'bg-teal-500'   :
+                                  team.team_type === 'management' ? 'bg-slate-500'  :
+                                  'bg-gray-500'
                                 }`} />
                                 {team.name}
                               </div>

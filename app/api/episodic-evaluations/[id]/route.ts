@@ -283,8 +283,8 @@ export async function PATCH(
       );
     }
 
-    // Only owner or admin can edit
-    const canEdit = existing.evaluator_id === user.id || userData.role === "admin";
+    // Owner, admin, or any programmer (programming team shares evaluations)
+    const canEdit = existing.evaluator_id === user.id || userData.role === "admin" || userData.role === "programmer";
     if (!canEdit) {
       return NextResponse.json(
         { error: "Forbidden - You don't have permission to edit this evaluation" },

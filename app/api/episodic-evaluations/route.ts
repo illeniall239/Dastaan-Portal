@@ -69,12 +69,17 @@ export async function POST(request: Request) {
       );
     }
 
-    // Check if evaluator has already evaluated this episode for the same revision/share scope
+    // Check for duplicate evaluation
+    // Programmers share one evaluation per episode as a team — block if any programmer already evaluated it
+    // All other roles block only if the current user already evaluated it
     let duplicateQuery = supabase
       .from("episodic_evaluations")
-      .select("id")
-      .eq("episode_id", evaluationData.episode_id)
-      .eq("evaluator_id", user.id);
+      .select("id, evaluator:users!evaluator_id(role)")
+      .eq("episode_id", evaluationData.episode_id);
+
+    if (userData.role !== "programmer") {
+      duplicateQuery = (duplicateQuery as any).eq("evaluator_id", user.id);
+    }
 
     if (evaluationData.revision_id) {
       duplicateQuery = duplicateQuery.eq("revision_id", evaluationData.revision_id);
@@ -88,11 +93,15 @@ export async function POST(request: Request) {
       duplicateQuery = duplicateQuery.is("cross_team_share_id", null);
     }
 
-    const { data: existingEvaluation } = await duplicateQuery.maybeSingle();
+    const { data: existingEvals } = await duplicateQuery.limit(10);
+
+    const existingEvaluation = userData.role === "programmer"
+      ? (existingEvals || []).find((e: any) => e.evaluator?.role === "programmer")
+      : (existingEvals || [])[0];
 
     if (existingEvaluation) {
       return NextResponse.json(
-        { error: "You have already evaluated this episode" + (evaluationData.revision_id ? " revision" : "") },
+        { error: "This episode has already been evaluated" + (evaluationData.revision_id ? " for this revision" : "") + (userData.role === "programmer" ? " by the programming team" : "") },
         { status: 409 }
       );
     }

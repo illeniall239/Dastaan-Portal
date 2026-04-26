@@ -13,19 +13,17 @@ interface TeamWiseProjectsProps {
 }
 
 const TEAM_TYPE_COLORS: Record<string, { bg: string; border: string; badge: string; header: string }> = {
-  production:  { bg: "bg-blue-50",   border: "border-blue-200",  badge: "bg-blue-100 text-blue-800 border-blue-300",   header: "bg-gradient-to-r from-blue-50 to-blue-100" },
-  channel:     { bg: "bg-purple-50", border: "border-purple-200",badge: "bg-purple-100 text-purple-800 border-purple-300",header: "bg-gradient-to-r from-purple-50 to-purple-100" },
-  adaptation:  { bg: "bg-green-50",  border: "border-green-200", badge: "bg-green-100 text-green-800 border-green-300", header: "bg-gradient-to-r from-green-50 to-green-100" },
-  evaluator:   { bg: "bg-yellow-50", border: "border-yellow-200",badge: "bg-yellow-100 text-yellow-800 border-yellow-300",header: "bg-gradient-to-r from-yellow-50 to-yellow-100" },
-  other:       { bg: "bg-gray-50",   border: "border-gray-200",  badge: "bg-gray-100 text-gray-700 border-gray-300",    header: "bg-gradient-to-r from-gray-50 to-gray-100" },
+  content:    { bg: "bg-blue-50",   border: "border-blue-200",   badge: "bg-blue-100 text-blue-800 border-blue-300",    header: "bg-gradient-to-r from-blue-50 to-blue-100" },
+  evaluator:  { bg: "bg-yellow-50", border: "border-yellow-200", badge: "bg-yellow-100 text-yellow-800 border-yellow-300",header: "bg-gradient-to-r from-yellow-50 to-yellow-100" },
+  programmer: { bg: "bg-indigo-50", border: "border-indigo-200", badge: "bg-indigo-100 text-indigo-800 border-indigo-300",header: "bg-gradient-to-r from-indigo-50 to-indigo-100" },
+  gcm:        { bg: "bg-teal-50",   border: "border-teal-200",   badge: "bg-teal-100 text-teal-800 border-teal-300",     header: "bg-gradient-to-r from-teal-50 to-teal-100" },
+  management: { bg: "bg-slate-50",  border: "border-slate-200",  badge: "bg-slate-100 text-slate-800 border-slate-300",  header: "bg-gradient-to-r from-slate-50 to-slate-100" },
+  other:      { bg: "bg-gray-50",   border: "border-gray-200",   badge: "bg-gray-100 text-gray-700 border-gray-300",     header: "bg-gradient-to-r from-gray-50 to-gray-100" },
 };
 
 const TEAM_TYPE_LABELS: Record<string, string> = {
-  production: "Production",
-  channel: "Channel",
-  adaptation: "Adaptation",
-  evaluator: "Evaluator",
-  other: "Other",
+  content: "Content", evaluator: "Evaluator", programmer: "Programmer",
+  gcm: "GCM", management: "Management", other: "Other",
 };
 
 

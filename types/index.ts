@@ -41,7 +41,7 @@ export interface User {
 }
 
 // Team types
-export type TeamType = "production" | "channel" | "adaptation" | "evaluator" | "other";
+export type TeamType = "content" | "evaluator" | "programmer" | "gcm" | "management" | "other";
 
 export interface Team {
   id: string;
@@ -791,6 +791,7 @@ export interface EpisodicEvaluation {
   revision_id?: string | null;
   decision?: "approve" | "reject" | "needs_revision" | null;
   decision_notes?: string | null;
+  evaluator?: { name: string; email?: string; role?: string } | null;
 }
 
 export interface EpisodicEvaluationDraft {

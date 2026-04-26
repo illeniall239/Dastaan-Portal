@@ -6,7 +6,7 @@ import { z } from "zod";
  */
 
 // Team type enum
-export const TEAM_TYPES = ["production", "channel", "adaptation", "evaluator", "other"] as const;
+export const TEAM_TYPES = ["content", "evaluator", "programmer", "gcm", "management", "other"] as const;
 
 /**
  * Schema for creating a new team
@@ -164,20 +164,22 @@ export async function validateNoCircularReference(
  * Team type display names for UI
  */
 export const TEAM_TYPE_LABELS: Record<typeof TEAM_TYPES[number], string> = {
-  production: "Production Team",
-  channel: "Channel Team",
-  adaptation: "Adaptation Team",
-  evaluator: "Evaluator Team",
-  other: "Other",
+  content:    "Content Team",
+  evaluator:  "Evaluator Team",
+  programmer: "Programming Team",
+  gcm:        "GCM Team",
+  management: "Management Team",
+  other:      "Other",
 };
 
 /**
  * Team type descriptions for UI
  */
 export const TEAM_TYPE_DESCRIPTIONS: Record<typeof TEAM_TYPES[number], string> = {
-  production: "Teams focused on original drama and content production",
-  channel: "Teams working on channel-specific content",
-  adaptation: "Teams handling content adaptation projects",
-  evaluator: "Teams of evaluators assessing content quality",
-  other: "Other specialized teams",
+  content:    "Content department teams handling story development",
+  evaluator:  "Teams of evaluators assessing content quality",
+  programmer: "Programming team responsible for scheduling and broadcast",
+  gcm:        "GCM department teams",
+  management: "Management and executive teams",
+  other:      "Other specialized teams",
 };
