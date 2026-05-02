@@ -64,7 +64,7 @@ export const episodeSchema = z.object({
     .transform((val) => (val ? val.trim() : val)),
 
   // Initial assessment score (1-10)
-  initial_assessment: z.number().int().min(1).max(10).optional().nullable(),
+  initial_assessment: z.number().min(1).max(10).optional().nullable(),
 }).refine(
   (data) => data.call_report_id || data.story_id,
   {
@@ -106,7 +106,7 @@ export const createMultipleEpisodesSchema = z.object({
           .optional()
           .nullable()
           .transform((val) => (val ? val.trim() : null)),
-        initial_assessment: z.number().int().min(1).max(10).optional().nullable(),
+        initial_assessment: z.number().min(1).max(10).optional().nullable(),
       })
     )
     .min(1, "At least one episode must be provided")
@@ -141,7 +141,7 @@ export const updateEpisodeSchema = z.object({
     .nullable()
     .transform((val) => (val ? val.trim() : val)),
   approval_status: z.enum(['approved', 'rejected', 'needs_revision']).optional().nullable(),
-  initial_assessment: z.number().int().min(1).max(10).optional().nullable(),
+  initial_assessment: z.number().min(1).max(10).optional().nullable(),
 });
 
 /**

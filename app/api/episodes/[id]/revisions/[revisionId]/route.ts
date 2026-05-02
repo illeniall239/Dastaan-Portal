@@ -54,9 +54,9 @@ export async function PATCH(
     const body = await request.json();
     const score = body.initial_assessment;
 
-    if (typeof score !== "number" || score < 1 || score > 10 || !Number.isInteger(score)) {
+    if (typeof score !== "number" || score < 1 || score > 10) {
       return NextResponse.json(
-        { error: "initial_assessment must be an integer between 1 and 10" },
+        { error: "initial_assessment must be a number between 1 and 10" },
         { status: 400 }
       );
     }

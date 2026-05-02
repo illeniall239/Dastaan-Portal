@@ -2,7 +2,6 @@ import { z } from "zod";
 
 const scoreField = z
   .number()
-  .int("Score must be an integer")
   .min(1, "Score must be at least 1")
   .max(10, "Score must be at most 10");
 

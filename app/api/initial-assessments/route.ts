@@ -17,7 +17,7 @@ export const dynamic = 'force-dynamic';
 const upsertSchema = z.object({
     entity_type: z.enum(["call_report", "episode"]),
     entity_id: z.string().uuid(),
-    score: z.number().int().min(1).max(10),
+    score: z.number().min(1).max(10),
     comment: z.string().max(1000).optional().nullable(),
 });
 

@@ -31,7 +31,7 @@ export function ScoreCard({
   const ratingColorClasses = (gradeColorFn || getGradeColorClasses)(rating);
 
   const handleChange = (value: string) => {
-    const numValue = parseInt(value);
+    const numValue = parseFloat(value);
     if (!isNaN(numValue) && numValue >= 1 && numValue <= 10) {
       onChange(numValue);
     } else if (value === "") {
@@ -61,10 +61,12 @@ export function ScoreCard({
               type="number"
               min="1"
               max="10"
+              step="0.1"
               value={score}
               onChange={(e) => handleChange(e.target.value)}
               disabled={disabled}
-              className="text-lg font-semibold text-center w-16"
+              placeholder="1-10"
+              className="text-lg font-semibold text-center w-20"
             />
           </div>
 
@@ -100,10 +102,12 @@ export function ScoreCard({
               type="number"
               min="1"
               max="10"
+              step="0.1"
               value={score}
               onChange={(e) => handleChange(e.target.value)}
               disabled={disabled}
-              className="text-lg font-semibold text-center w-16"
+              placeholder="1-10"
+              className="text-lg font-semibold text-center w-20"
             />
           </div>
 
