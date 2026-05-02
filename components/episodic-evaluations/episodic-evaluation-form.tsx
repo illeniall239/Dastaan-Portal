@@ -423,11 +423,12 @@ export function EpisodicEvaluationForm({
     },
     {
       label: "Dragness",
-      description: "How well does the episode maintain pacing and avoid unnecessary drag?",
+      description: "How draggy is the episode? (1 = no drag, 10 = very draggy) — lower score is better.",
       score: dragnessScore,
       setScore: setDragnessScore,
       comment: dragnessComment,
       setComment: setDragnessComment,
+      reversed: true,
     },
     {
       label: "Freeze",
@@ -709,7 +710,7 @@ export function EpisodicEvaluationForm({
                 score={criterion.score}
                 onChange={criterion.setScore}
                 disabled={isReadOnly}
-                gradeFn={calculateOneLinerGrade}
+                gradeFn={criterion.reversed ? (s) => calculateOneLinerGrade(11 - s) : calculateOneLinerGrade}
                 gradeColorFn={getOneLinerGradeColorClasses}
               />
               <div className="ml-4">

@@ -220,13 +220,15 @@ export function calculateOverallAverage(scores: {
   whatsNext: number;
   overallAssessment: number;
 }): number {
+  // Dragness is a reverse metric: higher score = more drag = worse episode.
+  // Invert its contribution so high dragness reduces the overall average.
   const sum =
     scores.conflict +
     scores.characterization +
     scores.progression +
     scores.mainEvent +
     scores.smallEvent +
-    scores.dragness +
+    (11 - scores.dragness) +
     scores.freezes +
     scores.whatsNext +
     scores.overallAssessment;
