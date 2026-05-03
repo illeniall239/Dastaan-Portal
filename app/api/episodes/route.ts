@@ -43,7 +43,7 @@ export async function POST(request: Request) {
   // Get user data including team_id for team isolation
   const { data: userData } = await supabase
     .from("users")
-    .select("team_id, role")
+    .select("team_id, role, name")
     .eq("id", user.id)
     .single();
 
@@ -63,27 +63,34 @@ export async function POST(request: Request) {
 
     const { call_report_id, story_id, episodes } = validation.data;
 
-    // Verify the source exists
+    // Verify the source exists and capture title info for notifications
+    let storyTitle: string | null = null;
+    let writerName: string | null = null;
+
     if (story_id) {
       const { data: storyExists, error: storyCheckError } = await supabase
         .from("stories")
-        .select("id, story_id")
+        .select("id, story_id, working_title, writer_name")
         .eq("id", story_id)
         .single();
 
       if (storyCheckError || !storyExists) {
         return notFoundError("Story");
       }
+      storyTitle = (storyExists as any).working_title || null;
+      writerName = (storyExists as any).writer_name || null;
     } else if (call_report_id) {
       const { data: callReportExists, error: crCheckError } = await supabase
         .from("call_reports")
-        .select("id, call_report_id")
+        .select("id, call_report_id, working_title, writer_name")
         .eq("id", call_report_id)
         .single();
 
       if (crCheckError || !callReportExists) {
         return notFoundError("Call report");
       }
+      storyTitle = callReportExists.working_title || null;
+      writerName = callReportExists.writer_name || null;
     }
 
     // Check for duplicate episode numbers within the incoming batch
@@ -225,8 +232,8 @@ export async function POST(request: Request) {
         }
       }
 
-      // Always notify management + content managers
-      const mgmtIds = await getUserIdsByRoles(["management", "content_manager"]);
+      // Always notify management, content managers, and programmers
+      const mgmtIds = await getUserIdsByRoles(["management", "content_manager", "programmer"]);
       mgmtIds.forEach(id => recipientSet.add(id));
 
       // Exclude the creator
@@ -236,12 +243,15 @@ export async function POST(request: Request) {
       if (recipients.length > 0) {
         const count = createdEpisodes.length;
         const epNumbers = createdEpisodes.map(ep => `EP${ep.episode_number}`).join(", ");
+        const loggedByName = (userData as any)?.name || "Someone";
+        const storyLabel = storyTitle ? ` for "${storyTitle}"` : "";
+        const writerLabel = writerName ? ` (writer: ${writerName})` : "";
 
         await createNotifications(
           recipients,
           "info",
-          `New episode${count > 1 ? "s" : ""} logged: ${epNumbers}`,
-          `${count} episode${count > 1 ? "s" : ""} (${epNumbers}) ${count > 1 ? "have" : "has"} been logged for review.`,
+          `New episode${count > 1 ? "s" : ""} logged: ${epNumbers}${storyLabel}`,
+          `${loggedByName} logged ${count} episode${count > 1 ? "s" : ""} (${epNumbers})${storyLabel}${writerLabel}.`,
           "episode",
           createdEpisodes[0].id,
           user.id

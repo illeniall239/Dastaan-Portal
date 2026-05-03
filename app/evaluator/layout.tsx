@@ -41,6 +41,11 @@ const evaluatorNavItems = [
     icon: "fileText",
   },
   {
+    title: "Team Feedback",
+    href: "/evaluator/team-feedback",
+    icon: "users",
+  },
+  {
     title: "One-Liner Evaluations",
     href: "/evaluator/evaluations-list",
     icon: "clipboardList",
@@ -69,6 +74,11 @@ const evaluatorNavItems = [
     title: "Contract Terms",
     href: "/evaluator/contract-terms",
     icon: "handshake",
+  },
+  {
+    title: "Notifications",
+    href: "/evaluator/notifications",
+    icon: "bell",
   },
 ];
 

@@ -267,10 +267,10 @@ export function excludeUserFromList(userIds: string[], excludeUserId?: string): 
 
 /**
  * Helper: Get all relevant user IDs for content department activities
- * Returns: management, evaluators, content_manager, content_creator
+ * Returns: management, evaluators, content_manager, content_creator, programmer
  */
 export async function getContentActivityNotificationRecipients(excludeUserId?: string) {
-  const roles = ["management", "evaluator", "content_manager", "content_creator"];
+  const roles = ["management", "evaluator", "content_manager", "content_creator", "programmer"];
   const userIds = await getUserIdsByRoles(roles);
   return excludeUserFromList(userIds, excludeUserId);
 }

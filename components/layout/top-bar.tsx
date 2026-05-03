@@ -21,8 +21,9 @@ import {
 import { useNotificationContext } from "@/lib/providers/notification-provider";
 import { useSidebar } from "@/lib/providers/sidebar-provider";
 import { cn } from "@/lib/utils";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
+import Link from "next/link";
 
 interface TopBarProps {
   userName: string;
@@ -65,10 +66,14 @@ export const TopBar = memo(function TopBar({
   isDemoMode = false,
 }: TopBarProps) {
   const router = useRouter();
+  const pathname = usePathname();
   const { notifications, unreadCount, handleMarkAsRead, handleMarkAllAsRead } = useNotificationContext();
   const { toggleMobile } = useSidebar();
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+
+  const portalPrefix = pathname.split("/")[1] ? `/${pathname.split("/")[1]}` : "";
+  const notificationsHref = `${portalPrefix}/notifications`;
 
   const handleLogout = useCallback(async () => {
     setIsLoggingOut(true);
@@ -189,6 +194,15 @@ export const TopBar = memo(function TopBar({
                     </DropdownMenuItem>
                   ))
                 )}
+              </div>
+              <div className="border-t border-gray-100 px-4 py-2.5">
+                <Link
+                  href={notificationsHref}
+                  className="block text-center text-xs font-medium text-[#224794] hover:underline"
+                  onClick={() => setIsNotificationOpen(false)}
+                >
+                  See all notifications
+                </Link>
               </div>
             </DropdownMenuContent>
           </DropdownMenu>

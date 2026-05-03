@@ -40,6 +40,11 @@ export default async function GcmLayout({
       href: "/gcm/episodes",
       icon: "film",
     },
+    {
+      title: "Notifications",
+      href: "/gcm/notifications",
+      icon: "bell",
+    },
   ];
 
   return (

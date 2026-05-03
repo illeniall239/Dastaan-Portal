@@ -24,6 +24,8 @@ import {
   ListChecks,
   Map,
   Inbox,
+  ChartNoAxesCombined,
+  Bell,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useSidebar } from "@/lib/providers/sidebar-provider";
@@ -64,6 +66,8 @@ function getIconComponent(iconName: string) {
     listChecks: ListChecks,
     map: Map,
     inbox: Inbox,
+    chartNoAxesCombined: ChartNoAxesCombined,
+    bell: Bell,
   };
   return icons[iconName] || HomeIcon;
 }

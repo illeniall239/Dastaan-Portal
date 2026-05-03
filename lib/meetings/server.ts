@@ -310,7 +310,7 @@ export async function createMeeting(meetingData: CreateMeetingInput) {
       recipientIds,
       "info",
       `New call report logged: ${meetingData.working_title}`,
-      `Meeting with ${meetingData.writer_name} on ${formattedDate} at ${formattedTime}`,
+      `Logged by ${meetingData.logged_by} — writer: ${meetingData.writer_name}, meeting on ${formattedDate} at ${formattedTime}`,
       "call_report_logged",
       data.id,
       meetingData.created_by // Track who created this

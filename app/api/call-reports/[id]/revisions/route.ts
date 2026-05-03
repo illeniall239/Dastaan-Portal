@@ -200,7 +200,7 @@ export async function POST(
     // Verify call report exists
     const { data: callReport, error: callReportError } = await supabase
       .from("call_reports")
-      .select("id, call_report_id")
+      .select("id, call_report_id, working_title, writer_name")
       .eq("id", id)
       .single();
 
@@ -266,6 +266,14 @@ export async function POST(
       logger.error("Audit log error:", auditError);
     }
 
+    // Fetch uploader name for both notification and discussion thread
+    const { data: uploaderUser } = await supabase
+      .from("users")
+      .select("name")
+      .eq("id", user.id)
+      .single();
+    const uploaderNameForNotif = uploaderUser?.name || "Someone";
+
     // Notify management + content managers of the new revision
     try {
       const recipients = excludeUserFromList(
@@ -274,11 +282,13 @@ export async function POST(
       );
       if (recipients.length > 0) {
         const displayId = callReport.call_report_id || id;
+        const titleLabel = (callReport as any).working_title ? ` — "${(callReport as any).working_title}"` : ` (${displayId})`;
+        const writerLabel = (callReport as any).writer_name ? `, writer: ${(callReport as any).writer_name}` : "";
         await createNotifications(
           recipients,
           "info",
-          `New revision uploaded: ${displayId}`,
-          `Revision ${nextRevisionNumber} has been submitted for review on call report ${displayId}.`,
+          `New revision uploaded${titleLabel}`,
+          `${uploaderNameForNotif} uploaded revision ${nextRevisionNumber}${titleLabel}${writerLabel}.`,
           "call_report",
           id,
           user.id
@@ -290,11 +300,6 @@ export async function POST(
 
     // Auto-post system message in the discussion thread
     try {
-      const { data: uploaderUser } = await supabase
-        .from("users")
-        .select("name")
-        .eq("id", user.id)
-        .single();
       const uploaderName = uploaderUser?.name || "Someone";
       const revisionComment = validation.data.comment;
       const commentSnippet = revisionComment

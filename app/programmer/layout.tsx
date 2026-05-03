@@ -69,6 +69,11 @@ const programmerNavItems = [
     href: "/programmer/requested-evaluations",
     icon: "clipboardCheck",
   },
+  {
+    title: "Notifications",
+    href: "/programmer/notifications",
+    icon: "bell",
+  },
 ];
 
 export default async function ProgrammerLayout({
