@@ -50,6 +50,11 @@ const programmerNavItems = [
     icon: "handshake",
   },
   {
+    title: "Content Aging",
+    href: "/programmer/content-aging",
+    icon: "barChart2",
+  },
+  {
     title: "Feedback Timeline",
     href: "/programmer/feedback-timeline",
     icon: "clock",

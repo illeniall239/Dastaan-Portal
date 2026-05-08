@@ -13,9 +13,9 @@ const baseNavItems = [
   { title: "Project Status",      href: "/management/status-updater",     icon: "listChecks" },
   { title: "Evaluations",         href: "/management/evaluations",        icon: "clipboardCheck" },
   { title: "Evaluations by Story",  href: "/management/evaluator-bias",     icon: "chartNoAxesCombined" },
+  { title: "Content Aging",             href: "/management/content-aging",      icon: "clock" },
   { title: "Cross-Team Shares Tracking", href: "/management/cross-team-shares",  icon: "share2" },
   { title: "Teams",               href: "/management/teams",              icon: "users" },
-  { title: "Notifications",       href: "/management/notifications",      icon: "bell" },
 ];
 
 const pendingEvaluationsItem = {
