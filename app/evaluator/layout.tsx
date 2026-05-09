@@ -1,6 +1,7 @@
 import { getCurrentUser } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { SidebarWrapper } from "./sidebar-wrapper";
+import { AssistantChat } from "@/components/ui/assistant-chat";
 
 // Evaluator-specific navigation items
 const evaluatorNavItems = [
@@ -100,13 +101,16 @@ export default async function EvaluatorLayout({
   }
 
   return (
-    <SidebarWrapper
-      userName={user.name || "Evaluator"}
-      userEmail={user.email}
-      userPosition={user.position}
-      navItems={evaluatorNavItems}
-    >
-      {children}
-    </SidebarWrapper>
+    <>
+      <SidebarWrapper
+        userName={user.name || "Evaluator"}
+        userEmail={user.email}
+        userPosition={user.position}
+        navItems={evaluatorNavItems}
+      >
+        {children}
+      </SidebarWrapper>
+      <AssistantChat portalKey="evaluator" />
+    </>
   );
 }

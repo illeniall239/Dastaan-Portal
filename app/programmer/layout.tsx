@@ -1,6 +1,7 @@
 import { getCurrentUser } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { SidebarWrapper } from "./sidebar-wrapper";
+import { AssistantChat } from "@/components/ui/assistant-chat";
 
 // Programmer-specific navigation items
 const programmerNavItems = [
@@ -74,11 +75,6 @@ const programmerNavItems = [
     href: "/programmer/requested-evaluations",
     icon: "clipboardCheck",
   },
-  {
-    title: "Notifications",
-    href: "/programmer/notifications",
-    icon: "bell",
-  },
 ];
 
 export default async function ProgrammerLayout({
@@ -99,13 +95,16 @@ export default async function ProgrammerLayout({
   }
 
   return (
-    <SidebarWrapper
-      userName={user.name || "Programmer"}
-      userEmail={user.email}
-      userPosition={user.position}
-      navItems={programmerNavItems}
-    >
-      {children}
-    </SidebarWrapper>
+    <>
+      <SidebarWrapper
+        userName={user.name || "Programmer"}
+        userEmail={user.email}
+        userPosition={user.position}
+        navItems={programmerNavItems}
+      >
+        {children}
+      </SidebarWrapper>
+      <AssistantChat portalKey="programmer" />
+    </>
   );
 }

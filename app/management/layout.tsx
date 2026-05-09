@@ -2,6 +2,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import "./print.css";
 import { SidebarWrapper } from "./sidebar-wrapper";
+import { AssistantChat } from "@/components/ui/assistant-chat";
 
 const baseNavItems = [
   { title: "Dashboard",           href: "/management",                    icon: "home" },
@@ -41,13 +42,16 @@ export default async function ManagementLayout({
   const navItems = [...baseNavItems.slice(0, 7), pendingEvaluationsItem, ...baseNavItems.slice(7)];
 
   return (
-    <SidebarWrapper
-      userName={user.name || "Management"}
-      userEmail={user.email}
-      userPosition={user.position}
-      navItems={navItems}
-    >
-      {children}
-    </SidebarWrapper>
+    <>
+      <SidebarWrapper
+        userName={user.name || "Management"}
+        userEmail={user.email}
+        userPosition={user.position}
+        navItems={navItems}
+      >
+        {children}
+      </SidebarWrapper>
+      <AssistantChat portalKey="management" />
+    </>
   );
 }
