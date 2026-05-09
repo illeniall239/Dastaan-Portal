@@ -29,10 +29,11 @@ CRITICAL DISTINCTIONS — never confuse these:
 `;
 
 // ─── Per-portal knowledge ─────────────────────────────────────────────────────
-const PORTAL_KNOWLEDGE: Record<string, { name: string; role: string; features: string }> = {
+const PORTAL_KNOWLEDGE: Record<string, { name: string; role: string; overview: string; features: string }> = {
   programmer: {
     name: "Programmer Portal",
     role: "Programmers are senior team members who oversee content development, evaluate writers, and monitor episode delivery across all content teams. They have global access to all teams' data.",
+    overview: "The Programmer Portal is where programmers oversee the full content development pipeline at GEO TV. Your main work is reviewing and scoring writer pitches (call reports / one-liners), tracking whether writers are delivering episode scripts on time via Content Aging, logging post-meeting reports, managing contract terms, and monitoring the Idea Roadmap. The Dashboard gives you a live snapshot of pending evaluations, recent reports, and quick links to your most common tasks.",
     features: `
 SIDEBAR SECTIONS — EXACT DETAILS:
 
@@ -85,6 +86,7 @@ System alerts for new evaluation assignments, status changes, evaluation complet
   content_department: {
     name: "Content Department Portal",
     role: "Content Department users (content managers and content creators) work directly with writers — they schedule meetings, log post-meeting reports, and track episode submissions for their team.",
+    overview: "The Content Department Portal is where your team works directly with writers. You schedule meetings on the Calendar, then log a post-meeting report (called a Writer Engagement Report or call report) in the Writer Engagement Reports section. You also track episode submissions from writers in the Episodes section. Your logged reports feed into the evaluation and approval pipeline — programmers and management then score what your team submits.",
     features: `
 SIDEBAR SECTIONS — EXACT DETAILS:
 
@@ -110,6 +112,7 @@ Alerts for new assignments, feedback on your reports from management or programm
   evaluator: {
     name: "Evaluator Portal",
     role: "Evaluators score writer call reports and episode scripts. They submit one-liner evaluations (scored assessments of call reports) and episodic evaluations (scored assessments of episode scripts), collaborate within their team, and share findings across teams.",
+    overview: "The Evaluator Portal is built for scoring. Your core tasks are evaluating writer pitches (one-liner evaluations) and episode scripts (episodic evaluations) that are assigned to you. You can also log post-meeting call reports after writer sessions, collaborate with your team through the Team and Team Feedback sections, and handle cross-team share requests from other teams. The Dashboard surfaces everything currently pending your attention.",
     features: `
 SIDEBAR SECTIONS — EXACT DETAILS:
 
@@ -156,6 +159,7 @@ Alerts for new evaluation requests, cross-team shares, team feedback notificatio
   management: {
     name: "Management Portal",
     role: "Management users are senior executives and decision-makers at GEO TV. They have global read access to all teams, all projects, all evaluations, and all financial data across the entire organisation. They do not log call reports or submit evaluations themselves — they oversee, track, and approve.",
+    overview: "The Management Portal is an oversight and decision-making view — you do not log call reports or submit evaluations here. Your work is reviewing approval requests in Approval Tracking, monitoring episode delivery health in Content Aging, tracking team performance and financials in the Teams section, and getting a full pipeline view from the Dashboard's Executive Summary. It surfaces critical alerts, pipeline value, overdue payments, and team-wide metrics.",
     features: `
 SIDEBAR SECTIONS — EXACT DETAILS:
 
@@ -211,6 +215,10 @@ ${portal.role}
 They are currently in the ${portal.name}.
 
 ${portal.features}
+
+PORTAL OVERVIEW (use when the user asks broad questions like "what is this portal?", "what can I do here?", "I'm new", "what does this do", or similar):
+${portal.overview}
+When answering these broad questions, give a concise response based on the overview above, then invite them to ask about any specific section.
 
 HOW TO RESPOND:
 - Be conversational and direct, like a knowledgeable colleague who knows this system inside out.
