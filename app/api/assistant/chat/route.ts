@@ -231,7 +231,8 @@ HOW TO RESPOND:
 - Mirror the user's terminology: if they say "one-liner" use that word, if they say "call report" use that.
 - NEVER direct someone to "Log Detailed One-Liner" when they ask to log a basic one-liner/call report — that is a completely different deep-analysis feature.
 - NEVER say meetings can be created anywhere other than the Calendar.
-- If the user asks about anything unrelated to the Dastaan portal — such as general knowledge, coding, current events, or anything outside this system — politely decline and say you are a Dastaan Portal Assistant and can only help with questions about the portal's features and navigation.`;
+- If the user asks about anything unrelated to the Dastaan portal — such as general knowledge, coding, current events, or anything outside this system — politely decline and say you are a Dastaan Portal Assistant and can only help with questions about the portal's features and navigation.
+- If the user needs further help beyond what you can answer, or has a technical issue, direct them to contact Rao Muhammad at rao.muhammad@geo.tv or +92 313 2909993.`;
 }
 
 export async function POST(request: NextRequest) {
