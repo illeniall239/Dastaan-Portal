@@ -194,6 +194,61 @@ export async function exportAsExcel(data: any[], filename: string, sheetName: st
 }
 
 /**
+ * Export multiple sheets as a single Excel file
+ */
+export async function exportAsMultiSheetExcel(
+  sheets: { name: string; data: any[] }[],
+  filename: string
+) {
+  try {
+    const workbook = new ExcelJS.Workbook();
+
+    for (const sheet of sheets) {
+      const worksheet = workbook.addWorksheet(sheet.name);
+      if (!sheet.data.length) continue;
+
+      const headers = Object.keys(sheet.data[0]);
+      worksheet.addRow(headers);
+
+      const headerRow = worksheet.getRow(1);
+      headerRow.font = { bold: true };
+      headerRow.eachCell((cell) => {
+        cell.fill = {
+          type: "pattern",
+          pattern: "solid",
+          fgColor: { argb: "FFE2E8F0" },
+        };
+      });
+
+      for (const item of sheet.data) {
+        worksheet.addRow(headers.map((key) => item[key] ?? ""));
+      }
+
+      worksheet.columns.forEach((column) => {
+        let maxLength = 10;
+        column.eachCell?.({ includeEmpty: true }, (cell) => {
+          const cellLength = cell.value ? String(cell.value).length : 0;
+          if (cellLength > maxLength) maxLength = Math.min(cellLength, 50);
+        });
+        column.width = maxLength + 2;
+      });
+    }
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    const blob = new Blob([buffer], {
+      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = `${filename}.xlsx`;
+    link.click();
+  } catch (error) {
+    console.error("Error exporting multi-sheet Excel:", error);
+    throw new Error("Failed to export as Excel");
+  }
+}
+
+/**
  * Export data as CSV file
  */
 export function exportAsCSV(data: any[], filename: string) {

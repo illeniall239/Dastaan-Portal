@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { AccountabilityTable } from "./accountability-table";
-import { Loader2, RefreshCw } from "lucide-react";
+import { Loader2, RefreshCw, Download } from "lucide-react";
+import { exportAsMultiSheetExcel } from "@/components/management/export-utils";
 
 type Range = "7d" | "30d" | "3m" | "all";
 
@@ -27,6 +28,7 @@ export function TeamActivitySection() {
   const [data, setData] = useState<any[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [exporting, setExporting] = useState(false);
 
   const fetchData = useCallback(async (r: Range) => {
     setLoading(true);
@@ -50,6 +52,37 @@ export function TeamActivitySection() {
   useEffect(() => {
     fetchData(range);
   }, [range, fetchData]);
+
+  const handleExport = useCallback(async () => {
+    setExporting(true);
+    try {
+      const from = fromDate(range);
+      const url = from
+        ? `/api/management/team-activity/export?from=${encodeURIComponent(from)}&_t=${Date.now()}`
+        : `/api/management/team-activity/export?_t=${Date.now()}`;
+      const res = await fetch(url);
+      const json = await res.json();
+      if (!res.ok || !json.success) throw new Error(json.error || "Export failed");
+      const turnaround: any[] = json.turnaround ?? [];
+      const dropEvaluator = ({ Evaluator: _, ...rest }: any) => rest;
+      const salmanRows = turnaround.filter((r: any) => r.Evaluator?.toLowerCase().includes("salman")).map(dropEvaluator);
+      const humeraRows = turnaround.filter((r: any) => r.Evaluator?.toLowerCase().includes("humera")).map(dropEvaluator);
+      const mirRows    = turnaround.filter((r: any) => r.Evaluator?.toLowerCase().includes("mir")).map(dropEvaluator);
+      await exportAsMultiSheetExcel(
+        [
+          { name: "Team Accountability",      data: json.rows },
+          { name: "Salman Idea Turnaround",   data: salmanRows },
+          { name: "Humera Idea Turnaround",   data: humeraRows },
+          { name: "Mir Idea Turnaround",      data: mirRows },
+        ],
+        `team-accountability-${range}`
+      );
+    } catch (err: any) {
+      alert(err.message || "Export failed");
+    } finally {
+      setExporting(false);
+    }
+  }, [range]);
 
   return (
     <div className="space-y-4">
@@ -75,6 +108,15 @@ export function TeamActivitySection() {
               </button>
             ))}
           </div>
+          <button
+            onClick={handleExport}
+            disabled={exporting || loading}
+            className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-md bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 transition-colors disabled:opacity-50"
+            title="Export to Excel"
+          >
+            {exporting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
+            Export Excel
+          </button>
           <button
             onClick={() => fetchData(range)}
             disabled={loading}

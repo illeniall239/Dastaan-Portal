@@ -8,6 +8,7 @@ import { TeamTypeFilterClient } from "./team-type-filter-client";
 import { BackButton } from "@/components/ui/back-button";
 import { TeamActivitySection } from "@/components/management/team-activity/team-activity-section";
 import { KeyPersonnelSection } from "@/components/management/key-personnel/key-personnel-section";
+import { IdeaTurnaroundSection } from "@/components/management/team-activity/idea-turnaround-section";
 
 // Revalidate every 5 minutes
 export const dynamic = "force-dynamic";
@@ -165,6 +166,13 @@ export default async function TeamAnalyticsPage() {
       <div id="team-accountability" className="pt-2">
         <TeamActivitySection />
       </div>
+
+      {/* Idea Turnaround (CEO only) */}
+      {isCEO && (
+        <div id="idea-turnaround" className="pt-2">
+          <IdeaTurnaroundSection />
+        </div>
+      )}
     </div>
   );
 }
