@@ -40,12 +40,12 @@ export async function GET(request: NextRequest) {
       admin.from("users").select("id, name, role, team_id, status").eq("status", "active"),
       admin
         .from("call_reports")
-        .select("id, created_by, created_at, evaluation_status")
+        .select("id, created_by, created_at")
         .eq("meeting_type", "call_report")
         .is("archived_at", null),
       admin
         .from("evaluator_forms")
-        .select("id, evaluator_id, submitted_at")
+        .select("id, evaluator_id, call_report_id, submitted_at")
         .not("submitted_at", "is", null),
       admin
         .from("detailed_one_liners")
@@ -141,13 +141,16 @@ export async function GET(request: NextRequest) {
       }
     };
 
+    // Set of call_report_ids that have at least one submitted evaluator_form
+    const evaluatedCallReportIds = new Set(
+      (evalForms || []).map((ef: any) => ef.call_report_id).filter(Boolean)
+    );
+
     for (const cr of callReports || []) {
       if (!cr.created_by || !inPeriod(cr.created_at)) continue;
       crByUser[cr.created_by] = (crByUser[cr.created_by] || 0) + 1;
       updateLast(cr.created_by, cr.created_at);
-      const evalStatus = cr.evaluation_status;
-      const isNotEvaluated = !evalStatus || evalStatus === "pending" || evalStatus === "in_progress";
-      if (isNotEvaluated) {
+      if (!evaluatedCallReportIds.has(cr.id)) {
         pendingEvalsByUser[cr.created_by] = (pendingEvalsByUser[cr.created_by] || 0) + 1;
       }
     }

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Card, CardContent, CardTitle } from "@/components/ui/card";
-import { ChevronDown, ChevronRight, Users, AlertCircle, ShieldCheck } from "lucide-react";
+import { ChevronDown, ChevronRight, Users, ShieldCheck } from "lucide-react";
 import { TeamBadge } from "@/components/shared/team-badge";
 
 interface MemberData {
@@ -161,12 +161,6 @@ function TeamRows({ team }: { team: TeamData }) {
                 <div className="flex items-center gap-1.5 flex-wrap">
                   <span className="text-xs font-medium text-slate-700 truncate">{m.name}</span>
                   <span className="text-[10px] text-slate-400 capitalize hidden sm:inline">{m.role.replace(/_/g, " ")}</span>
-                  {m.is_idle && !m.is_online && (
-                    <span className="flex items-center gap-0.5 text-[9px] px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200 font-medium shrink-0">
-                      <AlertCircle className="h-2.5 w-2.5" />
-                      Idle
-                    </span>
-                  )}
                 </div>
               </div>
             </div>

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardTitle } from "@/components/ui/card";
-import { Loader2, RefreshCw, AlertCircle } from "lucide-react";
+import { Loader2, RefreshCw } from "lucide-react";
 
 type Range = "7d" | "30d" | "3m" | "all";
 
@@ -86,12 +86,6 @@ function PersonRow({ p }: { p: PersonData }) {
           <div className="min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
               <span className="font-semibold text-sm text-slate-900">{p.name}</span>
-              {p.is_idle && !p.is_online && (
-                <span className="flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200 font-medium">
-                  <AlertCircle className="h-3 w-3" />
-                  Idle
-                </span>
-              )}
             </div>
             <p className="text-[10px] text-slate-400 mt-0.5 capitalize">{p.role.replace(/_/g, " ")}</p>
           </div>
