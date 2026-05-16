@@ -249,6 +249,7 @@ export function CallReportForm({
         ideaBy: d.ideaBy || "",
         developedBy: d.developedBy || "",
         managementMemberName: d.managementMemberName || "",
+        originalSubmissionDate: d.originalSubmissionDate || "",
       });
       if (d.writers) setWriters(d.writers);
       if (d.loglineImageUrl) setLoglineImageUrl(d.loglineImageUrl);
