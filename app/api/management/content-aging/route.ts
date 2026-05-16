@@ -85,7 +85,7 @@ export async function GET(request: NextRequest) {
     // 2. Fetch episodes for these call reports
     const { data: episodes, error: epErr } = await admin
       .from("episodes")
-      .select("id, call_report_id, episode_number, created_at")
+      .select("id, call_report_id, episode_number, created_at, original_submission_date")
       .in("call_report_id", reportIds)
       .eq("is_current", true)
       .order("episode_number", { ascending: true });
@@ -202,14 +202,14 @@ export async function GET(request: NextRequest) {
         }
       }
 
-      const createdAts = crEpisodes.map((e) => new Date(e.created_at));
-      const firstEpDate = createdAts.length ? new Date(Math.min(...createdAts.map((d) => d.getTime()))) : null;
-      const lastEpDate  = createdAts.length ? new Date(Math.max(...createdAts.map((d) => d.getTime()))) : null;
+      const epEffectiveDates = crEpisodes.map((e) => new Date(e.original_submission_date ?? e.created_at));
+      const firstEpDate = epEffectiveDates.length ? new Date(Math.min(...epEffectiveDates.map((d) => d.getTime()))) : null;
+      const lastEpDate  = epEffectiveDates.length ? new Date(Math.max(...epEffectiveDates.map((d) => d.getTime()))) : null;
 
       // Week-wise delivery
       const weekDelivery: Record<string, number> = {};
       for (const ep of crEpisodes) {
-        const week = getISOWeek(new Date(ep.created_at));
+        const week = getISOWeek(new Date(ep.original_submission_date ?? ep.created_at));
         weekDelivery[week] = (weekDelivery[week] || 0) + 1;
         allWeeks.add(week);
       }

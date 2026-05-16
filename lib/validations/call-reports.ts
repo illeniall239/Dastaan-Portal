@@ -68,6 +68,7 @@ export const updateCallReportSchema = z.object({
   status: z.string().max(50).optional(),
   overall_rating: z.number().min(1).max(10).optional(),
   attachments_to_delete: z.array(z.string().uuid()).optional(),
+  original_submission_date: z.string().optional().nullable(),
 }).refine((data) => {
   // Only validate when creating or explicitly changing category
   // In edit mode, if these fields are undefined, they preserve DB values

@@ -9,6 +9,10 @@ function formatDate(dateStr: string): string {
   });
 }
 
+function effectiveDate(record: { original_submission_date?: string | null; created_at: string }): string {
+  return record.original_submission_date ?? record.created_at;
+}
+
 function daysTaken(loggedAt: string, evaluatedAt: string): string {
   const diff = Math.floor(
     (new Date(evaluatedAt).getTime() - new Date(loggedAt).getTime()) / 86400000
@@ -56,7 +60,7 @@ export async function GET(request: NextRequest) {
       .from("evaluator_forms")
       .select(`
         evaluator_id, submitted_at, average_score,
-        call_report:call_reports!call_report_id(id, working_title, created_by, created_at)
+        call_report:call_reports!call_report_id(id, working_title, created_by, created_at, original_submission_date)
       `)
       .in("evaluator_id", targetIds)
       .not("submitted_at", "is", null)
@@ -72,7 +76,7 @@ export async function GET(request: NextRequest) {
         conflict_of_content_score, characterization_score, story_progression_score,
         main_event_score, small_event_score, dragness_score,
         freezes_score, whats_next_element_score, overall_assessment_score,
-        episode:episodes!episode_id(id, episode_number, call_report_id, created_at, logged_by)
+        episode:episodes!episode_id(id, episode_number, call_report_id, created_at, original_submission_date, logged_by)
       `)
       .in("evaluator_id", targetIds)
       .not("submitted_at", "is", null)
@@ -109,9 +113,9 @@ export async function GET(request: NextRequest) {
         Type:                       "One-Liner",
         Title:                      cr.working_title ?? "—",
         "Idea Uploaded By":         userNameMap.get(cr.created_by) ?? "—",
-        "Idea/Episode Upload Date": formatDate(cr.created_at),
+        "Idea/Episode Upload Date": formatDate(effectiveDate(cr)),
         "Evaluated On":             formatDate(row.submitted_at),
-        "Days Taken to Evaluate":   daysTaken(cr.created_at, row.submitted_at),
+        "Days Taken to Evaluate":   daysTaken(effectiveDate(cr), row.submitted_at),
         Score:                      row.average_score != null ? Number(row.average_score) : "—",
       });
     }
@@ -126,9 +130,9 @@ export async function GET(request: NextRequest) {
         Type:                       "Episode",
         Title:                      epLabel,
         "Idea Uploaded By":         userNameMap.get(ep.logged_by) ?? "—",
-        "Idea/Episode Upload Date": ep.created_at ? formatDate(ep.created_at) : "—",
+        "Idea/Episode Upload Date": ep.created_at ? formatDate(effectiveDate(ep)) : "—",
         "Evaluated On":             formatDate(row.submitted_at),
-        "Days Taken to Evaluate":   ep.created_at ? daysTaken(ep.created_at, row.submitted_at) : "—",
+        "Days Taken to Evaluate":   ep.created_at ? daysTaken(effectiveDate(ep), row.submitted_at) : "—",
         Score:                      score || "—",
       });
     }

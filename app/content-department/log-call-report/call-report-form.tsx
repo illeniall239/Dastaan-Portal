@@ -122,6 +122,7 @@ export function CallReportForm({
         ideaBy: initialData.idea_by || "",
         developedBy: initialData.developed_by || "",
         managementMemberName: initialData.management_member_name || "",
+        originalSubmissionDate: (initialData as any).original_submission_date || "",
       };
     }
     return {
@@ -148,6 +149,7 @@ export function CallReportForm({
       ideaBy: "",
       developedBy: "",
       managementMemberName: "",
+      originalSubmissionDate: "",
     };
   });
 
@@ -426,7 +428,8 @@ export function CallReportForm({
           next_steps: formData.nextSteps,
           status: formData.status,
           created_by: userId,
-          overall_rating: formData.overallRating
+          overall_rating: formData.overallRating,
+          original_submission_date: formData.originalSubmissionDate || undefined,
         });
 
         // Add writers to call report
@@ -507,7 +510,8 @@ export function CallReportForm({
           overallRating: 5,
           ideaBy: "",
           developedBy: "",
-          managementMemberName: ""
+          managementMemberName: "",
+          originalSubmissionDate: "",
         });
         setWriters([]);
         setFilesToUpload([]);
@@ -548,6 +552,22 @@ export function CallReportForm({
                 disabled
                 className="bg-muted"
               />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="originalSubmissionDate">
+                Original Submission Date{" "}
+                <span className="text-slate-400 font-normal text-xs">(optional)</span>
+              </Label>
+              <Input
+                id="originalSubmissionDate"
+                type="date"
+                value={formData.originalSubmissionDate}
+                onChange={handleInputChange}
+                max={new Date().toISOString().split("T")[0]}
+                disabled={isLoading}
+              />
+              <p className="text-xs text-slate-400">Only fill in when backfilling a historical entry. Leave blank to use today&apos;s date.</p>
             </div>
 
             <div className="space-y-2">

@@ -37,6 +37,10 @@ function avgEpScore(ev: any): number {
   return Math.round((vals.reduce((s, v) => s + v, 0) / vals.length) * 10) / 10;
 }
 
+function effectiveDate(record: { original_submission_date?: string | null; created_at: string }): string {
+  return record.original_submission_date ?? record.created_at;
+}
+
 function getMonthLabel(dateStr: string): string | null {
   const d = new Date(dateStr);
   for (const m of MONTHS) {
@@ -93,9 +97,7 @@ export async function GET(request: NextRequest) {
     const [callReportsRes, evalFormsRes, episodesRes, epicEvalRes] = await Promise.all([
       supabase
         .from("call_reports")
-        .select("id, created_by, created_at")
-        .gte("created_at", rangeStart)
-        .lt("created_at", rangeEnd)
+        .select("id, created_by, created_at, original_submission_date")
         .is("archived_at", null),
       supabase
         .from("evaluator_forms")
@@ -105,9 +107,7 @@ export async function GET(request: NextRequest) {
         .not("submitted_at", "is", null),
       supabase
         .from("episodes")
-        .select("id, logged_by, created_at")
-        .gte("created_at", rangeStart)
-        .lt("created_at", rangeEnd),
+        .select("id, logged_by, created_at, original_submission_date"),
       supabase
         .from("episodic_evaluations")
         .select(`evaluator_id, submitted_at, episode_id,
@@ -155,7 +155,7 @@ export async function GET(request: NextRequest) {
     // ── 4. Build per-user per-month indexes ───────────────────────────────
     const crIndex = new Map<string, Map<string, number>>();
     (callReportsRes.data ?? []).forEach((r: any) => {
-      const ml = getMonthLabel(r.created_at);
+      const ml = getMonthLabel(effectiveDate(r));
       if (!ml || !r.created_by) return;
       if (!crIndex.has(r.created_by)) crIndex.set(r.created_by, new Map());
       crIndex.get(r.created_by)!.set(ml, (crIndex.get(r.created_by)!.get(ml) ?? 0) + 1);
@@ -175,7 +175,7 @@ export async function GET(request: NextRequest) {
 
     const epLogIndex = new Map<string, Map<string, number>>();
     (episodesRes.data ?? []).forEach((r: any) => {
-      const ml = getMonthLabel(r.created_at);
+      const ml = getMonthLabel(effectiveDate(r));
       if (!ml || !r.logged_by) return;
       if (!epLogIndex.has(r.logged_by)) epLogIndex.set(r.logged_by, new Map());
       epLogIndex.get(r.logged_by)!.set(ml, (epLogIndex.get(r.logged_by)!.get(ml) ?? 0) + 1);
@@ -276,7 +276,7 @@ export async function GET(request: NextRequest) {
         .from("evaluator_forms")
         .select(`
           evaluator_id, submitted_at, average_score,
-          call_report:call_reports!call_report_id(id, working_title, created_by, created_at)
+          call_report:call_reports!call_report_id(id, working_title, created_by, created_at, original_submission_date)
         `)
         .in("evaluator_id", targetIds)
         .not("submitted_at", "is", null)
@@ -290,9 +290,9 @@ export async function GET(request: NextRequest) {
           Type:                       "One-Liner",
           Title:                      cr.working_title ?? "—",
           "Idea Uploaded By":         userNameMap.get(cr.created_by) ?? "—",
-          "Idea/Episode Upload Date": formatDate(cr.created_at),
+          "Idea/Episode Upload Date": formatDate(effectiveDate(cr)),
           "Evaluated On":             formatDate(row.submitted_at),
-          "Days Taken to Evaluate":   daysTaken(cr.created_at, row.submitted_at),
+          "Days Taken to Evaluate":   daysTaken(effectiveDate(cr), row.submitted_at),
           Score:                      row.average_score != null ? Number(row.average_score) : "—",
         });
       }
@@ -305,7 +305,7 @@ export async function GET(request: NextRequest) {
           conflict_of_content_score, characterization_score, story_progression_score,
           main_event_score, small_event_score, dragness_score,
           freezes_score, whats_next_element_score, overall_assessment_score,
-          episode:episodes!episode_id(id, episode_number, call_report_id, created_at, logged_by)
+          episode:episodes!episode_id(id, episode_number, call_report_id, created_at, original_submission_date, logged_by)
         `)
         .in("evaluator_id", targetIds)
         .not("submitted_at", "is", null)
@@ -341,9 +341,9 @@ export async function GET(request: NextRequest) {
           Type:                       "Episode",
           Title:                      epLabel,
           "Idea Uploaded By":         userNameMap.get(ep.logged_by) ?? "—",
-          "Idea/Episode Upload Date": ep.created_at ? formatDate(ep.created_at) : "—",
+          "Idea/Episode Upload Date": ep.created_at ? formatDate(effectiveDate(ep)) : "—",
           "Evaluated On":             formatDate(row.submitted_at),
-          "Days Taken to Evaluate":   ep.created_at ? daysTaken(ep.created_at, row.submitted_at) : "—",
+          "Days Taken to Evaluate":   ep.created_at ? daysTaken(effectiveDate(ep), row.submitted_at) : "—",
           Score:                      score || "—",
         });
       }

@@ -145,6 +145,7 @@ export async function POST(request: Request) {
       attachment_type: episode.attachment_type || null,
       additional_info: episode.additional_info || null,
       initial_assessment: episode.initial_assessment || null,
+      original_submission_date: (episode as any).original_submission_date || null,
       logged_by: user.id,
     }));
 

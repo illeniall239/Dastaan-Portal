@@ -60,6 +60,7 @@ export interface CreateMeetingInput {
   overall_rating?: number;
   time_spent_minutes?: number;
   form_started_at?: string;
+  original_submission_date?: string;
 }
 
 /**
@@ -185,6 +186,7 @@ export async function createMeetingClient(meetingData: CreateMeetingInput) {
     overall_rating: meetingData.overall_rating || null,
     time_spent_minutes: meetingData.time_spent_minutes || null,
     form_started_at: meetingData.form_started_at || null,
+    original_submission_date: meetingData.original_submission_date || null,
   };
 
   // First, create a story record for this call report

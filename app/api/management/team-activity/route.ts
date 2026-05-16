@@ -40,7 +40,7 @@ export async function GET(request: NextRequest) {
       admin.from("users").select("id, name, role, team_id, status").eq("status", "active"),
       admin
         .from("call_reports")
-        .select("id, created_by, created_at")
+        .select("id, created_by, created_at, original_submission_date")
         .eq("meeting_type", "call_report")
         .is("archived_at", null),
       admin
@@ -56,7 +56,7 @@ export async function GET(request: NextRequest) {
         .order("login_at", { ascending: false }),
       admin
         .from("episodes")
-        .select("id, logged_by, created_at"),
+        .select("id, logged_by, created_at, original_submission_date"),
       admin
         .from("episodic_evaluations")
         .select("id, evaluator_id, episode_id, submitted_at"),
@@ -64,6 +64,9 @@ export async function GET(request: NextRequest) {
 
     const NOW = new Date();
     const TEN_MINUTES_MS = 10 * 60 * 1000;
+
+    const effectiveDate = (record: { original_submission_date?: string | null; created_at: string }) =>
+      record.original_submission_date ?? record.created_at;
 
     const inPeriod = (dateStr: string | null) => {
       if (!dateStr) return false;
@@ -147,9 +150,9 @@ export async function GET(request: NextRequest) {
     );
 
     for (const cr of callReports || []) {
-      if (!cr.created_by || !inPeriod(cr.created_at)) continue;
+      if (!cr.created_by || !inPeriod(effectiveDate(cr))) continue;
       crByUser[cr.created_by] = (crByUser[cr.created_by] || 0) + 1;
-      updateLast(cr.created_by, cr.created_at);
+      updateLast(cr.created_by, effectiveDate(cr));
       if (!evaluatedCallReportIds.has(cr.id)) {
         pendingEvalsByUser[cr.created_by] = (pendingEvalsByUser[cr.created_by] || 0) + 1;
       }
@@ -165,9 +168,9 @@ export async function GET(request: NextRequest) {
       updateLast(ol.created_by, ol.created_at);
     }
     for (const ep of episodes || []) {
-      if (!ep.logged_by || !inPeriod(ep.created_at)) continue;
+      if (!ep.logged_by || !inPeriod(effectiveDate(ep))) continue;
       epsLoggedByUser[ep.logged_by] = (epsLoggedByUser[ep.logged_by] || 0) + 1;
-      updateLast(ep.logged_by, ep.created_at);
+      updateLast(ep.logged_by, effectiveDate(ep));
     }
     for (const ee of episodicEvals || []) {
       if (!ee.evaluator_id || !inPeriod(ee.submitted_at)) continue;
@@ -178,7 +181,7 @@ export async function GET(request: NextRequest) {
     // Build pending eps evals per user: episodes logged in period with no evaluation yet
     const evaluatedEpisodeIdSet = new Set((episodicEvals || []).map(ee => ee.episode_id));
     for (const ep of episodes || []) {
-      if (!ep.logged_by || !inPeriod(ep.created_at)) continue;
+      if (!ep.logged_by || !inPeriod(effectiveDate(ep))) continue;
       if (!evaluatedEpisodeIdSet.has(ep.id)) {
         pendingEpsEvalsByUser[ep.logged_by] = (pendingEpsEvalsByUser[ep.logged_by] || 0) + 1;
       }

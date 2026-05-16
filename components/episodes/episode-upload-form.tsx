@@ -16,6 +16,7 @@ export interface EpisodeFormEntry {
   file: File | null;
   additional_info: string;
   initial_assessment?: number;
+  original_submission_date?: string;
 }
 
 interface EpisodeUploadFormProps {
@@ -163,6 +164,23 @@ export function EpisodeUploadForm({
               <p className="text-xs text-muted-foreground">
                 {episode.additional_info.length}/5000 characters
               </p>
+            </div>
+
+            {/* Original Submission Date */}
+            <div className="space-y-2">
+              <Label htmlFor={`episode-${index}-submission-date`} className="text-sm sm:text-base">
+                Original Submission Date{" "}
+                <span className="text-slate-400 font-normal text-xs">(optional)</span>
+              </Label>
+              <Input
+                id={`episode-${index}-submission-date`}
+                type="date"
+                value={episode.original_submission_date || ""}
+                onChange={(e) => updateEpisode(index, "original_submission_date", e.target.value || undefined)}
+                max={new Date().toISOString().split("T")[0]}
+                disabled={disabled}
+              />
+              <p className="text-xs text-slate-400">Only fill in when backfilling a historical entry. Leave blank to use today&apos;s date.</p>
             </div>
 
             {/* Initial Assessment */}
