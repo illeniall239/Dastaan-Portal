@@ -208,7 +208,7 @@ export async function createMeetingClient(meetingData: CreateMeetingInput) {
       team_id: teamId,
       created_at: loggedAt,
       logged_by: meetingData.logged_by,
-      category: meetingData.category,
+      category: meetingData.category || null,
       writer_originator_name: meetingData.writer_name,
       suggested_writer: meetingData.suggested_writer || null,
       synopsis: meetingData.short_synopsis || meetingData.logline,
