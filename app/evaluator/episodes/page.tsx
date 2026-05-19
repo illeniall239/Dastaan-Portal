@@ -1157,7 +1157,7 @@ export default function EvaluatorEpisodesPage() {
                                     <span className="text-muted-foreground">Logged by:</span>
                                     <span>{episode.logged_by_user?.name || "Unknown"}</span>
                                     <span className="text-muted-foreground">&middot;</span>
-                                    <span className="text-muted-foreground">{formatDate(episode.created_at)}</span>
+                                    <span className="text-muted-foreground">{formatDate(episode.original_submission_date || episode.call_report?.original_submission_date || episode.created_at)}</span>
                                   </div>
                                 </div>
 

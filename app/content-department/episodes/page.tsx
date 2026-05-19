@@ -976,7 +976,7 @@ export default function ContentDepartmentEpisodesPage() {
                                   )}
                                   <div className="flex items-center gap-4">
                                     <span>Logged by: {episode.logged_by_user?.name || "Unknown"}</span>
-                                    <span>{formatDate(episode.created_at)}</span>
+                                    <span>{formatDate(episode.original_submission_date || episode.call_report?.original_submission_date || episode.created_at)}</span>
                                   </div>
                                 </div>
 

@@ -40,6 +40,7 @@ export function EpisodeEditForm({ episode, onSuccess }: EpisodeEditFormProps) {
   const [episodeNumber, setEpisodeNumber] = useState<number | string>(episode.episode_number);
   const [additionalInfo, setAdditionalInfo] = useState(episode.additional_info || "");
   const [initialAssessment, setInitialAssessment] = useState(episode.initial_assessment || 5);
+  const [originalSubmissionDate, setOriginalSubmissionDate] = useState<string>((episode as any).original_submission_date || "");
   const [file, setFile] = useState<File | null>(null);
   const [existingAttachment, setExistingAttachment] = useState({
     url: episode.attachment_url,
@@ -102,6 +103,7 @@ export function EpisodeEditForm({ episode, onSuccess }: EpisodeEditFormProps) {
         attachment_url,
         attachment_name,
         attachment_type,
+        original_submission_date: originalSubmissionDate || null,
       };
 
       await updateEpisodeClient(episode.id, updateData);
@@ -198,6 +200,25 @@ export function EpisodeEditForm({ episode, onSuccess }: EpisodeEditFormProps) {
                 Upload a new file to replace the existing attachment
               </p>
             )}
+          </div>
+
+          {/* Original Submission Date */}
+          <div className="space-y-2">
+            <Label htmlFor="original-submission-date">
+              Original Submission Date{" "}
+              <span className="text-slate-400 font-normal text-xs">(optional)</span>
+            </Label>
+            <Input
+              id="original-submission-date"
+              type="date"
+              value={originalSubmissionDate}
+              onChange={(e) => setOriginalSubmissionDate(e.target.value)}
+              max={new Date().toISOString().split("T")[0]}
+              disabled={loading}
+            />
+            <p className="text-xs text-muted-foreground">
+              Only fill in when backfilling a historical entry. Leave blank to use the logged date.
+            </p>
           </div>
 
           {/* Additional Information */}

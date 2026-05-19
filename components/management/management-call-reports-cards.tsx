@@ -54,8 +54,8 @@ export function ManagementCallReportsCards({ callReports }: ManagementCallReport
 
     // Sort
     results.sort((a, b) => {
-      const dateA = new Date(a.meeting_date || a.created_at).getTime();
-      const dateB = new Date(b.meeting_date || b.created_at).getTime();
+      const dateA = new Date(a.original_submission_date || a.meeting_date || a.created_at).getTime();
+      const dateB = new Date(b.original_submission_date || b.meeting_date || b.created_at).getTime();
       return sortBy === "newest" ? dateB - dateA : dateA - dateB;
     });
 
@@ -134,8 +134,8 @@ export function ManagementCallReportsCards({ callReports }: ManagementCallReport
       ) : (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {filteredReports.map((report) => {
-          const meetingDate = report.meeting_date ? new Date(report.meeting_date) : null;
-          const formattedDate = meetingDate ? format(meetingDate, "PPP") : "Not logged";
+          const displayDate = report.original_submission_date || report.meeting_date || null;
+          const formattedDate = displayDate ? format(new Date(displayDate), "PPP") : "Not logged";
           const attendees: string[] = report.meeting_attendees || [];
           const episodesCount = report.episodes ? report.episodes.length : 0;
           const storyTitle = report.stories?.title;

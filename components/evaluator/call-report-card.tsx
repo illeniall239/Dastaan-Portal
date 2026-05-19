@@ -21,6 +21,7 @@ export function CallReportCard({ report, portalPrefix = "evaluator", isTeamHead 
 
   // Format timestamp
   const loggedTimestamp =
+    report.original_submission_date ||
     report.logged_at ||
     report.created_at ||
     report.meeting_date ||

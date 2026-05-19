@@ -491,6 +491,7 @@ export async function GET(request: NextRequest) {
               working_title,
               writer_name,
               team_id,
+              original_submission_date,
               call_report_writers:call_report_writers(
                 writer_id,
                 display_order,
@@ -529,6 +530,7 @@ export async function GET(request: NextRequest) {
             working_title,
             writer_name,
             team_id,
+            original_submission_date,
             call_report_writers:call_report_writers(
               writer_id,
               display_order,

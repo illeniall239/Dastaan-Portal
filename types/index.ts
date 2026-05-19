@@ -538,6 +538,7 @@ export interface Episode {
   approved_by?: string | null;
   approved_at?: string | null;
   supersedes_id?: string | null;
+  original_submission_date?: string | null;
   // Initial assessment
   initial_assessment?: number | null; // @deprecated Use initial_assessments table instead
   average_initial_assessment?: number | null; // Denormalized avg from initial_assessments table
@@ -553,6 +554,7 @@ export interface EpisodeWithDetails extends Episode {
   call_report?: {
     working_title: string;
     writer_name: string;
+    original_submission_date?: string | null;
   };
   story?: {
     title: string;

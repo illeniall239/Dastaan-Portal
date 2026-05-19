@@ -932,7 +932,7 @@ export default function GcmEpisodesPage() {
                                   {episode.logged_by_user?.name || "Unknown"}
                                 </TableCell>
                                 <TableCell>
-                                  {formatDate(episode.created_at)}
+                                  {formatDate(episode.original_submission_date || episode.call_report?.original_submission_date || episode.created_at)}
                                 </TableCell>
                                 <TableCell className="text-right">
                                   <DropdownMenu>
@@ -1031,7 +1031,7 @@ export default function GcmEpisodesPage() {
                                       </Badge>
                                     )}
                                   </div>
-                                  <span className="text-xs text-muted-foreground flex-shrink-0">{formatDate(episode.created_at)}</span>
+                                  <span className="text-xs text-muted-foreground flex-shrink-0">{formatDate(episode.original_submission_date || episode.call_report?.original_submission_date || episode.created_at)}</span>
                                 </div>
                               </div>
                               <div className="flex flex-col gap-3">

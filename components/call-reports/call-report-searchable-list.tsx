@@ -60,15 +60,15 @@ export function CallReportSearchableList({
     switch (filters.sortBy) {
       case "newest":
         result.sort((a, b) => {
-          const dateA = new Date(a.meeting_date || a.created_at || 0).getTime();
-          const dateB = new Date(b.meeting_date || b.created_at || 0).getTime();
+          const dateA = new Date(a.original_submission_date || a.meeting_date || a.created_at || 0).getTime();
+          const dateB = new Date(b.original_submission_date || b.meeting_date || b.created_at || 0).getTime();
           return dateB - dateA;
         });
         break;
       case "oldest":
         result.sort((a, b) => {
-          const dateA = new Date(a.meeting_date || a.created_at || 0).getTime();
-          const dateB = new Date(b.meeting_date || b.created_at || 0).getTime();
+          const dateA = new Date(a.original_submission_date || a.meeting_date || a.created_at || 0).getTime();
+          const dateB = new Date(b.original_submission_date || b.meeting_date || b.created_at || 0).getTime();
           return dateA - dateB;
         });
         break;

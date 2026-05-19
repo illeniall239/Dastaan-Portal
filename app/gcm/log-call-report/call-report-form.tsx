@@ -313,6 +313,7 @@ export function CallReportForm({
           next_steps: formData.nextSteps || undefined,
           status: formData.status || undefined,
           overall_rating: formData.overallRating,
+          original_submission_date: formData.originalSubmissionDate || undefined,
           attachments_to_delete: attachmentsMarkedForDeletion.length > 0 ? attachmentsMarkedForDeletion : undefined,
         };
 

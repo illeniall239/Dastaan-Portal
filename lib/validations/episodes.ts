@@ -142,6 +142,7 @@ export const updateEpisodeSchema = z.object({
     .transform((val) => (val ? val.trim() : val)),
   approval_status: z.enum(['approved', 'rejected', 'needs_revision']).optional().nullable(),
   initial_assessment: z.number().min(1).max(10).optional().nullable(),
+  original_submission_date: z.string().optional().nullable(),
 });
 
 /**

@@ -312,6 +312,7 @@ export function CallReportForm({
           meeting_notes: formData.notes || undefined,
           next_steps: formData.nextSteps || undefined,
           status: formData.status || undefined,
+          original_submission_date: formData.originalSubmissionDate || undefined,
           attachments_to_delete: attachmentsMarkedForDeletion.length > 0 ? attachmentsMarkedForDeletion : undefined,
         };
 

@@ -588,6 +588,7 @@ export async function getAllCallReports() {
       approval_status: approvalStatusMap[report.id] || null,
       team: (report as any).team || null,
       logged_by: (report as any).logged_by || null,
+      original_submission_date: (report as any).original_submission_date || null,
     };
   });
 

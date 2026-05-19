@@ -48,8 +48,8 @@ export function ManagementEpisodesCards({ episodes }: ManagementEpisodesCardsPro
     }
 
     results.sort((a, b) => {
-      const dateA = new Date(a.created_at).getTime();
-      const dateB = new Date(b.created_at).getTime();
+      const dateA = new Date(a.original_submission_date || a.created_at).getTime();
+      const dateB = new Date(b.original_submission_date || b.created_at).getTime();
       return sortBy === "newest" ? dateB - dateA : dateA - dateB;
     });
 
