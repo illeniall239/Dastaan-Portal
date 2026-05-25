@@ -1102,6 +1102,30 @@ export default function ProgrammerEpisodesPage() {
                             </div>
                         </div>
                     )}
+
+                    {/* Load More Projects button */}
+                    {!debouncedSearchTerm && hasMoreProjects && (
+                        <div className="flex flex-col items-center gap-2 pt-4">
+                            <Button
+                                variant="outline"
+                                onClick={loadMoreProjects}
+                                disabled={loadingMore}
+                                className="w-full max-w-xs"
+                            >
+                                {loadingMore ? (
+                                    <>
+                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                        Loading more projects...
+                                    </>
+                                ) : (
+                                    "Load More Projects"
+                                )}
+                            </Button>
+                            <p className="text-sm text-muted-foreground">
+                                Showing {projects.length} of {totalProjects} projects
+                            </p>
+                        </div>
+                    )}
                 </TabsContent>
 
                 <TabsContent value="log">
