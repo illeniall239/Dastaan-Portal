@@ -210,6 +210,31 @@ export default function ContentAgingPage() {
     });
   };
 
+  const handleProjectUpdate = async (
+    callReportId: string,
+    patch: Partial<Pick<Project, "deadline" | "onAirDate">>
+  ) => {
+    setProjects((prev) =>
+      prev.map((p) => (p.id === callReportId ? { ...p, ...patch } : p))
+    );
+    try {
+      const res = await fetch(`/api/management/content-aging/${callReportId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(patch),
+      });
+      if (!res.ok) throw new Error("Failed to save");
+    } catch {
+      toast.error("Failed to save date");
+      // Re-fetch to revert to DB state
+      const res = await fetch(`/api/management/content-aging?_t=${Date.now()}`);
+      if (res.ok) {
+        const data = await res.json();
+        setProjects(data.projects || []);
+      }
+    }
+  };
+
   const filtered = useMemo(() => {
     return projects.filter((p) => {
       if (statusFilter !== "all" && p.status !== statusFilter) return false;
@@ -431,7 +456,7 @@ export default function ContentAgingPage() {
             <div className="text-muted-foreground">No projects match the current filters.</div>
           </div>
         ) : activeTab === "target" ? (
-          <TargetAgingTable projects={filtered} visibleEvaluators={visibleEvaluators} visibleOneLinerAssessors={visibleOneLinerAssessors} />
+          <TargetAgingTable projects={filtered} visibleEvaluators={visibleEvaluators} visibleOneLinerAssessors={visibleOneLinerAssessors} onUpdate={handleProjectUpdate} />
         ) : (
           <table className="w-full text-sm border-collapse" style={{ minWidth }}>
             <thead>
@@ -647,7 +672,7 @@ export default function ContentAgingPage() {
   );
 }
 
-function TargetAgingTable({ projects, visibleEvaluators, visibleOneLinerAssessors }: { projects: Project[]; visibleEvaluators: Evaluator[]; visibleOneLinerAssessors: OneLinerAssessor[] }) {
+function TargetAgingTable({ projects, visibleEvaluators, visibleOneLinerAssessors, onUpdate }: { projects: Project[]; visibleEvaluators: Evaluator[]; visibleOneLinerAssessors: OneLinerAssessor[]; onUpdate?: (id: string, patch: Partial<Pick<Project, "deadline" | "onAirDate">>) => void }) {
   const minWidth = STICKY_TOTAL + 650 + visibleOneLinerAssessors.length * 90 + visibleEvaluators.length * 2 * 80;
 
   return (
@@ -748,8 +773,30 @@ function TargetAgingTable({ projects, visibleEvaluators, visibleOneLinerAssessor
             <Td width={80} center>
               <span className={project.epsReceived > 0 ? "font-semibold text-green-700" : ""}>{project.epsReceived}</span>
             </Td>
-            <Td width={110}>{fmt(project.deadline)}</Td>
-            <Td width={110}>{fmt(project.onAirDate)}</Td>
+            <Td width={110}>
+              {onUpdate ? (
+                <input
+                  type="date"
+                  className="w-full text-xs bg-transparent focus:outline-none focus:ring-1 focus:ring-ring rounded px-1 cursor-pointer"
+                  value={project.deadline ? project.deadline.slice(0, 10) : ""}
+                  onChange={(e) => onUpdate(project.id, { deadline: e.target.value || null })}
+                />
+              ) : (
+                fmt(project.deadline)
+              )}
+            </Td>
+            <Td width={110}>
+              {onUpdate ? (
+                <input
+                  type="date"
+                  className="w-full text-xs bg-transparent focus:outline-none focus:ring-1 focus:ring-ring rounded px-1 cursor-pointer"
+                  value={project.onAirDate ? project.onAirDate.slice(0, 10) : ""}
+                  onChange={(e) => onUpdate(project.id, { onAirDate: e.target.value || null })}
+                />
+              ) : (
+                fmt(project.onAirDate)
+              )}
+            </Td>
             {GROUPS.flatMap((group) =>
               visibleOneLinerAssessors
                 .filter((a) => a.group === group)

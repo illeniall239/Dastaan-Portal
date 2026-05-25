@@ -178,7 +178,7 @@ export async function GET(request: NextRequest) {
 
       const epsReceived = crEpisodes.length;
       const totalEps = cr.total_episodes || neg?.estimated_episodes || null;
-      const epsReq = neg?.estimated_episodes || null;
+      const epsReq = neg?.estimated_episodes || cr.total_episodes || null;
       const epsBehind = totalEps !== null ? Math.max(0, totalEps - epsReceived) : null;
 
       let status: "RECEIVED" | "BEHIND" | "ON_TRACK" | null = null;
