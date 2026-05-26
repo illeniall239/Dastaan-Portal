@@ -6,8 +6,10 @@ export const dynamic = "force-dynamic";
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id: callReportId } = await params;
+
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -21,8 +23,6 @@ export async function PATCH(
   if (!profile || !["admin", "management", "executive", "programmer"].includes(profile.role)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
-
-  const callReportId = params.id;
   const body = await request.json();
   const { deadline, onAirDate } = body as { deadline?: string | null; onAirDate?: string | null };
 
