@@ -160,7 +160,6 @@ function TeamRows({ team }: { team: TeamData }) {
               <div className="min-w-0">
                 <div className="flex items-center gap-1.5 flex-wrap">
                   <span className="text-xs font-medium text-slate-700 truncate">{m.name}</span>
-                  <span className="text-[10px] text-slate-400 capitalize hidden sm:inline">{m.role.replace(/_/g, " ")}</span>
                 </div>
               </div>
             </div>

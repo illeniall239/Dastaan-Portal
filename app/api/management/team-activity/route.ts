@@ -36,8 +36,8 @@ export async function GET(request: NextRequest) {
       { data: episodes },
       { data: episodicEvals },
     ] = await Promise.all([
-      admin.from("teams").select("id, name, team_type").order("name"),
-      admin.from("users").select("id, name, role, team_id, status").eq("status", "active"),
+      admin.from("teams").select("id, name, team_type, team_head_id").order("name"),
+      admin.from("users").select("id, name, role, email, team_id, status").eq("status", "active"),
       admin
         .from("call_reports")
         .select("id, created_by, created_at, original_submission_date")
@@ -195,8 +195,14 @@ export async function GET(request: NextRequest) {
       usersByTeam[tid].push(u);
     }
 
+    // ── Filter out management-type teams except humera's ──────────────────────
+    const humeraUser = (users || []).find((u: any) => u.email === "humera.safder@geo.tv");
+    const filteredTeams = (teams || []).filter((t: any) =>
+      t.team_type !== "management" || (humeraUser && t.team_head_id === humeraUser.id)
+    );
+
     // ── Build memberActivity ───────────────────────────────────────────────────
-    const memberActivity = (teams || []).map(team => {
+    const memberActivity = filteredTeams.map(team => {
       const members = (usersByTeam[team.id] || []).map(u => {
         const lastAct = lastActivityByUser[u.id] || null;
         const login = loginDataByUser[u.id] || { total_sessions: 0, period_minutes: 0, effective_last_login: null, is_online: false };

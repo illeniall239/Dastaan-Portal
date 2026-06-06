@@ -16,7 +16,7 @@ import {
   RefreshCw,
 } from "lucide-react";
 import type { StoryApprovalStatus, ApprovalHistoryRound } from "@/types";
-import { MANDATORY_APPROVERS } from "@/lib/approvals/config";
+import { MANDATORY_APPROVERS, VETO_APPROVER } from "@/lib/approvals/config";
 
 interface StoryApprovalPanelProps {
   callReportId: string;
@@ -99,6 +99,7 @@ export function StoryApprovalPanel({ callReportId, evaluationCompleted }: StoryA
   const {
     approvals,
     isFullyApproved,
+    isVetoApproved,
     isRejected,
     canCurrentUserApprove,
     currentUserApproval,
@@ -137,7 +138,7 @@ export function StoryApprovalPanel({ callReportId, evaluationCompleted }: StoryA
                 variant={isFullyApproved ? "default" : isRejected ? "destructive" : "secondary"}
                 className="text-xs"
               >
-                {isFullyApproved ? "Fully Approved" : isRejected ? "Rejected" : `${approvedCount}/3 Approvals`}
+                {isVetoApproved ? "Veto Approved" : isFullyApproved ? "Fully Approved" : isRejected ? "Rejected" : `${approvedCount}/3 Approvals`}
               </Badge>
             )}
             <Button
@@ -153,6 +154,38 @@ export function StoryApprovalPanel({ callReportId, evaluationCompleted }: StoryA
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
+        {/* Veto Approver (Mir) */}
+        <div>
+          <p className="text-xs font-semibold text-muted-foreground mb-2 flex items-center gap-1.5">
+            <Shield className="h-3.5 w-3.5" />
+            Veto Approver
+          </p>
+          {(() => {
+            const vetoApproval = approvals.find(a => a.user?.email === VETO_APPROVER.email);
+            return (
+              <div className="flex items-center justify-between text-sm">
+                <div className="flex items-center gap-2">
+                  {vetoApproval?.decision === "approved" ? (
+                    <CheckCircle2 className="h-4 w-4 text-green-600" />
+                  ) : (
+                    <Clock className="h-4 w-4 text-amber-500" />
+                  )}
+                  <span>{vetoApproval?.user?.name || VETO_APPROVER.label}</span>
+                  <Badge variant="outline" className="text-[10px] px-1 py-0 h-4">Veto</Badge>
+                </div>
+                <span className={`text-xs ${vetoApproval?.decision === "approved" ? "text-green-600" : "text-amber-500"}`}>
+                  {vetoApproval?.decision === "approved" ? "Approved (Veto)" : "Pending"}
+                  {vetoApproval?.created_at && (
+                    <span className="text-muted-foreground ml-1">
+                      ({new Date(vetoApproval.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })})
+                    </span>
+                  )}
+                </span>
+              </div>
+            );
+          })()}
+        </div>
+
         {/* Management (Required) */}
         <div>
           <p className="text-xs font-semibold text-muted-foreground mb-2 flex items-center gap-1.5">
@@ -224,10 +257,11 @@ export function StoryApprovalPanel({ callReportId, evaluationCompleted }: StoryA
 
         {/* Additional Approvers */}
         {!isCurrentUserMandatoryApprover && <div>
-          <p className="text-xs font-semibold text-muted-foreground mb-2 flex items-center gap-1.5">
+          <p className="text-xs font-semibold text-muted-foreground mb-1 flex items-center gap-1.5">
             <Users className="h-3.5 w-3.5" />
-            Additional Approvers (1 needed)
+            Third Approver (1 needed)
           </p>
+          <p className="text-[10px] text-muted-foreground mb-2">Evaluator team head, Sheeraz, or Younas</p>
           {otherApprovals.length === 0 ? (
             <p className="text-xs text-muted-foreground italic">No additional approvals yet</p>
           ) : (

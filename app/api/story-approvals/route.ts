@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { MANDATORY_APPROVER_EMAILS } from "@/lib/approvals/config";
+import { MANDATORY_APPROVER_EMAILS, VETO_APPROVER_EMAIL, OPTIONAL_THIRD_APPROVER_EMAILS } from "@/lib/approvals/config";
 import { createNotifications, getUserIdsByRoles, excludeUserFromList } from "@/lib/notifications/server";
 
 export const dynamic = "force-dynamic";
@@ -121,9 +121,11 @@ export async function GET(request: NextRequest) {
 
     // Determine if current user can approve
     const isMandatoryApprover = MANDATORY_APPROVER_EMAILS.includes(currentUser?.email || "");
+    const isVetoApprover = currentUser?.email === VETO_APPROVER_EMAIL;
+    const isOptionalThirdApprover = OPTIONAL_THIRD_APPROVER_EMAILS.includes(currentUser?.email || "");
     const isProgrammer = currentUser?.role === "programmer";
     const isManagement = currentUser?.role === "management";
-    const canApprove = isMandatoryApprover || isTeamHead || isProgrammer || isManagement;
+    const canApprove = isMandatoryApprover || isVetoApprover || isTeamHead || isOptionalThirdApprover || isProgrammer || isManagement;
 
     // Compute approval status using CURRENT ROUND approvals only
     const approvedList = currentApprovals.filter((a) => a.decision === "approved");
@@ -139,10 +141,18 @@ export async function GET(request: NextRequest) {
     const managementApproved = mandatoryApprovals.length >= MANDATORY_APPROVER_EMAILS.length;
     const managementRejected = mandatoryRejections.length > 0;
 
+    // Veto path: mir's single approval = fully approved
+    const vetoApproval = approvedList.find((a) => a.user?.email === VETO_APPROVER_EMAIL);
+    const isVetoApproved = !!vetoApproval;
+
+    // Standard path third approver: evaluator team head OR sheeraz OR younas
     const thirdApprovals = approvedList.filter((a) => a.approver_type !== "management");
     const thirdApproved = thirdApprovals.length >= 1;
+    const validThirdApproved = thirdApprovals.some(
+      (a) => a.approver_type === "evaluator" || (OPTIONAL_THIRD_APPROVER_EMAILS as readonly string[]).includes(a.user?.email || "")
+    );
 
-    const isFullyApproved = managementApproved && thirdApproved;
+    const isFullyApproved = isVetoApproved || (managementApproved && validThirdApproved);
     const isRejected = managementRejected;
 
     // Check current user's existing approval in current round
@@ -157,6 +167,7 @@ export async function GET(request: NextRequest) {
         managementRejected,
         thirdApproved,
         isFullyApproved,
+        isVetoApproved,
         isRejected,
         canCurrentUserApprove: canApprove,
         currentUserApproval,
@@ -398,8 +409,17 @@ export async function POST(request: NextRequest) {
         mandatoryApprovedEmails.includes(email)
       );
 
-      let effectiveThirdApproved = thirdApproved.length;
-      if (effectiveThirdApproved === 0) {
+      // Veto path: mir's approval alone = fully approved
+      const isVetoApprovedPost = approved.some((a) => a.user?.email === VETO_APPROVER_EMAIL);
+
+      // Valid third: evaluator team head OR optional named approvers (sheeraz/younas)
+      const validThirdFromVotes = thirdApproved.some(
+        (a) => a.approver_type === "evaluator" || (OPTIONAL_THIRD_APPROVER_EMAILS as readonly string[]).includes(a.user?.email || "")
+      );
+
+      // Fallback: check if an evaluator team head submitted an evaluator_form with approve decision
+      let effectiveValidThird = validThirdFromVotes;
+      if (!effectiveValidThird) {
         const { data: positiveEvals } = await adminClient
           .from("evaluator_forms")
           .select("evaluator_id")
@@ -414,7 +434,7 @@ export async function POST(request: NextRequest) {
             .select("team_head_id")
             .in("team_head_id", evalIds);
           if (teamHeads && teamHeads.length > 0) {
-            effectiveThirdApproved = 1;
+            effectiveValidThird = true;
           }
         }
       }
@@ -463,7 +483,7 @@ export async function POST(request: NextRequest) {
           }
         } catch { /* non-fatal */ }
 
-      } else if (allMandatoryApproved && effectiveThirdApproved >= 1) {
+      } else if (isVetoApprovedPost || (allMandatoryApproved && effectiveValidThird)) {
         await upsertEvalLog("approved");
         if (callReport?.story_id) {
           await adminClient

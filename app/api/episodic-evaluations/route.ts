@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { logger } from "@/lib/logger";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { episodicEvaluationSchema } from "@/lib/validations/episodic-evaluations";
 import { episodicEvaluationsQuerySchema } from "@/lib/validations/query-params";
 import { parsePaginationParams, applyPagination, createPaginatedResponse } from "@/lib/utils/pagination";
@@ -250,7 +251,7 @@ export async function GET(request: NextRequest) {
   // Check user role
   const { data: userData } = await supabase
     .from("users")
-    .select("role")
+    .select("role, team_id")
     .eq("id", user.id)
     .single();
 
@@ -259,6 +260,18 @@ export async function GET(request: NextRequest) {
       { error: "Forbidden - Insufficient permissions" },
       { status: 403 }
     );
+  }
+
+  // Determine if programmer is on a management team (use admin client to bypass RLS on teams)
+  let isRestrictedProgrammer = false;
+  if (userData.role === "programmer" && userData.team_id) {
+    const adminClientForCheck = createAdminClient();
+    const { data: team } = await adminClientForCheck
+      .from("teams")
+      .select("team_type")
+      .eq("id", userData.team_id)
+      .single();
+    isRestrictedProgrammer = team?.team_type === "management";
   }
 
     // Parse pagination parameters
@@ -295,10 +308,23 @@ export async function GET(request: NextRequest) {
       `, { count: "exact" });
 
     // For evaluators, only show their own evaluations
-    // For programmers, show evaluations done by other programmers (team restriction)
+    // For restricted programmers (management-team), show only their team's evaluations
+    // For regular programmers, show all programmer-role evaluations
     // For content_manager and admin, show all
     if (userData.role === "evaluator") {
       query = query.eq("evaluator_id", user.id);
+    } else if (userData.role === "programmer" && isRestrictedProgrammer && userData.team_id) {
+      // Fetch team member IDs then filter
+      const { data: teamMembers } = await supabase
+        .from("users")
+        .select("id")
+        .eq("team_id", userData.team_id);
+      const teamMemberIds = (teamMembers || []).map((u: any) => u.id);
+      if (teamMemberIds.length > 0) {
+        query = query.in("evaluator_id", teamMemberIds);
+      } else {
+        query = query.eq("evaluator_id", user.id);
+      }
     } else if (userData.role === "programmer") {
       // Need to re-build query with !inner join on users to filter by their role
       query = supabase

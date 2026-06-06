@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import {
   createNotifications,
   getContentActivityNotificationRecipients,
@@ -357,11 +358,23 @@ export async function getAllCallReports() {
     throw new Error('Not authenticated');
   }
 
-  const { data: currentUser } = await supabase
+  const adminClient = createAdminClient();
+  const { data: currentUser } = await adminClient
     .from("users")
     .select("team_id, role")
     .eq("id", user.id)
     .single();
+
+  // Resolve team_type via admin client to bypass RLS on teams table
+  let teamType: string | null = null;
+  if (currentUser?.team_id) {
+    const { data: team } = await adminClient
+      .from("teams")
+      .select("team_type")
+      .eq("id", currentUser.team_id)
+      .single();
+    teamType = team?.team_type ?? null;
+  }
 
   // Build base query
   let query = supabase
@@ -392,7 +405,9 @@ export async function getAllCallReports() {
       )
     `)
   // TEAM ISOLATION: Apply filter unless admin/management/programmer
-  const hasGlobalAccess = currentUser?.role && ['admin', 'management', 'programmer'].includes(currentUser.role);
+  // Evaluators on management teams also get global access (e.g. role-switched users)
+  const hasGlobalAccess = currentUser?.role && ['admin', 'management', 'programmer'].includes(currentUser.role)
+    || (currentUser?.role === 'evaluator' && teamType === 'management');
   if (!hasGlobalAccess && currentUser?.team_id) {
     query = query.eq("team_id", currentUser.team_id);
   }

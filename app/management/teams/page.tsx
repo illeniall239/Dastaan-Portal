@@ -39,7 +39,12 @@ export default async function TeamAnalyticsPage() {
   let teams: any[] = [], summary: any, comparison: any[] = [];
 
   try {
-    teams = await getAllTeamPerformanceServer();
+    const allTeams = await getAllTeamPerformanceServer();
+
+    // Exclude management-type teams except humera's (auto-created org containers)
+    teams = allTeams.filter((t: any) =>
+      t.team_type !== "management" || t.team_head_email === "humera.safder@geo.tv"
+    );
 
     // Compute summary from the teams data (avoids using the browser/anon client)
     summary = {

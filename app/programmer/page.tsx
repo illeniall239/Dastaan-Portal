@@ -11,6 +11,7 @@ import {
   Globe,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { PendingEvaluationsNotification } from "@/components/evaluations/pending-evaluations-notification";
 import { Suspense } from "react";
 import { NotificationSkeleton } from "@/components/skeletons/notification-skeleton";
@@ -52,100 +53,137 @@ export default async function ProgrammerDashboard() {
 
       {/* Dashboard Content */}
       <Suspense fallback={<DashboardContentSkeleton />}>
-        <DashboardContent userId={user.id} />
+        <DashboardContent userId={user.id} userRole={user.role} />
       </Suspense>
     </div>
   );
 }
 
-// Combined Dashboard Content - Fetches all data in parallel with GLOBAL ACCESS
-async function DashboardContent({ userId }: { userId: string }) {
+// Combined Dashboard Content - Fetches all data in parallel
+async function DashboardContent({ userId, userRole }: { userId: string; userRole: string }) {
   const supabase = await createClient();
+  const adminClient = createAdminClient();
 
-  // Programmers have GLOBAL ACCESS - no team filtering
-  // Fetch ALL data in parallel for maximum performance
+  // Resolve team info via admin client (bypasses RLS on teams table)
+  const { data: userProfile } = await adminClient
+    .from("users")
+    .select("team_id")
+    .eq("id", userId)
+    .single();
+
+  let isRestrictedProgrammer = false;
+  let teamMemberIds: string[] = [userId];
+  const teamId = userProfile?.team_id ?? null;
+
+  if (userRole === "programmer" && teamId) {
+    const { data: team } = await adminClient
+      .from("teams")
+      .select("team_type")
+      .eq("id", teamId)
+      .single();
+    if (team?.team_type === "management") {
+      isRestrictedProgrammer = true;
+      const { data: members } = await adminClient
+        .from("users")
+        .select("id")
+        .eq("team_id", teamId);
+      teamMemberIds = (members || []).map((m: any) => m.id);
+    }
+  }
+
+  // Fetch ALL data in parallel
   const [statsData, recentCallReports, recentEvaluations, productionMetrics] = await Promise.all([
-    // Stats data - NO TEAM FILTERS (global access)
     Promise.all([
-      // Total call reports count (all teams)
-      supabase
-        .from("call_reports")
-        .select("id", { count: "exact", head: true })
-        .eq("meeting_type", "call_report"),
-      // Total evaluations count (Only Programmer Team evaluations)
-      supabase
-        .from("evaluator_forms")
-        .select(`
-          id,
-          evaluator:users!evaluator_id!inner(role)
-        `, { count: "exact", head: true })
-        .eq("evaluator.role", "programmer"),
-      // Programmer's own evaluations count
+      // Total call reports count
+      (async () => {
+        let q = supabase
+          .from("call_reports")
+          .select("id", { count: "exact", head: true })
+          .eq("meeting_type", "call_report");
+        if (isRestrictedProgrammer && teamId) q = q.eq("team_id", teamId);
+        return q;
+      })(),
+      // Total evaluations count (team-scoped for restricted, all programmers for regular)
+      (async () => {
+        if (isRestrictedProgrammer) {
+          return supabase
+            .from("evaluator_forms")
+            .select("id", { count: "exact", head: true })
+            .in("evaluator_id", teamMemberIds);
+        }
+        return supabase
+          .from("evaluator_forms")
+          .select(`id, evaluator:users!evaluator_id!inner(role)`, { count: "exact", head: true })
+          .eq("evaluator.role", "programmer");
+      })(),
+      // My own evaluations count
       supabase
         .from("evaluator_forms")
         .select("id", { count: "exact", head: true })
         .eq("evaluator_id", userId),
-      // Upcoming scheduled meetings count (all teams)
+      // Upcoming scheduled meetings count
       (async () => {
         const today = new Date().toISOString();
-        return await supabase
+        let q = supabase
           .from("meetings")
           .select("id", { count: "exact", head: true })
           .gte("meeting_date", today);
+        if (isRestrictedProgrammer && teamId) q = q.eq("team_id", teamId);
+        return q;
       })(),
     ]),
 
-    // Recent call reports from ALL teams
-    supabase
-      .from("call_reports")
-      .select(
-        `
-        id,
-        call_report_id,
-        working_title,
-        writer_name,
-        meeting_date,
-        logline,
-        call_report_writers:call_report_writers (
-          writer_id,
-          writer_email,
-          writer_phone,
-          display_order,
-          writer:writers(name)
-        )
-      `
-      )
-      .eq("meeting_type", "call_report")
-      .order("meeting_date", { ascending: false })
-      .limit(5),
+    // Recent call reports
+    (async () => {
+      let q = supabase
+        .from("call_reports")
+        .select(`
+          id, call_report_id, working_title, writer_name, meeting_date, logline,
+          call_report_writers:call_report_writers (
+            writer_id, writer_email, writer_phone, display_order, writer:writers(name)
+          )
+        `)
+        .eq("meeting_type", "call_report")
+        .order("meeting_date", { ascending: false })
+        .limit(5);
+      if (isRestrictedProgrammer && teamId) q = q.eq("team_id", teamId);
+      return q;
+    })(),
 
-    // Recent evaluations from programmer team
-    supabase
-      .from("evaluator_forms")
-      .select(
-        `
-        *,
-        call_report:call_report_id (
-          id,
-          call_report_id,
-          working_title,
-          writer_name,
-          meeting_date,
-          team_id,
-          team:teams(id, name, team_type)
-        ),
-        evaluator:users!evaluator_id!inner (
-          name,
-          role
-        )
-      `
-      )
-      .eq("evaluator.role", "programmer")
-      .order("created_at", { ascending: false })
-      .limit(5),
+    // Recent evaluations (team-scoped for restricted, all programmers for regular)
+    (async () => {
+      if (isRestrictedProgrammer) {
+        return supabase
+          .from("evaluator_forms")
+          .select(`
+            *,
+            call_report:call_report_id (
+              id, call_report_id, working_title, writer_name, meeting_date, team_id,
+              team:teams(id, name, team_type)
+            ),
+            evaluator:users!evaluator_id (name)
+          `)
+          .in("evaluator_id", teamMemberIds)
+          .order("created_at", { ascending: false })
+          .limit(5);
+      }
+      return supabase
+        .from("evaluator_forms")
+        .select(`
+          *,
+          call_report:call_report_id (
+            id, call_report_id, working_title, writer_name, meeting_date, team_id,
+            team:teams(id, name, team_type)
+          ),
+          evaluator:users!evaluator_id!inner (name, role)
+        `)
+        .eq("evaluator.role", "programmer")
+        .order("created_at", { ascending: false })
+        .limit(5);
+    })(),
 
-    // Production metrics - NO TEAM FILTER (global access for programmers)
-    getProductionMetrics(),
+    // Production metrics
+    isRestrictedProgrammer && teamId ? getProductionMetrics(teamId, userRole) : getProductionMetrics(),
   ]);
 
   // Extract counts from stats data

@@ -398,6 +398,46 @@ export async function getAllProgrammerEvaluationsGrouped(): Promise<
 }
 
 /**
+ * Get evaluations for all members of a specific team, grouped by call_report_id.
+ * Used for restricted programmers (management-team) who see only their own team's evaluations.
+ */
+export async function getTeamEvaluationsGrouped(teamId: string): Promise<
+  Map<string, Array<{ evaluator_id: string; evaluator_name: string; average_score: number | null; decision: string | null }>>
+> {
+  const supabase = await createClient();
+
+  // Get all user IDs in this team
+  const { data: teamMembers } = await supabase
+    .from("users")
+    .select("id")
+    .eq("team_id", teamId);
+
+  const map = new Map<string, Array<{ evaluator_id: string; evaluator_name: string; average_score: number | null; decision: string | null }>>();
+  if (!teamMembers || teamMembers.length === 0) return map;
+
+  const teamMemberIds = teamMembers.map((u) => u.id);
+
+  const { data, error } = await supabase
+    .from("call_report_evaluations_with_type")
+    .select("call_report_id, evaluator_id, evaluator_name, average_score, decision")
+    .in("evaluator_id", teamMemberIds)
+    .order("created_at", { ascending: false });
+
+  if (error) throw new Error(`Failed to fetch team evaluations: ${error.message}`);
+
+  for (const row of data ?? []) {
+    if (!map.has(row.call_report_id)) map.set(row.call_report_id, []);
+    map.get(row.call_report_id)!.push({
+      evaluator_id: row.evaluator_id,
+      evaluator_name: row.evaluator_name,
+      average_score: row.average_score,
+      decision: row.decision,
+    });
+  }
+  return map;
+}
+
+/**
  * Get segregated episodic evaluations (evaluator vs management)
  * Uses the episodic_evaluations_with_type view created in migration
  */

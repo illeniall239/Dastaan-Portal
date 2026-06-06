@@ -12,6 +12,7 @@ import {
   Share2,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { PendingEvaluationsNotification } from "@/components/evaluations/pending-evaluations-notification";
 import { Suspense } from "react";
 import { NotificationSkeleton } from "@/components/skeletons/notification-skeleton";
@@ -68,7 +69,8 @@ async function DashboardContent({ userId }: { userId: string }) {
   const supabase = await createClient();
 
   // STEP 1: Get current user's team_id FIRST for team isolation
-  const { data: currentUser } = await supabase
+  const adminClient = createAdminClient();
+  const { data: currentUser } = await adminClient
     .from("users")
     .select("team_id, role")
     .eq("id", userId)
@@ -78,7 +80,20 @@ async function DashboardContent({ userId }: { userId: string }) {
     throw new Error("User not found");
   }
 
-  const hasGlobalAccess = ["admin", "management"].includes(currentUser.role);
+  // Resolve team_type via admin client to bypass RLS on teams table
+  let teamType: string | null = null;
+  if (currentUser.team_id) {
+    const { data: team } = await adminClient
+      .from("teams")
+      .select("team_type")
+      .eq("id", currentUser.team_id)
+      .single();
+    teamType = team?.team_type ?? null;
+  }
+
+  // Evaluators on management teams get global access (same as programmer role)
+  const hasGlobalAccess = ["admin", "management"].includes(currentUser.role)
+    || (currentUser.role === "evaluator" && teamType === "management");
 
   // Fetch ALL data in parallel for maximum performance
   const [statsData, pendingData, completedData, productionMetrics, crossTeamSharesData] = await Promise.all([
@@ -104,7 +119,7 @@ async function DashboardContent({ userId }: { userId: string }) {
       // Pending evaluations count
       supabase.rpc("get_pending_evaluations_count", {
         evaluator_user_id: userId,
-        team_id_filter: currentUser.team_id,
+        team_id_filter: hasGlobalAccess ? null : currentUser.team_id,
       }),
       // Upcoming scheduled meetings count
       (async () => {
@@ -203,8 +218,8 @@ async function DashboardContent({ userId }: { userId: string }) {
       .order("created_at", { ascending: false })
       .limit(5),
 
-    // Production metrics - WITH TEAM FILTER (evaluators see only their team)
-    getProductionMetrics(currentUser.team_id, currentUser.role),
+    // Production metrics - global-access evaluators see all teams
+    getProductionMetrics(hasGlobalAccess ? null : currentUser.team_id, currentUser.role),
 
     // Cross-team shares for this user's team
     (async () => {

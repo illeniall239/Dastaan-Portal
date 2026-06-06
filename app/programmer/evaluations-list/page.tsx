@@ -2,9 +2,10 @@ import { getCurrentUser } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { getAllCallReports, type CallReportWithRelations } from "@/lib/meetings/server";
-import { getEvaluationsByEvaluator, getAllProgrammerEvaluationsGrouped } from "@/lib/evaluations/server";
+import { getEvaluationsByEvaluator, getAllProgrammerEvaluationsGrouped, getTeamEvaluationsGrouped } from "@/lib/evaluations/server";
 import { calculateEvaluationProgress } from "@/lib/evaluations/progress";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { BackButton } from "@/components/ui/back-button";
 import { EvaluationSearchableList, type EnrichedReport } from "@/components/evaluations/evaluation-searchable-list";
 
@@ -30,6 +31,25 @@ export default async function ProgrammerEvaluationsListPage({ searchParams }: { 
     decision?: 'approve' | 'reject' | 'needs_improvement';
   }
 
+  // Determine if this programmer is on a management team (restricted: own team's evaluations only)
+  // Use admin client to bypass RLS on teams table
+  const adminClient = createAdminClient();
+  const { data: userProfile } = await adminClient
+    .from("users")
+    .select("team_id")
+    .eq("id", user.id)
+    .single();
+
+  let isRestrictedProgrammer = false;
+  if (user.role === "programmer" && userProfile?.team_id) {
+    const { data: team } = await adminClient
+      .from("teams")
+      .select("team_type")
+      .eq("id", userProfile.team_id)
+      .single();
+    isRestrictedProgrammer = team?.team_type === "management";
+  }
+
   // Fetch all call reports (programmers see ALL teams)
   let callReports: CallReportWithRelations[] = [];
   try {
@@ -47,17 +67,20 @@ export default async function ProgrammerEvaluationsListPage({ searchParams }: { 
   }
   const myEvaluatedReportIds = new Set(myEvaluations.map(e => e.call_report_id));
 
-  // Fetch all programmer team evaluations (grouped by call_report_id)
+  // Fetch evaluations grouped by call_report_id
+  // Restricted programmers (management-team) see only their own team's evaluations
+  // Regular programmers see all programmer-role evaluations across all teams
   let teamEvaluationsMap = new Map<string, Array<{ evaluator_id: string; evaluator_name: string; average_score: number | null; decision: string | null }>>();
   try {
-    teamEvaluationsMap = await getAllProgrammerEvaluationsGrouped();
+    teamEvaluationsMap = isRestrictedProgrammer && userProfile?.team_id
+      ? await getTeamEvaluationsGrouped(userProfile.team_id)
+      : await getAllProgrammerEvaluationsGrouped();
   } catch (error) {
     console.error("Error fetching team evaluations:", error);
   }
   const evaluatedByTeamReportIds = new Set(teamEvaluationsMap.keys());
 
   // Fetch evaluation drafts
-  const supabase = await createClient();
 
   interface DraftData {
     call_report_id: string;
@@ -66,6 +89,7 @@ export default async function ProgrammerEvaluationsListPage({ searchParams }: { 
 
   let myDrafts: DraftData[] = [];
   try {
+    const supabase = await createClient();
     const { data: drafts, error: draftsError } = await supabase
       .from("evaluator_form_drafts")
       .select("call_report_id, draft_data")

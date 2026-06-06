@@ -608,6 +608,7 @@ export interface StoryApprovalStatus {
   canCurrentUserApprove: boolean;
   currentUserApproval?: StoryApproval | null;
   isCurrentUserMandatoryApprover: boolean; // true for Humera/Salman only
+  isVetoApproved?: boolean; // true if mir approved (veto path)
   currentUserName?: string | null;
   currentRevisionId?: string | null;
   approvalHistory?: ApprovalHistoryRound[];

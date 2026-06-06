@@ -13,6 +13,7 @@ const roleUpdateSchema = z.object({
     "content_manager",
     "gcm",
     "evaluator",
+    "programmer",
     "executive",
     "legal",
     "finance",
