@@ -56,11 +56,6 @@ const programmerNavItems = [
     icon: "clock",
   },
   {
-    title: "Story Feedback",
-    href: "/programmer/story-feedback",
-    icon: "messageSquarePlus",
-  },
-  {
     title: "Idea Roadmap",
     href: "/programmer/roadmap",
     icon: "map",
