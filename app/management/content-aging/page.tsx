@@ -434,7 +434,7 @@ export default function ContentAgingPage() {
           <TargetAgingTable projects={filtered} visibleEvaluators={visibleEvaluators} visibleOneLinerAssessors={visibleOneLinerAssessors} />
         ) : (
           <table className="w-full text-sm border-collapse" style={{ minWidth }}>
-            <thead>
+            <thead className="sticky top-0 z-[15]">
               {/* Row 1: group/role labels */}
               <tr className="bg-muted/80">
                 <Th sticky left={0} width={W_NUM} rowSpan={3}>#</Th>
@@ -652,7 +652,7 @@ function TargetAgingTable({ projects, visibleEvaluators, visibleOneLinerAssessor
 
   return (
     <table className="w-full text-sm border-collapse" style={{ minWidth }}>
-      <thead>
+      <thead className="sticky top-0 z-[15]">
         {/* Row 1: level group headers (Management / Programming / Evaluator) */}
         <tr className="bg-muted/80">
           <Th sticky left={0} width={W_NUM} rowSpan={3}>#</Th>
@@ -807,7 +807,7 @@ function Th({
   return (
     <th
       rowSpan={rowSpan}
-      className={`px-2 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap border-b border-r border-border ${center ? "text-center" : ""} ${sticky ? "sticky z-10 bg-muted/60" : ""} ${className ?? ""}`}
+      className={`px-2 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap border-b border-r border-border ${center ? "text-center" : ""} ${sticky ? "sticky z-[25] bg-muted/60" : ""} ${className ?? ""}`}
       style={{
         left: sticky ? left : undefined,
         minWidth: width,

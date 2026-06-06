@@ -127,16 +127,16 @@ export function EvaluationPipelineTable({ data }: EvaluationPipelineTableProps) 
             No items found.
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          <div className="overflow-auto max-h-[60vh]">
             <table className="w-full text-xs">
               <thead>
-                <tr className="border-b bg-slate-50">
-                  <th className="text-left px-4 py-2 text-[10px] uppercase tracking-wide text-slate-400 font-medium">Call Report</th>
-                  <th className="text-left px-4 py-2 text-[10px] uppercase tracking-wide text-slate-400 font-medium">Team</th>
-                  <th className="text-center px-4 py-2 text-[10px] uppercase tracking-wide text-slate-400 font-medium">Progress</th>
-                  <th className="text-center px-4 py-2 text-[10px] uppercase tracking-wide text-slate-400 font-medium">Status</th>
-                  <th className="text-center px-4 py-2 text-[10px] uppercase tracking-wide text-slate-400 font-medium">Deadline</th>
-                  <th className="text-center px-4 py-2 text-[10px] uppercase tracking-wide text-slate-400 font-medium">Pending</th>
+                <tr className="border-b bg-slate-50 sticky top-0 z-10">
+                  <th className="text-left px-4 py-2 text-[10px] uppercase tracking-wide text-slate-400 font-medium sticky left-0 z-20 bg-slate-50 shadow-[2px_0_5px_rgba(0,0,0,0.06)]">Call Report</th>
+                  <th className="text-left px-4 py-2 text-[10px] uppercase tracking-wide text-slate-400 font-medium bg-slate-50">Team</th>
+                  <th className="text-center px-4 py-2 text-[10px] uppercase tracking-wide text-slate-400 font-medium bg-slate-50">Progress</th>
+                  <th className="text-center px-4 py-2 text-[10px] uppercase tracking-wide text-slate-400 font-medium bg-slate-50">Status</th>
+                  <th className="text-center px-4 py-2 text-[10px] uppercase tracking-wide text-slate-400 font-medium bg-slate-50">Deadline</th>
+                  <th className="text-center px-4 py-2 text-[10px] uppercase tracking-wide text-slate-400 font-medium bg-slate-50">Pending</th>
                 </tr>
               </thead>
               <tbody className="divide-y">
@@ -151,7 +151,7 @@ export function EvaluationPipelineTable({ data }: EvaluationPipelineTableProps) 
                         : "hover:bg-slate-50"
                     }
                   >
-                    <td className="px-4 py-2.5">
+                    <td className={`px-4 py-2.5 sticky left-0 z-[9] shadow-[2px_0_5px_rgba(0,0,0,0.06)] ${item.is_overdue ? "bg-red-50" : item.is_near_deadline ? "bg-amber-50" : "bg-white"}`}>
                       <div>
                         <p className="font-medium text-slate-800 leading-tight">{item.working_title}</p>
                         <p className="text-slate-400 text-[10px] mt-0.5">{item.call_report_id}</p>

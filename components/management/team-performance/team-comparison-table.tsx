@@ -79,10 +79,10 @@ export function TeamComparisonTable({ teams, filteredType }: TeamComparisonTable
       <CardContent>
         <div className="rounded-md border overflow-hidden">
           <div className="overflow-x-auto max-w-full">
-            <Table className="text-sm">
+            <Table className="text-sm" wrapperClassName="max-h-[60vh]">
               <TableHeader>
-                <TableRow>
-                  <TableHead className="text-xs">
+                <TableRow className="sticky top-0 z-10 bg-white">
+                  <TableHead className="text-xs sticky left-0 z-20 bg-white shadow-[2px_0_5px_rgba(0,0,0,0.06)]">
                     <Button
                       variant="ghost"
                       size="sm"
@@ -160,7 +160,7 @@ export function TeamComparisonTable({ teams, filteredType }: TeamComparisonTable
                 ) : (
                   sortedTeams.map((team) => (
                     <TableRow key={team.team_id} className="hover:bg-teal-50/50">
-                      <TableCell className="font-medium">{team.team_name}</TableCell>
+                      <TableCell className="font-medium sticky left-0 z-[9] bg-white shadow-[2px_0_5px_rgba(0,0,0,0.06)]">{team.team_name}</TableCell>
                       <TableCell className="text-center">{team.team_member_count || 0}</TableCell>
                       <TableCell className="text-center font-semibold">{team.call_reports_created || 0}</TableCell>
                       <TableCell className="text-center font-semibold">{team.evaluations_completed || 0}</TableCell>

@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -430,11 +430,11 @@ export function StatusUpdaterTable({ ideas, role, readOnly = false }: StatusUpda
           ← Scroll horizontally to view all columns →
         </div>
         <div className="rounded-lg border border-slate-200 overflow-hidden">
-          <div className="overflow-x-auto">
-            <Table className="border-separate border-spacing-0">
+          <div className="overflow-auto max-h-[80vh]">
+            <table className="w-full caption-bottom text-sm border-separate border-spacing-0">
               <TableHeader>
-                <TableRow className="bg-slate-50/80 hover:bg-slate-50/80">
-                  <TableHead className="font-bold text-slate-700 text-center border-r border-b whitespace-nowrap w-12">
+                <TableRow className="bg-slate-50/80 hover:bg-slate-50/80 sticky top-0 z-10">
+                  <TableHead className="font-bold text-slate-700 text-center border-r border-b whitespace-nowrap w-12 sticky left-0 z-20 bg-slate-50">
                     <div className="flex items-center justify-center">
                       <Checkbox
                         checked={
@@ -455,7 +455,7 @@ export function StatusUpdaterTable({ ideas, role, readOnly = false }: StatusUpda
                       />
                     </div>
                   </TableHead>
-                  <TableHead className="font-bold text-slate-700 text-center border-r border-b whitespace-nowrap">Sr #</TableHead>
+                  <TableHead className="font-bold text-slate-700 text-center border-r border-b whitespace-nowrap sticky left-12 z-20 bg-slate-50 shadow-[2px_0_5px_rgba(0,0,0,0.06)]">Sr #</TableHead>
                   <TableHead className="font-bold text-slate-700 border-r border-b whitespace-nowrap">Person in Charge</TableHead>
                   <TableHead className="font-bold text-slate-700 cursor-pointer border-r border-b whitespace-nowrap" onClick={() => handleSort("title")}>Title</TableHead>
                   <TableHead className="font-bold text-slate-700 border-b whitespace-nowrap">Writer</TableHead>
@@ -505,7 +505,7 @@ export function StatusUpdaterTable({ ideas, role, readOnly = false }: StatusUpda
                       }}
                     >
                       {/* Selection checkbox */}
-                      <TableCell className="text-center text-xs font-semibold text-slate-500 border-r border-b w-12">
+                      <TableCell className="text-center text-xs font-semibold text-slate-500 border-r border-b w-12 sticky left-0 z-[9]" style={{ backgroundColor: stageColors.bg ? `${stageColors.bg}15` : '#ffffff' }}>
                         <div className="flex items-center justify-center">
                           <Checkbox
                             checked={selectedIds.has(idea.id)}
@@ -523,7 +523,7 @@ export function StatusUpdaterTable({ ideas, role, readOnly = false }: StatusUpda
                         </div>
                       </TableCell>
                       {/* Sr # */}
-                      <TableCell className="text-center text-xs font-semibold text-slate-500 border-r border-b">
+                      <TableCell className="text-center text-xs font-semibold text-slate-500 border-r border-b sticky left-12 z-[9] shadow-[2px_0_5px_rgba(0,0,0,0.06)]" style={{ backgroundColor: stageColors.bg ? `${stageColors.bg}15` : '#ffffff' }}>
                         {index + 1}
                       </TableCell>
 
@@ -847,7 +847,7 @@ export function StatusUpdaterTable({ ideas, role, readOnly = false }: StatusUpda
                   );
                 })}
               </TableBody>
-            </Table>
+            </table>
           </div>
         </div>
 

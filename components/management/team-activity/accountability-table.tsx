@@ -85,7 +85,7 @@ function TeamRows({ team }: { team: TeamData }) {
         className={`border-b border-slate-100 transition-colors ${hasMembers ? "cursor-pointer hover:bg-slate-50" : ""} group`}
         onClick={() => hasMembers && setOpen(o => !o)}
       >
-        <td className="px-4 py-3">
+        <td className="px-4 py-3 sticky left-0 z-[9] bg-white shadow-[2px_0_5px_rgba(0,0,0,0.06)]">
           <div className="flex items-center gap-2 min-w-0">
             <div className="w-4 shrink-0 flex items-center justify-center">
               {hasMembers ? (
@@ -145,7 +145,7 @@ function TeamRows({ team }: { team: TeamData }) {
       {/* Member rows */}
       {open && team.members.map(m => (
         <tr key={m.user_id} className="border-b border-slate-100 bg-slate-50/60 hover:bg-slate-50">
-          <td className="px-4 py-2 pl-12">
+          <td className="px-4 py-2 pl-12 sticky left-0 z-[9] bg-slate-50 shadow-[2px_0_5px_rgba(0,0,0,0.06)]">
             <div className="flex items-center gap-2 min-w-0">
               <div className="relative shrink-0">
                 <div className="h-6 w-6 rounded-full bg-slate-200 flex items-center justify-center">
@@ -221,19 +221,19 @@ export function AccountabilityTable({ data }: AccountabilityTableProps) {
             No team data found.
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          <div className="overflow-auto max-h-[70vh]">
             <table className="w-full text-xs">
               <thead>
-                <tr className="border-b bg-slate-50">
-                  <th className="px-4 py-2 text-left text-[10px] uppercase tracking-wide text-slate-400 font-medium">Team / Member</th>
-                  <th className="px-4 py-2 text-center text-[10px] uppercase tracking-wide text-slate-400 font-medium whitespace-nowrap">New Ideas Logged</th>
-                  <th className="px-4 py-2 text-center text-[10px] uppercase tracking-wide text-slate-400 font-medium whitespace-nowrap">Evals Done</th>
-                  <th className="px-4 py-2 text-center text-[10px] uppercase tracking-wide text-amber-500 font-medium whitespace-nowrap">Pending Evals</th>
-                  <th className="px-4 py-2 text-center text-[10px] uppercase tracking-wide text-slate-400 font-medium whitespace-nowrap">Eps Logged</th>
-                  <th className="px-4 py-2 text-center text-[10px] uppercase tracking-wide text-slate-400 font-medium whitespace-nowrap">Eps Eval</th>
+                <tr className="border-b bg-slate-50 sticky top-0 z-10">
+                  <th className="px-4 py-2 text-left text-[10px] uppercase tracking-wide text-slate-400 font-medium sticky left-0 z-20 bg-slate-50 shadow-[2px_0_5px_rgba(0,0,0,0.06)]">Team / Member</th>
+                  <th className="px-4 py-2 text-center text-[10px] uppercase tracking-wide text-slate-400 font-medium whitespace-nowrap bg-slate-50">New Ideas Logged</th>
+                  <th className="px-4 py-2 text-center text-[10px] uppercase tracking-wide text-slate-400 font-medium whitespace-nowrap bg-slate-50">Evals Done</th>
+                  <th className="px-4 py-2 text-center text-[10px] uppercase tracking-wide text-amber-500 font-medium whitespace-nowrap bg-slate-50">Pending Evals</th>
+                  <th className="px-4 py-2 text-center text-[10px] uppercase tracking-wide text-slate-400 font-medium whitespace-nowrap bg-slate-50">Eps Logged</th>
+                  <th className="px-4 py-2 text-center text-[10px] uppercase tracking-wide text-slate-400 font-medium whitespace-nowrap bg-slate-50">Eps Eval</th>
                   {/* Pending Eps Eval column hidden for now — data available via pending_eps_evals */}
-                  <th className="px-4 py-2 text-right text-[10px] uppercase tracking-wide text-slate-400 font-medium hidden md:table-cell whitespace-nowrap">Last Login</th>
-                  <th className="px-4 py-2 text-right text-[10px] uppercase tracking-wide text-slate-400 font-medium hidden md:table-cell whitespace-nowrap">Median Session</th>
+                  <th className="px-4 py-2 text-right text-[10px] uppercase tracking-wide text-slate-400 font-medium hidden md:table-cell whitespace-nowrap bg-slate-50">Last Login</th>
+                  <th className="px-4 py-2 text-right text-[10px] uppercase tracking-wide text-slate-400 font-medium hidden md:table-cell whitespace-nowrap bg-slate-50">Median Session</th>
                 </tr>
               </thead>
               <tbody>

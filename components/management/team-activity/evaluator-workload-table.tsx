@@ -50,17 +50,17 @@ export function EvaluatorWorkloadTable({ data }: EvaluatorWorkloadTableProps) {
             No evaluator data found.
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          <div className="overflow-auto max-h-[60vh]">
             <table className="w-full text-xs">
               <thead>
-                <tr className="border-b bg-slate-50">
-                  <th className="text-left px-4 py-2 text-[10px] uppercase tracking-wide text-slate-400 font-medium">Evaluator</th>
-                  <th className="text-left px-4 py-2 text-[10px] uppercase tracking-wide text-slate-400 font-medium">Team</th>
-                  <th className="text-center px-4 py-2 text-[10px] uppercase tracking-wide text-slate-400 font-medium">Assigned</th>
-                  <th className="text-center px-4 py-2 text-[10px] uppercase tracking-wide text-slate-400 font-medium">Completed</th>
-                  <th className="text-center px-4 py-2 text-[10px] uppercase tracking-wide text-slate-400 font-medium">Pending</th>
-                  <th className="text-center px-4 py-2 text-[10px] uppercase tracking-wide text-slate-400 font-medium">Overdue</th>
-                  <th className="text-left px-4 py-2 text-[10px] uppercase tracking-wide text-slate-400 font-medium w-32">Load</th>
+                <tr className="border-b bg-slate-50 sticky top-0 z-10">
+                  <th className="text-left px-4 py-2 text-[10px] uppercase tracking-wide text-slate-400 font-medium sticky left-0 z-20 bg-slate-50 shadow-[2px_0_5px_rgba(0,0,0,0.06)]">Evaluator</th>
+                  <th className="text-left px-4 py-2 text-[10px] uppercase tracking-wide text-slate-400 font-medium bg-slate-50">Team</th>
+                  <th className="text-center px-4 py-2 text-[10px] uppercase tracking-wide text-slate-400 font-medium bg-slate-50">Assigned</th>
+                  <th className="text-center px-4 py-2 text-[10px] uppercase tracking-wide text-slate-400 font-medium bg-slate-50">Completed</th>
+                  <th className="text-center px-4 py-2 text-[10px] uppercase tracking-wide text-slate-400 font-medium bg-slate-50">Pending</th>
+                  <th className="text-center px-4 py-2 text-[10px] uppercase tracking-wide text-slate-400 font-medium bg-slate-50">Overdue</th>
+                  <th className="text-left px-4 py-2 text-[10px] uppercase tracking-wide text-slate-400 font-medium w-32 bg-slate-50">Load</th>
                 </tr>
               </thead>
               <tbody className="divide-y">
@@ -69,7 +69,7 @@ export function EvaluatorWorkloadTable({ data }: EvaluatorWorkloadTableProps) {
                     key={item.evaluator_id}
                     className={item.overdue > 0 ? "bg-red-50 hover:bg-red-100/50" : "hover:bg-slate-50"}
                   >
-                    <td className="px-4 py-2.5">
+                    <td className="px-4 py-2.5 sticky left-0 z-[9] bg-white shadow-[2px_0_5px_rgba(0,0,0,0.06)]">
                       <div className="flex items-center gap-2">
                         <div className="h-6 w-6 rounded-full bg-slate-200 flex items-center justify-center shrink-0">
                           <span className="text-[10px] font-medium text-slate-600">

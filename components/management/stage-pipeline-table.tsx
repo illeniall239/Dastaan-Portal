@@ -213,10 +213,10 @@ export function StagePipelineTable({ stories, onStoryClick }: StagePipelineTable
       {/* Table */}
       <Card>
         <div className="overflow-x-auto">
-          <Table>
+          <Table wrapperClassName="max-h-[70vh]">
             <TableHeader>
-              <TableRow className="bg-slate-50">
-                <TableHead className="w-[250px]">
+              <TableRow className="bg-slate-50 sticky top-0 z-10">
+                <TableHead className="w-[250px] sticky left-0 z-20 bg-slate-50 shadow-[2px_0_5px_rgba(0,0,0,0.06)]">
                   <Button
                     variant="ghost"
                     size="sm"
@@ -279,7 +279,7 @@ export function StagePipelineTable({ stories, onStoryClick }: StagePipelineTable
                       onClick={() => onStoryClick(story)}
                     >
                       {/* Story Details */}
-                      <TableCell>
+                      <TableCell className="sticky left-0 z-[9] bg-white shadow-[2px_0_5px_rgba(0,0,0,0.06)]">
                         <div>
                           <div className="text-base font-bold leading-relaxed text-slate-900 mb-1">
                             {story.title}

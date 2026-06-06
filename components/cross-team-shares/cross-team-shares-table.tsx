@@ -169,19 +169,19 @@ export function CrossTeamSharesTable({ readOnly = false }: CrossTeamSharesTableP
           </CardTitle>
         </CardHeader>
         <CardContent className="p-0">
-          <div className="overflow-x-auto">
+          <div className="overflow-auto max-h-[70vh]">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b bg-gray-50/80">
-                  <th className="text-left p-3 font-medium text-gray-600">Project</th>
-                  <th className="text-left p-3 font-medium text-gray-600">From Team</th>
-                  <th className="text-left p-3 font-medium text-gray-600">To Team</th>
-                  <th className="text-left p-3 font-medium text-gray-600">Requested By</th>
-                  <th className="text-left p-3 font-medium text-gray-600">Requested At</th>
-                  <th className="text-left p-3 font-medium text-gray-600">Status</th>
-                  <th className="text-left p-3 font-medium text-gray-600">Evaluations</th>
-                  <th className="text-left p-3 font-medium text-gray-600">Time Taken</th>
-                  {!readOnly && <th className="text-left p-3 font-medium text-gray-600">Actions</th>}
+                <tr className="border-b bg-gray-50/80 sticky top-0 z-10">
+                  <th className="text-left p-3 font-medium text-gray-600 sticky left-0 z-20 bg-gray-50 shadow-[2px_0_5px_rgba(0,0,0,0.06)]">Project</th>
+                  <th className="text-left p-3 font-medium text-gray-600 bg-gray-50">From Team</th>
+                  <th className="text-left p-3 font-medium text-gray-600 bg-gray-50">To Team</th>
+                  <th className="text-left p-3 font-medium text-gray-600 bg-gray-50">Requested By</th>
+                  <th className="text-left p-3 font-medium text-gray-600 bg-gray-50">Requested At</th>
+                  <th className="text-left p-3 font-medium text-gray-600 bg-gray-50">Status</th>
+                  <th className="text-left p-3 font-medium text-gray-600 bg-gray-50">Evaluations</th>
+                  <th className="text-left p-3 font-medium text-gray-600 bg-gray-50">Time Taken</th>
+                  {!readOnly && <th className="text-left p-3 font-medium text-gray-600 bg-gray-50">Actions</th>}
                 </tr>
               </thead>
               <tbody>
@@ -194,7 +194,7 @@ export function CrossTeamSharesTable({ readOnly = false }: CrossTeamSharesTableP
                 ) : (
                   filteredShares.map(share => (
                     <tr key={share.id} className="border-b hover:bg-gray-50/50">
-                      <td className="p-3">
+                      <td className="p-3 sticky left-0 z-[9] bg-white shadow-[2px_0_5px_rgba(0,0,0,0.06)]">
                         <div className="font-medium text-gray-900">
                           {(share as any).call_report?.working_title || 'Untitled'}
                         </div>
