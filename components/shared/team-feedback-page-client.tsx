@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { ChevronDown, ChevronRight, Users, Search, Eye } from "lucide-react";
+import { ChevronDown, ChevronRight, Users, Search, Eye, Paperclip, FileText, Image as ImageIcon, File } from "lucide-react";
 
 type Team = "programming" | "management";
 
@@ -59,6 +59,21 @@ interface EpisodeEntry {
   evaluations: EpisodeEvalEntry[];
 }
 
+interface ProgrammerFeedbackAttachment {
+  id: string;
+  file_name: string;
+  file_path: string;
+  file_type: string;
+}
+
+interface ProgrammerFeedbackEntry {
+  id: string;
+  feedback_date: string;
+  content: string | null;
+  programmer: { name: string } | null;
+  attachments: ProgrammerFeedbackAttachment[];
+}
+
 interface StoryEntry {
   id: string;
   workingTitle: string;
@@ -67,6 +82,7 @@ interface StoryEntry {
   genre: string | null;
   evaluations: EvalEntry[];
   episodes: EpisodeEntry[];
+  programmerFeedback?: ProgrammerFeedbackEntry[];
 }
 
 interface TeamFeedbackPageClientProps {
@@ -566,6 +582,87 @@ function EpisodeSection({ episode }: { episode: EpisodeEntry }) {
   );
 }
 
+// ── Programmer Feedback section ─────────────────────────────────────────────
+
+function getAttachmentIcon(fileType: string) {
+  if (fileType.startsWith("image/")) return <ImageIcon className="h-3 w-3" />;
+  if (fileType.includes("pdf")) return <FileText className="h-3 w-3" />;
+  return <File className="h-3 w-3" />;
+}
+
+function getPublicUrl(filePath: string): string {
+  const base = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
+  return `${base}/storage/v1/object/public/attachments/${filePath}`;
+}
+
+function formatFeedbackDate(dateStr: string): string {
+  const d = new Date(dateStr + "T00:00:00");
+  return d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+}
+
+function ProgrammerFeedbackSection({ entries }: { entries: ProgrammerFeedbackEntry[] }) {
+  const [open, setOpen] = useState(false);
+
+  if (entries.length === 0) return null;
+
+  return (
+    <div>
+      <button
+        type="button"
+        onClick={() => setOpen(v => !v)}
+        className="flex items-center gap-2 text-xs font-semibold text-slate-500 uppercase tracking-wide pb-2 hover:text-slate-700 transition-colors"
+      >
+        {open ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+        <Paperclip className="h-3.5 w-3.5" />
+        Programmer Feedback
+        <span className="text-[11px] font-normal text-muted-foreground normal-case tracking-normal">
+          ({entries.length} {entries.length === 1 ? "entry" : "entries"})
+        </span>
+      </button>
+
+      {open && (
+        <div className="space-y-2">
+          {entries.map((entry) => (
+            <div key={entry.id} className="border border-blue-100 bg-blue-50/40 rounded-lg p-3 space-y-2">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-xs font-semibold text-blue-800 bg-blue-100 px-2 py-0.5 rounded">
+                  {formatFeedbackDate(entry.feedback_date)}
+                </span>
+                {entry.programmer?.name && (
+                  <span className="text-xs text-muted-foreground">{entry.programmer.name}</span>
+                )}
+              </div>
+
+              {entry.content && (
+                <p className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed">
+                  {entry.content}
+                </p>
+              )}
+
+              {entry.attachments.length > 0 && (
+                <div className="flex flex-wrap gap-1.5">
+                  {entry.attachments.map((att) => (
+                    <a
+                      key={att.id}
+                      href={getPublicUrl(att.file_path)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-xs px-2 py-1 bg-white hover:bg-slate-50 rounded border border-slate-200 transition-colors"
+                    >
+                      {getAttachmentIcon(att.file_type)}
+                      <span className="truncate max-w-[160px]">{att.file_name}</span>
+                    </a>
+                  ))}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Story row ───────────────────────────────────────────────────────────────
 
 function StoryRow({ story }: { story: StoryEntry }) {
@@ -630,6 +727,11 @@ function StoryRow({ story }: { story: StoryEntry }) {
                 {story.episodes.map(ep => <EpisodeSection key={ep.id} episode={ep} />)}
               </div>
             </div>
+          )}
+
+          {/* Programmer feedback */}
+          {(story.programmerFeedback?.length ?? 0) > 0 && (
+            <ProgrammerFeedbackSection entries={story.programmerFeedback!} />
           )}
         </div>
       )}

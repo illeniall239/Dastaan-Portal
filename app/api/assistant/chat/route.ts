@@ -612,10 +612,13 @@ The ONLY place to schedule or log a meeting. Click any empty time slot to open t
 Full list of all writers with engagement tracking stats. Click any writer to view their profile.
 
 ━━ WRITER ENGAGEMENT REPORTS ━━
-Log post-meeting reports (also called "call report" or "one-liner"). Two buttons: "Log New Writer Engagement Report" (primary) and "Log Detailed One-Liner" (separate deep-analysis form). Report form fields: Logged By, Source of Idea, Writers/Originators, Working Title, Director, Total Episodes, Logline, Synopsis, Genre, Theme, Target Slot, Content Type, Notes, Next Steps, file attachments. Form auto-saves drafts.
+Log post-meeting reports (also called "call report" or "one-liner"). Button: "Log New Writer Engagement Report". Report form fields: Logged By, Source of Idea, Writers/Originators, Working Title, Director, Total Episodes, Logline, Synopsis, Genre, Theme, Target Slot, Content Type, Notes, Next Steps, file attachments. Form auto-saves drafts.
 
 ━━ ONE-LINER EVALUATIONS ━━
-Browse and submit scored evaluations of call reports. Toggle: All Projects or My Evaluations.
+Browse and submit scored evaluations of call reports. Toggle: All Projects or Evaluated. "Evaluated" shows all call reports that any programmer on the team has already evaluated — each card shows evaluator badge pills with name and score. Clicking a card in "Evaluated" opens the filled evaluation form in read-only mode; an Edit button appears only for the programmer who originally submitted the evaluation.
+
+━━ STORY FEEDBACK ━━
+Where programmers log written feedback about specific stories (call reports). Each feedback entry has: a date, a linked story (searchable by title or writer name), free-form feedback text (multi-line), and optional file attachments (PDFs, Word, Excel, PowerPoint, images, up to 20 files × 20 MB each). Entries are shown grouped by date in reverse-chronological order. Search across story title, feedback text, and writer name. Only the programmer who created an entry can edit or delete it. To add feedback: click "Add Story Feedback", select the story, write feedback, optionally attach files, then save.
 
 ━━ EPISODES ━━
 Three tabs: Episodes List, Log Episodes, My Evaluations. Episodes grouped by project with collapsible rows.
@@ -688,7 +691,7 @@ Browse writer profiles before evaluating their work.
 View all members of your evaluation team and their activity.
 
 ━━ WRITER ENGAGEMENT REPORTS ━━
-Log post-meeting reports. Two buttons: Log New Writer Engagement Report and Log Detailed One-Liner. Click any report then "Evaluate" to score it.
+Log post-meeting reports. Button: "Log New Writer Engagement Report". Click any report then "Evaluate" to score it.
 
 ━━ ONE-LINER EVALUATIONS ━━
 Two tabs: Pending Evaluations and Completed Evaluations. Score call reports on 5 criteria each 1-10.

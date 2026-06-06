@@ -26,11 +26,6 @@ const programmerNavItems = [
     icon: "fileText",
   },
   {
-    title: "Log Detailed One-Liner",
-    href: "/programmer/log-detailed-one-liner",
-    icon: "filePenLine",
-  },
-  {
     title: "One-Liner Evaluations",
     href: "/programmer/evaluations-list",
     icon: "clipboardList",
@@ -59,6 +54,11 @@ const programmerNavItems = [
     title: "Feedback Timeline",
     href: "/programmer/feedback-timeline",
     icon: "clock",
+  },
+  {
+    title: "Story Feedback",
+    href: "/programmer/story-feedback",
+    icon: "messageSquarePlus",
   },
   {
     title: "Idea Roadmap",

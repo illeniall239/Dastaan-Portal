@@ -77,6 +77,12 @@ interface EvaluationCardProps {
   } | null;
   currentUserId?: string;
   currentUserRole?: string;
+  teamEvaluations?: Array<{
+    evaluator_id: string;
+    evaluator_name: string;
+    average_score: number | null;
+    decision: string | null;
+  }> | null;
 }
 
 export function EvaluationCard({
@@ -90,6 +96,7 @@ export function EvaluationCard({
   approvalStatus,
   currentUserId,
   currentUserRole,
+  teamEvaluations,
 }: EvaluationCardProps) {
   const hasDraft = draftProgress && draftProgress.percentage > 0;
 
@@ -234,6 +241,22 @@ export function EvaluationCard({
                 </span>
               </div>
             </div>
+            {teamEvaluations && teamEvaluations.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 mt-2">
+                {teamEvaluations.map((ev) => (
+                  <span
+                    key={ev.evaluator_id}
+                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-blue-50 text-blue-700 border border-blue-200"
+                  >
+                    <UserIcon className="h-3 w-3" />
+                    {ev.evaluator_name}
+                    {ev.average_score !== null && (
+                      <span className="font-semibold">&nbsp;{ev.average_score.toFixed(1)}</span>
+                    )}
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
           {hasEvaluated && myScore !== undefined && (
             <div className="text-right">
@@ -404,7 +427,7 @@ export function EvaluationCard({
               currentTeamId={currentTeamId}
             />
           )}
-          {hasEvaluated ? (
+          {hasEvaluated || (teamEvaluations && teamEvaluations.length > 0) ? (
             <Button size="sm" asChild variant="outline">
               <Link href={`/${portalPrefix}/evaluate/${report.id}`}>
                 <FileTextIcon className="h-4 w-4 mr-2" />

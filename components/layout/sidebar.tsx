@@ -26,6 +26,8 @@ import {
   Inbox,
   ChartNoAxesCombined,
   Bell,
+  MessageSquare,
+  MessageSquarePlus,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useSidebar } from "@/lib/providers/sidebar-provider";
@@ -68,6 +70,8 @@ function getIconComponent(iconName: string) {
     inbox: Inbox,
     chartNoAxesCombined: ChartNoAxesCombined,
     bell: Bell,
+    messageSquare: MessageSquare,
+    messageSquarePlus: MessageSquarePlus,
   };
   return icons[iconName] || HomeIcon;
 }

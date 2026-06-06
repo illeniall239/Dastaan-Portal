@@ -2,7 +2,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { getAllCallReports, type CallReportWithRelations } from "@/lib/meetings/server";
-import { getEvaluationsByEvaluator } from "@/lib/evaluations/server";
+import { getEvaluationsByEvaluator, getAllProgrammerEvaluationsGrouped } from "@/lib/evaluations/server";
 import { calculateEvaluationProgress } from "@/lib/evaluations/progress";
 import { createClient } from "@/lib/supabase/server";
 import { BackButton } from "@/components/ui/back-button";
@@ -47,6 +47,15 @@ export default async function ProgrammerEvaluationsListPage({ searchParams }: { 
   }
   const myEvaluatedReportIds = new Set(myEvaluations.map(e => e.call_report_id));
 
+  // Fetch all programmer team evaluations (grouped by call_report_id)
+  let teamEvaluationsMap = new Map<string, Array<{ evaluator_id: string; evaluator_name: string; average_score: number | null; decision: string | null }>>();
+  try {
+    teamEvaluationsMap = await getAllProgrammerEvaluationsGrouped();
+  } catch (error) {
+    console.error("Error fetching team evaluations:", error);
+  }
+  const evaluatedByTeamReportIds = new Set(teamEvaluationsMap.keys());
+
   // Fetch evaluation drafts
   const supabase = await createClient();
 
@@ -77,12 +86,12 @@ export default async function ProgrammerEvaluationsListPage({ searchParams }: { 
   );
 
   // Determine filter
-  const currentFilter = resolvedSearchParams.filter === 'mine' ? 'mine' : 'all';
+  const currentFilter = resolvedSearchParams.filter === 'evaluated' ? 'evaluated' : 'all';
 
   // Filter reports
   let filteredReports;
-  if (currentFilter === "mine") {
-    filteredReports = callReports.filter(report => myEvaluatedReportIds.has(report.id));
+  if (currentFilter === "evaluated") {
+    filteredReports = callReports.filter(report => evaluatedByTeamReportIds.has(report.id));
   } else {
     filteredReports = callReports;
   }
@@ -93,6 +102,7 @@ export default async function ProgrammerEvaluationsListPage({ searchParams }: { 
     hasEvaluated: myEvaluatedReportIds.has(report.id),
     myEvaluation: myEvaluations.find(e => e.call_report_id === report.id) || null,
     draftProgress: draftProgressMap.get(report.id) || null,
+    teamEvaluations: teamEvaluationsMap.get(report.id) ?? null,
   }));
 
   return (
@@ -120,13 +130,13 @@ export default async function ProgrammerEvaluationsListPage({ searchParams }: { 
           All Projects
         </Link>
         <Link
-          href="/programmer/evaluations-list?filter=mine"
-          className={`w-full sm:w-auto py-2 px-4 rounded-md text-sm font-medium text-center border ${currentFilter === "mine"
+          href="/programmer/evaluations-list?filter=evaluated"
+          className={`w-full sm:w-auto py-2 px-4 rounded-md text-sm font-medium text-center border ${currentFilter === "evaluated"
             ? "bg-[#224794] text-white border-[#224794]"
             : "bg-slate-100 text-slate-700 hover:bg-slate-200 border-slate-300"
             }`}
         >
-          My Evaluations ({myEvaluations.length})
+          Evaluated ({evaluatedByTeamReportIds.size})
         </Link>
       </div>
 
@@ -137,7 +147,7 @@ export default async function ProgrammerEvaluationsListPage({ searchParams }: { 
         portalPrefix="programmer"
         emptyTitle="No projects found"
         emptyDescription="There are no one-liners available at the moment."
-        showDecisionFilter={currentFilter === "mine"}
+        showDecisionFilter={currentFilter === "evaluated"}
       />
     </div>
   );

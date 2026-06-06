@@ -4,6 +4,7 @@ import { EvaluatorEvaluationForm } from "@/app/evaluator/evaluate/[callReportId]
 import { getAttachmentsForEntityServer } from "@/lib/attachments/server";
 import { getEvaluationProgress } from "@/lib/evaluations/assignments";
 import { getDetailedOneLinersByCallReport } from "@/lib/detailed-one-liner/server";
+import { getSegregatedEvaluations } from "@/lib/evaluations/server";
 
 interface Writer {
   writer_id: string;
@@ -51,6 +52,8 @@ export default async function ProgrammerEvaluatePage({
   let attachments: any[] = [];
   let progress = null;
   let detailedOneLiner: any = null;
+  let existingProgrammerEvaluation: any = null;
+  let canEdit = false;
 
   try {
     const { createClient } = await import("@/lib/supabase/server");
@@ -117,6 +120,17 @@ export default async function ProgrammerEvaluatePage({
       console.error("Error fetching detailed one-liner:", detailedOneLinerError);
       // Continue without detailed one-liner if there's an error
     }
+
+    // Fetch the programmer team's evaluation (shared across the whole team)
+    try {
+      const segregated = await getSegregatedEvaluations(callReportId);
+      if (segregated.programmerEvaluations.length > 0) {
+        existingProgrammerEvaluation = segregated.programmerEvaluations[0];
+        canEdit = existingProgrammerEvaluation.evaluator_id === user.id;
+      }
+    } catch (evalError) {
+      console.error("Error fetching programmer evaluation:", evalError);
+    }
   } catch (error) {
     console.error("Error in programmer evaluation page:", error);
     redirect("/programmer/evaluations-list");
@@ -136,6 +150,8 @@ export default async function ProgrammerEvaluatePage({
         progress={progress}
         detailedOneLiner={detailedOneLiner}
         portalPrefix="programmer"
+        existingEvaluation={existingProgrammerEvaluation}
+        canEdit={canEdit}
       />
     </div>
   );

@@ -368,6 +368,36 @@ export async function hasManagementEvaluated(callReportId: string, userId: strin
 }
 
 /**
+ * Get all programmer evaluations grouped by call_report_id
+ * Used in the programmer portal "Evaluated" tab to show team-wide evaluations
+ */
+export async function getAllProgrammerEvaluationsGrouped(): Promise<
+  Map<string, Array<{ evaluator_id: string; evaluator_name: string; average_score: number | null; decision: string | null }>>
+> {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from("call_report_evaluations_with_type")
+    .select("call_report_id, evaluator_id, evaluator_name, average_score, decision")
+    .eq("evaluation_type", "programmer")
+    .order("created_at", { ascending: false });
+
+  if (error) throw new Error(`Failed to fetch programmer evaluations: ${error.message}`);
+
+  const map = new Map<string, Array<{ evaluator_id: string; evaluator_name: string; average_score: number | null; decision: string | null }>>();
+  for (const row of data ?? []) {
+    if (!map.has(row.call_report_id)) map.set(row.call_report_id, []);
+    map.get(row.call_report_id)!.push({
+      evaluator_id: row.evaluator_id,
+      evaluator_name: row.evaluator_name,
+      average_score: row.average_score,
+      decision: row.decision,
+    });
+  }
+  return map;
+}
+
+/**
  * Get segregated episodic evaluations (evaluator vs management)
  * Uses the episodic_evaluations_with_type view created in migration
  */

@@ -150,6 +150,45 @@ export default async function TeamFeedbackPage() {
     episodesByReport.get(ep.call_report_id)!.push(ep);
   }
 
+  // Fetch programmer feedback for these call reports
+  const { data: programmerFeedbackRows } = reportIds.length
+    ? await admin
+        .from("programmer_feedback")
+        .select(`
+          id, call_report_id, feedback_date, content, created_at,
+          programmer:users!programmer_id(name)
+        `)
+        .in("call_report_id", reportIds)
+        .order("feedback_date", { ascending: false })
+    : { data: [] };
+
+  // Fetch attachments for programmer feedback entries
+  const pfIds = (programmerFeedbackRows || []).map((r: any) => r.id);
+  let pfAttachmentsByEntry: Record<string, any[]> = {};
+  if (pfIds.length > 0) {
+    const { data: pfAtts } = await admin
+      .from("attachments")
+      .select("id, entity_id, file_name, file_path, file_type")
+      .eq("entity_type", "programmer_feedback")
+      .in("entity_id", pfIds);
+    for (const att of pfAtts || []) {
+      if (!pfAttachmentsByEntry[att.entity_id]) pfAttachmentsByEntry[att.entity_id] = [];
+      pfAttachmentsByEntry[att.entity_id].push(att);
+    }
+  }
+
+  // Group programmer feedback by call_report_id
+  const programmerFeedbackByReport = new Map<string, any[]>();
+  for (const row of (programmerFeedbackRows || []) as any[]) {
+    if (!programmerFeedbackByReport.has(row.call_report_id)) {
+      programmerFeedbackByReport.set(row.call_report_id, []);
+    }
+    programmerFeedbackByReport.get(row.call_report_id)!.push({
+      ...row,
+      attachments: pfAttachmentsByEntry[row.id] || [],
+    });
+  }
+
   // Build final stories
   const stories = (callReports || []).map(cr => {
     // One-liner evaluations seeded with all global users
@@ -223,6 +262,7 @@ export default async function TeamFeedbackPage() {
       genre:        cr.genre || null,
       evaluations,
       episodes: epList,
+      programmerFeedback: programmerFeedbackByReport.get(cr.id) || [],
     };
   });
 

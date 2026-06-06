@@ -28,6 +28,12 @@ export interface EnrichedReport {
     isFullyApproved: boolean;
     isRejected: boolean;
   } | null;
+  teamEvaluations?: Array<{
+    evaluator_id: string;
+    evaluator_name: string;
+    average_score: number | null;
+    decision: string | null;
+  }> | null;
 }
 
 interface EvaluationSearchableListProps {
@@ -235,7 +241,7 @@ export function EvaluationSearchableList({
           </Card>
         ) : (
           filteredReports.map(
-            ({ report, hasEvaluated, myEvaluation, draftProgress, approvalStatus }) => (
+            ({ report, hasEvaluated, myEvaluation, draftProgress, approvalStatus, teamEvaluations }) => (
               <EvaluationCard
                 key={report.id}
                 report={report}
@@ -248,6 +254,7 @@ export function EvaluationSearchableList({
                 approvalStatus={approvalStatus}
                 currentUserId={currentUserId}
                 currentUserRole={currentUserRole}
+                teamEvaluations={teamEvaluations}
               />
             )
           )

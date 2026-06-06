@@ -79,6 +79,7 @@ export function EvaluatorEvaluationForm({
   crossTeamShareId,
   crossTeamFromTeamName,
   revisionId,
+  canEdit = true,
 }: {
   callReport: CallReport;
   userId: string;
@@ -92,6 +93,7 @@ export function EvaluatorEvaluationForm({
   crossTeamShareId?: string;
   crossTeamFromTeamName?: string;
   revisionId?: string;
+  canEdit?: boolean;
 }) {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
@@ -1253,7 +1255,7 @@ export function EvaluatorEvaluationForm({
                         : "Submit Evaluation"
                   }
                 </Button>
-                {existingEvaluation && !isEditing && !crossTeamShareId && (
+                {existingEvaluation && !isEditing && !crossTeamShareId && canEdit && (
                   <Button type="button" variant="outline" onClick={() => setIsEditing(true)} className="w-full">
                     Edit
                   </Button>
@@ -1303,7 +1305,7 @@ export function EvaluatorEvaluationForm({
                           : "Submit Evaluation"
                     }
                   </Button>
-                  {existingEvaluation && !isEditing && !crossTeamShareId && (
+                  {existingEvaluation && !isEditing && !crossTeamShareId && canEdit && (
                     <Button type="button" variant="outline" onClick={() => setIsEditing(true)}>
                       Edit
                     </Button>

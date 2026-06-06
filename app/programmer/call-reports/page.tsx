@@ -44,13 +44,6 @@ export default async function ProgrammerCallReportsPage() {
               <span className="md:hidden">Log Report</span>
             </Link>
           </Button>
-          <Button asChild variant="outline" size="sm" className="touch-target w-full sm:w-auto">
-            <Link href="/programmer/log-detailed-one-liner">
-              <FilePenLine className="h-4 w-4 mr-1.5" />
-              <span className="hidden md:inline">Log Detailed One-Liner</span>
-              <span className="md:hidden">One-Liner</span>
-            </Link>
-          </Button>
         </div>
       </div>
 

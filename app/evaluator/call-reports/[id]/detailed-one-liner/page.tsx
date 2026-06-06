@@ -103,14 +103,6 @@ export default async function CallReportDetailedOneLinerPage({
                 No detailed one-liner analysis has been created for this writer engagement report yet.
                 You can log one now to provide comprehensive story analysis.
               </p>
-              <Button asChild variant="default">
-                <Link
-                  href={`/evaluator/log-detailed-one-liner?callReportId=${id}`}
-                >
-                  <FilePenLine className="h-4 w-4 mr-2" />
-                  Log Detailed One-Liner
-                </Link>
-              </Button>
             </CardContent>
           </Card>
         )}
