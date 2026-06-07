@@ -82,6 +82,16 @@ export async function GET(request: NextRequest) {
 
     const reportIds = callReports.map((r) => r.id);
 
+    // 1b. Fetch writer commitments for these call reports
+    const { data: commitments } = await admin
+      .from("writer_commitments")
+      .select("call_report_id, commitment_schedule, commitment_schedule_custom, commitment_type, project_initiation_date")
+      .in("call_report_id", reportIds);
+
+    const commitmentMap = Object.fromEntries(
+      (commitments || []).map((c: any) => [c.call_report_id, c])
+    );
+
     // 2. Fetch episodes for these call reports
     const { data: episodes, error: epErr } = await admin
       .from("episodes")
@@ -92,8 +102,22 @@ export async function GET(request: NextRequest) {
 
     if (epErr) throw new Error(`episodes query failed: ${epErr.message} (${epErr.code})`);
 
-    // 3. Fetch episodic evaluations
+    // 3. Fetch episodic evaluations + episode revisions
     const episodeIds = (episodes || []).map((e) => e.id);
+
+    const { data: epRevisions } = episodeIds.length
+      ? await admin
+          .from("episode_revisions")
+          .select("episode_id, revision_number, created_at")
+          .in("episode_id", episodeIds)
+      : { data: [] };
+
+    // Build episode → call_report lookup for revision grouping
+    const episodeToReport = new Map<string, string>();
+    for (const ep of episodes || []) {
+      episodeToReport.set(ep.id, ep.call_report_id);
+    }
+
     const { data: epEvals } = episodeIds.length
       ? await admin
           .from("episodic_evaluations")
@@ -214,6 +238,14 @@ export async function GET(request: NextRequest) {
         allWeeks.add(week);
       }
 
+      // Week-wise revisions
+      const weekRevisions: Record<string, number> = {};
+      for (const rev of (epRevisions as any[]) || []) {
+        if (episodeToReport.get(rev.episode_id) !== cr.id) continue;
+        const week = getISOWeek(new Date(rev.created_at));
+        weekRevisions[week] = (weekRevisions[week] || 0) + 1;
+      }
+
       // Build evaluator map
       const evaluatorMap = new Map<string, { name: string; email: string; role: string; epNums: number[]; scores: number[] }>();
       for (const ep of crEpisodes) {
@@ -282,6 +314,7 @@ export async function GET(request: NextRequest) {
         firstEpDate: firstEpDate?.toISOString() || null,
         lastEpDate: lastEpDate?.toISOString() || null,
         weekDelivery,
+        weekRevisions,
         humeraGrade,
         salmanGrade,
         evaluatorGrades,
@@ -289,6 +322,7 @@ export async function GET(request: NextRequest) {
         teamName: team?.name || null,
         teamHeadName: teamHead?.name || null,
         teamHeadEmail: teamHead?.email || null,
+        commitment: commitmentMap[cr.id] ?? null,
       };
     });
 

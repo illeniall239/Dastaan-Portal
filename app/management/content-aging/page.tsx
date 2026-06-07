@@ -73,6 +73,7 @@ interface Project {
   firstEpDate: string | null;
   lastEpDate: string | null;
   weekDelivery: Record<string, number>;
+  weekRevisions: Record<string, number>;
   humeraGrade: MgmtGrade | null;
   salmanGrade: MgmtGrade | null;
   evaluatorGrades: EvaluatorGrade[];
@@ -80,6 +81,12 @@ interface Project {
   teamName: string | null;
   teamHeadName: string | null;
   teamHeadEmail: string | null;
+  commitment?: {
+    commitment_schedule: string;
+    commitment_schedule_custom?: string | null;
+    commitment_type: string;
+    project_initiation_date: string;
+  } | null;
 }
 
 interface Week {
@@ -102,6 +109,35 @@ function getMondayFromISOWeek(isoWeek: string): Date {
   const jan4 = new Date(Date.UTC(parseInt(year), 0, 4));
   const dayOfWeek = jan4.getUTCDay() || 7;
   return new Date(jan4.getTime() + (1 - dayOfWeek) * 86400000 + (week - 1) * 7 * 86400000);
+}
+
+function getExpectedPerWeek(schedule: string): number | null {
+  if (schedule.endsWith("_per_week")) return parseInt(schedule);
+  return null;
+}
+
+function getExpectedPerMonth(schedule: string): number | null {
+  if (schedule.endsWith("_per_month")) return parseInt(schedule);
+  return null;
+}
+
+function isWeekOnOrAfter(isoWeek: string, dateStr: string): boolean {
+  const monday = getMondayFromISOWeek(isoWeek);
+  return monday.toISOString().slice(0, 10) >= dateStr;
+}
+
+function commitmentScheduleLabel(schedule: string, custom?: string | null): string {
+  const map: Record<string, string> = {
+    "1_per_week": "1 ep/week",
+    "2_per_week": "2 eps/week",
+    "3_per_week": "3 eps/week",
+    "4_per_week": "4 eps/week",
+    "1_per_month": "1 ep/month",
+    "2_per_month": "2 eps/month",
+    "3_per_month": "3 eps/month",
+    "custom": custom || "Custom",
+  };
+  return map[schedule] ?? schedule;
 }
 
 function groupWeeksByMonth(weeks: Week[]): MonthGroup[] {
@@ -561,6 +597,11 @@ export default function ContentAgingPage() {
                   </Td>
                   <Td sticky freeze={freezePanes} left={W_NUM} width={W_TITLE} className="font-medium">
                     <span title={project.workingTitle} className="block truncate max-w-[190px]">{project.workingTitle}</span>
+                    {project.commitment && (
+                      <span className="block text-xs text-gray-400 font-normal mt-0.5 truncate max-w-[190px]">
+                        {commitmentScheduleLabel(project.commitment.commitment_schedule, project.commitment.commitment_schedule_custom)} · {project.commitment.commitment_type}
+                      </span>
+                    )}
                   </Td>
                   <Td sticky freeze={freezePanes} left={W_NUM + W_TITLE} width={W_WRITER} className="text-muted-foreground text-xs">
                     {project.writerName ?? "—"}
@@ -624,18 +665,79 @@ export default function ContentAgingPage() {
                   {monthGroups.flatMap((mg) => {
                     const weekCounts = mg.weeks.map((w) => project.weekDelivery[w.isoWeek] ?? 0);
                     const monthTotal = weekCounts.reduce((s, c) => s + c, 0);
+                    const c = project.commitment;
+                    const expPerWeek = c ? getExpectedPerWeek(c.commitment_schedule) : null;
+                    const expPerMonth = c ? getExpectedPerMonth(c.commitment_schedule) : null;
+
+                    let monthBehind: number | null = null;
+                    if (c && expPerMonth !== null) {
+                      const firstWeekOfMonth = mg.weeks[0];
+                      if (firstWeekOfMonth && isWeekOnOrAfter(firstWeekOfMonth.isoWeek, c.project_initiation_date)) {
+                        monthBehind = monthTotal - expPerMonth;
+                      }
+                    }
+                    let weeklyMonthBehind: number | null = null;
+                    if (c && expPerWeek !== null) {
+                      let sum = 0;
+                      let hasAny = false;
+                      mg.weeks.forEach((w) => {
+                        if (isWeekOnOrAfter(w.isoWeek, c.project_initiation_date)) {
+                          sum += (project.weekDelivery[w.isoWeek] ?? 0) - expPerWeek;
+                          hasAny = true;
+                        }
+                      });
+                      if (hasAny) weeklyMonthBehind = sum;
+                    }
+
                     return [
-                      ...weekCounts.map((count, i) => (
-                        <Td key={`${mg.key}-w${i}`} width={55} center>
-                          {count > 0 ? (
-                            <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-blue-100 text-blue-700 text-xs font-bold">
-                              {count}
-                            </span>
-                          ) : (
-                            <span className="text-muted-foreground/30">·</span>
-                          )}
-                        </Td>
-                      )),
+                      ...mg.weeks.map((w, i) => {
+                        const count = project.weekDelivery[w.isoWeek] ?? 0;
+                        let behindValue: number | null = null;
+                        let weekActive = false;
+                        if (c && expPerWeek !== null && isWeekOnOrAfter(w.isoWeek, c.project_initiation_date)) {
+                          behindValue = count - expPerWeek;
+                          weekActive = true;
+                        }
+                        return (
+                          <Td key={`${mg.key}-w${i}`} width={55} center>
+                            {count > 0 ? (
+                              <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-blue-100 text-blue-700 text-xs font-bold">
+                                {count}
+                              </span>
+                            ) : (
+                              <span className="text-muted-foreground/30">·</span>
+                            )}
+                            {c && (
+                              <div className="text-xs mt-0.5 leading-none">
+                                {expPerWeek !== null ? (
+                                  weekActive ? (
+                                    behindValue === 0 ? (
+                                      <span className="text-gray-400">0</span>
+                                    ) : (
+                                      <span className={behindValue! < 0 ? "text-red-600 font-medium" : "text-green-600 font-medium"}>
+                                        {behindValue! > 0 ? `+${behindValue}` : behindValue}
+                                      </span>
+                                    )
+                                  ) : (
+                                    <span className="text-gray-300">—</span>
+                                  )
+                                ) : (
+                                  <span className="text-gray-300">—</span>
+                                )}
+                              </div>
+                            )}
+                            {(() => {
+                              const revCount = project.weekRevisions?.[w.isoWeek] ?? 0;
+                              if (revCount === 0) return null;
+                              return (
+                                <div className="text-xs mt-0.5 leading-none font-medium text-amber-600">
+                                  {revCount}R
+                                </div>
+                              );
+                            })()}
+                          </Td>
+                        );
+                      }),
                       <Td key={`${mg.key}-total`} width={60} center>
                         {monthTotal > 0 ? (
                           <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-green-100 text-green-700 text-xs font-bold">
@@ -644,6 +746,32 @@ export default function ContentAgingPage() {
                         ) : (
                           <span className="text-muted-foreground/30">·</span>
                         )}
+                        {c && (() => {
+                          const behind = expPerWeek !== null ? weeklyMonthBehind : monthBehind;
+                          if (behind === null) return null;
+                          return (
+                            <div className="text-xs mt-0.5 leading-none">
+                              {behind === 0 ? (
+                                <span className="text-gray-400">0</span>
+                              ) : (
+                                <span className={behind < 0 ? "text-red-600 font-medium" : "text-green-600 font-medium"}>
+                                  {behind > 0 ? `+${behind}` : behind}
+                                </span>
+                              )}
+                            </div>
+                          );
+                        })()}
+                        {(() => {
+                          const monthRevTotal = mg.weeks.reduce(
+                            (s, w) => s + (project.weekRevisions?.[w.isoWeek] ?? 0), 0
+                          );
+                          if (monthRevTotal === 0) return null;
+                          return (
+                            <div className="text-xs mt-0.5 leading-none font-medium text-amber-600">
+                              {monthRevTotal}R
+                            </div>
+                          );
+                        })()}
                       </Td>,
                     ];
                   })}

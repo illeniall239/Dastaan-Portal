@@ -1,3 +1,26 @@
+// Writer Commitment types
+export interface WriterCommitment {
+  id: string;
+  writer_id: string;
+  call_report_id: string;
+  commitment_type: 'verbal' | 'contractual';
+  commitment_schedule: string;
+  commitment_schedule_custom?: string | null;
+  project_initiation_date: string;
+  commitment_date: string;
+  revised_commitment_date?: string | null;
+  revision_reason?: string | null;
+  is_delivered: boolean;
+  delivered_at?: string | null;
+  delay_notes?: string | null;
+  created_by: string;
+  created_at: string;
+  updated_at: string;
+  // joined fields
+  writer?: { name: string };
+  call_report?: { working_title: string; call_report_id: string };
+}
+
 // Writer types
 export interface Writer {
   id: string;

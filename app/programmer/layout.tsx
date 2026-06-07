@@ -21,6 +21,11 @@ const programmerNavItems = [
     icon: "userPen",
   },
   {
+    title: "Writer Commitments",
+    href: "/programmer/writer-commitment",
+    icon: "listChecks",
+  },
+  {
     title: "Writer Engagement Reports",
     href: "/programmer/call-reports",
     icon: "fileText",
