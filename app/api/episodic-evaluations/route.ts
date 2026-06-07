@@ -151,6 +151,10 @@ export async function POST(request: Request) {
         // Final decision
         decision: evaluationData.decision || null,
         decision_notes: evaluationData.decision_notes || null,
+        // Feedback communication
+        feedback_text: evaluationData.feedback_text || null,
+        feedback_attachment_url: evaluationData.feedback_attachment_url || null,
+        feedback_attachment_name: evaluationData.feedback_attachment_name || null,
       })
       .select(`
         *,

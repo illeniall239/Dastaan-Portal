@@ -84,6 +84,9 @@ export interface CreateEvaluationInput {
   started_at?: string;
   is_late?: boolean;
   delay_reason?: string;
+  feedback_text?: string;
+  feedback_attachment_url?: string;
+  feedback_attachment_name?: string;
 }
 
 export interface UpdateEvaluationInput {
@@ -120,6 +123,9 @@ export interface UpdateEvaluationInput {
   started_at?: string;
   is_late?: boolean;
   delay_reason?: string | null;
+  feedback_text?: string | null;
+  feedback_attachment_url?: string | null;
+  feedback_attachment_name?: string | null;
 }
 
 /**
@@ -178,6 +184,9 @@ export async function createEvaluationClient(evaluationData: CreateEvaluationInp
       submitted_at: new Date().toISOString(),
       is_late: evaluationData.is_late || false,
       delay_reason: evaluationData.delay_reason || null,
+      feedback_text: evaluationData.feedback_text || null,
+      feedback_attachment_url: evaluationData.feedback_attachment_url || null,
+      feedback_attachment_name: evaluationData.feedback_attachment_name || null,
     })
     .select()
     .single();
@@ -270,6 +279,9 @@ export async function updateEvaluationClient(evaluationData: UpdateEvaluationInp
     started_at: started_at ?? null,
     is_late: is_late ?? false,
     delay_reason: delay_reason ?? null,
+    feedback_text: evaluationData.feedback_text ?? null,
+    feedback_attachment_url: evaluationData.feedback_attachment_url ?? null,
+    feedback_attachment_name: evaluationData.feedback_attachment_name ?? null,
     updated_at: new Date().toISOString(),
   };
 

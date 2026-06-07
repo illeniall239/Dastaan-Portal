@@ -86,6 +86,9 @@ export const episodicEvaluationSchema = z.object({
     required_error: "Please select a decision",
   }),
   decision_notes: z.string().optional(),
+  feedback_text: z.string().optional().nullable(),
+  feedback_attachment_url: z.string().optional().nullable(),
+  feedback_attachment_name: z.string().max(255).optional().nullable(),
 });
 
 export type EpisodicEvaluationFormData = z.infer<typeof episodicEvaluationSchema>;
@@ -165,6 +168,11 @@ export const updateEpisodicEvaluationSchema = z.object({
   // Final decision
   decision: z.enum(["approve", "reject", "needs_revision"]).optional(),
   decision_notes: z.string().optional(),
+
+  // Feedback communication
+  feedback_text: z.string().optional().nullable(),
+  feedback_attachment_url: z.string().optional().nullable(),
+  feedback_attachment_name: z.string().max(255).optional().nullable(),
 }).refine(
   (data) => Object.keys(data).length > 0,
   {

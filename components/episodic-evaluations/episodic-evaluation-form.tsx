@@ -121,6 +121,12 @@ export function EpisodicEvaluationForm({
     existingEvaluation?.overall_assessment_score || 5
   );
 
+  // Feedback communication state
+  const [feedbackText, setFeedbackText] = useState((existingEvaluation as any)?.feedback_text || "");
+  const [feedbackAttachmentUrl, setFeedbackAttachmentUrl] = useState((existingEvaluation as any)?.feedback_attachment_url || "");
+  const [feedbackAttachmentName, setFeedbackAttachmentName] = useState((existingEvaluation as any)?.feedback_attachment_name || "");
+  const [feedbackUploading, setFeedbackUploading] = useState(false);
+
   // Final decision state
   const [decision, setDecision] = useState<"approve" | "reject" | "needs_revision" | "">(
     (existingEvaluation?.decision as "approve" | "reject" | "needs_revision") || ""
@@ -296,6 +302,30 @@ export function EpisodicEvaluationForm({
     setPendingDraftData(null);
   };
 
+  const handleFeedbackFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setFeedbackUploading(true);
+    try {
+      const { createClient: createBrowserClient } = await import("@/lib/supabase/client");
+      const supabase = createBrowserClient();
+      const ext = file.name.split(".").pop();
+      const path = `feedback-communications/${crypto.randomUUID()}.${ext}`;
+      const { error: uploadError } = await supabase.storage
+        .from("attachments")
+        .upload(path, file, { upsert: false });
+      if (uploadError) throw uploadError;
+      const { data: urlData } = supabase.storage.from("attachments").getPublicUrl(path);
+      setFeedbackAttachmentUrl(urlData.publicUrl);
+      setFeedbackAttachmentName(file.name);
+    } catch (err: any) {
+      toast.error("Failed to upload attachment: " + (err?.message || "Unknown error"));
+    } finally {
+      setFeedbackUploading(false);
+      e.target.value = "";
+    }
+  };
+
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -348,6 +378,9 @@ export function EpisodicEvaluationForm({
       decision_notes: (decision === "reject" || decision === "needs_revision")
         ? decisionNotes
         : undefined,
+      feedback_text: feedbackText || undefined,
+      feedback_attachment_url: feedbackAttachmentUrl || undefined,
+      feedback_attachment_name: feedbackAttachmentName || undefined,
     };
 
     const validation = episodicEvaluationSchema.safeParse(formData);
@@ -917,6 +950,62 @@ export function EpisodicEvaluationForm({
       </div>
 
       </div>{/* end viewOnly wrapper */}
+
+      {/* Feedback Communication */}
+      {!isReadOnly && (
+        <Card className="p-4 border border-gray-200">
+          <div className="space-y-4">
+            <div>
+              <h3 className="text-base font-semibold text-gray-800">Feedback Communication <span className="text-sm font-normal text-gray-500">(optional)</span></h3>
+              <p className="text-xs text-gray-500 mt-0.5">Attach email or written feedback evidence submitted alongside this evaluation.</p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="feedbackText">Email / Communication Text</Label>
+              <Textarea
+                id="feedbackText"
+                placeholder="Paste email or communication content here..."
+                value={feedbackText}
+                onChange={(e) => setFeedbackText(e.target.value)}
+                rows={4}
+                className="resize-none"
+              />
+            </div>
+            <div className="space-y-3">
+              <Label>Supporting Attachment</Label>
+              {feedbackAttachmentName ? (
+                <div className="flex items-center gap-2 text-sm text-gray-700 border rounded-md px-3 py-2 bg-gray-50">
+                  <Paperclip className="h-4 w-4 text-gray-400 shrink-0" />
+                  <span className="truncate flex-1">{feedbackAttachmentName}</span>
+                  <button
+                    type="button"
+                    onClick={() => { setFeedbackAttachmentUrl(""); setFeedbackAttachmentName(""); }}
+                    className="text-gray-400 hover:text-red-500 shrink-0"
+                    aria-label="Remove attachment"
+                  >
+                    ✕
+                  </button>
+                </div>
+              ) : (
+                <label className="inline-flex items-center gap-2 cursor-pointer border border-gray-300 rounded-md px-3 py-2 text-sm hover:bg-gray-50 transition-colors">
+                  {feedbackUploading ? (
+                    <><Loader2 className="h-4 w-4 animate-spin" /> Uploading...</>
+                  ) : (
+                    <><Paperclip className="h-4 w-4" /> Upload File</>
+                  )}
+                  <input
+                    type="file"
+                    accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                    className="sr-only"
+                    onChange={handleFeedbackFileUpload}
+                    disabled={feedbackUploading}
+                  />
+                </label>
+              )}
+              <p className="text-xs text-gray-400">PDF, DOC, DOCX, JPG, PNG — max 10MB</p>
+            </div>
+          </div>
+        </Card>
+      )}
 
       {/* Discussion Thread */}
       {currentUserId && (
