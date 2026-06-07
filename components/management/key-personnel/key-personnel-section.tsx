@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardTitle } from "@/components/ui/card";
-import { Loader2, RefreshCw } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Loader2, RefreshCw, Pin } from "lucide-react";
 
 type Range = "7d" | "30d" | "3m" | "all";
 
@@ -68,10 +69,10 @@ function Num({ value }: { value: number }) {
   );
 }
 
-function PersonRow({ p }: { p: PersonData }) {
+function PersonRow({ p, freeze }: { p: PersonData; freeze: boolean }) {
   return (
     <tr className="border-b border-slate-100 hover:bg-slate-50">
-      <td className="px-4 py-3">
+      <td className={`px-4 py-3 ${freeze ? "sticky left-0 z-[9] bg-white shadow-[2px_0_5px_rgba(0,0,0,0.06)]" : ""}`}>
         <div className="flex items-center gap-2.5 min-w-0">
           <div className="relative shrink-0">
             <div className="h-8 w-8 rounded-full bg-teal-100 flex items-center justify-center">
@@ -127,6 +128,7 @@ export function KeyPersonnelSection() {
   const [data, setData] = useState<PersonData[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [freezePanes, setFreezePanes] = useState(false);
 
   const fetchData = useCallback(async (r: Range) => {
     setLoading(true);
@@ -183,6 +185,10 @@ export function KeyPersonnelSection() {
           >
             <RefreshCw className={`h-3.5 w-3.5 text-slate-500 ${loading ? "animate-spin" : ""}`} />
           </button>
+          <Button variant={freezePanes ? "default" : "outline"} size="sm" onClick={() => setFreezePanes(f => !f)} className="gap-1.5 h-7 text-xs px-2">
+            <Pin className="h-3 w-3" />
+            {freezePanes ? "Unfreeze" : "Freeze Panes"}
+          </Button>
         </div>
       </div>
 
@@ -211,21 +217,21 @@ export function KeyPersonnelSection() {
                   No data found for key personnel.
                 </div>
               ) : (
-                <div className="overflow-x-auto">
+                <div className="overflow-auto max-h-[60vh]">
                   <table className="w-full text-xs">
                     <thead>
-                      <tr className="border-b bg-slate-50">
-                        <th className="px-4 py-2 text-left text-[10px] uppercase tracking-wide text-slate-400 font-medium">Person</th>
-                        <th className="px-4 py-2 text-center text-[10px] uppercase tracking-wide text-slate-400 font-medium whitespace-nowrap">Evals Done</th>
-                        <th className="px-4 py-2 text-center text-[10px] uppercase tracking-wide text-slate-400 font-medium whitespace-nowrap">Eps Eval</th>
+                      <tr className={`border-b bg-slate-50 ${freezePanes ? "sticky top-0 z-10" : ""}`}>
+                        <th className={`px-4 py-2 text-left text-[10px] uppercase tracking-wide text-slate-400 font-medium bg-slate-50 ${freezePanes ? "sticky left-0 z-20 shadow-[2px_0_5px_rgba(0,0,0,0.06)]" : ""}`}>Person</th>
+                        <th className="px-4 py-2 text-center text-[10px] uppercase tracking-wide text-slate-400 font-medium whitespace-nowrap bg-slate-50">Evals Done</th>
+                        <th className="px-4 py-2 text-center text-[10px] uppercase tracking-wide text-slate-400 font-medium whitespace-nowrap bg-slate-50">Eps Eval</th>
                         {/* Pending Eps Eval column hidden for now — data available via pending_eps_evals */}
-                        <th className="px-4 py-2 text-center text-[10px] uppercase tracking-wide text-slate-400 font-medium whitespace-nowrap">Pending Evals</th>
-                        <th className="px-4 py-2 text-right text-[10px] uppercase tracking-wide text-slate-400 font-medium hidden md:table-cell whitespace-nowrap">Last Login</th>
-                        <th className="px-4 py-2 text-right text-[10px] uppercase tracking-wide text-slate-400 font-medium hidden md:table-cell whitespace-nowrap">Median Session</th>
+                        <th className="px-4 py-2 text-center text-[10px] uppercase tracking-wide text-slate-400 font-medium whitespace-nowrap bg-slate-50">Pending Evals</th>
+                        <th className="px-4 py-2 text-right text-[10px] uppercase tracking-wide text-slate-400 font-medium hidden md:table-cell whitespace-nowrap bg-slate-50">Last Login</th>
+                        <th className="px-4 py-2 text-right text-[10px] uppercase tracking-wide text-slate-400 font-medium hidden md:table-cell whitespace-nowrap bg-slate-50">Median Session</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {data.map(p => <PersonRow key={p.user_id} p={p} />)}
+                      {data.map(p => <PersonRow key={p.user_id} p={p} freeze={freezePanes} />)}
                     </tbody>
                   </table>
                 </div>

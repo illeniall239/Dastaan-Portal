@@ -1,8 +1,11 @@
 "use client";
 
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Progress } from "@/components/ui/progress";
+import { Pin } from "lucide-react";
 import type { WriterProductivity } from "@/lib/management/active-ideas-details";
 
 interface WriterProductivityTableProps {
@@ -10,15 +13,22 @@ interface WriterProductivityTableProps {
 }
 
 export function WriterProductivityTable({ writers }: WriterProductivityTableProps) {
+  const [freezePanes, setFreezePanes] = useState(false);
   // Show first 10 writers
   const displayedWriters = writers.slice(0, 10);
 
   return (
     <Card className="border-0 shadow-lg">
       <CardHeader className="pb-2">
-        <CardTitle className="text-lg font-semibold text-slate-800">
-          Writer Productivity
-        </CardTitle>
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-lg font-semibold text-slate-800">
+            Writer Productivity
+          </CardTitle>
+          <Button variant={freezePanes ? "default" : "outline"} size="sm" onClick={() => setFreezePanes(f => !f)} className="gap-1.5 h-7 text-xs px-2">
+            <Pin className="h-3 w-3" />
+            {freezePanes ? "Unfreeze" : "Freeze Panes"}
+          </Button>
+        </div>
       </CardHeader>
       <CardContent>
         {displayedWriters.length === 0 ? (
@@ -26,20 +36,20 @@ export function WriterProductivityTable({ writers }: WriterProductivityTableProp
             No writer data available
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          <div className="overflow-auto max-h-[60vh]">
             <Table>
               <TableHeader>
-                <TableRow className="bg-slate-50">
-                  <TableHead className="font-semibold text-slate-700">Writer</TableHead>
-                  <TableHead className="font-semibold text-slate-700 text-center">Projects</TableHead>
-                  <TableHead className="font-semibold text-slate-700 text-center">Episodes</TableHead>
-                  <TableHead className="font-semibold text-slate-700 w-[140px]">Completion</TableHead>
+                <TableRow className={`bg-slate-50 ${freezePanes ? "sticky top-0 z-10" : ""}`}>
+                  <TableHead className={`font-semibold text-slate-700 bg-slate-50 ${freezePanes ? "sticky left-0 z-20 shadow-[2px_0_5px_rgba(0,0,0,0.06)]" : ""}`}>Writer</TableHead>
+                  <TableHead className="font-semibold text-slate-700 text-center bg-slate-50">Projects</TableHead>
+                  <TableHead className="font-semibold text-slate-700 text-center bg-slate-50">Episodes</TableHead>
+                  <TableHead className="font-semibold text-slate-700 w-[140px] bg-slate-50">Completion</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {displayedWriters.map((writer, index) => (
                   <TableRow key={writer.writerName} className="hover:bg-slate-50">
-                    <TableCell className="font-medium text-slate-900">
+                    <TableCell className={`font-medium text-slate-900 bg-white ${freezePanes ? "sticky left-0 z-[9] shadow-[2px_0_5px_rgba(0,0,0,0.06)]" : ""}`}>
                       <div className="flex items-center gap-2">
                         <span className="w-5 h-5 rounded-full bg-slate-200 flex items-center justify-center text-xs font-bold text-slate-600">
                           {index + 1}

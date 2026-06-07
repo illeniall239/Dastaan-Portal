@@ -1,7 +1,9 @@
 "use client";
 
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Gauge } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Gauge, Pin } from "lucide-react";
 import { TeamBadge } from "@/components/shared/team-badge";
 
 interface WorkloadItem {
@@ -34,15 +36,22 @@ function CompletionBar({ completed, assigned }: { completed: number; assigned: n
 }
 
 export function EvaluatorWorkloadTable({ data }: EvaluatorWorkloadTableProps) {
+  const [freezePanes, setFreezePanes] = useState(false);
   const maxPending = Math.max(...data.map(d => d.pending), 1);
 
   return (
     <Card>
       <CardHeader className="pb-0 pt-4 px-4">
-        <CardTitle className="text-sm font-semibold text-slate-700 flex items-center gap-2">
-          <Gauge className="h-4 w-4" />
-          Evaluator Workload
-        </CardTitle>
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+            <Gauge className="h-4 w-4" />
+            Evaluator Workload
+          </CardTitle>
+          <Button variant={freezePanes ? "default" : "outline"} size="sm" onClick={() => setFreezePanes(f => !f)} className="gap-1.5 h-7 text-xs px-2">
+            <Pin className="h-3 w-3" />
+            {freezePanes ? "Unfreeze" : "Freeze Panes"}
+          </Button>
+        </div>
       </CardHeader>
       <CardContent className="p-0 mt-3">
         {data.length === 0 ? (
@@ -53,8 +62,8 @@ export function EvaluatorWorkloadTable({ data }: EvaluatorWorkloadTableProps) {
           <div className="overflow-auto max-h-[60vh]">
             <table className="w-full text-xs">
               <thead>
-                <tr className="border-b bg-slate-50 sticky top-0 z-10">
-                  <th className="text-left px-4 py-2 text-[10px] uppercase tracking-wide text-slate-400 font-medium sticky left-0 z-20 bg-slate-50 shadow-[2px_0_5px_rgba(0,0,0,0.06)]">Evaluator</th>
+                <tr className={`border-b bg-slate-50 ${freezePanes ? "sticky top-0 z-10" : ""}`}>
+                  <th className={`text-left px-4 py-2 text-[10px] uppercase tracking-wide text-slate-400 font-medium bg-slate-50 ${freezePanes ? "sticky left-0 z-20 shadow-[2px_0_5px_rgba(0,0,0,0.06)]" : ""}`}>Evaluator</th>
                   <th className="text-left px-4 py-2 text-[10px] uppercase tracking-wide text-slate-400 font-medium bg-slate-50">Team</th>
                   <th className="text-center px-4 py-2 text-[10px] uppercase tracking-wide text-slate-400 font-medium bg-slate-50">Assigned</th>
                   <th className="text-center px-4 py-2 text-[10px] uppercase tracking-wide text-slate-400 font-medium bg-slate-50">Completed</th>
@@ -69,7 +78,7 @@ export function EvaluatorWorkloadTable({ data }: EvaluatorWorkloadTableProps) {
                     key={item.evaluator_id}
                     className={item.overdue > 0 ? "bg-red-50 hover:bg-red-100/50" : "hover:bg-slate-50"}
                   >
-                    <td className="px-4 py-2.5 sticky left-0 z-[9] bg-white shadow-[2px_0_5px_rgba(0,0,0,0.06)]">
+                    <td className={`px-4 py-2.5 ${freezePanes ? `sticky left-0 z-[9] shadow-[2px_0_5px_rgba(0,0,0,0.06)] ${item.overdue > 0 ? "bg-red-50" : "bg-white"}` : ""}`}>
                       <div className="flex items-center gap-2">
                         <div className="h-6 w-6 rounded-full bg-slate-200 flex items-center justify-center shrink-0">
                           <span className="text-[10px] font-medium text-slate-600">

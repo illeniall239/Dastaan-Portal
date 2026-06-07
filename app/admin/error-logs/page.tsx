@@ -31,6 +31,7 @@ import {
   Users,
   ChevronDown,
   ChevronUp,
+  Pin,
 } from "lucide-react";
 import { format } from "date-fns";
 
@@ -97,6 +98,7 @@ export default function ErrorLogsPage() {
   const [loading, setLoading] = useState(true);
   const [pagination, setPagination] = useState<Pagination>({ total: 0, limit: 50, offset: 0, hasMore: false });
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [freezePanes, setFreezePanes] = useState(false);
 
   // Filters
   const [routeFilter, setRouteFilter] = useState("");
@@ -274,6 +276,10 @@ export default function ErrorLogsPage() {
             {loading ? "Loading..." : `${pagination.total.toLocaleString()} errors total`}
           </CardTitle>
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Button variant={freezePanes ? "default" : "outline"} size="sm" onClick={() => setFreezePanes(f => !f)} className="gap-1.5 h-8 text-xs">
+              <Pin className="h-3.5 w-3.5" />
+              {freezePanes ? "Unfreeze" : "Freeze Panes"}
+            </Button>
             <span>Page {currentPage} of {totalPages || 1}</span>
             <Button
               variant="outline"
@@ -296,18 +302,18 @@ export default function ErrorLogsPage() {
           </div>
         </CardHeader>
         <CardContent className="p-0">
-          <div className="overflow-x-auto">
+          <div className="overflow-auto max-h-[70vh]">
             <Table>
               <TableHeader>
-                <TableRow>
-                  <TableHead className="w-40">Timestamp</TableHead>
-                  <TableHead>Route</TableHead>
-                  <TableHead className="w-16">Method</TableHead>
-                  <TableHead className="w-20">Status</TableHead>
-                  <TableHead className="w-32">Type</TableHead>
-                  <TableHead>Error</TableHead>
-                  <TableHead className="w-36">User</TableHead>
-                  <TableHead className="w-8"></TableHead>
+                <TableRow className={freezePanes ? "sticky top-0 z-10" : ""}>
+                  <TableHead className={`w-40 bg-background ${freezePanes ? "sticky left-0 z-20 shadow-[2px_0_5px_rgba(0,0,0,0.06)]" : ""}`}>Timestamp</TableHead>
+                  <TableHead className="bg-background">Route</TableHead>
+                  <TableHead className="w-16 bg-background">Method</TableHead>
+                  <TableHead className="w-20 bg-background">Status</TableHead>
+                  <TableHead className="w-32 bg-background">Type</TableHead>
+                  <TableHead className="bg-background">Error</TableHead>
+                  <TableHead className="w-36 bg-background">User</TableHead>
+                  <TableHead className="w-8 bg-background"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -330,7 +336,7 @@ export default function ErrorLogsPage() {
                       className="cursor-pointer hover:bg-muted/50"
                       onClick={() => setExpandedId(expandedId === log.id ? null : log.id)}
                     >
-                      <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
+                      <TableCell className={`text-xs text-muted-foreground whitespace-nowrap bg-background ${freezePanes ? "sticky left-0 z-[9] shadow-[2px_0_5px_rgba(0,0,0,0.06)]" : ""}`}>
                         {format(new Date(log.timestamp), "MMM d, HH:mm:ss")}
                       </TableCell>
                       <TableCell className="font-mono text-xs max-w-[180px] truncate" title={log.route || ""}>

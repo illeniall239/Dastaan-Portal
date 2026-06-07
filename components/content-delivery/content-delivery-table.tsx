@@ -4,6 +4,7 @@ import { useState } from "react";
 import type { ContentDeliveryItem } from "@/types";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Table,
   TableBody,
@@ -12,7 +13,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { CheckCircle2, Clock, AlertCircle, FileText } from "lucide-react";
+import { CheckCircle2, Clock, AlertCircle, FileText, Pin } from "lucide-react";
 
 interface ContentDeliveryTableProps {
   items: ContentDeliveryItem[];
@@ -21,6 +22,7 @@ interface ContentDeliveryTableProps {
 export function ContentDeliveryTable({ items }: ContentDeliveryTableProps) {
   const [sortField, setSortField] = useState<keyof ContentDeliveryItem | null>(null);
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
+  const [freezePanes, setFreezePanes] = useState(false);
 
   const handleSort = (field: keyof ContentDeliveryItem) => {
     if (sortField === field) {
@@ -75,54 +77,61 @@ export function ContentDeliveryTable({ items }: ContentDeliveryTableProps) {
   }
 
   return (
+    <>
+    <div className="flex justify-end mb-2">
+      <Button variant={freezePanes ? "default" : "outline"} size="sm" onClick={() => setFreezePanes(f => !f)} className="gap-1.5 h-7 text-xs px-2">
+        <Pin className="h-3 w-3" />
+        {freezePanes ? "Unfreeze" : "Freeze Panes"}
+      </Button>
+    </div>
     <div className="rounded-md border">
-      <Table>
+      <Table wrapperClassName="max-h-[70vh]">
         <TableHeader>
-          <TableRow>
+          <TableRow className={freezePanes ? "sticky top-0 z-10" : ""}>
             <TableHead
-              className="cursor-pointer hover:bg-gray-50"
+              className={`cursor-pointer hover:bg-gray-50 bg-background ${freezePanes ? "sticky left-0 z-20 shadow-[2px_0_5px_rgba(0,0,0,0.06)]" : ""}`}
               onClick={() => handleSort("project_name")}
             >
               Project
             </TableHead>
             <TableHead
-              className="cursor-pointer hover:bg-gray-50"
+              className="cursor-pointer hover:bg-gray-50 bg-background"
               onClick={() => handleSort("writer_name")}
             >
               Writer
             </TableHead>
             <TableHead
-              className="cursor-pointer hover:bg-gray-50"
+              className="cursor-pointer hover:bg-gray-50 bg-background"
               onClick={() => handleSort("genre")}
             >
               Genre
             </TableHead>
             <TableHead
-              className="cursor-pointer hover:bg-gray-50"
+              className="cursor-pointer hover:bg-gray-50 bg-background"
               onClick={() => handleSort("agreed_price")}
             >
               Agreed Price
             </TableHead>
             <TableHead
-              className="cursor-pointer hover:bg-gray-50"
+              className="cursor-pointer hover:bg-gray-50 bg-background"
               onClick={() => handleSort("total_episodes")}
             >
               Episodes
             </TableHead>
             <TableHead
-              className="cursor-pointer hover:bg-gray-50"
+              className="cursor-pointer hover:bg-gray-50 bg-background"
               onClick={() => handleSort("completion_percentage")}
             >
               Progress
             </TableHead>
             <TableHead
-              className="cursor-pointer hover:bg-gray-50"
+              className="cursor-pointer hover:bg-gray-50 bg-background"
               onClick={() => handleSort("time_slot")}
             >
               Time Slot
             </TableHead>
             <TableHead
-              className="cursor-pointer hover:bg-gray-50"
+              className="cursor-pointer hover:bg-gray-50 bg-background"
               onClick={() => handleSort("contract_type")}
             >
               Contract Type
@@ -132,7 +141,7 @@ export function ContentDeliveryTable({ items }: ContentDeliveryTableProps) {
         <TableBody>
           {sortedItems.map((item) => (
             <TableRow key={item.id}>
-              <TableCell>
+              <TableCell className={`bg-white ${freezePanes ? "sticky left-0 z-[9] shadow-[2px_0_5px_rgba(0,0,0,0.06)]" : ""}`}>
                 <div>
                   <div className="font-medium">{item.project_name}</div>
                   <div className="text-xs text-muted-foreground">
@@ -191,5 +200,6 @@ export function ContentDeliveryTable({ items }: ContentDeliveryTableProps) {
         </TableBody>
       </Table>
     </div>
+    </>
   );
 }

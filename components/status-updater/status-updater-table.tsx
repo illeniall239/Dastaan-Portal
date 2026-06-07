@@ -8,12 +8,13 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Search } from "lucide-react";
+import { Search, Pin } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getScriptStageColors } from "@/lib/management/color-palettes";
 import type { ActiveIdeaDetail } from "@/lib/management/active-ideas-details";
 import { toast } from "sonner";
 import { ExportButton } from "@/components/management/export-button";
+import { Button } from "@/components/ui/button";
 
 const STAGE_OPTIONS = [
   { key: "discussion", label: "Discussion", statuses: ["Story Under Discussion/Development", "Contract done - Story Under Discussion/Development", "Story Discussed & Approved"] },
@@ -46,6 +47,7 @@ interface StatusUpdaterTableProps {
 export function StatusUpdaterTable({ ideas, role, readOnly = false }: StatusUpdaterTableProps) {
   const showManagementColumns = role !== "evaluator";
   const showStageStatusRemarks = true;
+  const [freezePanes, setFreezePanes] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [genreFilter, setGenreFilter] = useState<string>("all");
   const [slotFilter, setSlotFilter] = useState<string>("all");
@@ -296,6 +298,10 @@ export function StatusUpdaterTable({ ideas, role, readOnly = false }: StatusUpda
             )}
           </div>
           <div className="flex items-center gap-3">
+            <Button variant={freezePanes ? "default" : "outline"} size="sm" onClick={() => setFreezePanes(f => !f)} className="gap-1.5 h-8 text-xs px-2">
+              <Pin className="h-3 w-3" />
+              {freezePanes ? "Unfreeze" : "Freeze Panes"}
+            </Button>
             {selectedIds.size > 0 ? (
               <div className="flex items-center gap-2">
                 <Badge variant="secondary" className="bg-blue-100 text-blue-800 px-3 py-1.5">
@@ -433,8 +439,8 @@ export function StatusUpdaterTable({ ideas, role, readOnly = false }: StatusUpda
           <div className="overflow-auto max-h-[80vh]">
             <table className="w-full caption-bottom text-sm border-separate border-spacing-0">
               <TableHeader>
-                <TableRow className="bg-slate-50/80 hover:bg-slate-50/80 sticky top-0 z-10">
-                  <TableHead className="font-bold text-slate-700 text-center border-r border-b whitespace-nowrap w-12 sticky left-0 z-20 bg-slate-50">
+                <TableRow className={`bg-slate-50/80 hover:bg-slate-50/80 ${freezePanes ? "sticky top-0 z-10" : ""}`}>
+                  <TableHead className={`font-bold text-slate-700 text-center border-r border-b whitespace-nowrap w-12 bg-slate-50 ${freezePanes ? "sticky left-0 z-20" : ""}`}>
                     <div className="flex items-center justify-center">
                       <Checkbox
                         checked={
@@ -455,7 +461,7 @@ export function StatusUpdaterTable({ ideas, role, readOnly = false }: StatusUpda
                       />
                     </div>
                   </TableHead>
-                  <TableHead className="font-bold text-slate-700 text-center border-r border-b whitespace-nowrap sticky left-12 z-20 bg-slate-50 shadow-[2px_0_5px_rgba(0,0,0,0.06)]">Sr #</TableHead>
+                  <TableHead className={`font-bold text-slate-700 text-center border-r border-b whitespace-nowrap bg-slate-50 ${freezePanes ? "sticky left-12 z-20 shadow-[2px_0_5px_rgba(0,0,0,0.06)]" : ""}`}>Sr #</TableHead>
                   <TableHead className="font-bold text-slate-700 border-r border-b whitespace-nowrap">Person in Charge</TableHead>
                   <TableHead className="font-bold text-slate-700 cursor-pointer border-r border-b whitespace-nowrap" onClick={() => handleSort("title")}>Title</TableHead>
                   <TableHead className="font-bold text-slate-700 border-b whitespace-nowrap">Writer</TableHead>
@@ -505,7 +511,7 @@ export function StatusUpdaterTable({ ideas, role, readOnly = false }: StatusUpda
                       }}
                     >
                       {/* Selection checkbox */}
-                      <TableCell className="text-center text-xs font-semibold text-slate-500 border-r border-b w-12 sticky left-0 z-[9]" style={{ backgroundColor: stageColors.bg ? `${stageColors.bg}15` : '#ffffff' }}>
+                      <TableCell className={`text-center text-xs font-semibold text-slate-500 border-r border-b w-12 ${freezePanes ? "sticky left-0 z-[9]" : ""}`} style={{ backgroundColor: stageColors.bg ? `${stageColors.bg}15` : '#ffffff' }}>
                         <div className="flex items-center justify-center">
                           <Checkbox
                             checked={selectedIds.has(idea.id)}
@@ -523,7 +529,7 @@ export function StatusUpdaterTable({ ideas, role, readOnly = false }: StatusUpda
                         </div>
                       </TableCell>
                       {/* Sr # */}
-                      <TableCell className="text-center text-xs font-semibold text-slate-500 border-r border-b sticky left-12 z-[9] shadow-[2px_0_5px_rgba(0,0,0,0.06)]" style={{ backgroundColor: stageColors.bg ? `${stageColors.bg}15` : '#ffffff' }}>
+                      <TableCell className={`text-center text-xs font-semibold text-slate-500 border-r border-b ${freezePanes ? "sticky left-12 z-[9] shadow-[2px_0_5px_rgba(0,0,0,0.06)]" : ""}`} style={{ backgroundColor: stageColors.bg ? `${stageColors.bg}15` : '#ffffff' }}>
                         {index + 1}
                       </TableCell>
 

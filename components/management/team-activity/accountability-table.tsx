@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { Card, CardContent, CardTitle } from "@/components/ui/card";
-import { ChevronDown, ChevronRight, Users, ShieldCheck } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { ChevronDown, ChevronRight, Users, ShieldCheck, Pin } from "lucide-react";
 import { TeamBadge } from "@/components/shared/team-badge";
 
 interface MemberData {
@@ -74,7 +75,7 @@ function Num({ value }: { value: number }) {
   );
 }
 
-function TeamRows({ team }: { team: TeamData }) {
+function TeamRows({ team, freeze }: { team: TeamData; freeze: boolean }) {
   const [open, setOpen] = useState(false);
   const hasMembers = team.member_count > 0;
 
@@ -85,7 +86,7 @@ function TeamRows({ team }: { team: TeamData }) {
         className={`border-b border-slate-100 transition-colors ${hasMembers ? "cursor-pointer hover:bg-slate-50" : ""} group`}
         onClick={() => hasMembers && setOpen(o => !o)}
       >
-        <td className="px-4 py-3 sticky left-0 z-[9] bg-white shadow-[2px_0_5px_rgba(0,0,0,0.06)]">
+        <td className={`px-4 py-3 ${freeze ? "sticky left-0 z-[9] bg-white shadow-[2px_0_5px_rgba(0,0,0,0.06)]" : ""}`}>
           <div className="flex items-center gap-2 min-w-0">
             <div className="w-4 shrink-0 flex items-center justify-center">
               {hasMembers ? (
@@ -145,7 +146,7 @@ function TeamRows({ team }: { team: TeamData }) {
       {/* Member rows */}
       {open && team.members.map(m => (
         <tr key={m.user_id} className="border-b border-slate-100 bg-slate-50/60 hover:bg-slate-50">
-          <td className="px-4 py-2 pl-12 sticky left-0 z-[9] bg-slate-50 shadow-[2px_0_5px_rgba(0,0,0,0.06)]">
+          <td className={`px-4 py-2 pl-12 ${freeze ? "sticky left-0 z-[9] bg-slate-50 shadow-[2px_0_5px_rgba(0,0,0,0.06)]" : ""}`}>
             <div className="flex items-center gap-2 min-w-0">
               <div className="relative shrink-0">
                 <div className="h-6 w-6 rounded-full bg-slate-200 flex items-center justify-center">
@@ -200,6 +201,7 @@ function TeamRows({ team }: { team: TeamData }) {
 }
 
 export function AccountabilityTable({ data }: AccountabilityTableProps) {
+  const [freezePanes, setFreezePanes] = useState(false);
   const sorted = [...data].sort((a, b) => {
     const aTotal = a.call_reports + a.evaluations;
     const bTotal = b.call_reports + b.evaluations;
@@ -213,7 +215,13 @@ export function AccountabilityTable({ data }: AccountabilityTableProps) {
           <ShieldCheck className="h-4 w-4" />
           Team Accountability
         </CardTitle>
-        <p className="text-xs text-slate-400 hidden sm:block">Click a team to expand members</p>
+        <div className="flex items-center gap-2">
+          <p className="text-xs text-slate-400 hidden sm:block">Click a team to expand members</p>
+          <Button variant={freezePanes ? "default" : "outline"} size="sm" onClick={() => setFreezePanes(f => !f)} className="gap-1.5 h-7 text-xs px-2">
+            <Pin className="h-3 w-3" />
+            {freezePanes ? "Unfreeze" : "Freeze Panes"}
+          </Button>
+        </div>
       </div>
       <CardContent className="p-0">
         {data.length === 0 ? (
@@ -224,8 +232,8 @@ export function AccountabilityTable({ data }: AccountabilityTableProps) {
           <div className="overflow-auto max-h-[70vh]">
             <table className="w-full text-xs">
               <thead>
-                <tr className="border-b bg-slate-50 sticky top-0 z-10">
-                  <th className="px-4 py-2 text-left text-[10px] uppercase tracking-wide text-slate-400 font-medium sticky left-0 z-20 bg-slate-50 shadow-[2px_0_5px_rgba(0,0,0,0.06)]">Team / Member</th>
+                <tr className={`border-b bg-slate-50 ${freezePanes ? "sticky top-0 z-10" : ""}`}>
+                  <th className={`px-4 py-2 text-left text-[10px] uppercase tracking-wide text-slate-400 font-medium bg-slate-50 ${freezePanes ? "sticky left-0 z-20 shadow-[2px_0_5px_rgba(0,0,0,0.06)]" : ""}`}>Team / Member</th>
                   <th className="px-4 py-2 text-center text-[10px] uppercase tracking-wide text-slate-400 font-medium whitespace-nowrap bg-slate-50">New Ideas Logged</th>
                   <th className="px-4 py-2 text-center text-[10px] uppercase tracking-wide text-slate-400 font-medium whitespace-nowrap bg-slate-50">Evals Done</th>
                   <th className="px-4 py-2 text-center text-[10px] uppercase tracking-wide text-amber-500 font-medium whitespace-nowrap bg-slate-50">Pending Evals</th>
@@ -237,7 +245,7 @@ export function AccountabilityTable({ data }: AccountabilityTableProps) {
                 </tr>
               </thead>
               <tbody>
-                {sorted.map(team => <TeamRows key={team.team_id} team={team} />)}
+                {sorted.map(team => <TeamRows key={team.team_id} team={team} freeze={freezePanes} />)}
               </tbody>
             </table>
           </div>

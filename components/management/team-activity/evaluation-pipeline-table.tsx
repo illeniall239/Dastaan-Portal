@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { GitBranch, AlertTriangle, Clock } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { GitBranch, AlertTriangle, Clock, Pin } from "lucide-react";
 import { TeamBadge } from "@/components/shared/team-badge";
 
 interface PipelineItem {
@@ -81,6 +82,7 @@ const FILTERS: { key: FilterType; label: string }[] = [
 
 export function EvaluationPipelineTable({ data }: EvaluationPipelineTableProps) {
   const [filter, setFilter] = useState<FilterType>("all");
+  const [freezePanes, setFreezePanes] = useState(false);
 
   const filtered = data.filter(item => {
     if (filter === "overdue") return item.is_overdue;
@@ -99,6 +101,7 @@ export function EvaluationPipelineTable({ data }: EvaluationPipelineTableProps) 
             <GitBranch className="h-4 w-4" />
             Evaluation Pipeline
           </CardTitle>
+          <div className="flex items-center gap-2 flex-wrap">
           <div className="flex items-center gap-1">
             {FILTERS.map(f => (
               <button
@@ -119,6 +122,11 @@ export function EvaluationPipelineTable({ data }: EvaluationPipelineTableProps) 
               </button>
             ))}
           </div>
+          <Button variant={freezePanes ? "default" : "outline"} size="sm" onClick={() => setFreezePanes(f => !f)} className="gap-1.5 h-7 text-xs px-2">
+            <Pin className="h-3 w-3" />
+            {freezePanes ? "Unfreeze" : "Freeze Panes"}
+          </Button>
+          </div>
         </div>
       </CardHeader>
       <CardContent className="p-0 mt-3">
@@ -130,8 +138,8 @@ export function EvaluationPipelineTable({ data }: EvaluationPipelineTableProps) 
           <div className="overflow-auto max-h-[60vh]">
             <table className="w-full text-xs">
               <thead>
-                <tr className="border-b bg-slate-50 sticky top-0 z-10">
-                  <th className="text-left px-4 py-2 text-[10px] uppercase tracking-wide text-slate-400 font-medium sticky left-0 z-20 bg-slate-50 shadow-[2px_0_5px_rgba(0,0,0,0.06)]">Call Report</th>
+                <tr className={`border-b bg-slate-50 ${freezePanes ? "sticky top-0 z-10" : ""}`}>
+                  <th className={`text-left px-4 py-2 text-[10px] uppercase tracking-wide text-slate-400 font-medium bg-slate-50 ${freezePanes ? "sticky left-0 z-20 shadow-[2px_0_5px_rgba(0,0,0,0.06)]" : ""}`}>Call Report</th>
                   <th className="text-left px-4 py-2 text-[10px] uppercase tracking-wide text-slate-400 font-medium bg-slate-50">Team</th>
                   <th className="text-center px-4 py-2 text-[10px] uppercase tracking-wide text-slate-400 font-medium bg-slate-50">Progress</th>
                   <th className="text-center px-4 py-2 text-[10px] uppercase tracking-wide text-slate-400 font-medium bg-slate-50">Status</th>
@@ -151,7 +159,7 @@ export function EvaluationPipelineTable({ data }: EvaluationPipelineTableProps) 
                         : "hover:bg-slate-50"
                     }
                   >
-                    <td className={`px-4 py-2.5 sticky left-0 z-[9] shadow-[2px_0_5px_rgba(0,0,0,0.06)] ${item.is_overdue ? "bg-red-50" : item.is_near_deadline ? "bg-amber-50" : "bg-white"}`}>
+                    <td className={`px-4 py-2.5 ${freezePanes ? `sticky left-0 z-[9] shadow-[2px_0_5px_rgba(0,0,0,0.06)] ${item.is_overdue ? "bg-red-50" : item.is_near_deadline ? "bg-amber-50" : "bg-white"}` : ""}`}>
                       <div>
                         <p className="font-medium text-slate-800 leading-tight">{item.working_title}</p>
                         <p className="text-slate-400 text-[10px] mt-0.5">{item.call_report_id}</p>

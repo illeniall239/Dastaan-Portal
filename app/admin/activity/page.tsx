@@ -31,6 +31,7 @@ import {
   AlertTriangle,
   ChevronDown,
   ChevronUp,
+  Pin,
 } from "lucide-react";
 import { format } from "date-fns";
 
@@ -77,6 +78,7 @@ export default function ActivityLogsPage() {
   const [loading, setLoading] = useState(true);
   const [pagination, setPagination] = useState({ total: 0, limit: 50, offset: 0, hasMore: false });
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [freezePanes, setFreezePanes] = useState(false);
 
   const [typeFilter, setTypeFilter] = useState("all");
   const [routeFilter, setRouteFilter] = useState("");
@@ -233,6 +235,10 @@ export default function ActivityLogsPage() {
             {loading ? "Loading..." : `${pagination.total.toLocaleString()} events total`}
           </CardTitle>
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Button variant={freezePanes ? "default" : "outline"} size="sm" onClick={() => setFreezePanes(f => !f)} className="gap-1.5 h-8 text-xs">
+              <Pin className="h-3.5 w-3.5" />
+              {freezePanes ? "Unfreeze" : "Freeze Panes"}
+            </Button>
             <span>Page {currentPage} of {totalPages || 1}</span>
             <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => fetchLogs(Math.max(0, pagination.offset - pagination.limit))} disabled={pagination.offset === 0 || loading}>
               <ChevronLeft className="h-4 w-4" />
@@ -243,16 +249,16 @@ export default function ActivityLogsPage() {
           </div>
         </CardHeader>
         <CardContent className="p-0">
-          <div className="overflow-x-auto">
+          <div className="overflow-auto max-h-[70vh]">
             <Table>
               <TableHeader>
-                <TableRow>
-                  <TableHead className="w-36">Timestamp</TableHead>
-                  <TableHead className="w-28">Type</TableHead>
-                  <TableHead className="w-36">User</TableHead>
-                  <TableHead>Route</TableHead>
-                  <TableHead>Detail</TableHead>
-                  <TableHead className="w-8"></TableHead>
+                <TableRow className={freezePanes ? "sticky top-0 z-10" : ""}>
+                  <TableHead className={`w-36 bg-background ${freezePanes ? "sticky left-0 z-20 shadow-[2px_0_5px_rgba(0,0,0,0.06)]" : ""}`}>Timestamp</TableHead>
+                  <TableHead className="w-28 bg-background">Type</TableHead>
+                  <TableHead className="w-36 bg-background">User</TableHead>
+                  <TableHead className="bg-background">Route</TableHead>
+                  <TableHead className="bg-background">Detail</TableHead>
+                  <TableHead className="w-8 bg-background"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -270,7 +276,7 @@ export default function ActivityLogsPage() {
                   return (
                     <>
                       <TableRow key={log.id} className="cursor-pointer hover:bg-muted/50" onClick={() => setExpandedId(expandedId === log.id ? null : log.id)}>
-                        <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
+                        <TableCell className={`text-xs text-muted-foreground whitespace-nowrap bg-background ${freezePanes ? "sticky left-0 z-[9] shadow-[2px_0_5px_rgba(0,0,0,0.06)]" : ""}`}>
                           {format(new Date(log.timestamp), "MMM d, HH:mm:ss")}
                         </TableCell>
                         <TableCell><TypeBadge type={log.type} /></TableCell>

@@ -2,6 +2,8 @@
 
 import { useState, useMemo } from "react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Pin } from "lucide-react";
 import { TeamBadge } from "@/components/shared/team-badge";
 import { formatDate } from "@/lib/utils/format-date";
 import { cn } from "@/lib/utils";
@@ -63,6 +65,7 @@ function getRowClass(item: FeedbackTimelineItem): string {
 export function FeedbackTimelineTable({ data }: FeedbackTimelineTableProps) {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [teamFilter, setTeamFilter] = useState<string>("all");
+  const [freezePanes, setFreezePanes] = useState(false);
 
   // Get unique team names for filter dropdown
   const uniqueTeams = useMemo(() => {
@@ -106,6 +109,10 @@ export function FeedbackTimelineTable({ data }: FeedbackTimelineTableProps) {
           </div>
 
           <div className="flex flex-wrap gap-3">
+            <Button variant={freezePanes ? "default" : "outline"} size="sm" onClick={() => setFreezePanes(f => !f)} className="gap-1.5 h-8 text-xs px-2">
+              <Pin className="h-3 w-3" />
+              {freezePanes ? "Unfreeze" : "Freeze Panes"}
+            </Button>
             {/* Status Filter */}
             <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as StatusFilter)}>
               <SelectTrigger className="w-[140px]">
@@ -137,35 +144,35 @@ export function FeedbackTimelineTable({ data }: FeedbackTimelineTableProps) {
       </div>
 
       {/* Table */}
-      <div className="overflow-x-auto">
+      <div className="overflow-auto max-h-[70vh]">
         <table className="w-full">
           <thead className="bg-gray-50 border-b border-gray-200">
-            <tr>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+            <tr className={freezePanes ? "sticky top-0 z-10" : ""}>
+              <th className={`px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider bg-gray-50 ${freezePanes ? "sticky left-0 z-20 shadow-[2px_0_5px_rgba(0,0,0,0.06)]" : ""}`}>
                 Project
               </th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider bg-gray-50">
                 Team
               </th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider bg-gray-50">
                 Logged
               </th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider bg-gray-50">
                 Evaluated
               </th>
-              <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">
+              <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider bg-gray-50">
                 Days
               </th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider bg-gray-50">
                 Status
               </th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider bg-gray-50">
                 Evaluator
               </th>
-              <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">
+              <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider bg-gray-50">
                 Score
               </th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider bg-gray-50">
                 Delay Reason
               </th>
             </tr>
@@ -195,7 +202,7 @@ export function FeedbackTimelineTable({ data }: FeedbackTimelineTableProps) {
                     className={cn("transition-colors", getRowClass(item))}
                   >
                     {/* Project */}
-                    <td className="px-4 py-3">
+                    <td className={`px-4 py-3 ${freezePanes ? `sticky left-0 z-[9] shadow-[2px_0_5px_rgba(0,0,0,0.06)] ${item.isLate ? "bg-red-50" : "bg-white"}` : ""}`}>
                       <div className="flex flex-col">
                         <div className="flex items-center gap-1.5">
                           <span className="text-sm font-medium text-gray-900 line-clamp-1">

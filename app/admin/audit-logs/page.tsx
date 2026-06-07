@@ -22,7 +22,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Download, ChevronLeft, ChevronRight, Search, Filter } from "lucide-react";
+import { Download, ChevronLeft, ChevronRight, Search, Filter, Pin } from "lucide-react";
 import { format } from "date-fns";
 
 interface AuditLog {
@@ -69,6 +69,7 @@ export default function AuditLogsPage() {
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [selectedLog, setSelectedLog] = useState<AuditLog | null>(null);
+  const [freezePanes, setFreezePanes] = useState(false);
 
   const fetchAuditLogs = async (offset: number = 0) => {
     setLoading(true);
@@ -268,10 +269,18 @@ export default function AuditLogsPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Audit Trail ({pagination.total} total records)</CardTitle>
-          <CardDescription>
-            Showing {pagination.offset + 1} - {Math.min(pagination.offset + pagination.limit, pagination.total)} of {pagination.total}
-          </CardDescription>
+          <div className="flex items-start justify-between gap-2">
+            <div>
+              <CardTitle>Audit Trail ({pagination.total} total records)</CardTitle>
+              <CardDescription>
+                Showing {pagination.offset + 1} - {Math.min(pagination.offset + pagination.limit, pagination.total)} of {pagination.total}
+              </CardDescription>
+            </div>
+            <Button variant={freezePanes ? "default" : "outline"} size="sm" onClick={() => setFreezePanes(f => !f)} className="gap-1.5 h-8 text-xs shrink-0">
+              <Pin className="h-3.5 w-3.5" />
+              {freezePanes ? "Unfreeze" : "Freeze Panes"}
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           {loading ? (
@@ -281,22 +290,22 @@ export default function AuditLogsPage() {
           ) : (
             <>
               <div className="rounded-md border">
-                <Table>
+                <Table wrapperClassName="max-h-[70vh]">
                   <TableHeader>
-                    <TableRow>
-                      <TableHead>Timestamp</TableHead>
-                      <TableHead>User</TableHead>
-                      <TableHead>Action</TableHead>
-                      <TableHead>Entity Type</TableHead>
-                      <TableHead>Entity ID</TableHead>
-                      <TableHead>IP Address</TableHead>
-                      <TableHead>Details</TableHead>
+                    <TableRow className={freezePanes ? "sticky top-0 z-10" : ""}>
+                      <TableHead className={`bg-background ${freezePanes ? "sticky left-0 z-20 shadow-[2px_0_5px_rgba(0,0,0,0.06)]" : ""}`}>Timestamp</TableHead>
+                      <TableHead className="bg-background">User</TableHead>
+                      <TableHead className="bg-background">Action</TableHead>
+                      <TableHead className="bg-background">Entity Type</TableHead>
+                      <TableHead className="bg-background">Entity ID</TableHead>
+                      <TableHead className="bg-background">IP Address</TableHead>
+                      <TableHead className="bg-background">Details</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {logs.map((log) => (
                       <TableRow key={log.id}>
-                        <TableCell className="font-mono text-xs">
+                        <TableCell className={`font-mono text-xs bg-background ${freezePanes ? "sticky left-0 z-[9] shadow-[2px_0_5px_rgba(0,0,0,0.06)]" : ""}`}>
                           {format(new Date(log.timestamp), "yyyy-MM-dd HH:mm:ss")}
                         </TableCell>
                         <TableCell>

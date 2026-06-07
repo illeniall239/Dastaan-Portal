@@ -11,7 +11,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
+import { ArrowUpDown, ArrowUp, ArrowDown, Pin } from "lucide-react";
 import type { TeamPerformance } from "@/types";
 
 interface TeamComparisonTableProps {
@@ -26,6 +26,7 @@ type SortDirection = 'asc' | 'desc';
 export function TeamComparisonTable({ teams, filteredType }: TeamComparisonTableProps) {
   const [sortField, setSortField] = useState<SortField>('team_name');
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
+  const [freezePanes, setFreezePanes] = useState(false);
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
@@ -71,18 +72,26 @@ export function TeamComparisonTable({ teams, filteredType }: TeamComparisonTable
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Team Performance Comparison</CardTitle>
-        <CardDescription>
-          Detailed metrics for all teams - Click column headers to sort
-        </CardDescription>
+        <div className="flex items-start justify-between gap-2">
+          <div>
+            <CardTitle>Team Performance Comparison</CardTitle>
+            <CardDescription>
+              Detailed metrics for all teams - Click column headers to sort
+            </CardDescription>
+          </div>
+          <Button variant={freezePanes ? "default" : "outline"} size="sm" onClick={() => setFreezePanes(f => !f)} className="gap-1.5 h-7 text-xs px-2 shrink-0">
+            <Pin className="h-3 w-3" />
+            {freezePanes ? "Unfreeze" : "Freeze Panes"}
+          </Button>
+        </div>
       </CardHeader>
       <CardContent>
         <div className="rounded-md border overflow-hidden">
           <div className="overflow-x-auto max-w-full">
             <Table className="text-sm" wrapperClassName="max-h-[60vh]">
               <TableHeader>
-                <TableRow className="sticky top-0 z-10 bg-white">
-                  <TableHead className="text-xs sticky left-0 z-20 bg-white shadow-[2px_0_5px_rgba(0,0,0,0.06)]">
+                <TableRow className={`bg-white ${freezePanes ? "sticky top-0 z-10" : ""}`}>
+                  <TableHead className={`text-xs bg-white ${freezePanes ? "sticky left-0 z-20 shadow-[2px_0_5px_rgba(0,0,0,0.06)]" : ""}`}>
                     <Button
                       variant="ghost"
                       size="sm"
@@ -160,7 +169,7 @@ export function TeamComparisonTable({ teams, filteredType }: TeamComparisonTable
                 ) : (
                   sortedTeams.map((team) => (
                     <TableRow key={team.team_id} className="hover:bg-teal-50/50">
-                      <TableCell className="font-medium sticky left-0 z-[9] bg-white shadow-[2px_0_5px_rgba(0,0,0,0.06)]">{team.team_name}</TableCell>
+                      <TableCell className={`font-medium bg-white ${freezePanes ? "sticky left-0 z-[9] shadow-[2px_0_5px_rgba(0,0,0,0.06)]" : ""}`}>{team.team_name}</TableCell>
                       <TableCell className="text-center">{team.team_member_count || 0}</TableCell>
                       <TableCell className="text-center font-semibold">{team.call_reports_created || 0}</TableCell>
                       <TableCell className="text-center font-semibold">{team.evaluations_completed || 0}</TableCell>

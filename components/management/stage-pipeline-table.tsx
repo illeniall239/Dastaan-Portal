@@ -29,6 +29,7 @@ import {
   Eye,
   ArrowUpDown,
   X,
+  Pin,
 } from "lucide-react";
 import type { PipelineStory } from "@/types";
 import { cn } from "@/lib/utils";
@@ -47,6 +48,7 @@ export function StagePipelineTable({ stories, onStoryClick }: StagePipelineTable
   const [filterGenre, setFilterGenre] = useState<string>("all");
   const [sortField, setSortField] = useState<SortField>("days_in_current_stage");
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
+  const [freezePanes, setFreezePanes] = useState(false);
 
   // Get unique genres for filter
   const uniqueGenres = useMemo(() => {
@@ -141,10 +143,16 @@ export function StagePipelineTable({ stories, onStoryClick }: StagePipelineTable
       <Card className="p-4">
         <div className="flex items-center justify-between mb-4">
           <h3 className="font-semibold text-sm">Filters & Search</h3>
-          <Button variant="ghost" size="sm" onClick={clearFilters}>
-            <X className="h-4 w-4 mr-1" />
-            Clear
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant={freezePanes ? "default" : "outline"} size="sm" onClick={() => setFreezePanes(f => !f)} className="gap-1.5 h-7 text-xs px-2">
+              <Pin className="h-3 w-3" />
+              {freezePanes ? "Unfreeze" : "Freeze Panes"}
+            </Button>
+            <Button variant="ghost" size="sm" onClick={clearFilters}>
+              <X className="h-4 w-4 mr-1" />
+              Clear
+            </Button>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -212,11 +220,10 @@ export function StagePipelineTable({ stories, onStoryClick }: StagePipelineTable
 
       {/* Table */}
       <Card>
-        <div className="overflow-x-auto">
           <Table wrapperClassName="max-h-[70vh]">
             <TableHeader>
-              <TableRow className="bg-slate-50 sticky top-0 z-10">
-                <TableHead className="w-[250px] sticky left-0 z-20 bg-slate-50 shadow-[2px_0_5px_rgba(0,0,0,0.06)]">
+              <TableRow className={`bg-slate-50 ${freezePanes ? "sticky top-0 z-10" : ""}`}>
+                <TableHead className={`w-[250px] bg-slate-50 ${freezePanes ? "sticky left-0 z-20 shadow-[2px_0_5px_rgba(0,0,0,0.06)]" : ""}`}>
                   <Button
                     variant="ghost"
                     size="sm"
@@ -279,7 +286,7 @@ export function StagePipelineTable({ stories, onStoryClick }: StagePipelineTable
                       onClick={() => onStoryClick(story)}
                     >
                       {/* Story Details */}
-                      <TableCell className="sticky left-0 z-[9] bg-white shadow-[2px_0_5px_rgba(0,0,0,0.06)]">
+                      <TableCell className={`bg-white ${freezePanes ? "sticky left-0 z-[9] shadow-[2px_0_5px_rgba(0,0,0,0.06)]" : ""}`}>
                         <div>
                           <div className="text-base font-bold leading-relaxed text-slate-900 mb-1">
                             {story.title}
@@ -430,7 +437,6 @@ export function StagePipelineTable({ stories, onStoryClick }: StagePipelineTable
               )}
             </TableBody>
           </Table>
-        </div>
       </Card>
     </div>
   );

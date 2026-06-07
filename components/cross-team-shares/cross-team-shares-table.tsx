@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Pin } from 'lucide-react';
 import { CrossTeamShare } from '@/types';
 import { formatDistanceToNow, format, differenceInHours, differenceInDays } from 'date-fns';
 
@@ -18,6 +19,7 @@ export function CrossTeamSharesTable({ readOnly = false }: CrossTeamSharesTableP
   const [error, setError] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState('all');
   const [directionFilter, setDirectionFilter] = useState('all');
+  const [freezePanes, setFreezePanes] = useState(false);
 
   useEffect(() => {
     fetchShares();
@@ -164,16 +166,22 @@ export function CrossTeamSharesTable({ readOnly = false }: CrossTeamSharesTableP
       {/* Table */}
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-base">
-            Cross-Team Shares Tracking ({filteredShares.length})
-          </CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-base">
+              Cross-Team Shares Tracking ({filteredShares.length})
+            </CardTitle>
+            <Button variant={freezePanes ? "default" : "outline"} size="sm" onClick={() => setFreezePanes(f => !f)} className="gap-1.5 h-7 text-xs px-2">
+              <Pin className="h-3 w-3" />
+              {freezePanes ? "Unfreeze" : "Freeze Panes"}
+            </Button>
+          </div>
         </CardHeader>
         <CardContent className="p-0">
           <div className="overflow-auto max-h-[70vh]">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b bg-gray-50/80 sticky top-0 z-10">
-                  <th className="text-left p-3 font-medium text-gray-600 sticky left-0 z-20 bg-gray-50 shadow-[2px_0_5px_rgba(0,0,0,0.06)]">Project</th>
+                <tr className={`border-b bg-gray-50/80 ${freezePanes ? "sticky top-0 z-10" : ""}`}>
+                  <th className={`text-left p-3 font-medium text-gray-600 bg-gray-50 ${freezePanes ? "sticky left-0 z-20 shadow-[2px_0_5px_rgba(0,0,0,0.06)]" : ""}`}>Project</th>
                   <th className="text-left p-3 font-medium text-gray-600 bg-gray-50">From Team</th>
                   <th className="text-left p-3 font-medium text-gray-600 bg-gray-50">To Team</th>
                   <th className="text-left p-3 font-medium text-gray-600 bg-gray-50">Requested By</th>
@@ -194,7 +202,7 @@ export function CrossTeamSharesTable({ readOnly = false }: CrossTeamSharesTableP
                 ) : (
                   filteredShares.map(share => (
                     <tr key={share.id} className="border-b hover:bg-gray-50/50">
-                      <td className="p-3 sticky left-0 z-[9] bg-white shadow-[2px_0_5px_rgba(0,0,0,0.06)]">
+                      <td className={`p-3 ${freezePanes ? "sticky left-0 z-[9] bg-white shadow-[2px_0_5px_rgba(0,0,0,0.06)]" : ""}`}>
                         <div className="font-medium text-gray-900">
                           {(share as any).call_report?.working_title || 'Untitled'}
                         </div>

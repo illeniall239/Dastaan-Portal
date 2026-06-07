@@ -12,7 +12,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { DollarSign, TrendingUp, Users, Briefcase, Download, ChevronDown, ChevronUp } from "lucide-react";
+import { DollarSign, TrendingUp, Users, Briefcase, Download, ChevronDown, ChevronUp, Pin } from "lucide-react";
 import Link from "next/link";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { BackButton } from "@/components/ui/back-button";
@@ -47,6 +47,7 @@ export default function WriterPaymentsPage() {
   const [totals, setTotals] = useState<FinancialTotals | null>(null);
   const [expandedWriter, setExpandedWriter] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [freezePanes, setFreezePanes] = useState(false);
 
   useEffect(() => {
     fetchFinancialSummary();
@@ -152,10 +153,16 @@ export default function WriterPaymentsPage() {
       <div className="flex flex-col gap-4 sm:gap-6 mb-8">
         <div className="flex items-center justify-between">
           <BackButton fallbackHref="/management" variant="outline" size="sm" className="w-fit" />
-          <Button onClick={handleExport} variant="outline" size="sm">
-            <Download className="h-4 w-4 mr-2" />
-            Export CSV
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button onClick={() => setFreezePanes(f => !f)} variant={freezePanes ? "default" : "outline"} size="sm" className="gap-1.5">
+              <Pin className="h-4 w-4" />
+              {freezePanes ? "Unfreeze" : "Freeze Panes"}
+            </Button>
+            <Button onClick={handleExport} variant="outline" size="sm">
+              <Download className="h-4 w-4 mr-2" />
+              Export CSV
+            </Button>
+          </div>
         </div>
         <div className="space-y-1">
           <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Writer Payments</h1>
@@ -232,17 +239,17 @@ export default function WriterPaymentsPage() {
           <CardTitle>Writer Financial Summary</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="overflow-x-auto">
+          <div className="overflow-auto max-h-[70vh]">
             <Table>
               <TableHeader>
-                <TableRow>
-                  <TableHead>Writer / Producer</TableHead>
-                  <TableHead className="text-right">Negotiated</TableHead>
-                  <TableHead className="text-right">Contracted</TableHead>
-                  <TableHead className="text-right">Paid</TableHead>
-                  <TableHead className="text-right">Outstanding</TableHead>
-                  <TableHead className="text-center">Projects</TableHead>
-                  <TableHead className="text-center">Details</TableHead>
+                <TableRow className={freezePanes ? "sticky top-0 z-10" : ""}>
+                  <TableHead className={`bg-background ${freezePanes ? "sticky left-0 z-20 shadow-[2px_0_5px_rgba(0,0,0,0.06)]" : ""}`}>Writer / Producer</TableHead>
+                  <TableHead className="text-right bg-background">Negotiated</TableHead>
+                  <TableHead className="text-right bg-background">Contracted</TableHead>
+                  <TableHead className="text-right bg-background">Paid</TableHead>
+                  <TableHead className="text-right bg-background">Outstanding</TableHead>
+                  <TableHead className="text-center bg-background">Projects</TableHead>
+                  <TableHead className="text-center bg-background">Details</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -256,7 +263,7 @@ export default function WriterPaymentsPage() {
                   summary.map((writer) => (
                     <>
                       <TableRow key={writer.writer_name} className="hover:bg-slate-50">
-                        <TableCell className="font-medium">{writer.writer_name}</TableCell>
+                        <TableCell className={`font-medium bg-white ${freezePanes ? "sticky left-0 z-[9] shadow-[2px_0_5px_rgba(0,0,0,0.06)]" : ""}`}>{writer.writer_name}</TableCell>
                         <TableCell className="text-right">
                           {formatCurrency(writer.total_negotiated)}
                         </TableCell>
