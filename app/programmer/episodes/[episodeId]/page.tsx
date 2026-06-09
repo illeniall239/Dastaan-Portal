@@ -28,6 +28,7 @@ export default function ProgrammerEpisodicEvaluationPage({ params }: EpisodePage
     const [loading, setLoading] = useState(true);
     const [currentUserId, setCurrentUserId] = useState<string | null>(null);
     const [currentUserRole, setCurrentUserRole] = useState<string | null>(null);
+    const [canEvaluate, setCanEvaluate] = useState(true);
 
     useEffect(() => {
         params.then((resolvedParams) => {
@@ -43,10 +44,13 @@ export default function ProgrammerEpisodicEvaluationPage({ params }: EpisodePage
             setCurrentUserId(user.id);
             const { data: profile } = await supabase
                 .from("users")
-                .select("role")
+                .select("role, can_evaluate")
                 .eq("id", user.id)
                 .single();
-            if (profile) setCurrentUserRole(profile.role);
+            if (profile) {
+                setCurrentUserRole(profile.role);
+                setCanEvaluate((profile as any).can_evaluate !== false);
+            }
         };
         fetchCurrentUser();
     }, [supabase]);
@@ -178,9 +182,11 @@ export default function ProgrammerEpisodicEvaluationPage({ params }: EpisodePage
                             <Badge className="bg-green-100 text-green-800 border-green-300">
                                 Evaluated{existingEvaluation.evaluator?.name ? ` by ${existingEvaluation.evaluator.name}` : ""}
                             </Badge>
-                            <Button size="sm" variant="outline" onClick={() => setIsEditing(true)}>
-                                Edit
-                            </Button>
+                            {canEvaluate && (
+                                <Button size="sm" variant="outline" onClick={() => setIsEditing(true)}>
+                                    Edit
+                                </Button>
+                            )}
                         </div>
                     )}
                 </div>
@@ -202,8 +208,8 @@ export default function ProgrammerEpisodicEvaluationPage({ params }: EpisodePage
                 existingEvaluation={existingEvaluation || undefined}
                 onSubmit={handleSubmit}
                 disabled={false}
-                showSubmit={!existingEvaluation || isEditing}
-                viewOnly={!!existingEvaluation && !isEditing}
+                showSubmit={(!existingEvaluation || isEditing) && canEvaluate}
+                viewOnly={!!existingEvaluation && !isEditing || !canEvaluate}
                 currentUserId={currentUserId ?? undefined}
                 currentUserRole={currentUserRole ?? undefined}
             />

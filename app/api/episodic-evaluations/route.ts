@@ -28,10 +28,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  // Check user role
+  // Check user role and evaluation access
   const { data: userData } = await supabase
     .from("users")
-    .select("role")
+    .select("role, can_evaluate")
     .eq("id", user.id)
     .single();
 
@@ -40,6 +40,10 @@ export async function POST(request: Request) {
       { error: "Forbidden - Only evaluators and management can create episodic evaluations" },
       { status: 403 }
     );
+  }
+
+  if ((userData as any).can_evaluate === false) {
+    return NextResponse.json({ error: "Evaluation access has been revoked" }, { status: 403 });
   }
 
     const body = await request.json();

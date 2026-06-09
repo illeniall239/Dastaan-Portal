@@ -5,6 +5,7 @@ import { getAttachmentsForEntityServer } from "@/lib/attachments/server";
 import { getEvaluationProgress } from "@/lib/evaluations/assignments";
 import { getDetailedOneLinersByCallReport } from "@/lib/detailed-one-liner/server";
 import { getSegregatedEvaluations } from "@/lib/evaluations/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 interface Writer {
   writer_id: string;
@@ -46,6 +47,15 @@ export default async function ProgrammerEvaluatePage({
   if (!["programmer", "management", "admin"].includes(user.role)) {
     redirect("/unauthorized");
   }
+
+  // Check if user has evaluation submission access
+  const adminClient = createAdminClient();
+  const { data: userProfile } = await adminClient
+    .from("users")
+    .select("can_evaluate")
+    .eq("id", user.id)
+    .single();
+  const canEvaluate = userProfile?.can_evaluate !== false;
 
   // Fetch the call report data
   let callReport: CallReport | null = null;
@@ -151,7 +161,8 @@ export default async function ProgrammerEvaluatePage({
         detailedOneLiner={detailedOneLiner}
         portalPrefix="programmer"
         existingEvaluation={existingProgrammerEvaluation}
-        canEdit={canEdit}
+        canEdit={canEvaluate && canEdit}
+        viewOnly={!canEvaluate}
       />
     </div>
   );

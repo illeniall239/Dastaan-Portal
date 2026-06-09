@@ -80,6 +80,7 @@ export function EvaluatorEvaluationForm({
   crossTeamFromTeamName,
   revisionId,
   canEdit = true,
+  viewOnly = false,
 }: {
   callReport: CallReport;
   userId: string;
@@ -94,6 +95,7 @@ export function EvaluatorEvaluationForm({
   crossTeamFromTeamName?: string;
   revisionId?: string;
   canEdit?: boolean;
+  viewOnly?: boolean;
 }) {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
@@ -104,7 +106,7 @@ export function EvaluatorEvaluationForm({
   const [pendingDraftData, setPendingDraftData] = useState<any>(null);
   const [existingEvaluation, setExistingEvaluation] = useState<any>(null);
   const [isEditing, setIsEditing] = useState(false);
-  const isReadOnly = !!existingEvaluation && !isEditing;
+  const isReadOnly = (!!existingEvaluation && !isEditing) || viewOnly;
   const [initialTimeFromDraft, setInitialTimeFromDraft] = useState(0);
 
   // Feedback communication state
