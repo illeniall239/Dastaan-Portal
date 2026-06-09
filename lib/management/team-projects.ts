@@ -26,14 +26,23 @@ export interface TeamProjectGroup {
   team_name: string;
   team_type: string;
   call_reports: TeamProjectReport[];
+  display_label: string;
 }
 
 export async function getTeamProjects(): Promise<TeamProjectGroup[]> {
   const admin = createAdminClient();
 
-  const [{ data: teams, error: teamsError }, { data: reports, error: reportsError }] =
+  // Resolve Humera's and Salman's IDs for team labelling and filtering
+  const [{ data: humeraUser }, { data: salmanUser }] = await Promise.all([
+    admin.from("users").select("id").eq("email", "humera.safder@geo.tv").single(),
+    admin.from("users").select("id").eq("email", "salman.ahmed@geo.tv").single(),
+  ]);
+  const humeraId = humeraUser?.id ?? null;
+  const salmanId = salmanUser?.id ?? null;
+
+  const [{ data: allTeams, error: teamsError }, { data: reports, error: reportsError }] =
     await Promise.all([
-      admin.from("teams").select("id, name, team_type").order("name"),
+      admin.from("teams").select("id, name, team_type, team_head_id").order("name"),
       admin
         .from("call_reports")
         .select(
@@ -53,6 +62,11 @@ export async function getTeamProjects(): Promise<TeamProjectGroup[]> {
   if (reportsError) {
     console.error("Error fetching team projects:", reportsError);
   }
+
+  // Exclude management teams that aren't Humera's
+  const teams = (allTeams ?? []).filter(
+    (t) => t.team_type !== "management" || t.team_head_id === humeraId
+  );
 
   // Build a map of team_id → call_reports
   const reportsByTeam: Record<string, TeamProjectReport[]> = {};
@@ -76,11 +90,16 @@ export async function getTeamProjects(): Promise<TeamProjectGroup[]> {
     });
   }
 
-  // Return ALL teams (even those with no projects)
-  return (teams ?? []).map((team) => ({
-    team_id: team.id,
-    team_name: team.name,
-    team_type: team.team_type,
-    call_reports: reportsByTeam[team.id] ?? [],
-  }));
+  // Return filtered teams with friendly display names/labels
+  return teams.map((team) => {
+    const isHumera = team.team_head_id === humeraId;
+    const isSalman = team.team_head_id === salmanId;
+    return {
+      team_id: team.id,
+      team_name: isHumera ? "Humera's Team" : isSalman ? "Salman's Team" : team.name,
+      team_type: team.team_type,
+      call_reports: reportsByTeam[team.id] ?? [],
+      display_label: isHumera ? "(Content Evaluation)" : isSalman ? "(Programming)" : "",
+    };
+  });
 }

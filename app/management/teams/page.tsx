@@ -46,6 +46,15 @@ export default async function TeamAnalyticsPage() {
       t.team_type !== "management" || t.team_head_email === "humera.safder@geo.tv"
     );
 
+    // Apply friendly display names for Humera and Salman's teams
+    teams = teams.map((t: any) => ({
+      ...t,
+      team_name:
+        t.team_head_email === "humera.safder@geo.tv" ? "Humera's Team (Content Evaluation)" :
+        t.team_head_email === "salman.ahmed@geo.tv" ? "Salman's Team (Programming)" :
+        t.team_name,
+    }));
+
     // Compute summary from the teams data (avoids using the browser/anon client)
     summary = {
       total_teams: teams.length,

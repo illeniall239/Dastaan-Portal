@@ -60,7 +60,10 @@ export async function CriticalAlertsSection() {
  * Team Performance Section - Async Component
  */
 export async function TeamPerformanceSection() {
-  const topTeams = await getTopPerformingTeams(5);
+  const allTopTeams = await getTopPerformingTeams(5);
+  const topTeams = allTopTeams.filter((t: any) =>
+    t.team_type !== "management" || t.team_head_email === "humera.safder@geo.tv"
+  );
 
   return (
     <div id="teams-section" className="mb-6 sm:mb-8">

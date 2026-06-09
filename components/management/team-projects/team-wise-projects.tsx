@@ -104,6 +104,9 @@ export function TeamWiseProjects({ teams }: TeamWiseProjectsProps) {
                   <ChevronRight className="h-4 w-4 text-gray-600 flex-shrink-0" />
                 )}
                 <span className="font-semibold text-sm text-gray-900 truncate">{team.team_name}</span>
+                {team.display_label && (
+                  <span className="text-xs text-gray-500 font-normal flex-shrink-0">{team.display_label}</span>
+                )}
                 <Badge variant="outline" className={`text-[10px] flex-shrink-0 ${colors.badge}`}>
                   {TEAM_TYPE_LABELS[team.team_type] ?? team.team_type}
                 </Badge>

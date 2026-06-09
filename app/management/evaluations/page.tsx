@@ -127,11 +127,18 @@ export default async function ManagementEvaluationsPage() {
     }
   });
 
-  // Fetch all teams
-  const { data: teams } = await supabase
+  // Fetch all teams, filtering out management-type teams except Humera's
+  const { data: teamsRaw } = await supabase
     .from("teams")
-    .select("*")
+    .select("*, team_head:users!teams_team_head_id_fkey(email)")
     .order("name");
+
+  const teams = (teamsRaw || [])
+    .filter((t: any) => {
+      const headEmail = Array.isArray(t.team_head) ? t.team_head[0]?.email : t.team_head?.email;
+      return t.team_type !== "management" || headEmail === "humera.safder@geo.tv";
+    })
+    .map(({ team_head, ...rest }: any) => rest);
 
   return (
     <div className="container mx-auto py-6 px-4 sm:px-6 lg:px-8">

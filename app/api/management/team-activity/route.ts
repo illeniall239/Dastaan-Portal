@@ -197,9 +197,21 @@ export async function GET(request: NextRequest) {
 
     // ── Filter out management-type teams except humera's ──────────────────────
     const humeraUser = (users || []).find((u: any) => u.email === "humera.safder@geo.tv");
+    const salmanUser = (users || []).find((u: any) => u.email === "salman.ahmed@geo.tv");
     const filteredTeams = (teams || []).filter((t: any) =>
       t.team_type !== "management" || (humeraUser && t.team_head_id === humeraUser.id)
     );
+
+    // ── Ensure each team head appears in their team's member list ─────────────
+    for (const team of filteredTeams) {
+      if (!team.team_head_id) continue;
+      const headUser = (users || []).find((u: any) => u.id === team.team_head_id);
+      if (!headUser) continue;
+      if (!usersByTeam[team.id]) usersByTeam[team.id] = [] as any;
+      if (!(usersByTeam[team.id] as any[]).find((u: any) => u.id === headUser.id)) {
+        (usersByTeam[team.id] as any[]).push(headUser);
+      }
+    }
 
     // ── Build memberActivity ───────────────────────────────────────────────────
     const memberActivity = filteredTeams.map(team => {
@@ -234,9 +246,15 @@ export async function GET(request: NextRequest) {
         return m.last_activity > best ? m.last_activity : best;
       }, null);
 
+      const isHumera = humeraUser && team.team_head_id === humeraUser.id;
+      const isSalman = salmanUser && team.team_head_id === salmanUser.id;
+      const displayName = isHumera ? "Humera's Team (Content Evaluation)"
+        : isSalman ? "Salman's Team (Programming)"
+        : team.name;
+
       return {
         team_id: team.id,
-        team_name: team.name,
+        team_name: displayName,
         team_type: team.team_type,
         member_count: members.length,
         call_reports: members.reduce((s, m) => s + m.call_reports, 0),
