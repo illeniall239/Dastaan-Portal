@@ -28,6 +28,7 @@ interface MemberData {
 interface TeamData {
   team_id: string;
   team_name: string;
+  display_label?: string;
   team_type: string;
   member_count: number;
   call_reports: number;
@@ -98,7 +99,10 @@ function TeamRows({ team, freeze }: { team: TeamData; freeze: boolean }) {
             <div className="min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="font-semibold text-sm text-slate-900">{team.team_name}</span>
-                <TeamBadge team={{ name: team.team_name.match(/\(([^)]+)\)/)?.[0] ?? team.team_name, team_type: team.team_type } as any} size="sm" />
+                {team.display_label && (
+                  <span className="text-xs text-slate-500 font-normal">{team.display_label}</span>
+                )}
+                <TeamBadge team={{ name: team.team_name, team_type: team.team_type } as any} size="sm" />
                 {team.online_count > 0 && (
                   <span className="flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded bg-green-50 text-green-700 border border-green-200 font-medium">
                     <span className="h-1.5 w-1.5 rounded-full bg-green-500 inline-block" />

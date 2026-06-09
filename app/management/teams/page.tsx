@@ -50,9 +50,13 @@ export default async function TeamAnalyticsPage() {
     teams = teams.map((t: any) => ({
       ...t,
       team_name:
-        t.team_head_email === "humera.safder@geo.tv" ? "Humera's Team (Content Evaluation)" :
-        t.team_head_email === "salman.ahmed@geo.tv" ? "Salman's Team (Programming)" :
+        t.team_head_email === "humera.safder@geo.tv" ? "Humera's Team" :
+        t.team_head_email === "salman.ahmed@geo.tv" ? "Salman's Team" :
         t.team_name,
+      display_label:
+        t.team_head_email === "humera.safder@geo.tv" ? "(Content Evaluation)" :
+        t.team_head_email === "salman.ahmed@geo.tv" ? "(Programming)" :
+        "",
     }));
 
     // Compute summary from the teams data (avoids using the browser/anon client)

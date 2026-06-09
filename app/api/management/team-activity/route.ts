@@ -248,13 +248,17 @@ export async function GET(request: NextRequest) {
 
       const isHumera = humeraUser && team.team_head_id === humeraUser.id;
       const isSalman = salmanUser && team.team_head_id === salmanUser.id;
-      const displayName = isHumera ? "Humera's Team (Content Evaluation)"
-        : isSalman ? "Salman's Team (Programming)"
+      const displayName = isHumera ? "Humera's Team"
+        : isSalman ? "Salman's Team"
         : team.name;
+      const displayLabel = isHumera ? "(Content Evaluation)"
+        : isSalman ? "(Programming)"
+        : "";
 
       return {
         team_id: team.id,
         team_name: displayName,
+        display_label: displayLabel,
         team_type: team.team_type,
         member_count: members.length,
         call_reports: members.reduce((s, m) => s + m.call_reports, 0),
