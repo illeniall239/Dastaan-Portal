@@ -87,6 +87,7 @@ export interface CreateEvaluationInput {
   feedback_text?: string;
   feedback_attachment_url?: string;
   feedback_attachment_name?: string;
+  feedback_attachments?: Array<{ url: string; name: string }>;
 }
 
 export interface UpdateEvaluationInput {
@@ -126,6 +127,7 @@ export interface UpdateEvaluationInput {
   feedback_text?: string | null;
   feedback_attachment_url?: string | null;
   feedback_attachment_name?: string | null;
+  feedback_attachments?: Array<{ url: string; name: string }> | null;
 }
 
 /**
@@ -187,6 +189,7 @@ export async function createEvaluationClient(evaluationData: CreateEvaluationInp
       feedback_text: evaluationData.feedback_text || null,
       feedback_attachment_url: evaluationData.feedback_attachment_url || null,
       feedback_attachment_name: evaluationData.feedback_attachment_name || null,
+      feedback_attachments: evaluationData.feedback_attachments || [],
     })
     .select()
     .single();
@@ -282,6 +285,7 @@ export async function updateEvaluationClient(evaluationData: UpdateEvaluationInp
     feedback_text: evaluationData.feedback_text ?? null,
     feedback_attachment_url: evaluationData.feedback_attachment_url ?? null,
     feedback_attachment_name: evaluationData.feedback_attachment_name ?? null,
+    feedback_attachments: evaluationData.feedback_attachments ?? [],
     updated_at: new Date().toISOString(),
   };
 

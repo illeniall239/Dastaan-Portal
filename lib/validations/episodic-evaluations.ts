@@ -89,6 +89,10 @@ export const episodicEvaluationSchema = z.object({
   feedback_text: z.string().optional().nullable(),
   feedback_attachment_url: z.string().optional().nullable(),
   feedback_attachment_name: z.string().max(255).optional().nullable(),
+  feedback_attachments: z.array(z.object({
+    url: z.string(),
+    name: z.string(),
+  })).optional().default([]),
 });
 
 export type EpisodicEvaluationFormData = z.infer<typeof episodicEvaluationSchema>;
@@ -173,6 +177,10 @@ export const updateEpisodicEvaluationSchema = z.object({
   feedback_text: z.string().optional().nullable(),
   feedback_attachment_url: z.string().optional().nullable(),
   feedback_attachment_name: z.string().max(255).optional().nullable(),
+  feedback_attachments: z.array(z.object({
+    url: z.string(),
+    name: z.string(),
+  })).optional().nullable(),
 }).refine(
   (data) => Object.keys(data).length > 0,
   {

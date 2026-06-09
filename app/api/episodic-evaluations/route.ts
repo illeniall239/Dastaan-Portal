@@ -155,6 +155,7 @@ export async function POST(request: Request) {
         feedback_text: evaluationData.feedback_text || null,
         feedback_attachment_url: evaluationData.feedback_attachment_url || null,
         feedback_attachment_name: evaluationData.feedback_attachment_name || null,
+        feedback_attachments: evaluationData.feedback_attachments || [],
       })
       .select(`
         *,

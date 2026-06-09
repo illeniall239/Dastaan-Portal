@@ -123,8 +123,9 @@ export function EpisodicEvaluationForm({
 
   // Feedback communication state
   const [feedbackText, setFeedbackText] = useState((existingEvaluation as any)?.feedback_text || "");
-  const [feedbackAttachmentUrl, setFeedbackAttachmentUrl] = useState((existingEvaluation as any)?.feedback_attachment_url || "");
-  const [feedbackAttachmentName, setFeedbackAttachmentName] = useState((existingEvaluation as any)?.feedback_attachment_name || "");
+  const [feedbackAttachments, setFeedbackAttachments] = useState<Array<{ url: string; name: string }>>(
+    (existingEvaluation as any)?.feedback_attachments || []
+  );
   const [feedbackUploading, setFeedbackUploading] = useState(false);
 
   // Final decision state
@@ -303,21 +304,24 @@ export function EpisodicEvaluationForm({
   };
 
   const handleFeedbackFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
     setFeedbackUploading(true);
     try {
       const { createClient: createBrowserClient } = await import("@/lib/supabase/client");
       const supabase = createBrowserClient();
-      const ext = file.name.split(".").pop();
-      const path = `feedback-communications/${crypto.randomUUID()}.${ext}`;
-      const { error: uploadError } = await supabase.storage
-        .from("attachments")
-        .upload(path, file, { upsert: false });
-      if (uploadError) throw uploadError;
-      const { data: urlData } = supabase.storage.from("attachments").getPublicUrl(path);
-      setFeedbackAttachmentUrl(urlData.publicUrl);
-      setFeedbackAttachmentName(file.name);
+      const uploaded: Array<{ url: string; name: string }> = [];
+      for (const file of files) {
+        const ext = file.name.split(".").pop();
+        const path = `feedback-communications/${crypto.randomUUID()}.${ext}`;
+        const { error: uploadError } = await supabase.storage
+          .from("attachments")
+          .upload(path, file, { upsert: false });
+        if (uploadError) throw uploadError;
+        const { data: urlData } = supabase.storage.from("attachments").getPublicUrl(path);
+        uploaded.push({ url: urlData.publicUrl, name: file.name });
+      }
+      setFeedbackAttachments(prev => [...prev, ...uploaded]);
     } catch (err: any) {
       toast.error("Failed to upload attachment: " + (err?.message || "Unknown error"));
     } finally {
@@ -379,8 +383,7 @@ export function EpisodicEvaluationForm({
         ? decisionNotes
         : undefined,
       feedback_text: feedbackText || undefined,
-      feedback_attachment_url: feedbackAttachmentUrl || undefined,
-      feedback_attachment_name: feedbackAttachmentName || undefined,
+      feedback_attachments: feedbackAttachments,
     };
 
     const validation = episodicEvaluationSchema.safeParse(formData);
@@ -971,37 +974,41 @@ export function EpisodicEvaluationForm({
               />
             </div>
             <div className="space-y-3">
-              <Label>Supporting Attachment</Label>
-              {feedbackAttachmentName ? (
-                <div className="flex items-center gap-2 text-sm text-gray-700 border rounded-md px-3 py-2 bg-gray-50">
-                  <Paperclip className="h-4 w-4 text-gray-400 shrink-0" />
-                  <span className="truncate flex-1">{feedbackAttachmentName}</span>
-                  <button
-                    type="button"
-                    onClick={() => { setFeedbackAttachmentUrl(""); setFeedbackAttachmentName(""); }}
-                    className="text-gray-400 hover:text-red-500 shrink-0"
-                    aria-label="Remove attachment"
-                  >
-                    ✕
-                  </button>
+              <Label>Supporting Attachments</Label>
+              {feedbackAttachments.length > 0 && (
+                <div className="space-y-1.5">
+                  {feedbackAttachments.map((att, idx) => (
+                    <div key={idx} className="flex items-center gap-2 text-sm text-gray-700 border rounded-md px-3 py-2 bg-gray-50">
+                      <Paperclip className="h-4 w-4 text-gray-400 shrink-0" />
+                      <a href={att.url} target="_blank" rel="noopener noreferrer" className="truncate flex-1 hover:underline text-blue-600">{att.name}</a>
+                      <button
+                        type="button"
+                        onClick={() => setFeedbackAttachments(prev => prev.filter((_, i) => i !== idx))}
+                        className="text-gray-400 hover:text-red-500 shrink-0"
+                        aria-label="Remove attachment"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ))}
                 </div>
-              ) : (
-                <label className="inline-flex items-center gap-2 cursor-pointer border border-gray-300 rounded-md px-3 py-2 text-sm hover:bg-gray-50 transition-colors">
-                  {feedbackUploading ? (
-                    <><Loader2 className="h-4 w-4 animate-spin" /> Uploading...</>
-                  ) : (
-                    <><Paperclip className="h-4 w-4" /> Upload File</>
-                  )}
-                  <input
-                    type="file"
-                    accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
-                    className="sr-only"
-                    onChange={handleFeedbackFileUpload}
-                    disabled={feedbackUploading}
-                  />
-                </label>
               )}
-              <p className="text-xs text-gray-400">PDF, DOC, DOCX, JPG, PNG — max 10MB</p>
+              <label className="inline-flex items-center gap-2 cursor-pointer border border-gray-300 rounded-md px-3 py-2 text-sm hover:bg-gray-50 transition-colors">
+                {feedbackUploading ? (
+                  <><Loader2 className="h-4 w-4 animate-spin" /> Uploading...</>
+                ) : (
+                  <><Paperclip className="h-4 w-4" /> Add Files</>
+                )}
+                <input
+                  type="file"
+                  accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                  multiple
+                  className="sr-only"
+                  onChange={handleFeedbackFileUpload}
+                  disabled={feedbackUploading}
+                />
+              </label>
+              <p className="text-xs text-gray-400">PDF, DOC, DOCX, JPG, PNG — max 10MB each</p>
             </div>
           </div>
         </Card>
