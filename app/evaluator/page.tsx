@@ -80,20 +80,8 @@ async function DashboardContent({ userId }: { userId: string }) {
     throw new Error("User not found");
   }
 
-  // Resolve team_type via admin client to bypass RLS on teams table
-  let teamType: string | null = null;
-  if (currentUser.team_id) {
-    const { data: team } = await adminClient
-      .from("teams")
-      .select("team_type")
-      .eq("id", currentUser.team_id)
-      .single();
-    teamType = team?.team_type ?? null;
-  }
-
-  // Evaluators on management teams get global access (same as programmer role)
-  const hasGlobalAccess = ["admin", "management"].includes(currentUser.role)
-    || (currentUser.role === "evaluator" && teamType === "management");
+  // Only admin and management roles see global data; all other roles see their own
+  const hasGlobalAccess = ["admin", "management"].includes(currentUser.role);
 
   // Fetch ALL data in parallel for maximum performance
   const [statsData, pendingData, completedData, productionMetrics, crossTeamSharesData] = await Promise.all([
@@ -112,28 +100,34 @@ async function DashboardContent({ userId }: { userId: string }) {
 
         return await query;
       })(),
-      supabase
-        .from("evaluator_forms")
-        .select("id", { count: "exact", head: true })
-        .eq("evaluator_id", userId),
+      // One-liner evaluations count — own evals for regular, all for mgmt (adminClient bypasses RLS)
+      (async () => {
+        if (hasGlobalAccess) {
+          return adminClient
+            .from("evaluator_forms")
+            .select("id", { count: "exact", head: true });
+        }
+        return adminClient
+          .from("evaluator_forms")
+          .select("id", { count: "exact", head: true })
+          .eq("evaluator_id", userId);
+      })(),
       // Pending evaluations count
       supabase.rpc("get_pending_evaluations_count", {
         evaluator_user_id: userId,
         team_id_filter: hasGlobalAccess ? null : currentUser.team_id,
       }),
-      // Upcoming scheduled meetings count
+      // Episode evaluations count — own evals for regular, all for mgmt (adminClient bypasses RLS)
       (async () => {
-        const today = new Date().toISOString();
-        let query = supabase
-          .from("meetings")
-          .select("id", { count: "exact", head: true })
-          .gte("meeting_date", today);
-
-        if (!hasGlobalAccess && currentUser.team_id) {
-          query = query.eq("team_id", currentUser.team_id);
+        if (hasGlobalAccess) {
+          return adminClient
+            .from("episodic_evaluations")
+            .select("id", { count: "exact", head: true });
         }
-
-        return await query;
+        return adminClient
+          .from("episodic_evaluations")
+          .select("id", { count: "exact", head: true })
+          .eq("evaluator_id", userId);
       })(),
     ]),
 
@@ -260,11 +254,11 @@ async function DashboardContent({ userId }: { userId: string }) {
   ]);
 
   // Extract counts from stats data
-  const [callReportsRes, completedEvaluationsRes, pendingCountRes, scheduledMeetingsRes] = statsData;
+  const [callReportsRes, completedEvaluationsRes, pendingCountRes, episodeEvaluationsRes] = statsData;
   const callReportsCount = callReportsRes.count || 0;
   const completedEvaluationsCount = completedEvaluationsRes.count || 0;
   const pendingEvaluationsCount = pendingCountRes.data || 0;
-  const scheduledMeetingsCount = scheduledMeetingsRes.count || 0;
+  const episodeEvaluationsCount = episodeEvaluationsRes.count || 0;
 
   // Extract completed evaluations
   const completedEvaluations = completedData.data || [];
@@ -299,7 +293,7 @@ async function DashboardContent({ userId }: { userId: string }) {
   return (
     <>
       {/* Stat Cards Row */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
         <ModernStatCard
           title="Pending Evaluations"
           value={pendingEvaluationsCount}
@@ -309,10 +303,17 @@ async function DashboardContent({ userId }: { userId: string }) {
         />
 
         <ModernStatCard
-          title="Completed Evaluations"
+          title="One-liner Evaluations"
           value={completedEvaluationsCount}
           icon={CheckCircle2}
           href="/evaluator/evaluations-list?view=completed"
+        />
+
+        <ModernStatCard
+          title="Episode Evaluations"
+          value={episodeEvaluationsCount}
+          icon={ClipboardListIcon}
+          href="/evaluator/evaluations-list"
         />
 
         <ModernStatCard
@@ -320,13 +321,6 @@ async function DashboardContent({ userId }: { userId: string }) {
           value={callReportsCount}
           icon={FileText}
           href="/evaluator/call-reports"
-        />
-
-        <ModernStatCard
-          title="Scheduled Meetings"
-          value={scheduledMeetingsCount}
-          icon={CalendarIcon}
-          href="/evaluator/calendar"
         />
 
         {crossTeamSharesData.length > 0 && (

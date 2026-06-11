@@ -103,33 +103,31 @@ async function DashboardContent({ userId, userRole }: { userId: string; userRole
         if (isRestrictedProgrammer && teamId) q = q.eq("team_id", teamId);
         return q;
       })(),
-      // Total evaluations count (team-scoped for restricted, all programmers for regular)
+      // Total one-liner evaluations count — programmer team only (adminClient bypasses RLS)
       (async () => {
         if (isRestrictedProgrammer) {
-          return supabase
+          return adminClient
             .from("evaluator_forms")
             .select("id", { count: "exact", head: true })
             .in("evaluator_id", teamMemberIds);
         }
-        return supabase
+        return adminClient
           .from("evaluator_forms")
           .select(`id, evaluator:users!evaluator_id!inner(role)`, { count: "exact", head: true })
           .eq("evaluator.role", "programmer");
       })(),
-      // My own evaluations count
-      supabase
-        .from("evaluator_forms")
-        .select("id", { count: "exact", head: true })
-        .eq("evaluator_id", userId),
-      // Upcoming scheduled meetings count
+      // Total episode evaluations count — programmer team only (adminClient bypasses RLS)
       (async () => {
-        const today = new Date().toISOString();
-        let q = supabase
-          .from("meetings")
-          .select("id", { count: "exact", head: true })
-          .gte("meeting_date", today);
-        if (isRestrictedProgrammer && teamId) q = q.eq("team_id", teamId);
-        return q;
+        if (isRestrictedProgrammer) {
+          return adminClient
+            .from("episodic_evaluations")
+            .select("id", { count: "exact", head: true })
+            .in("evaluator_id", teamMemberIds);
+        }
+        return adminClient
+          .from("episodic_evaluations")
+          .select(`id, evaluator:users!evaluator_id!inner(role)`, { count: "exact", head: true })
+          .eq("evaluator.role", "programmer");
       })(),
     ]),
 
@@ -189,14 +187,12 @@ async function DashboardContent({ userId, userRole }: { userId: string; userRole
   // Extract counts from stats data
   const [
     callReportsRes,
-    totalEvaluationsRes,
-    myEvaluationsRes,
-    scheduledMeetingsRes,
+    totalOneLinerEvaluationsRes,
+    totalEpisodeEvaluationsRes,
   ] = statsData;
   const callReportsCount = callReportsRes.count || 0;
-  const totalEvaluationsCount = totalEvaluationsRes.count || 0;
-  const myEvaluationsCount = myEvaluationsRes.count || 0;
-  const scheduledMeetingsCount = scheduledMeetingsRes.count || 0;
+  const totalOneLinerEvaluationsCount = totalOneLinerEvaluationsRes.count || 0;
+  const totalEpisodeEvaluationsCount = totalEpisodeEvaluationsRes.count || 0;
 
   // Process recent call reports
   const processedReports = (recentCallReports.data || []).map((report: any) => {
@@ -242,21 +238,23 @@ async function DashboardContent({ userId, userRole }: { userId: string; userRole
   return (
     <>
       {/* Stat Cards Row */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
         <ModernStatCard
-          title="Total Evaluations"
-          value={totalEvaluationsCount}
+          title="Total One-liner Evaluations"
+          value={totalOneLinerEvaluationsCount}
           icon={Globe}
           href="/programmer/evaluations-list"
           accent={true}
         />
 
         <ModernStatCard
-          title="My Evaluations"
-          value={myEvaluationsCount}
+          title="Total Episode Evaluations"
+          value={totalEpisodeEvaluationsCount}
           icon={CheckCircle2}
-          href="/programmer/evaluations-list?filter=mine"
+          href="/programmer/episodes"
+          accent={true}
         />
+
 
         <ModernStatCard
           title="Total Writer Engagement Reports"
@@ -265,12 +263,6 @@ async function DashboardContent({ userId, userRole }: { userId: string; userRole
           href="/programmer/call-reports"
         />
 
-        <ModernStatCard
-          title="Scheduled Meetings"
-          value={scheduledMeetingsCount}
-          icon={CalendarIcon}
-          href="/programmer/calendar"
-        />
       </div>
 
       {/* Production Pipeline Metrics */}
