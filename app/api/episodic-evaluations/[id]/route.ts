@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { logger } from "@/lib/logger";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { applyRateLimit, addRateLimitHeaders, withCors } from "@/lib/api-middleware";
 import { RateLimitPresets } from "@/lib/rate-limit-redis";
 import { idParamSchema } from "@/lib/validations/uuid-params";
@@ -69,7 +70,7 @@ export async function GET(
 
     // Check if user has permission to view this evaluation
     // Evaluators can only view their own, managers and admins can view all
-    const { data: userData } = await supabase
+    const { data: userData } = await createAdminClient()
       .from("users")
       .select("role")
       .eq("id", user.id)

@@ -28,8 +28,10 @@ export async function POST(request: Request) {
     const rate = await applyRateLimit(request, RateLimitPresets.standard, user.id);
     if (!rate.success) return rate.response!;
 
-  // Check user role and evaluation access
-  const { data: userData } = await supabase
+  // Check user role and evaluation access (use admin client to bypass RLS
+  // on users table — the user is already authenticated above)
+  const adminClient = createAdminClient();
+  const { data: userData } = await adminClient
     .from("users")
     .select("role, can_evaluate")
     .eq("id", user.id)
@@ -257,8 +259,9 @@ export async function GET(request: NextRequest) {
     const rate = await applyRateLimit(request, RateLimitPresets.relaxed, user.id);
     if (!rate.success) return rate.response!;
 
-  // Check user role
-  const { data: userData } = await supabase
+  // Check user role (use admin client to bypass RLS on users table)
+  const adminClient2 = createAdminClient();
+  const { data: userData } = await adminClient2
     .from("users")
     .select("role, team_id")
     .eq("id", user.id)

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { logger } from "@/lib/logger";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { episodeIdParamSchema } from "@/lib/validations/uuid-params";
 import { applyRateLimit } from '@/lib/api-middleware';
 import { RateLimitPresets } from '@/lib/rate-limit-redis';
@@ -38,7 +39,7 @@ export async function GET(
     if (!rate.success) return rate.response!;
 
   // Check user role
-  const { data: userData } = await supabase
+  const { data: userData } = await createAdminClient()
     .from("users")
     .select("role")
     .eq("id", user.id)
