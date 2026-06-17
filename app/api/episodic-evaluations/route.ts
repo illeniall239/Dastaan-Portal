@@ -79,7 +79,7 @@ export async function POST(request: Request) {
     // Check for duplicate evaluation
     // Programmers share one evaluation per episode as a team — block if any programmer already evaluated it
     // All other roles block only if the current user already evaluated it
-    let duplicateQuery = supabase
+    let duplicateQuery = adminClient
       .from("episodic_evaluations")
       .select("id, evaluator:users!evaluator_id(role)")
       .eq("episode_id", evaluationData.episode_id);
@@ -116,7 +116,7 @@ export async function POST(request: Request) {
     // Insert episodic evaluation
     // Note: pages_score, scenes_score, overall_average, and overall_grade
     // will be auto-calculated by the database trigger
-    const { data: evaluation, error: insertError } = await supabase
+    const { data: evaluation, error: insertError } = await adminClient
       .from("episodic_evaluations")
       .insert({
         episode_id: evaluationData.episode_id,
