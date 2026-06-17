@@ -16,9 +16,6 @@ import { logger } from "@/lib/logger";
  * - pending: Array of call reports that haven't been evaluated by this evaluator
  */
 export async function GET(request: NextRequest) {
-  const rate = await applyRateLimit(request, RateLimitPresets.relaxed);
-  if (!rate.success) return rate.response!;
-
   const supabase = await createClient();
 
   // Verify authentication
@@ -32,6 +29,9 @@ export async function GET(request: NextRequest) {
       NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     );
   }
+
+  const rate = await applyRateLimit(request, RateLimitPresets.relaxed, user.id);
+  if (!rate.success) return rate.response!;
 
   // Get evaluatorId from query params (defaults to current user)
   const evaluatorId =

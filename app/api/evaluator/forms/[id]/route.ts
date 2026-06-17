@@ -16,9 +16,6 @@ export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  // Rate limit edits strictly
-  const rate = await applyRateLimit(request, RateLimitPresets.strict);
-  if (!rate.success) return rate.response!;
   const { id } = await params;
 
   // Validate UUID format
@@ -34,6 +31,10 @@ export async function PATCH(
 
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  // Rate limit edits strictly
+  const rate = await applyRateLimit(request, RateLimitPresets.strict, user.id);
+  if (!rate.success) return rate.response!;
 
   const { data: userData } = await supabase
     .from("users")

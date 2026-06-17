@@ -9,18 +9,18 @@ import { logger } from "@/lib/logger";
 import { extractUserContext } from "@/lib/logger/context";
 
 export async function POST(request: Request) {
-  // Apply rate limiting: 30 requests per minute
-  const rateLimitResult = await applyRateLimit(request, RateLimitPresets.standard);
-  if (!rateLimitResult.success) {
-    return rateLimitResult.response;
-  }
-
   try {
     const supabase = await createClient();
 
     const {
       data: { user },
     } = await supabase.auth.getUser();
+
+    // Apply rate limiting (user may be null during signout)
+    const rateLimitResult = await applyRateLimit(request, RateLimitPresets.standard, user?.id);
+    if (!rateLimitResult.success) {
+      return rateLimitResult.response;
+    }
 
     const userContext = extractUserContext(request);
 

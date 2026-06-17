@@ -10,9 +10,6 @@ export const runtime = "nodejs";
 
 export async function POST(request: NextRequest) {
   try {
-    const rate = await applyRateLimit(request, RateLimitPresets.standard);
-    if (!rate.success) return rate.response!;
-
     const supabase = await createClient();
 
     // Ensure user is authenticated
@@ -27,6 +24,9 @@ export async function POST(request: NextRequest) {
         message: "You must be logged in to upload files. Please sign in and try again."
       }, { status: 401 });
     }
+
+    const rate = await applyRateLimit(request, RateLimitPresets.standard, user.id);
+    if (!rate.success) return rate.response!;
 
     // Clone the request to avoid "body already used" errors
     const formData = await request.formData();

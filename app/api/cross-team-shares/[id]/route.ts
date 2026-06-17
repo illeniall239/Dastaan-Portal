@@ -8,9 +8,6 @@ import { logAuditAction, getRequestContext } from "@/lib/audit/server";
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const rate = await applyRateLimit(request, RateLimitPresets.relaxed);
-    if (!rate.success) return rate.response!;
-
     const user = await getCurrentUser();
     if (!user) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
@@ -18,6 +15,9 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         headers: { 'Content-Type': 'application/json' },
       });
     }
+
+    const rate = await applyRateLimit(request, RateLimitPresets.relaxed, user.id);
+    if (!rate.success) return rate.response!;
 
     const supabase = createAdminClient();
     const { id } = await params;
@@ -113,9 +113,6 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const rate = await applyRateLimit(request, RateLimitPresets.standard);
-    if (!rate.success) return rate.response!;
-
     const user = await getCurrentUser();
     if (!user) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
@@ -123,6 +120,9 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
         headers: { 'Content-Type': 'application/json' },
       });
     }
+
+    const rate = await applyRateLimit(request, RateLimitPresets.standard, user.id);
+    if (!rate.success) return rate.response!;
 
     const supabase = createAdminClient();
     const { id } = await params;

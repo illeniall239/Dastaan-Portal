@@ -16,9 +16,6 @@ export async function GET(
   request: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
-  const rate = await applyRateLimit(request, RateLimitPresets.relaxed);
-  if (!rate.success) return rate.response!;
-
   const supabase = await createClient();
   const params = await context.params;
 
@@ -27,6 +24,9 @@ export async function GET(
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  const rate = await applyRateLimit(request, RateLimitPresets.relaxed, user.id);
+  if (!rate.success) return rate.response!;
 
   try {
     const { id } = params;
@@ -151,9 +151,6 @@ export async function PATCH(
   request: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
-  const rate = await applyRateLimit(request, RateLimitPresets.standard);
-  if (!rate.success) return rate.response!;
-
   const supabase = await createClient();
   const params = await context.params;
 
@@ -162,6 +159,9 @@ export async function PATCH(
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  const rate = await applyRateLimit(request, RateLimitPresets.standard, user.id);
+  if (!rate.success) return rate.response!;
 
   // Check user role
   const { data: userData } = await supabase

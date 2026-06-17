@@ -12,9 +12,6 @@ import { RateLimitPresets } from "@/lib/rate-limit-redis";
  * Fetch all approved stories eligible for negotiation
  */
 export async function GET(request: Request) {
-  const rate = await applyRateLimit(request, RateLimitPresets.standard);
-  if (!rate.success) return rate.response!;
-
   const supabase = await createClient();
 
   // Check authentication
@@ -24,6 +21,9 @@ export async function GET(request: Request) {
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  const rate = await applyRateLimit(request, RateLimitPresets.standard, user.id);
+  if (!rate.success) return rate.response!;
 
   // Check user role
   const { data: userData } = await supabase

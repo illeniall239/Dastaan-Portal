@@ -16,8 +16,6 @@ export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const rate = await applyRateLimit(request, RateLimitPresets.relaxed);
-  if (!rate.success) return rate.response!;
   const { id } = await params;
 
   // Validate UUID format
@@ -36,6 +34,9 @@ export async function GET(
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  const rate = await applyRateLimit(request, RateLimitPresets.relaxed, user.id);
+  if (!rate.success) return rate.response!;
 
   try {
     const { data: evaluation, error } = await supabase
@@ -115,8 +116,6 @@ export async function DELETE(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const rate = await applyRateLimit(request, RateLimitPresets.strict);
-  if (!rate.success) return rate.response!;
   const { id } = await params;
 
   // Validate UUID format
@@ -135,6 +134,9 @@ export async function DELETE(
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  const rate = await applyRateLimit(request, RateLimitPresets.strict, user.id);
+  if (!rate.success) return rate.response!;
 
   // Check user role
   const { data: userData } = await supabase
@@ -229,8 +231,6 @@ export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const rate = await applyRateLimit(request, RateLimitPresets.strict);
-  if (!rate.success) return rate.response!;
   const { id } = await params;
 
   // Validate UUID format
@@ -249,6 +249,9 @@ export async function PATCH(
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  const rate = await applyRateLimit(request, RateLimitPresets.strict, user.id);
+  if (!rate.success) return rate.response!;
 
   // Check user role
   const { data: userData } = await supabase

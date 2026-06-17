@@ -20,9 +20,6 @@ interface GenerateLinkRequest {
 
 export async function POST(request: NextRequest) {
   try {
-    const rate = await applyRateLimit(request, RateLimitPresets.veryStrict);
-    if (!rate.success) return rate.response!;
-
     const supabase = await createClient();
     const adminSupabase = createAdminClient();
 
@@ -34,6 +31,9 @@ export async function POST(request: NextRequest) {
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+
+    const rate = await applyRateLimit(request, RateLimitPresets.veryStrict, user.id);
+    if (!rate.success) return rate.response!;
 
     // Check if user is management (admin, management, or executive)
     const { data: userData, error: userError } = await supabase

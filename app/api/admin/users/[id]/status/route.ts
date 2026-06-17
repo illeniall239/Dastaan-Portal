@@ -11,8 +11,6 @@ const statusUpdateSchema = z.object({
 });
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
-  const rate = await applyRateLimit(request, RateLimitPresets.strict);
-  if (!rate.success) return rate.response!;
   const { id } = await params;
   const supabase = await createClient();
 
@@ -21,6 +19,9 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  const rate = await applyRateLimit(request, RateLimitPresets.strict, user.id);
+  if (!rate.success) return rate.response!;
 
   const { data: userData } = await supabase.from('users').select('role').eq('id', user.id).single();
 

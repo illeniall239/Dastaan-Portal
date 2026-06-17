@@ -8,13 +8,14 @@ export async function GET(
   request: Request,
   { params }: { params: Promise<{ callReportId: string }> }
 ) {
-  const rate = await applyRateLimit(request, RateLimitPresets.relaxed);
-  if (!rate.success) return rate.response!;
   const { callReportId } = await params;
   const supabase = await createClient();
 
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const rate = await applyRateLimit(request, RateLimitPresets.relaxed, user.id);
+  if (!rate.success) return rate.response!;
 
   const { data, error } = await supabase
     .from("evaluator_forms")

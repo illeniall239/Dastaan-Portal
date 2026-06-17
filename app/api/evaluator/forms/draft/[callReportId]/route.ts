@@ -36,8 +36,6 @@ export async function GET(
   request: Request,
   { params }: { params: Promise<{ callReportId: string }> }
 ) {
-  const rate = await applyRateLimit(request, RateLimitPresets.relaxed);
-  if (!rate.success) return rate.response!;
   const { callReportId } = await params;
   const supabase = await createClient();
 
@@ -46,6 +44,9 @@ export async function GET(
   if (!user) {
     return unauthorizedError();
   }
+
+  const rate = await applyRateLimit(request, RateLimitPresets.relaxed, user.id);
+  if (!rate.success) return rate.response!;
 
   try {
     // Fetch draft evaluation data
@@ -77,8 +78,6 @@ export async function POST(
   request: Request,
   { params }: { params: Promise<{ callReportId: string }> }
 ) {
-  const rate = await applyRateLimit(request, RateLimitPresets.standard);
-  if (!rate.success) return rate.response!;
   const { callReportId } = await params;
   const supabase = await createClient();
 
@@ -87,6 +86,9 @@ export async function POST(
   if (!user) {
     return unauthorizedError();
   }
+
+  const rate = await applyRateLimit(request, RateLimitPresets.standard, user.id);
+  if (!rate.success) return rate.response!;
 
   // Check user role
   const { data: userData, error: userError } = await supabase
@@ -158,8 +160,6 @@ export async function DELETE(
   request: Request,
   { params }: { params: Promise<{ callReportId: string }> }
 ) {
-  const rate = await applyRateLimit(request, RateLimitPresets.standard);
-  if (!rate.success) return rate.response!;
   const { callReportId } = await params;
   const supabase = await createClient();
 
@@ -168,6 +168,9 @@ export async function DELETE(
   if (!user) {
     return unauthorizedError();
   }
+
+  const rate = await applyRateLimit(request, RateLimitPresets.standard, user.id);
+  if (!rate.success) return rate.response!;
 
   try {
     // Check if draft exists and get owner

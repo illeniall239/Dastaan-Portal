@@ -11,8 +11,6 @@ import { RateLimitPresets } from "@/lib/rate-limit-redis";
  * Sets user session cookie after successful login
  */
 export async function POST(request: NextRequest) {
-  const rate = await applyRateLimit(request, RateLimitPresets.strict);
-  if (!rate.success) return rate.response!;
   try {
     const supabase = await createClient();
 
@@ -25,6 +23,9 @@ export async function POST(request: NextRequest) {
     if (authError || !user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+
+    const rate = await applyRateLimit(request, RateLimitPresets.strict, user.id);
+    if (!rate.success) return rate.response!;
 
     // Get user profile from database
     const { data: profile, error: profileError } = await supabase

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { logger } from "@/lib/logger";
+import { createClient } from "@/lib/supabase/server";
 import { getPipelineValue, getPipelineValueStats } from '@/lib/management/pipeline-value';
 import { CACHE_DURATION, createCacheControl } from '@/lib/constants';
 import { applyRateLimit } from '@/lib/api-middleware';
@@ -7,7 +8,13 @@ import { RateLimitPresets } from '@/lib/rate-limit-redis';
 
 export async function GET(request: NextRequest) {
   try {
-    const rate = await applyRateLimit(request, RateLimitPresets.relaxed);
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const rate = await applyRateLimit(request, RateLimitPresets.relaxed, user.id);
     if (!rate.success) return rate.response!;
 
     const [items, stats] = await Promise.all([

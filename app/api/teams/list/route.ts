@@ -7,9 +7,6 @@ import { RateLimitPresets } from '@/lib/rate-limit-redis';
 
 export async function GET(request: NextRequest) {
   try {
-    const rate = await applyRateLimit(request, RateLimitPresets.relaxed);
-    if (!rate.success) return rate.response!;
-
     const user = await getCurrentUser();
     if (!user) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
@@ -17,6 +14,9 @@ export async function GET(request: NextRequest) {
         headers: { 'Content-Type': 'application/json' },
       });
     }
+
+    const rate = await applyRateLimit(request, RateLimitPresets.relaxed, user.id);
+    if (!rate.success) return rate.response!;
 
     const supabase = createAdminClient();
 

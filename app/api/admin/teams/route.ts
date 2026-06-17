@@ -13,9 +13,6 @@ import { RateLimitPresets } from '@/lib/rate-limit-redis';
  */
 export async function GET(request: Request) {
   try {
-    const rate = await applyRateLimit(request, RateLimitPresets.relaxed);
-    if (!rate.success) return rate.response!;
-
     // Verify admin authentication
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
@@ -23,6 +20,9 @@ export async function GET(request: Request) {
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+
+    const rate = await applyRateLimit(request, RateLimitPresets.relaxed, user.id);
+    if (!rate.success) return rate.response!;
 
     const { data: userData } = await supabase
       .from('users')
@@ -91,9 +91,6 @@ export async function GET(request: Request) {
  */
 export async function POST(request: Request) {
   try {
-    const rate = await applyRateLimit(request, RateLimitPresets.strict);
-    if (!rate.success) return rate.response!;
-
     // Verify admin authentication
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
@@ -101,6 +98,9 @@ export async function POST(request: Request) {
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+
+    const rate = await applyRateLimit(request, RateLimitPresets.strict, user.id);
+    if (!rate.success) return rate.response!;
 
     const { data: userData } = await supabase
       .from('users')

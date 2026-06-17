@@ -52,9 +52,6 @@ export async function GET(request: Request) {
  */
 export async function POST(request: Request) {
   try {
-    const rate = await applyRateLimit(request, RateLimitPresets.standard);
-    if (!rate.success) return rate.response!;
-
     const supabase = await createClient();
 
   // Check authentication
@@ -66,6 +63,9 @@ export async function POST(request: Request) {
       { status: 401 }
     );
   }
+
+    const rate = await applyRateLimit(request, RateLimitPresets.standard, user.id);
+    if (!rate.success) return rate.response!;
 
     // Parse and validate request body
     const body = await request.json();

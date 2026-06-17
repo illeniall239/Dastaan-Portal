@@ -6,9 +6,6 @@ import { RateLimitPresets } from '@/lib/rate-limit-redis';
 
 export async function GET(request: NextRequest) {
   try {
-    const rate = await applyRateLimit(request, RateLimitPresets.relaxed);
-    if (!rate.success) return rate.response!;
-
     const supabase = await createClient();
 
     // Verify user is authenticated
@@ -23,6 +20,9 @@ export async function GET(request: NextRequest) {
         { status: 401 }
       );
     }
+
+    const rate = await applyRateLimit(request, RateLimitPresets.relaxed, user.id);
+    if (!rate.success) return rate.response!;
 
     // Get file path from query parameter
     const { searchParams } = new URL(request.url);

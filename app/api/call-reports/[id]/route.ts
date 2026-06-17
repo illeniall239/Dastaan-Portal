@@ -36,9 +36,10 @@ export async function GET(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const rate = await applyRateLimit(request, RateLimitPresets.relaxed, user.id);
+  if (!rate.success) return rate.response!;
+
   try {
-    const rate = await applyRateLimit(request, RateLimitPresets.relaxed);
-    if (!rate.success) return rate.response!;
     const { data: callReport, error } = await supabase
       .from("call_reports")
       .select("*")
@@ -156,9 +157,10 @@ export async function PATCH(
     return NextResponse.json({ error: "User not found" }, { status: 404 });
   }
 
+  const rate = await applyRateLimit(request, RateLimitPresets.standard, user.id);
+  if (!rate.success) return rate.response!;
+
   try {
-    const rate = await applyRateLimit(request, RateLimitPresets.standard);
-    if (!rate.success) return rate.response!;
     // First, check if call report exists and get owner + team
     const { data: existing, error: fetchError } = await supabase
       .from("call_reports")

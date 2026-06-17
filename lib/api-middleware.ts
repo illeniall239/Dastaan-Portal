@@ -19,9 +19,10 @@ import { logError } from "./errors/server";
  */
 export async function applyRateLimit(
   request: Request,
-  config: RateLimitConfig
+  config: RateLimitConfig,
+  userId?: string
 ): Promise<{ success: boolean; response?: NextResponse; result: RateLimitResult }> {
-  const identifier = getClientIdentifier(request);
+  const identifier = userId ? `user:${userId}` : getClientIdentifier(request);
   const result = await rateLimit(identifier, config);
 
   if (!result.success) {

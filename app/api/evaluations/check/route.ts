@@ -17,9 +17,6 @@ import { RateLimitPresets } from '@/lib/rate-limit-redis';
  */
 export async function GET(request: NextRequest) {
   try {
-    const rate = await applyRateLimit(request, RateLimitPresets.relaxed);
-    if (!rate.success) return rate.response!;
-
     const supabase = await createClient();
 
     // Get current user
@@ -31,6 +28,9 @@ export async function GET(request: NextRequest) {
         { status: 401 }
       );
     }
+
+    const rate = await applyRateLimit(request, RateLimitPresets.relaxed, user.id);
+    if (!rate.success) return rate.response!;
 
     // Get query parameters
     const searchParams = request.nextUrl.searchParams;

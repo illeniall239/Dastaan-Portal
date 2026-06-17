@@ -16,9 +16,6 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const rate = await applyRateLimit(request, RateLimitPresets.relaxed);
-    if (!rate.success) return rate.response!;
-
     const { id } = await params;
     // Verify admin authentication
     const supabase = await createClient();
@@ -27,6 +24,9 @@ export async function GET(
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+
+    const rate = await applyRateLimit(request, RateLimitPresets.relaxed, user.id);
+    if (!rate.success) return rate.response!;
 
     const { data: userData } = await supabase
       .from('users')
@@ -112,9 +112,6 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const rate = await applyRateLimit(request, RateLimitPresets.strict);
-    if (!rate.success) return rate.response!;
-
     const { id } = await params;
     // Verify admin authentication
     const supabase = await createClient();
@@ -123,6 +120,9 @@ export async function PUT(
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+
+    const rate = await applyRateLimit(request, RateLimitPresets.strict, user.id);
+    if (!rate.success) return rate.response!;
 
     const { data: userData } = await supabase
       .from('users')
@@ -312,9 +312,6 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const rate = await applyRateLimit(request, RateLimitPresets.strict);
-    if (!rate.success) return rate.response!;
-
     const { id } = await params;
     // Verify admin authentication
     const supabase = await createClient();
@@ -323,6 +320,9 @@ export async function DELETE(
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+
+    const rate = await applyRateLimit(request, RateLimitPresets.strict, user.id);
+    if (!rate.success) return rate.response!;
 
     const { data: userData } = await supabase
       .from('users')

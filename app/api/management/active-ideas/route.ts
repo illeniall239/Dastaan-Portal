@@ -7,9 +7,6 @@ import { RateLimitPresets } from '@/lib/rate-limit-redis';
 
 export async function GET(request: NextRequest) {
   try {
-    const rate = await applyRateLimit(request, RateLimitPresets.relaxed);
-    if (!rate.success) return rate.response!;
-
     // Check if user is authenticated and has management role
     const user = await getCurrentUser();
     
@@ -19,6 +16,9 @@ export async function GET(request: NextRequest) {
         headers: { 'Content-Type': 'application/json' },
       });
     }
+
+    const rate = await applyRateLimit(request, RateLimitPresets.relaxed, user.id);
+    if (!rate.success) return rate.response!;
 
     // Get active ideas details
     const ideasData = await getActiveIdeasDetails();

@@ -31,12 +31,12 @@ const ALLOWED_ROLES = [
  * Fetch all assessments for an entity
  */
 export async function GET(request: NextRequest) {
-    const rate = await applyRateLimit(request, RateLimitPresets.relaxed);
-    if (!rate.success) return rate.response!;
-
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return unauthorizedError();
+
+    const rate = await applyRateLimit(request, RateLimitPresets.relaxed, user.id);
+    if (!rate.success) return rate.response!;
 
     const { searchParams } = request.nextUrl;
     const entity_type = searchParams.get("entity_type");
@@ -100,12 +100,12 @@ export async function GET(request: NextRequest) {
  * Submit or update (upsert) the current user's assessment
  */
 export async function POST(request: NextRequest) {
-    const rate = await applyRateLimit(request, RateLimitPresets.standard);
-    if (!rate.success) return rate.response!;
-
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return unauthorizedError();
+
+    const rate = await applyRateLimit(request, RateLimitPresets.standard, user.id);
+    if (!rate.success) return rate.response!;
 
     // Check role
     const { data: userData } = await supabase

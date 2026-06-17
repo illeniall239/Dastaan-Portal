@@ -12,9 +12,6 @@ import { logAuditAction, getRequestContext } from "@/lib/audit/server";
  * Create a new detailed one-liner with narrative breakdown
  */
 export async function POST(request: NextRequest) {
-  const rate = await applyRateLimit(request, RateLimitPresets.standard);
-  if (!rate.success) return rate.response!;
-
   const supabase = await createClient();
 
   // Check authentication
@@ -22,6 +19,9 @@ export async function POST(request: NextRequest) {
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  const rate = await applyRateLimit(request, RateLimitPresets.standard, user.id);
+  if (!rate.success) return rate.response!;
 
   // Check user role
   const { data: userData } = await supabase

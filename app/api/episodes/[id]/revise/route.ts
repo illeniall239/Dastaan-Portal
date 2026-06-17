@@ -17,9 +17,6 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const rate = await applyRateLimit(request, RateLimitPresets.standard);
-  if (!rate.success) return rate.response!;
-
   const { id } = await params;
 
   const paramValidation = idParamSchema.safeParse({ id });
@@ -37,6 +34,9 @@ export async function POST(
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  const rate = await applyRateLimit(request, RateLimitPresets.standard, user.id);
+  if (!rate.success) return rate.response!;
 
   // Check role
   const { data: userData } = await supabase

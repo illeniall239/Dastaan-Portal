@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { createClient } from "@/lib/supabase/server";
 import { getSegregatedEvaluations } from "@/lib/evaluations/server";
 import { applyRateLimit } from "@/lib/api-middleware";
 import { RateLimitPresets } from "@/lib/rate-limit-redis";
@@ -7,13 +8,18 @@ import { logger } from "@/lib/logger";
 import { CACHE_DURATION, createCacheControl } from '@/lib/constants';
 
 export async function GET(request: NextRequest) {
-  // Apply rate limiting
-  const rateLimitResult = await applyRateLimit(request, RateLimitPresets.standard);
-  if (!rateLimitResult.success) {
-    return rateLimitResult.response;
-  }
-
   try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // Apply rate limiting
+    const rateLimitResult = await applyRateLimit(request, RateLimitPresets.standard, user.id);
+    if (!rateLimitResult.success) {
+      return rateLimitResult.response;
+    }
     const adminClient = createAdminClient();
 
     const { searchParams } = request.nextUrl;

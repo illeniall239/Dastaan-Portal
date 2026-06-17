@@ -14,9 +14,6 @@ export const dynamic = "force-dynamic";
  */
 export async function GET(request: NextRequest) {
   try {
-    const rate = await applyRateLimit(request, RateLimitPresets.relaxed);
-    if (!rate.success) return rate.response!;
-
     const supabase = await createClient();
 
     const {
@@ -26,6 +23,9 @@ export async function GET(request: NextRequest) {
     if (authError || !user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+
+    const rate = await applyRateLimit(request, RateLimitPresets.relaxed, user.id);
+    if (!rate.success) return rate.response!;
 
     // Get user's team and role for team isolation
     const { data: currentUser } = await supabase
@@ -78,9 +78,6 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
-    const rate = await applyRateLimit(request, RateLimitPresets.standard);
-    if (!rate.success) return rate.response!;
-
     const supabase = await createClient();
 
     const {
@@ -90,6 +87,9 @@ export async function POST(request: NextRequest) {
     if (authError || !user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+
+    const rate = await applyRateLimit(request, RateLimitPresets.standard, user.id);
+    if (!rate.success) return rate.response!;
 
     const body = await request.json();
 

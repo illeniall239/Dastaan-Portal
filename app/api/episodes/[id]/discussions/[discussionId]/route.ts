@@ -16,9 +16,6 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string; discussionId: string }> }
 ) {
-  const rate = await applyRateLimit(request, RateLimitPresets.standard);
-  if (!rate.success) return rate.response!;
-
   const { id, discussionId } = await params;
 
   const episodeValidation = idParamSchema.safeParse({ id });
@@ -32,6 +29,9 @@ export async function DELETE(
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  const rate = await applyRateLimit(request, RateLimitPresets.standard, user.id);
+  if (!rate.success) return rate.response!;
 
   try {
     // Fetch the discussion to check ownership

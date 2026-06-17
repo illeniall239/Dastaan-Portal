@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { createClient } from "@/lib/supabase/server";
 import { applyRateLimit } from "@/lib/api-middleware";
 import { RateLimitPresets } from "@/lib/rate-limit-redis";
 import { logger } from "@/lib/logger";
@@ -10,12 +11,17 @@ import { CACHE_DURATION, createCacheControl } from '@/lib/constants';
  * Returns count of call reports/one-liners that have zero evaluations.
  */
 export async function GET(request: NextRequest) {
-  const rate = await applyRateLimit(request, RateLimitPresets.standard);
-  if (!rate.success) {
-    return rate.response;
-  }
-
   try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const rate = await applyRateLimit(request, RateLimitPresets.standard, user.id);
+    if (!rate.success) {
+      return rate.response;
+    }
     const adminClient = createAdminClient();
 
     // Total call reports (one-liners) tracked

@@ -75,12 +75,6 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  // Apply strict rate limiting: 10 requests per minute for user creation
-  const rateLimitResult = await applyRateLimit(request, RateLimitPresets.strict);
-  if (!rateLimitResult.success) {
-    return rateLimitResult.response;
-  }
-
   return withApiPerf(async () => {
     try {
     // Use regular client to verify the current user is an admin
@@ -90,6 +84,12 @@ export async function POST(request: Request) {
 
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // Apply strict rate limiting: 10 requests per minute for user creation
+    const rateLimitResult = await applyRateLimit(request, RateLimitPresets.strict, user.id);
+    if (!rateLimitResult.success) {
+      return rateLimitResult.response!;
     }
 
     const { data: userData } = await supabase.from('users').select('role').eq('id', user.id).single();

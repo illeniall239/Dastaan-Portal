@@ -16,9 +16,6 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string; revisionId: string }> }
 ) {
-  const rate = await applyRateLimit(request, RateLimitPresets.standard);
-  if (!rate.success) return rate.response!;
-
   const { id, revisionId } = await params;
 
   const idValidation = idParamSchema.safeParse({ id });
@@ -35,6 +32,9 @@ export async function PATCH(
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  const rate = await applyRateLimit(request, RateLimitPresets.standard, user.id);
+  if (!rate.success) return rate.response!;
 
   try {
     // Check user role
@@ -99,9 +99,6 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string; revisionId: string }> }
 ) {
-  const rate = await applyRateLimit(request, RateLimitPresets.strict);
-  if (!rate.success) return rate.response!;
-
   const { id, revisionId } = await params;
 
   // Validate both UUIDs
@@ -119,6 +116,9 @@ export async function DELETE(
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  const rate = await applyRateLimit(request, RateLimitPresets.strict, user.id);
+  if (!rate.success) return rate.response!;
 
   try {
     // Fetch the revision

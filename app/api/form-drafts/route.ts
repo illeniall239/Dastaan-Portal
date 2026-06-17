@@ -16,12 +16,12 @@ export const dynamic = "force-dynamic";
  * Fetch a draft for the current user
  */
 export async function GET(request: NextRequest) {
-  const rate = await applyRateLimit(request, RateLimitPresets.relaxed);
-  if (!rate.success) return rate.response!;
-
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return unauthorizedError();
+
+  const rate = await applyRateLimit(request, RateLimitPresets.relaxed, user.id);
+  if (!rate.success) return rate.response!;
 
   const { searchParams } = request.nextUrl;
   const formType = searchParams.get("form_type");
@@ -61,12 +61,12 @@ export async function GET(request: NextRequest) {
  * Body: { form_type, entity_id?, draft_data }
  */
 export async function POST(request: NextRequest) {
-  const rate = await applyRateLimit(request, RateLimitPresets.standard);
-  if (!rate.success) return rate.response!;
-
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return unauthorizedError();
+
+  const rate = await applyRateLimit(request, RateLimitPresets.standard, user.id);
+  if (!rate.success) return rate.response!;
 
   try {
     const body = await request.json();
@@ -117,12 +117,12 @@ export async function POST(request: NextRequest) {
  * Remove a draft after successful submission
  */
 export async function DELETE(request: NextRequest) {
-  const rate = await applyRateLimit(request, RateLimitPresets.standard);
-  if (!rate.success) return rate.response!;
-
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return unauthorizedError();
+
+  const rate = await applyRateLimit(request, RateLimitPresets.standard, user.id);
+  if (!rate.success) return rate.response!;
 
   const { searchParams } = request.nextUrl;
   const formType = searchParams.get("form_type");

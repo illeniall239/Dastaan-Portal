@@ -22,9 +22,6 @@ export async function GET(
   }
 
   try {
-    const rate = await applyRateLimit(request, RateLimitPresets.relaxed);
-    if (!rate.success) return rate.response!;
-
     const supabase = await createClient();
 
     // Check authentication
@@ -32,6 +29,9 @@ export async function GET(
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+
+    const rate = await applyRateLimit(request, RateLimitPresets.relaxed, user.id);
+    if (!rate.success) return rate.response!;
 
     // Check user role - only management and admin can access
     const { data: userData } = await supabase

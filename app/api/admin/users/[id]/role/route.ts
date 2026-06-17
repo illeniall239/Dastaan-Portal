@@ -23,13 +23,14 @@ const roleUpdateSchema = z.object({
 });
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
-  const rate = await applyRateLimit(request, RateLimitPresets.strict);
-  if (!rate.success) return rate.response!;
   const { id } = await params;
 
   const auth = await requireApiAuth(["admin"]);
   if (!auth.success) return auth.response;
   const { user } = auth;
+
+  const rate = await applyRateLimit(request, RateLimitPresets.strict, user.id);
+  if (!rate.success) return rate.response!;
 
   const body = await request.json();
   const validation = roleUpdateSchema.safeParse(body);

@@ -7,12 +7,6 @@ import { searchQuerySchema } from "@/lib/validations/query-params";
 import { UserRepository } from "@/lib/repositories/user-repository";
 
 export async function GET(request: Request) {
-  // Apply rate limiting: 30 requests per minute for user search
-  const rateLimitResult = await applyRateLimit(request, RateLimitPresets.standard);
-  if (!rateLimitResult.success) {
-    return rateLimitResult.response;
-  }
-
   try {
     // Verify user is authenticated
     const supabase = await createClient();
@@ -20,6 +14,12 @@ export async function GET(request: Request) {
 
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // Apply rate limiting: 30 requests per minute for user search
+    const rateLimitResult = await applyRateLimit(request, RateLimitPresets.standard, user.id);
+    if (!rateLimitResult.success) {
+      return rateLimitResult.response;
     }
 
     // Get and validate search query from URL params

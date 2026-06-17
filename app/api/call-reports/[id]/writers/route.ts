@@ -22,9 +22,6 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const rate = await applyRateLimit(request, RateLimitPresets.relaxed);
-    if (!rate.success) return rate.response!;
-
     const supabase = await createClient();
     const { id } = await params;
 
@@ -33,6 +30,9 @@ export async function GET(
     if (!user) {
       return unauthorizedError();
     }
+
+    const rate = await applyRateLimit(request, RateLimitPresets.relaxed, user.id);
+    if (!rate.success) return rate.response!;
 
     // Fetch writers with JOIN to get writer names
     const { data: writers, error } = await supabase
@@ -112,9 +112,6 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const rate = await applyRateLimit(request, RateLimitPresets.standard);
-    if (!rate.success) return rate.response!;
-
     const supabase = await createClient();
     const { id } = await params;
     const body = await request.json();
@@ -124,6 +121,9 @@ export async function POST(
     if (!user) {
       return unauthorizedError();
     }
+
+    const rate = await applyRateLimit(request, RateLimitPresets.standard, user.id);
+    if (!rate.success) return rate.response!;
 
     // Validate request body
     const { writers } = body;
@@ -191,9 +191,6 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const rate = await applyRateLimit(request, RateLimitPresets.standard);
-    if (!rate.success) return rate.response!;
-
     const supabase = await createClient();
     const { id } = await params;
     const body = await request.json();
@@ -203,6 +200,9 @@ export async function PUT(
     if (!user) {
       return unauthorizedError();
     }
+
+    const rate = await applyRateLimit(request, RateLimitPresets.standard, user.id);
+    if (!rate.success) return rate.response!;
 
     // Validate request body
     const { writers } = body;

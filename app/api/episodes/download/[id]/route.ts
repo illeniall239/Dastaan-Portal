@@ -9,9 +9,6 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const rate = await applyRateLimit(request, RateLimitPresets.relaxed);
-    if (!rate.success) return rate.response!;
-
     const { id } = await params;
     const supabase = await createClient();
 
@@ -27,6 +24,9 @@ export async function GET(
         { status: 401 }
       );
     }
+
+    const rate = await applyRateLimit(request, RateLimitPresets.relaxed, user.id);
+    if (!rate.success) return rate.response!;
 
     // Fetch episode from database
     const { data: episode, error: episodeError } = await supabase

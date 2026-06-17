@@ -19,9 +19,6 @@ import { RateLimitPresets } from "@/lib/rate-limit-redis";
  * - offset: Number of results to skip (default: 0)
  */
 export async function GET(request: Request) {
-  const rate = await applyRateLimit(request, RateLimitPresets.standard);
-  if (!rate.success) return rate.response!;
-
   const supabase = await createClient();
 
   // Check if current user is admin
@@ -30,6 +27,9 @@ export async function GET(request: Request) {
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  const rate = await applyRateLimit(request, RateLimitPresets.standard, user.id);
+  if (!rate.success) return rate.response!;
 
   const { data: userData } = await supabase
     .from("users")

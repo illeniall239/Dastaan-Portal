@@ -21,9 +21,6 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const rate = await applyRateLimit(request, RateLimitPresets.standard);
-  if (!rate.success) return rate.response!;
-
   const { id } = await params;
 
   const paramValidation = idParamSchema.safeParse({ id });
@@ -41,6 +38,9 @@ export async function PATCH(
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  const rate = await applyRateLimit(request, RateLimitPresets.standard, user.id);
+  if (!rate.success) return rate.response!;
 
   // Check role — content_manager and admin always allowed;
   // management role only allowed for mandatory approvers (Humera & Salman)

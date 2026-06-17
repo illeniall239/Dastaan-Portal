@@ -14,14 +14,14 @@ export const dynamic = "force-dynamic";
  */
 export async function GET(request: Request) {
   try {
-    const rate = await applyRateLimit(request, RateLimitPresets.relaxed);
-    if (!rate.success) return rate.response!;
-
     const user = await getCurrentUser();
 
     if (!user || user.role !== "admin") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
     }
+
+    const rate = await applyRateLimit(request, RateLimitPresets.relaxed, user.id);
+    if (!rate.success) return rate.response!;
 
     const supabase = await createClient();
     const { data, error } = await supabase
@@ -50,14 +50,14 @@ export async function GET(request: Request) {
  */
 export async function PUT(request: Request) {
   try {
-    const rate = await applyRateLimit(request, RateLimitPresets.strict);
-    if (!rate.success) return rate.response!;
-
     const user = await getCurrentUser();
 
     if (!user || user.role !== "admin") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
     }
+
+    const rate = await applyRateLimit(request, RateLimitPresets.strict, user.id);
+    if (!rate.success) return rate.response!;
 
     const body = await request.json();
     const { setting_key, setting_value } = body;

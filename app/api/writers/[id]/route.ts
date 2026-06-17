@@ -9,11 +9,11 @@ import { logAuditAction, getRequestContext } from "@/lib/audit/server";
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const rate = await applyRateLimit(request, RateLimitPresets.relaxed);
-    if (!rate.success) return rate.response!;
-
     const auth = await requireApiAuth();
     if (!auth.success) return auth.response;
+
+    const rate = await applyRateLimit(request, RateLimitPresets.relaxed, auth.user.id);
+    if (!rate.success) return rate.response!;
 
     const supabase = await createClient();
     const { id } = await params;
@@ -64,11 +64,11 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
 export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const rate = await applyRateLimit(request, RateLimitPresets.standard);
-    if (!rate.success) return rate.response!;
-
     const auth = await requireApiAuth();
     if (!auth.success) return auth.response;
+
+    const rate = await applyRateLimit(request, RateLimitPresets.standard, auth.user.id);
+    if (!rate.success) return rate.response!;
 
     const supabase = await createClient();
     const { id } = await params;
@@ -128,11 +128,11 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
 
 export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const rate = await applyRateLimit(request, RateLimitPresets.strict);
-    if (!rate.success) return rate.response!;
-
     const auth = await requireApiAuth();
     if (!auth.success) return auth.response;
+
+    const rate = await applyRateLimit(request, RateLimitPresets.strict, auth.user.id);
+    if (!rate.success) return rate.response!;
 
     const supabase = await createClient();
     const { id } = await params;

@@ -124,9 +124,6 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const rate = await applyRateLimit(request, RateLimitPresets.relaxed);
-    if (!rate.success) return rate.response!;
-
     // Verify user authentication
     const user = await getCurrentUser();
     if (!user) {
@@ -135,6 +132,9 @@ export async function GET(
         headers: { 'Content-Type': 'application/json' },
       });
     }
+
+    const rate = await applyRateLimit(request, RateLimitPresets.relaxed, user.id);
+    if (!rate.success) return rate.response!;
 
     const resolvedParams = await params;
     const { id } = resolvedParams;

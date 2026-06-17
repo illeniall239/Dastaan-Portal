@@ -24,9 +24,6 @@ export async function GET(
   { params }: { params: Promise<{ episodeId: string }> }
 ) {
   try {
-    const rate = await applyRateLimit(request, RateLimitPresets.relaxed);
-    if (!rate.success) return rate.response!;
-
     const { episodeId } = await params;
 
   // Validate UUID format
@@ -45,6 +42,9 @@ export async function GET(
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+    const rate = await applyRateLimit(request, RateLimitPresets.relaxed, user.id);
+    if (!rate.success) return rate.response!;
 
     // Fetch draft evaluation data
     const { data, error } = await supabase
@@ -82,9 +82,6 @@ export async function POST(
   { params }: { params: Promise<{ episodeId: string }> }
 ) {
   try {
-    const rate = await applyRateLimit(request, RateLimitPresets.standard);
-    if (!rate.success) return rate.response!;
-
     const { episodeId } = await params;
 
   // Validate UUID format
@@ -103,6 +100,9 @@ export async function POST(
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+    const rate = await applyRateLimit(request, RateLimitPresets.standard, user.id);
+    if (!rate.success) return rate.response!;
 
   // Check user role
   const { data: userData, error: userError } = await supabase
@@ -189,9 +189,6 @@ export async function DELETE(
   { params }: { params: Promise<{ episodeId: string }> }
 ) {
   try {
-    const rate = await applyRateLimit(request, RateLimitPresets.standard);
-    if (!rate.success) return rate.response!;
-
     const { episodeId } = await params;
 
   // Validate UUID format
@@ -210,6 +207,9 @@ export async function DELETE(
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+    const rate = await applyRateLimit(request, RateLimitPresets.standard, user.id);
+    if (!rate.success) return rate.response!;
 
     // Check if draft exists and get owner
     const { data: draft, error: fetchError } = await supabase

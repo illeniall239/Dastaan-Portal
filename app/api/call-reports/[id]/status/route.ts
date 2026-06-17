@@ -12,13 +12,13 @@ export async function PATCH(
 ) {
   const { id } = await params;
   try {
-    const rate = await applyRateLimit(request, RateLimitPresets.standard);
-    if (!rate.success) return rate.response!;
-
     const auth = await requireApiAuth([
       "content_manager", "evaluator", "programmer", "management", "executive"
     ]);
     if (!auth.success) return auth.response;
+
+    const rate = await applyRateLimit(request, RateLimitPresets.standard, auth.user.id);
+    if (!rate.success) return rate.response!;
 
     // Parse request body
     const body = await request.json();

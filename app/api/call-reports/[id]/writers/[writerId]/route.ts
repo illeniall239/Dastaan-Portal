@@ -14,9 +14,6 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string; writerId: string }> }
 ) {
   try {
-    const rate = await applyRateLimit(request, RateLimitPresets.standard);
-    if (!rate.success) return rate.response!;
-
     const supabase = await createClient();
     const { id, writerId } = await params;
     const body = await request.json();
@@ -26,6 +23,9 @@ export async function PATCH(
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+
+    const rate = await applyRateLimit(request, RateLimitPresets.standard, user.id);
+    if (!rate.success) return rate.response!;
 
     // Extract update fields
     const { writer_email, writer_phone } = body;
@@ -101,9 +101,6 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string; writerId: string }> }
 ) {
   try {
-    const rate = await applyRateLimit(request, RateLimitPresets.standard);
-    if (!rate.success) return rate.response!;
-
     const supabase = await createClient();
     const { id, writerId } = await params;
 
@@ -112,6 +109,9 @@ export async function DELETE(
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+
+    const rate = await applyRateLimit(request, RateLimitPresets.standard, user.id);
+    if (!rate.success) return rate.response!;
 
     // Delete writer from call report
     const { error } = await supabase

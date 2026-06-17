@@ -29,9 +29,6 @@ export const dynamic = 'force-dynamic';
  * Create one or multiple episodes
  */
 export async function POST(request: Request) {
-  // Rate limit POSTs (creation)
-  const rate = await applyRateLimit(request, RateLimitPresets.standard);
-  if (!rate.success) return rate.response!;
   const supabase = await createClient();
 
   // Check authentication
@@ -39,6 +36,10 @@ export async function POST(request: Request) {
   if (!user) {
     return unauthorizedError();
   }
+
+  // Rate limit POSTs (creation)
+  const rate = await applyRateLimit(request, RateLimitPresets.standard, user.id);
+  if (!rate.success) return rate.response!;
 
   // Get user data including team_id for team isolation
   const { data: userData } = await supabase
@@ -296,9 +297,6 @@ export async function POST(request: Request) {
  * - project_limit: Number of projects to fetch (default: 20, used with group_by_project)
  */
 export async function GET(request: NextRequest) {
-  // Rate limit GETs listing/search
-  const rate = await applyRateLimit(request, RateLimitPresets.relaxed);
-  if (!rate.success) return rate.response!;
   const supabase = await createClient();
 
   // Check authentication
@@ -306,6 +304,10 @@ export async function GET(request: NextRequest) {
   if (!user) {
     return unauthorizedError();
   }
+
+  // Rate limit GETs listing/search
+  const rate = await applyRateLimit(request, RateLimitPresets.relaxed, user.id);
+  if (!rate.success) return rate.response!;
 
   // Get user data including team_id for team isolation
   const { data: userData } = await supabase
@@ -417,7 +419,8 @@ export async function GET(request: NextRequest) {
           call_report_id,
           call_report:call_reports!inner(team_id)
         `)
-        .not("call_report_id", "is", null);
+        .not("call_report_id", "is", null)
+        .eq("is_current", true);
 
       // TEAM ISOLATION: Filter through call_reports.team_id
       if (!hasGlobalAccess && userData.team_id) {
@@ -448,6 +451,7 @@ export async function GET(request: NextRequest) {
           call_report:call_reports!inner(team_id)
         `)
         .not("call_report_id", "is", null)
+        .eq("is_current", true)
         .order("created_at", { ascending: false });
 
       // TEAM ISOLATION: Filter through call_reports.team_id
@@ -501,6 +505,7 @@ export async function GET(request: NextRequest) {
             story:stories(title, status)
           `, { count: "exact" })
           .in("call_report_id", projectIdsForPage)
+          .eq("is_current", true)
           .order("episode_number", { ascending: true });
 
         // TEAM ISOLATION: Double-check team filter (should already be filtered by projectIdsForPage)

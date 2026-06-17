@@ -13,15 +13,15 @@ import { RateLimitPresets } from "@/lib/rate-limit-redis";
  * Uses admin client to bypass RLS (notifications table blocks authenticated-user inserts).
  */
 export async function POST(request: NextRequest) {
-  const rate = await applyRateLimit(request, RateLimitPresets.standard);
-  if (!rate.success) return rate.response!;
-
   try {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+
+    const rate = await applyRateLimit(request, RateLimitPresets.standard, user.id);
+    if (!rate.success) return rate.response!;
 
     const body = await request.json();
     const { evaluationId, callReportId } = body;

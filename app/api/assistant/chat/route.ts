@@ -796,12 +796,12 @@ async function callGroq(apiKey: string, body: object): Promise<any> {
 // ─── POST handler ──────────────────────────────────────────────────────────────
 export async function POST(request: NextRequest) {
   try {
-    const rate = await applyRateLimit(request, RateLimitPresets.relaxed);
-    if (!rate.success) return rate.response!;
-
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+    const rate = await applyRateLimit(request, RateLimitPresets.relaxed, user.id);
+    if (!rate.success) return rate.response!;
 
     const { data: profile } = await supabase
       .from("users").select("role, email").eq("id", user.id).single();
