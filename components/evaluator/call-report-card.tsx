@@ -17,9 +17,8 @@ interface CallReportCardProps {
 }
 
 export function CallReportCard({ report, portalPrefix = "evaluator", isTeamHead = false, currentTeamId }: CallReportCardProps) {
-  // Format timestamp
-
-  // Format timestamp
+  // Format timestamp — original_submission_date is DATE-only (no time component)
+  const isDateOnly = !!report.original_submission_date;
   const loggedTimestamp =
     report.original_submission_date ||
     report.logged_at ||
@@ -33,12 +32,12 @@ export function CallReportCard({ report, portalPrefix = "evaluator", isTeamHead 
     day: "numeric",
     year: "numeric",
   });
-  const formattedTime = loggedDate.toLocaleTimeString("en-US", {
+  const formattedTime = isDateOnly ? null : loggedDate.toLocaleTimeString("en-US", {
     hour: "numeric",
     minute: "2-digit",
     hour12: true,
   });
-  const formattedDateTime = `${formattedDate} at ${formattedTime}`;
+  const formattedDateTime = formattedTime ? `${formattedDate} at ${formattedTime}` : formattedDate;
 
   const writerDisplayName =
     report.writer_names && report.writer_names.length > 0

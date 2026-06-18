@@ -14,7 +14,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getAttachmentsForEntityServer } from "@/lib/attachments/server";
 import { BackButton } from "@/components/ui/back-button";
-import { formatDateTimeLong, formatDate } from "@/lib/utils/format-date";
+import { formatDateTimeLong, formatDateLong, formatDate } from "@/lib/utils/format-date";
 import { ShareCrossTeamButton } from "@/components/call-report/share-cross-team-button";
 import { ContentRevisions } from "@/components/ui/content-revisions";
 import { StoryApprovalPanel } from "@/components/approvals/story-approval-panel";
@@ -135,6 +135,7 @@ export default async function CallReportDetailPage({ params }: { params: Promise
     // Continue without attachments if there's an error
   }
 
+  const isDateOnly = !!report.original_submission_date;
   const loggedTimestamp =
     report.original_submission_date ||
     report.logged_at ||
@@ -203,7 +204,7 @@ export default async function CallReportDetailPage({ params }: { params: Promise
             <div className="grid grid-cols-2 gap-x-8 gap-y-3 text-sm">
               <div>
                 <p className="text-slate-500 font-medium">Logged On</p>
-                <p className="text-slate-900 mt-0.5">{formatDateTimeLong(loggedTimestamp)}</p>
+                <p className="text-slate-900 mt-0.5">{isDateOnly ? formatDateLong(loggedTimestamp) : formatDateTimeLong(loggedTimestamp)}</p>
               </div>
               <div>
                 <p className="text-slate-500 font-medium">Category</p>

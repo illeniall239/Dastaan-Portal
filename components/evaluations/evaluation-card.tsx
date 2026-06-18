@@ -100,6 +100,7 @@ export function EvaluationCard({
 }: EvaluationCardProps) {
   const hasDraft = draftProgress && draftProgress.percentage > 0;
 
+  const isDateOnly = !!report.original_submission_date;
   const loggedTimestamp =
     report.original_submission_date ||
     report.logged_at ||
@@ -113,7 +114,7 @@ export function EvaluationCard({
     day: "numeric",
     year: "numeric",
   });
-  const formattedTime = loggedDate.toLocaleTimeString("en-US", {
+  const formattedTime = isDateOnly ? null : loggedDate.toLocaleTimeString("en-US", {
     hour: "numeric",
     minute: "2-digit",
     hour12: true,
@@ -237,7 +238,7 @@ export function EvaluationCard({
               <div className="flex items-center gap-2">
                 <CalendarIcon className="h-4 w-4" />
                 <span>
-                  {formattedDate} at {formattedTime}
+                  {formattedTime ? `${formattedDate} at ${formattedTime}` : formattedDate}
                 </span>
               </div>
             </div>
