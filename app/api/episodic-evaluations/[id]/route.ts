@@ -158,8 +158,11 @@ export async function DELETE(
   }
 
   try {
+    // Use admin client to bypass RLS — permissions are checked in code below
+    const adminClient = createAdminClient();
+
     // Check if evaluation exists and get owner
-    const { data: evaluation, error: fetchError } = await supabase
+    const { data: evaluation, error: fetchError } = await adminClient
       .from("episodic_evaluations")
       .select("evaluator_id")
       .eq("id", id)
@@ -191,7 +194,7 @@ export async function DELETE(
     }
 
     // Delete the evaluation
-    const { error: deleteError } = await supabase
+    const { error: deleteError } = await adminClient
       .from("episodic_evaluations")
       .delete()
       .eq("id", id);
