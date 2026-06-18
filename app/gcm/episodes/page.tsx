@@ -42,6 +42,9 @@ import {
   ChevronRight,
   ChevronDown,
   Info,
+  Pencil,
+  ClipboardCheck,
+  Eye,
 } from "lucide-react";
 import { formatFileSize } from "@/lib/validations/episodes";
 import { EpisodeUploadForm, type EpisodeFormEntry } from "@/components/episodes/episode-upload-form";
@@ -70,6 +73,10 @@ interface CallReport {
   writers?: CallReportWriter[];
 }
 
+interface EvaluationStatus {
+  [episodeId: string]: boolean;
+}
+
 interface ProjectGroup {
   projectId: string;
   projectName: string;
@@ -77,6 +84,7 @@ interface ProjectGroup {
   writerName?: string;
   projectStatus?: string;
   episodes: EpisodeWithDetails[];
+  evaluatedCount: number;
   totalCount: number;
   sourceId?: string;
 }
@@ -99,6 +107,7 @@ export default function GcmEpisodesPage() {
 
   // Episodes list state
   const [episodes, setEpisodes] = useState<EpisodeWithDetails[]>([]);
+  const [evaluationStatus, setEvaluationStatus] = useState<EvaluationStatus>({});
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
@@ -158,7 +167,7 @@ export default function GcmEpisodesPage() {
 
       // Fetch episodes with project-based pagination (20 projects at a time, all their episodes)
       const response = await fetch(
-        `/api/episodes?group_by_project=true&project_limit=20&project_page=${page}`,
+        `/api/episodes?group_by_project=true&project_limit=20&project_page=${page}&include_evaluation_status=true&_t=${Date.now()}`,
         { cache: 'no-store' }
       );
       const data = await response.json();
@@ -174,6 +183,18 @@ export default function GcmEpisodesPage() {
         setEpisodes(prev => [...prev, ...fetchedEpisodes]);
       } else {
         setEpisodes(fetchedEpisodes);
+      }
+
+      // Build evaluation status from API response
+      const status: EvaluationStatus = {};
+      fetchedEpisodes.forEach((ep: any) => {
+        status[ep.id] = ep.is_evaluated || false;
+      });
+
+      if (append) {
+        setEvaluationStatus(prev => ({ ...prev, ...status }));
+      } else {
+        setEvaluationStatus(status);
       }
 
       // Update pagination state
@@ -591,6 +612,7 @@ export default function GcmEpisodesPage() {
           writerName,
           projectStatus,
           episodes: [],
+          evaluatedCount: 0,
           totalCount: 0,
           sourceId,
         });
@@ -599,6 +621,7 @@ export default function GcmEpisodesPage() {
       const group = projectsMap.get(projectId)!;
       group.episodes.push(ep);
       group.totalCount++;
+      if (evaluationStatus[ep.id]) group.evaluatedCount++;
     });
 
     projectsMap.forEach((group) => {
@@ -613,7 +636,7 @@ export default function GcmEpisodesPage() {
   // Memoize grouping operation to avoid re-grouping on every render
   const projects = useMemo(
     () => groupEpisodesByProject(filteredEpisodes),
-    [filteredEpisodes]
+    [filteredEpisodes, evaluationStatus]
   );
 
   const toggleProject = (projectId: string) => {
@@ -773,6 +796,13 @@ export default function GcmEpisodesPage() {
     }
   };
 
+  const canEditEpisode = (episode: EpisodeWithDetails): boolean => {
+    if (!currentUserId || !currentUserRole) return false;
+    return (
+      episode.logged_by === currentUserId ||
+      ["content_manager", "admin"].includes(currentUserRole)
+    );
+  };
 
   return (
     <div className="mobile-container mobile-section">
@@ -872,7 +902,7 @@ export default function GcmEpisodesPage() {
                                 </div>
                                 <div className="flex items-center gap-3">
                                   <span className="text-sm text-muted-foreground">
-                                    {project.totalCount} {project.totalCount === 1 ? "Episode" : "Episodes"}
+                                    {project.evaluatedCount}/{project.totalCount} Evaluated
                                   </span>
                                   <Button
                                     size="sm"
@@ -894,7 +924,9 @@ export default function GcmEpisodesPage() {
                           </TableRow>
 
                           {isExpanded &&
-                            project.episodes.map((episode) => (
+                            project.episodes.map((episode) => {
+                              const isEvaluated = evaluationStatus[episode.id];
+                              return (
                               <TableRow key={episode.id} className="hover:bg-slate-50">
                                 <TableCell className="pl-12">
                                   <div className="flex items-center gap-1.5">
@@ -902,6 +934,15 @@ export default function GcmEpisodesPage() {
                                     {episode.version > 1 && (
                                       <Badge variant="secondary" className="text-[10px] px-1 py-0 h-4 bg-blue-100 text-blue-700">
                                         v{episode.version}
+                                      </Badge>
+                                    )}
+                                    {isEvaluated ? (
+                                      <Badge className="bg-emerald-100 text-emerald-700 text-[10px] px-1 py-0 h-4">
+                                        Evaluated
+                                      </Badge>
+                                    ) : (
+                                      <Badge className="bg-slate-100 text-slate-600 text-[10px] px-1 py-0 h-4">
+                                        Not Evaluated
                                       </Badge>
                                     )}
                                     {episode.approval_status && (
@@ -935,24 +976,51 @@ export default function GcmEpisodesPage() {
                                   {formatDate(episode.original_submission_date || episode.call_report?.original_submission_date || episode.created_at)}
                                 </TableCell>
                                 <TableCell className="text-right">
-                                  <DropdownMenu>
-                                    <DropdownMenuTrigger asChild>
-                                      <Button variant="ghost" size="sm">
-                                        <MoreVertical className="h-4 w-4" />
+                                  <div className="flex items-center justify-end gap-2">
+                                    {isEvaluated ? (
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => router.push(`/gcm/episodes/${episode.id}?evaluated=1`)}
+                                      >
+                                        <Eye className="h-4 w-4 mr-1" />
+                                        View
                                       </Button>
-                                    </DropdownMenuTrigger>
-                                    <DropdownMenuContent align="end" side="bottom" collisionPadding={10} className="z-50 w-[calc(100vw-2rem)] max-w-64 md:max-w-none md:w-56">
-                                      {episode.attachment_url && (
-                                        <DropdownMenuItem onClick={() => handleDownload(episode)}>
-                                          <Download className="mr-2 h-4 w-4" />
-                                          Download
-                                        </DropdownMenuItem>
-                                      )}
-                                    </DropdownMenuContent>
-                                  </DropdownMenu>
+                                    ) : (
+                                      <Button
+                                        size="sm"
+                                        onClick={() => router.push(`/gcm/episodes/${episode.id}`)}
+                                      >
+                                        <ClipboardCheck className="h-4 w-4 mr-1" />
+                                        Evaluate
+                                      </Button>
+                                    )}
+                                    <DropdownMenu>
+                                      <DropdownMenuTrigger asChild>
+                                        <Button variant="ghost" size="sm">
+                                          <MoreVertical className="h-4 w-4" />
+                                        </Button>
+                                      </DropdownMenuTrigger>
+                                      <DropdownMenuContent align="end" side="bottom" collisionPadding={10} className="z-50 w-[calc(100vw-2rem)] max-w-64 md:max-w-none md:w-56">
+                                        {canEditEpisode(episode) && (
+                                          <DropdownMenuItem onClick={() => router.push(`/gcm/episodes/${episode.id}/edit`)}>
+                                            <Pencil className="mr-2 h-4 w-4" />
+                                            Edit
+                                          </DropdownMenuItem>
+                                        )}
+                                        {episode.attachment_url && (
+                                          <DropdownMenuItem onClick={() => handleDownload(episode)}>
+                                            <Download className="mr-2 h-4 w-4" />
+                                            Download
+                                          </DropdownMenuItem>
+                                        )}
+                                      </DropdownMenuContent>
+                                    </DropdownMenu>
+                                  </div>
                                 </TableCell>
                               </TableRow>
-                            ))}
+                              );
+                            })}
                         </Fragment>
                       );
                     })}
@@ -990,7 +1058,7 @@ export default function GcmEpisodesPage() {
                           </div>
                         </div>
                         <div className="flex items-center gap-2">
-                          <span className="text-sm text-muted-foreground">{project.totalCount}</span>
+                          <span className="text-xs text-muted-foreground">{project.evaluatedCount}/{project.totalCount}</span>
                           <Button
                             size="sm"
                             variant="secondary"
@@ -1010,7 +1078,9 @@ export default function GcmEpisodesPage() {
 
                       {isExpanded && (
                         <div className="divide-y divide-slate-200">
-                          {project.episodes.map((episode) => (
+                          {project.episodes.map((episode) => {
+                            const isEvaluated = evaluationStatus[episode.id];
+                            return (
                             <div key={episode.id} className="p-4 flex flex-col gap-3 pl-8 border-l-2 border-slate-200 bg-white">
                               <div className="flex flex-col gap-2">
                                 <div className="flex items-center justify-between gap-2">
@@ -1020,6 +1090,11 @@ export default function GcmEpisodesPage() {
                                       <Badge variant="secondary" className="text-[10px] px-1 py-0 h-4 bg-blue-100 text-blue-700 flex-shrink-0">
                                         v{episode.version}
                                       </Badge>
+                                    )}
+                                    {isEvaluated ? (
+                                      <Badge className="flex-shrink-0 bg-emerald-100 text-emerald-700 text-[10px] px-1 py-0 h-4">Evaluated</Badge>
+                                    ) : (
+                                      <Badge className="flex-shrink-0 bg-slate-100 text-slate-600 text-[10px] px-1 py-0 h-4">Not Evaluated</Badge>
                                     )}
                                     {episode.approval_status && (
                                       <Badge className={`flex-shrink-0 ${
@@ -1052,6 +1127,23 @@ export default function GcmEpisodesPage() {
                                   <span className="text-sm text-muted-foreground flex-1">
                                     By: {episode.logged_by_user?.name || "Unknown"}
                                   </span>
+                                  {isEvaluated ? (
+                                    <Button size="sm" variant="outline" onClick={() => router.push(`/gcm/episodes/${episode.id}?evaluated=1`)} className="touch-target">
+                                      <Eye className="h-4 w-4 mr-1" />
+                                      View
+                                    </Button>
+                                  ) : (
+                                    <Button size="sm" onClick={() => router.push(`/gcm/episodes/${episode.id}`)} className="touch-target">
+                                      <ClipboardCheck className="h-4 w-4 mr-1" />
+                                      Evaluate
+                                    </Button>
+                                  )}
+                                  {canEditEpisode(episode) && (
+                                    <Button size="sm" variant="outline" onClick={() => router.push(`/gcm/episodes/${episode.id}/edit`)} className="touch-target">
+                                      <Pencil className="h-4 w-4 mr-1" />
+                                      Edit
+                                    </Button>
+                                  )}
                                   {episode.attachment_url && (
                                     <Button size="sm" variant="outline" onClick={() => handleDownload(episode)} className="touch-target">
                                       <Download className="h-4 w-4 mr-1" />
@@ -1061,7 +1153,8 @@ export default function GcmEpisodesPage() {
                                 </div>
                               </div>
                             </div>
-                          ))}
+                            );
+                          })}
                         </div>
                       )}
                     </div>
