@@ -39,11 +39,19 @@ export async function GET(
     if (!rate.success) return rate.response!;
 
   // Check user role
-  const { data: userData } = await createAdminClient()
+  const { data: userData, error: userQueryError } = await createAdminClient()
     .from("users")
     .select("role")
     .eq("id", user.id)
     .single();
+
+  if (userQueryError) {
+    logger.error("User role query failed", { error: userQueryError, userId: user.id, context: "GET /api/episodic-evaluations/episode/[episodeId]" });
+    return NextResponse.json(
+      { error: "Failed to verify user permissions", details: userQueryError.message },
+      { status: 500 }
+    );
+  }
 
   if (!userData || !["evaluator", "programmer", "content_manager", "admin", "management", "executive"].includes(userData.role)) {
     return NextResponse.json(

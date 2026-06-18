@@ -70,11 +70,16 @@ export async function GET(
 
     // Check if user has permission to view this evaluation
     // Evaluators can only view their own, managers and admins can view all
-    const { data: userData } = await createAdminClient()
+    const { data: userData, error: userQueryError } = await createAdminClient()
       .from("users")
       .select("role")
       .eq("id", user.id)
       .single();
+
+    if (userQueryError) {
+      logger.error("User role query failed", { error: userQueryError, userId: user.id, context: "GET /api/episodic-evaluations/[id]" });
+      return NextResponse.json({ error: "Failed to verify user permissions", details: userQueryError.message }, { status: 500 });
+    }
 
     if (!userData) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });

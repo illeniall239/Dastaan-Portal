@@ -31,11 +31,19 @@ export async function POST(request: Request) {
   // Check user role and evaluation access (use admin client to bypass RLS
   // on users table — the user is already authenticated above)
   const adminClient = createAdminClient();
-  const { data: userData } = await adminClient
+  const { data: userData, error: userQueryError } = await adminClient
     .from("users")
     .select("role, can_evaluate")
     .eq("id", user.id)
     .single();
+
+  if (userQueryError) {
+    logger.error("User role query failed", { error: userQueryError, userId: user.id, context: "POST /api/episodic-evaluations" });
+    return NextResponse.json(
+      { error: "Failed to verify user permissions", details: userQueryError.message },
+      { status: 500 }
+    );
+  }
 
   if (!userData || !["evaluator", "programmer", "admin", "management", "executive", "content_manager"].includes(userData.role)) {
     return NextResponse.json(
@@ -261,11 +269,19 @@ export async function GET(request: NextRequest) {
 
   // Check user role (use admin client to bypass RLS on users table)
   const adminClient2 = createAdminClient();
-  const { data: userData } = await adminClient2
+  const { data: userData, error: userQueryError } = await adminClient2
     .from("users")
     .select("role, team_id")
     .eq("id", user.id)
     .single();
+
+  if (userQueryError) {
+    logger.error("User role query failed", { error: userQueryError, userId: user.id, context: "GET /api/episodic-evaluations" });
+    return NextResponse.json(
+      { error: "Failed to verify user permissions", details: userQueryError.message },
+      { status: 500 }
+    );
+  }
 
   if (!userData || !["evaluator", "programmer", "content_manager", "admin"].includes(userData.role)) {
     return NextResponse.json(

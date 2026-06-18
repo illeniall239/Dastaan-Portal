@@ -112,7 +112,15 @@ export async function POST(
     .eq("id", user.id)
     .single();
 
-  if (userError || !userData || !["evaluator", "programmer", "admin"].includes(userData.role)) {
+  if (userError) {
+    logger.error("User role query failed", { error: userError, userId: user.id, context: "POST /api/episodic-evaluations/draft" });
+    return NextResponse.json(
+      { error: "Failed to verify user permissions", details: userError.message },
+      { status: 500 }
+    );
+  }
+
+  if (!userData || !["evaluator", "programmer", "admin"].includes(userData.role)) {
     return NextResponse.json(
       { error: "Forbidden - Only evaluators can save draft evaluations" },
       { status: 403 }
