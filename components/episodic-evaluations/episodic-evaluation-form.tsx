@@ -128,6 +128,11 @@ export function EpisodicEvaluationForm({
   );
   const [feedbackUploading, setFeedbackUploading] = useState(false);
 
+  // Feedback-only toggle
+  const [isFeedbackOnly, setIsFeedbackOnly] = useState(
+    (existingEvaluation as any)?.is_feedback_only || false
+  );
+
   // Final decision state
   const [decision, setDecision] = useState<"approve" | "reject" | "needs_revision" | "">(
     (existingEvaluation?.decision as "approve" | "reject" | "needs_revision") || ""
@@ -349,6 +354,7 @@ export function EpisodicEvaluationForm({
 
     const formData = {
       episode_id: episode.id,
+      is_feedback_only: isFeedbackOnly,
       no_of_pages: noOfPages,
       no_of_scenes: noOfScenes,
       freeze_ending_scene: freezeEndingScene || undefined,
@@ -536,6 +542,26 @@ export function EpisodicEvaluationForm({
           </div>
         )}
       </Card>
+
+      {/* Feedback-only toggle */}
+      {!isReadOnly && (
+        <Card className="p-4 border-2 border-amber-200 bg-amber-50/50">
+          <label className="flex items-center gap-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={isFeedbackOnly}
+              onChange={(e) => setIsFeedbackOnly(e.target.checked)}
+              className="h-5 w-5 rounded border-amber-400 text-amber-600 focus:ring-amber-500"
+            />
+            <div>
+              <span className="font-semibold text-amber-800">Feedback Only</span>
+              <p className="text-xs text-amber-700 mt-0.5">
+                Email/document feedback only — no scoring. Scores will not count towards content aging or reports.
+              </p>
+            </div>
+          </label>
+        </Card>
+      )}
 
       {/* Editable sections wrapper — pointer-events-none when view-only (no graying) */}
       <div className={viewOnly ? "pointer-events-none" : ""}>
@@ -730,6 +756,8 @@ export function EpisodicEvaluationForm({
         </div>
       </div>
 
+      {/* Sections 4-6: Scoring — hidden for feedback-only evaluations */}
+      {!isFeedbackOnly && (<>
       {/* Section 4: Evaluation Scores (9 criteria with comments) */}
       <div className="space-y-4">
         <h3 className="text-xl font-bold">Section 4: Evaluation Scores</h3>
@@ -793,6 +821,7 @@ export function EpisodicEvaluationForm({
           ratingScaleItems={oneLinerRatingScaleItems}
         />
       </div>
+      </>)}
 
       {/* Final Decision */}
       <div className="space-y-4">

@@ -131,6 +131,7 @@ export async function POST(request: Request) {
         evaluator_id: user.id,
         revision_id: evaluationData.revision_id || null,
         cross_team_share_id: evaluationData.cross_team_share_id || null,
+        is_feedback_only: evaluationData.is_feedback_only || false,
         no_of_pages: evaluationData.no_of_pages,
         no_of_scenes: evaluationData.no_of_scenes,
         events: evaluationData.events || [],

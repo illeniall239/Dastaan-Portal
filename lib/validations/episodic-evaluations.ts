@@ -14,6 +14,7 @@ export const episodicEvaluationSchema = z.object({
   episode_id: z.string().uuid("Invalid episode ID"),
   revision_id: z.string().uuid().optional().nullable(),
   cross_team_share_id: z.string().uuid().optional().nullable(),
+  is_feedback_only: z.boolean().optional().default(false),
 
   // Episode Details
   no_of_pages: z
@@ -102,6 +103,8 @@ export type EpisodicEvaluationFormData = z.infer<typeof episodicEvaluationSchema
  * All fields are optional to support partial updates
  */
 export const updateEpisodicEvaluationSchema = z.object({
+  is_feedback_only: z.boolean().optional(),
+
   // Episode Details (optional for updates)
   no_of_pages: z
     .number()

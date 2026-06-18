@@ -817,6 +817,7 @@ export interface EpisodicEvaluation {
   revision_id?: string | null;
   decision?: "approve" | "reject" | "needs_revision" | null;
   decision_notes?: string | null;
+  is_feedback_only?: boolean;
   evaluator?: { name: string; email?: string; role?: string } | null;
 }
 
