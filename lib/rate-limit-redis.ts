@@ -262,28 +262,28 @@ export function getClientIdentifier(request: Request): string {
  */
 export const RateLimitPresets = {
   /**
-   * Strict: 10 requests per minute
+   * Strict: 20 requests per minute
    * Use for: Authentication endpoints, password reset, sensitive operations
    */
-  strict: { limit: 10, window: 60 * 1000 },
+  strict: { limit: 20, window: 60 * 1000 },
 
   /**
-   * Standard: 30 requests per minute
+   * Standard: 60 requests per minute
    * Use for: Most API endpoints, form submissions
    */
-  standard: { limit: 30, window: 60 * 1000 },
+  standard: { limit: 60, window: 60 * 1000 },
 
   /**
-   * Relaxed: 100 requests per minute
+   * Relaxed: 200 requests per minute
    * Use for: Read-only endpoints, public data, GET requests
    */
-  relaxed: { limit: 100, window: 60 * 1000 },
+  relaxed: { limit: 200, window: 60 * 1000 },
 
   /**
-   * Very Strict: 5 requests per 5 minutes
+   * Very Strict: 10 requests per 5 minutes
    * Use for: Email sending, notification creation, external API calls
    */
-  veryStrict: { limit: 5, window: 5 * 60 * 1000 },
+  veryStrict: { limit: 10, window: 5 * 60 * 1000 },
 };
 
 /**
