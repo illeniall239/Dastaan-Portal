@@ -476,8 +476,9 @@ export default function EvaluatorEpisodesPage() {
 
     setEvaluationsLoading(true);
     try {
-      const response = await fetch("/api/episodic-evaluations", {
+      const response = await fetch(`/api/episodic-evaluations?_t=${Date.now()}`, {
         signal: controller.signal,
+        cache: 'no-store',
       });
       const data = await response.json();
 
@@ -549,6 +550,12 @@ export default function EvaluatorEpisodesPage() {
 
     if (newEpisodes.length === 0) {
       toast.error("Please add at least one episode");
+      return;
+    }
+
+    const missingFile = newEpisodes.find((ep) => !ep.file);
+    if (missingFile) {
+      toast.error(`Please attach a file for Episode ${missingFile.episode_number}`);
       return;
     }
 

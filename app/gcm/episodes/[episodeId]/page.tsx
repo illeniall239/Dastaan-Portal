@@ -74,7 +74,7 @@ export default function GcmEpisodicEvaluationPage({ params }: EpisodePageProps) 
       if (revisionId) evalParams.set("revision_id", revisionId);
       if (crossTeamShareId) evalParams.set("cross_team_share_id", crossTeamShareId);
       const evalUrl = `/api/episodic-evaluations/episode/${episodeId}${evalParams.toString() ? `?${evalParams}` : ""}`;
-      const evalResponse = await fetch(evalUrl);
+      const evalResponse = await fetch(`${evalUrl}${evalUrl.includes('?') ? '&' : '?'}_t=${Date.now()}`, { cache: 'no-store' });
       const evalData = await evalResponse.json();
 
       if (!evalResponse.ok) {

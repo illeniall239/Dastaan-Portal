@@ -191,7 +191,7 @@ export default function ProgrammerEpisodesPage() {
 
             // Fetch episodes with project-based pagination (20 projects at a time, all their episodes)
             const response = await fetch(
-                `/api/episodes?group_by_project=true&project_limit=20&project_page=${page}&include_evaluation_status=true`,
+                `/api/episodes?group_by_project=true&project_limit=20&project_page=${page}&include_evaluation_status=true&_t=${Date.now()}`,
                 { cache: 'no-store' }
             );
             const data = await response.json();
@@ -417,7 +417,7 @@ export default function ProgrammerEpisodesPage() {
     const fetchMyEvaluations = async () => {
         setEvaluationsLoading(true);
         try {
-            const response = await fetch("/api/episodic-evaluations");
+            const response = await fetch(`/api/episodic-evaluations?_t=${Date.now()}`, { cache: 'no-store' });
             const data = await response.json();
 
             if (!response.ok) {
@@ -483,6 +483,12 @@ export default function ProgrammerEpisodesPage() {
 
         if (newEpisodes.length === 0) {
             toast.error("Please add at least one episode");
+            return;
+        }
+
+        const missingFile = newEpisodes.find((ep) => !ep.file);
+        if (missingFile) {
+            toast.error(`Please attach a file for Episode ${missingFile.episode_number}`);
             return;
         }
 
@@ -980,11 +986,16 @@ export default function ProgrammerEpisodesPage() {
                                                                     </div>
                                                                 </TableCell>
                                                                 <TableCell>
-                                                                    {episode.attachment_url ? (
-                                                                        <button onClick={() => handleDownload(episode)} className="text-blue-600 hover:text-blue-800 hover:underline text-sm flex items-center gap-1">
-                                                                            <FileText className="h-4 w-4" /> {episode.attachment_name}
-                                                                        </button>
-                                                                    ) : <span className="text-muted-foreground italic text-sm">No file</span>}
+                                                                    {(() => {
+                                                                        const latestRev = (episode as any).latest_revision;
+                                                                        const displayUrl = latestRev?.attachment_url || episode.attachment_url;
+                                                                        const displayName = latestRev?.attachment_url ? latestRev.attachment_name : episode.attachment_name;
+                                                                        return displayUrl ? (
+                                                                            <button onClick={() => handleDownload(episode)} className="text-blue-600 hover:text-blue-800 hover:underline text-sm flex items-center gap-1">
+                                                                                <FileText className="h-4 w-4" /> {displayName}
+                                                                            </button>
+                                                                        ) : <span className="text-muted-foreground italic text-sm">No file</span>;
+                                                                    })()}
                                                                 </TableCell>
                                                                 <TableCell>
                                                                     {isEvaluated ? <Badge className="bg-green-100 text-green-800 border-green-300"><CheckCircle2 className="h-3 w-3 mr-1" /> Evaluated{evaluatedByName ? ` by ${evaluatedByName}` : ""}</Badge> : <Badge variant="outline" className="text-amber-700 border-amber-300">Not Evaluated</Badge>}
@@ -1004,7 +1015,7 @@ export default function ProgrammerEpisodesPage() {
                                                                                         <Pencil className="mr-2 h-4 w-4" /> Edit
                                                                                     </DropdownMenuItem>
                                                                                 )}
-                                                                                {episode.attachment_url && (
+                                                                                {(episode.attachment_url || (episode as any).latest_revision?.attachment_url) && (
                                                                                     <DropdownMenuItem onClick={() => handleDownload(episode)}>
                                                                                         <Download className="mr-2 h-4 w-4" /> Download
                                                                                     </DropdownMenuItem>
