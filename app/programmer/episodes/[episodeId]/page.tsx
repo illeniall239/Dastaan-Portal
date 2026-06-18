@@ -204,9 +204,11 @@ export default function ProgrammerEpisodicEvaluationPage({ params }: EpisodePage
                                     Edit
                                 </Button>
                             )}
+                            {/* Delete button hidden — uncomment if needed
                             <Button size="sm" variant="destructive" disabled={deleting} onClick={handleDeleteEvaluation}>
                                 {deleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Trash2 className="h-4 w-4 mr-1" /> Delete</>}
                             </Button>
+                            */}
                         </div>
                     )}
                 </div>

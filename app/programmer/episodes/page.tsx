@@ -1281,9 +1281,6 @@ export default function ProgrammerEpisodesPage() {
                                                         <TableCell className="text-right">
                                                             <div className="flex items-center justify-end gap-2">
                                                                 <Button size="sm" variant="outline" onClick={() => router.push(`/programmer/episodes/${ev.episode_id}`)}>View</Button>
-                                                                <Button size="sm" variant="destructive" disabled={deletingEvaluationId === ev.id} onClick={() => handleDeleteEvaluation(ev.id, ev.episode_id)}>
-                                                                    {deletingEvaluationId === ev.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
-                                                                </Button>
                                                             </div>
                                                         </TableCell>
                                                     </TableRow>
@@ -1303,12 +1300,7 @@ export default function ProgrammerEpisodesPage() {
                                                     <span className="text-sm font-medium">EP {ev.episode?.episode_number}</span>
                                                     <span className="text-xs text-muted-foreground">{ev.overall_average.toFixed(2)}/10</span>
                                                 </div>
-                                                <div className="flex items-center gap-2">
-                                                    <Button size="sm" variant="outline" onClick={() => router.push(`/programmer/episodes/${ev.episode_id}`)}>View</Button>
-                                                    <Button size="sm" variant="destructive" disabled={deletingEvaluationId === ev.id} onClick={() => handleDeleteEvaluation(ev.id, ev.episode_id)}>
-                                                        {deletingEvaluationId === ev.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
-                                                    </Button>
-                                                </div>
+                                                <Button size="sm" variant="outline" onClick={() => router.push(`/programmer/episodes/${ev.episode_id}`)}>View</Button>
                                             </div>
                                         ))}
                                     </div>
