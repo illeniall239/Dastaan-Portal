@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Loader2, FileText } from "lucide-react";
+import { Loader2, FileText, Trash2 } from "lucide-react";
 import { BackButton } from "@/components/ui/back-button";
 import type { Episode, EpisodicEvaluation } from "@/types";
 import type { EpisodicEvaluationFormData } from "@/lib/validations/episodic-evaluations";
@@ -29,6 +29,7 @@ export default function ProgrammerEpisodicEvaluationPage({ params }: EpisodePage
     const [currentUserId, setCurrentUserId] = useState<string | null>(null);
     const [currentUserRole, setCurrentUserRole] = useState<string | null>(null);
     const [canEvaluate, setCanEvaluate] = useState(true);
+    const [deleting, setDeleting] = useState(false);
 
     useEffect(() => {
         params.then((resolvedParams) => {
@@ -138,13 +139,29 @@ export default function ProgrammerEpisodicEvaluationPage({ params }: EpisodePage
             }
 
             toast.success("Evaluation submitted successfully!");
-
-            setTimeout(() => {
-                router.push("/programmer/episodes");
-            }, 1500);
+            await fetchEpisodeAndEvaluation();
         } catch (error: any) {
             console.error("Error submitting evaluation:", error);
             throw error;
+        }
+    };
+
+    const handleDeleteEvaluation = async () => {
+        if (!existingEvaluation) return;
+        if (!window.confirm("Are you sure you want to delete this evaluation? This cannot be undone.")) return;
+        setDeleting(true);
+        try {
+            const response = await fetch(`/api/episodic-evaluations/${existingEvaluation.id}`, { method: "DELETE" });
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error || "Failed to delete evaluation");
+            toast.success("Evaluation deleted — you can re-evaluate this episode now");
+            setExistingEvaluation(null);
+            setIsEditing(false);
+        } catch (error: any) {
+            console.error("Error deleting evaluation:", error);
+            toast.error(error.message || "Failed to delete evaluation");
+        } finally {
+            setDeleting(false);
         }
     };
 
@@ -187,6 +204,9 @@ export default function ProgrammerEpisodicEvaluationPage({ params }: EpisodePage
                                     Edit
                                 </Button>
                             )}
+                            <Button size="sm" variant="destructive" disabled={deleting} onClick={handleDeleteEvaluation}>
+                                {deleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Trash2 className="h-4 w-4 mr-1" /> Delete</>}
+                            </Button>
                         </div>
                     )}
                 </div>

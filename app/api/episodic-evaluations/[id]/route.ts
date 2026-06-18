@@ -179,9 +179,9 @@ export async function DELETE(
       );
     }
 
-    // Check permissions: owner or admin
+    // Check permissions: owner, admin, or programmer (shared team evaluations)
     const canDelete =
-      evaluation.evaluator_id === user.id || userData.role === "admin";
+      evaluation.evaluator_id === user.id || userData.role === "admin" || userData.role === "programmer";
 
     if (!canDelete) {
       return NextResponse.json(
@@ -217,6 +217,7 @@ export async function DELETE(
     // Revalidate evaluation list pages to show deleted evaluation removed immediately
     revalidatePath('/content-department/episodic-evaluations');
     revalidatePath('/evaluator/episodic-evaluations');
+    revalidatePath('/programmer/episodes');
 
     return addRateLimitHeaders(withCors(request, NextResponse.json({
       message: "Episodic evaluation deleted successfully",

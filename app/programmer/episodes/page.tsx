@@ -46,6 +46,7 @@ import {
     ChevronDown,
     Pencil,
     Info,
+    Trash2,
 } from "lucide-react";
 import { formatFileSize } from "@/lib/validations/episodes";
 import { EpisodeUploadForm, type EpisodeFormEntry } from "@/components/episodes/episode-upload-form";
@@ -163,6 +164,7 @@ export default function ProgrammerEpisodesPage() {
     // My evaluations state
     const [myEvaluations, setMyEvaluations] = useState<EpisodicEvaluationWithDetails[]>([]);
     const [evaluationsLoading, setEvaluationsLoading] = useState(false);
+    const [deletingEvaluationId, setDeletingEvaluationId] = useState<string | null>(null);
 
     const fetchEpisodesAndStatus = useCallback(async (page: number = 1, append: boolean = false) => {
         if (page === 1) {
@@ -430,6 +432,28 @@ export default function ProgrammerEpisodesPage() {
             toast.error(error.message || "Failed to load evaluations");
         } finally {
             setEvaluationsLoading(false);
+        }
+    };
+
+    const handleDeleteEvaluation = async (evalId: string, episodeId: string) => {
+        if (!window.confirm("Are you sure you want to delete this evaluation? This cannot be undone.")) return;
+        setDeletingEvaluationId(evalId);
+        try {
+            const response = await fetch(`/api/episodic-evaluations/${evalId}`, { method: "DELETE" });
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error || "Failed to delete evaluation");
+            setMyEvaluations(prev => prev.filter(e => e.id !== evalId));
+            setEvaluationStatus(prev => {
+                const next = { ...prev };
+                delete next[episodeId];
+                return next;
+            });
+            toast.success("Evaluation deleted successfully");
+        } catch (error: any) {
+            console.error("Error deleting evaluation:", error);
+            toast.error(error.message || "Failed to delete evaluation");
+        } finally {
+            setDeletingEvaluationId(null);
         }
     };
 
@@ -1254,7 +1278,14 @@ export default function ProgrammerEpisodesPage() {
                                                         <TableCell className="pl-8"><Badge variant="outline">EP {ev.episode?.episode_number}</Badge></TableCell>
                                                         <TableCell><span className="font-bold">{ev.overall_average.toFixed(2)}</span>/10</TableCell>
                                                         <TableCell className="text-sm text-muted-foreground">{formatDate(ev.submitted_at)}</TableCell>
-                                                        <TableCell className="text-right"><Button size="sm" variant="outline" onClick={() => router.push(`/programmer/episodes/${ev.episode_id}`)}>View</Button></TableCell>
+                                                        <TableCell className="text-right">
+                                                            <div className="flex items-center justify-end gap-2">
+                                                                <Button size="sm" variant="outline" onClick={() => router.push(`/programmer/episodes/${ev.episode_id}`)}>View</Button>
+                                                                <Button size="sm" variant="destructive" disabled={deletingEvaluationId === ev.id} onClick={() => handleDeleteEvaluation(ev.id, ev.episode_id)}>
+                                                                    {deletingEvaluationId === ev.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                                                                </Button>
+                                                            </div>
+                                                        </TableCell>
                                                     </TableRow>
                                                 ))}
                                             </Fragment>
@@ -1272,7 +1303,12 @@ export default function ProgrammerEpisodesPage() {
                                                     <span className="text-sm font-medium">EP {ev.episode?.episode_number}</span>
                                                     <span className="text-xs text-muted-foreground">{ev.overall_average.toFixed(2)}/10</span>
                                                 </div>
-                                                <Button size="sm" variant="outline" onClick={() => router.push(`/programmer/episodes/${ev.episode_id}`)}>View</Button>
+                                                <div className="flex items-center gap-2">
+                                                    <Button size="sm" variant="outline" onClick={() => router.push(`/programmer/episodes/${ev.episode_id}`)}>View</Button>
+                                                    <Button size="sm" variant="destructive" disabled={deletingEvaluationId === ev.id} onClick={() => handleDeleteEvaluation(ev.id, ev.episode_id)}>
+                                                        {deletingEvaluationId === ev.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                                                    </Button>
+                                                </div>
                                             </div>
                                         ))}
                                     </div>
