@@ -108,11 +108,13 @@ export async function POST(request: Request) {
       );
     }
 
-    // Check for existing episodes in database
+    // Check for existing current episodes in database
+    // Must filter by is_current=true to avoid false positives from superseded versions
     let existingQuery = supabase
       .from("episodes")
       .select("episode_number")
-      .in("episode_number", episodeNumbers);
+      .in("episode_number", episodeNumbers)
+      .eq("is_current", true);
 
     if (call_report_id) {
       existingQuery = existingQuery.eq("call_report_id", call_report_id);
@@ -163,12 +165,20 @@ export async function POST(request: Request) {
       logger.error("Full Supabase error:", JSON.stringify(error, null, 2));
 
       // Handle unique constraint violation for duplicate episode numbers
-      if (error.code === '23505' && (error.message.includes('unique_episode_per_call_report') || error.message.includes('unique_episode_per_story'))) {
-        // Try to fetch existing episodes to provide better error message
+      // Check both old constraint names and new version-aware constraint names
+      if (error.code === '23505' && (
+        error.message.includes('unique_episode_per_call_report') ||
+        error.message.includes('unique_episode_per_story') ||
+        error.message.includes('unique_episode_version_per_call_report') ||
+        error.message.includes('unique_episode_version_per_story') ||
+        error.message.includes('idx_one_current_per_')
+      )) {
+        // Try to fetch existing current episodes to provide better error message
         let conflictQuery = supabase
           .from("episodes")
           .select("episode_number")
-          .in("episode_number", episodeNumbers);
+          .in("episode_number", episodeNumbers)
+          .eq("is_current", true);
 
         if (call_report_id) {
           conflictQuery = conflictQuery.eq("call_report_id", call_report_id);

@@ -11,6 +11,7 @@ import { toast } from "sonner";
 import { Loader2, FileText } from "lucide-react";
 import { BackButton } from "@/components/ui/back-button";
 import type { Episode } from "@/types";
+import { canEditEpisode } from "@/lib/episodes/permissions";
 
 interface EpisodeEditPageProps {
     params: Promise<{ episodeId: string }>;
@@ -51,7 +52,7 @@ export default function ProgrammerEpisodeEditPage({ params }: EpisodeEditPagePro
                 .eq("id", user.id)
                 .single();
 
-            if (!userData || !["programmer", "evaluator", "content_manager", "admin", "management"].includes(userData.role)) {
+            if (!userData) {
                 toast.error("Forbidden - Insufficient permissions");
                 router.push("/programmer/episodes");
                 return;
@@ -61,10 +62,13 @@ export default function ProgrammerEpisodeEditPage({ params }: EpisodeEditPagePro
             const episodeData = await getEpisodeClient(episodeId);
             setEpisode(episodeData);
 
-            // Check permissions: owner or manager/admin
-            const hasEditPermission =
-                episodeData.logged_by === user.id ||
-                ["programmer", "content_manager", "admin", "management"].includes(userData.role);
+            // Centralized permission check
+            const hasEditPermission = canEditEpisode(
+                user.id,
+                userData.role,
+                { logged_by: episodeData.logged_by, call_report: null },
+                null,
+            );
 
             if (!hasEditPermission) {
                 toast.error("You don't have permission to edit this episode");

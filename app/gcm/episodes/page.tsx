@@ -51,6 +51,7 @@ import { EpisodeUploadForm, type EpisodeFormEntry } from "@/components/episodes/
 import { EpisodeFileUpload } from "@/components/episodes/episode-file-upload";
 import { ScoreCard } from "@/components/episodic-evaluations/score-card";
 import type { EpisodeWithDetails } from "@/types";
+import { canEditEpisode as canEditEpisodeUtil } from "@/lib/episodes/permissions";
 import { BackButton } from "@/components/ui/back-button";
 import { formatDate } from "@/lib/utils/format-date";
 
@@ -120,6 +121,7 @@ export default function GcmEpisodesPage() {
   const [totalProjects, setTotalProjects] = useState(0);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [currentUserRole, setCurrentUserRole] = useState<string | null>(null);
+  const [currentTeamId, setCurrentTeamId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("list");
   const logSectionRef = useRef<HTMLDivElement | null>(null);
 
@@ -163,6 +165,7 @@ export default function GcmEpisodesPage() {
 
       if (userData) {
         setCurrentUserRole(userData.role);
+        setCurrentTeamId(userData.team_id || null);
       }
 
       // Fetch episodes with project-based pagination (20 projects at a time, all their episodes)
@@ -798,10 +801,7 @@ export default function GcmEpisodesPage() {
 
   const canEditEpisode = (episode: EpisodeWithDetails): boolean => {
     if (!currentUserId || !currentUserRole) return false;
-    return (
-      episode.logged_by === currentUserId ||
-      ["content_manager", "admin"].includes(currentUserRole)
-    );
+    return canEditEpisodeUtil(currentUserId, currentUserRole, episode, currentTeamId);
   };
 
   return (

@@ -11,6 +11,7 @@ import { toast } from "sonner";
 import { Loader2, FileText } from "lucide-react";
 import { BackButton } from "@/components/ui/back-button";
 import type { Episode } from "@/types";
+import { canEditEpisode } from "@/lib/episodes/permissions";
 
 interface EpisodeEditPageProps {
   params: Promise<{ episodeId: string }>;
@@ -51,7 +52,7 @@ export default function GcmEpisodeEditPage({ params }: EpisodeEditPageProps) {
         .eq("id", user.id)
         .single();
 
-      if (!userData || !["content_manager", "evaluator", "admin"].includes(userData.role)) {
+      if (!userData) {
         toast.error("Forbidden - Insufficient permissions");
         router.push("/gcm/episodes");
         return;
@@ -72,11 +73,13 @@ export default function GcmEpisodeEditPage({ params }: EpisodeEditPageProps) {
         episodeTeamId = crData?.team_id || null;
       }
 
-      // Check permissions: owner, manager/admin, or same team
-      const hasEditPermission =
-        episodeData.logged_by === user.id ||
-        ["content_manager", "admin"].includes(userData.role) ||
-        (episodeTeamId && userData.team_id && episodeTeamId === userData.team_id);
+      // Centralized permission check
+      const hasEditPermission = canEditEpisode(
+        user.id,
+        userData.role,
+        { logged_by: episodeData.logged_by, call_report: { team_id: episodeTeamId } },
+        userData.team_id,
+      );
 
       if (!hasEditPermission) {
         toast.error("You don't have permission to edit this episode");

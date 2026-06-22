@@ -9,7 +9,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import Link from "next/link";
-import { CalendarIcon, UserIcon, MapPinIcon, FileTextIcon, PaperclipIcon } from "lucide-react";
+import { CalendarIcon, UserIcon, MapPinIcon, FileTextIcon, PaperclipIcon, Pencil } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getAttachmentsForEntityServer } from "@/lib/attachments/server";
@@ -164,6 +164,11 @@ export default async function CallReportDetailPage({ params }: { params: Promise
   // Check if user can view private fields
   const canViewPrivate = canViewPrivateFields(user as User, report.created_by);
 
+  // Check if user can edit (owner or manager/admin/gcm)
+  const canEdit =
+    report.created_by === user.id ||
+    ["content_manager", "gcm", "admin"].includes(user.role);
+
   return (
     <div className="p-6 space-y-4 max-w-5xl mx-auto">
       {/* Page Header */}
@@ -174,6 +179,22 @@ export default async function CallReportDetailPage({ params }: { params: Promise
           <p className="text-sm text-slate-500 mt-0.5">
             Writer Engagement Report ID: {report.call_report_id}
           </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" asChild>
+            <Link href={`/gcm/call-reports/${resolvedParams.id}/detailed-one-liner`}>
+              <FileTextIcon className="h-4 w-4 mr-2" />
+              Detailed One-Liner
+            </Link>
+          </Button>
+          {canEdit && (
+            <Button variant="default" size="sm" asChild>
+              <Link href={`/gcm/call-reports/${resolvedParams.id}/edit`}>
+                <Pencil className="h-4 w-4 mr-2" />
+                Edit
+              </Link>
+            </Button>
+          )}
         </div>
       </div>
 
@@ -415,9 +436,9 @@ export default async function CallReportDetailPage({ params }: { params: Promise
           entityId={resolvedParams.id}
           apiBasePath="/api/call-reports"
           storageBucket="attachments"
-          canEdit={true}
+          canEdit={canEdit}
           userRole={user.role}
-          evaluateUrl="/evaluator/evaluate"
+          evaluateUrl="/gcm/evaluate"
           entityType="call-report"
         />
 

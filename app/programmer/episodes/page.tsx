@@ -54,6 +54,7 @@ import { EpisodeFileUpload } from "@/components/episodes/episode-file-upload";
 import { getGradeColorClasses } from "@/lib/validations/episodic-evaluations";
 import { ScoreCard } from "@/components/episodic-evaluations/score-card";
 import type { EpisodeWithDetails, EpisodicEvaluationWithDetails } from "@/types";
+import { canEditEpisode as canEditEpisodeUtil } from "@/lib/episodes/permissions";
 import { BackButton } from "@/components/ui/back-button";
 import { formatDate } from "@/lib/utils/format-date";
 
@@ -140,6 +141,7 @@ export default function ProgrammerEpisodesPage() {
     const [expandedEvalProjects, setExpandedEvalProjects] = useState<Set<string>>(new Set());
     const [currentUserId, setCurrentUserId] = useState<string | null>(null);
     const [currentUserRole, setCurrentUserRole] = useState<string | null>(null);
+    const [currentTeamId, setCurrentTeamId] = useState<string | null>(null);
     const [activeTab, setActiveTab] = useState("list");
     const logSectionRef = useRef<HTMLDivElement | null>(null);
 
@@ -180,15 +182,16 @@ export default function ProgrammerEpisodesPage() {
 
             setCurrentUserId(user.id);
 
-            // Fetch user role
+            // Fetch user role and team
             const { data: userData } = await supabase
                 .from("users")
-                .select("role")
+                .select("role, team_id")
                 .eq("id", user.id)
                 .single();
 
             if (userData) {
                 setCurrentUserRole(userData.role);
+                setCurrentTeamId(userData.team_id || null);
             }
 
             // Fetch episodes with project-based pagination (20 projects at a time, all their episodes)
@@ -887,10 +890,7 @@ export default function ProgrammerEpisodesPage() {
 
     const canEditEpisode = (episode: EpisodeWithDetails): boolean => {
         if (!currentUserId || !currentUserRole) return false;
-        return (
-            episode.logged_by === currentUserId ||
-            ["programmer", "evaluator", "content_manager", "admin", "management"].includes(currentUserRole)
-        );
+        return canEditEpisodeUtil(currentUserId, currentUserRole, episode, currentTeamId);
     };
 
     return (

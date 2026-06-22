@@ -7,6 +7,7 @@ import { applyRateLimit, addRateLimitHeaders, withCors } from "@/lib/api-middlew
 import { RateLimitPresets } from "@/lib/rate-limit-redis";
 import { revalidatePath } from 'next/cache';
 import { logAuditAction, getRequestContext } from "@/lib/audit/server";
+import { canEditEpisode } from "@/lib/episodes/permissions";
 
 /**
  * GET /api/episodes/[id]
@@ -105,10 +106,10 @@ export async function PATCH(
   const rate = await applyRateLimit(request, RateLimitPresets.strict, user.id);
   if (!rate.success) return rate.response!;
 
-  // Check user role
+  // Check user role and team
   const { data: userData } = await supabase
     .from("users")
-    .select("role")
+    .select("role, team_id")
     .eq("id", user.id)
     .single();
 
@@ -117,10 +118,10 @@ export async function PATCH(
   }
 
   try {
-    // First, check if episode exists and get owner
+    // First, check if episode exists and get owner + call report team
     const { data: existingEpisode, error: fetchError } = await supabase
       .from("episodes")
-      .select("logged_by")
+      .select("logged_by, call_report_id, call_report:call_reports(team_id)")
       .eq("id", id)
       .single();
 
@@ -138,12 +139,13 @@ export async function PATCH(
       );
     }
 
-    // Check permissions: owner, evaluator, or manager/admin
-    const canEdit =
-      existingEpisode.logged_by === user.id ||
-      ["evaluator", "programmer", "content_manager", "admin"].includes(userData.role);
+    // Permission check using centralized utility
+    const episodeForPerm = {
+      logged_by: existingEpisode.logged_by,
+      call_report: { team_id: (existingEpisode.call_report as any)?.team_id || null },
+    };
 
-    if (!canEdit) {
+    if (!canEditEpisode(user.id, userData.role, episodeForPerm, userData.team_id)) {
       return NextResponse.json(
         { error: "Forbidden - You don't have permission to edit this episode" },
         { status: 403 }

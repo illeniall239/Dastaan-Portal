@@ -6,6 +6,7 @@ import { applyRateLimit } from "@/lib/api-middleware";
 import { RateLimitPresets } from "@/lib/rate-limit-redis";
 import { logAuditAction, getRequestContext } from "@/lib/audit/server";
 import { createNotifications, getUserIdsByRoles, excludeUserFromList } from "@/lib/notifications/server";
+import { canUploadRevision } from "@/lib/episodes/permissions";
 import { z } from "zod";
 
 export const dynamic = "force-dynamic";
@@ -162,12 +163,45 @@ export async function POST(
     // Verify episode exists
     const { data: episode, error: episodeError } = await supabase
       .from("episodes")
-      .select("id, episode_number, call_report_id, story_id")
+      .select("id, episode_number, call_report_id, story_id, logged_by")
       .eq("id", id)
       .single();
 
     if (episodeError || !episode) {
       return NextResponse.json({ error: "Episode not found" }, { status: 404 });
+    }
+
+    // Permission check — fetch user role/team and episode's team context
+    const { data: userData } = await supabase
+      .from("users")
+      .select("role, team_id")
+      .eq("id", user.id)
+      .single();
+
+    if (!userData) {
+      return NextResponse.json({ error: "User not found" }, { status: 403 });
+    }
+
+    let episodeTeamId: string | null = null;
+    if (episode.call_report_id) {
+      const { data: crData } = await supabase
+        .from("call_reports")
+        .select("team_id")
+        .eq("id", episode.call_report_id)
+        .single();
+      episodeTeamId = crData?.team_id || null;
+    }
+
+    if (!canUploadRevision(
+      user.id,
+      userData.role,
+      { logged_by: episode.logged_by, call_report: { team_id: episodeTeamId } },
+      userData.team_id,
+    )) {
+      return NextResponse.json(
+        { error: "Forbidden - You don't have permission to upload revisions for this episode" },
+        { status: 403 },
+      );
     }
 
     // Auto-calculate next revision number

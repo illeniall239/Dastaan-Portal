@@ -46,6 +46,7 @@ import { EpisodeFileUpload } from "@/components/episodes/episode-file-upload";
 import { getGradeColorClasses } from "@/lib/validations/episodic-evaluations";
 import { ScoreCard } from "@/components/episodic-evaluations/score-card";
 import type { EpisodeWithDetails, EpisodicEvaluationWithDetails } from "@/types";
+import { canEditEpisode as canEditEpisodeUtil } from "@/lib/episodes/permissions";
 import { BackButton } from "@/components/ui/back-button";
 import { formatDate } from "@/lib/utils/format-date";
 import { ShareCrossTeamButton } from "@/components/call-report/share-cross-team-button";
@@ -959,10 +960,7 @@ export default function EvaluatorEpisodesPage() {
 
   const canEditEpisode = (episode: EpisodeWithDetails): boolean => {
     if (!currentUserId || !currentUserRole) return false;
-    return (
-      episode.logged_by === currentUserId ||
-      ["evaluator", "content_manager", "admin"].includes(currentUserRole)
-    );
+    return canEditEpisodeUtil(currentUserId, currentUserRole, episode, currentTeamId);
   };
 
   return (

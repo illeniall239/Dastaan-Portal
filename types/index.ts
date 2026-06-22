@@ -577,6 +577,7 @@ export interface EpisodeWithDetails extends Episode {
   call_report?: {
     working_title: string;
     writer_name: string;
+    team_id?: string | null;
     original_submission_date?: string | null;
   };
   story?: {

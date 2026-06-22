@@ -51,6 +51,7 @@ import { EpisodeFileUpload } from "@/components/episodes/episode-file-upload";
 import { EpisodeRevisions } from "@/components/episodes/episode-revisions";
 import { ScoreCard } from "@/components/episodic-evaluations/score-card";
 import type { EpisodeWithDetails } from "@/types";
+import { canEditEpisode as canEditEpisodeUtil } from "@/lib/episodes/permissions";
 import { BackButton } from "@/components/ui/back-button";
 import { formatDate } from "@/lib/utils/format-date";
 import { ShareCrossTeamButton } from "@/components/call-report/share-cross-team-button";
@@ -806,10 +807,7 @@ export default function ContentDepartmentEpisodesPage() {
 
   const canEditEpisode = (episode: EpisodeWithDetails): boolean => {
     if (!currentUserId || !currentUserRole) return false;
-    return (
-      episode.logged_by === currentUserId ||
-      ["evaluator", "content_manager", "admin"].includes(currentUserRole)
-    );
+    return canEditEpisodeUtil(currentUserId, currentUserRole, episode, currentTeamId);
   };
 
   return (
@@ -991,10 +989,16 @@ export default function ContentDepartmentEpisodesPage() {
                                     />
                                   )}
                                   {canEditEpisode(episode) && (
-                                    <Button size="sm" variant="outline" onClick={() => router.push(`/content-department/episodes/${episode.id}/edit`)}>
-                                      <Pencil className="h-4 w-4 mr-1" />
-                                      Edit
-                                    </Button>
+                                    <>
+                                      <Button size="sm" variant="outline" onClick={() => router.push(`/content-department/episodes/${episode.id}/edit`)}>
+                                        <Pencil className="h-4 w-4 mr-1" />
+                                        Edit
+                                      </Button>
+                                      <Button size="sm" variant="outline" onClick={() => router.push(`/content-department/episodes/${episode.id}/edit`)}>
+                                        <History className="h-4 w-4 mr-1" />
+                                        Revisions
+                                      </Button>
+                                    </>
                                   )}
                                   {displayUrl && (
                                     <Button size="sm" variant="outline" onClick={() => handleDownload(episode)}>
