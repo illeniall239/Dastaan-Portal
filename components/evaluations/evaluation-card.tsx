@@ -82,6 +82,7 @@ interface EvaluationCardProps {
     evaluator_name: string;
     average_score: number | null;
     decision: string | null;
+    teamName?: string;
   }> | null;
 }
 
@@ -247,10 +248,14 @@ export function EvaluationCard({
                 {teamEvaluations.map((ev) => (
                   <span
                     key={ev.evaluator_id}
-                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-blue-50 text-blue-700 border border-blue-200"
+                    className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs border ${
+                      ev.teamName
+                        ? "bg-amber-50 text-amber-700 border-amber-200"
+                        : "bg-blue-50 text-blue-700 border-blue-200"
+                    }`}
                   >
                     <UserIcon className="h-3 w-3" />
-                    {ev.evaluator_name}
+                    {ev.teamName ? `${ev.evaluator_name} (${ev.teamName})` : ev.evaluator_name}
                     {ev.average_score !== null && (
                       <span className="font-semibold">&nbsp;{ev.average_score.toFixed(1)}</span>
                     )}

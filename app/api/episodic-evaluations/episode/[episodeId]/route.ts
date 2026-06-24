@@ -62,6 +62,33 @@ export async function GET(
     );
   }
 
+  // Check if user is on a management-type team (team-isolated episode evaluations)
+  let isManagementTeam = false;
+  let teamMemberIds: string[] = [];
+  if (["programmer", "management"].includes(userData.role)) {
+    const adminClient = createAdminClient();
+    const { data: userProfile } = await adminClient
+      .from("users")
+      .select("team_id")
+      .eq("id", user.id)
+      .single();
+    if (userProfile?.team_id) {
+      const { data: team } = await adminClient
+        .from("teams")
+        .select("team_type")
+        .eq("id", userProfile.team_id)
+        .single();
+      if (team?.team_type === "management") {
+        isManagementTeam = true;
+        const { data: members } = await adminClient
+          .from("users")
+          .select("id")
+          .eq("team_id", userProfile.team_id);
+        teamMemberIds = (members || []).map(m => m.id);
+      }
+    }
+  }
+
     // Check if episode exists
     const { data: episode, error: episodeError } = await supabase
       .from("episodes")
@@ -95,8 +122,11 @@ export async function GET(
       .eq("episode_id", episodeId);
 
     // Programmers share evaluations as a team — find any programmer's evaluation
+    // Management-type team members only see their own team's evaluations
     // All other roles fetch only their own
-    if (userData.role !== "programmer") {
+    if (isManagementTeam) {
+      evalQuery = evalQuery.in("evaluator_id", teamMemberIds);
+    } else if (userData.role !== "programmer") {
       evalQuery = evalQuery.eq("evaluator_id", user.id);
     }
 

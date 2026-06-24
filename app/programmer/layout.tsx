@@ -1,7 +1,18 @@
 import { getCurrentUser } from "@/lib/auth";
 import { redirect } from "next/navigation";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { SidebarWrapper } from "./sidebar-wrapper";
 import { AssistantChat } from "@/components/ui/assistant-chat";
+
+// Tabs hidden from management-type teams (e.g., Humera's team)
+const managementTeamHiddenPaths = new Set([
+  "/programmer/missing-details",
+  "/programmer/content-aging",
+  "/programmer/writer-commitment",
+  "/programmer/feedback-timeline",
+  "/programmer/roadmap",
+  "/programmer/cross-team-shares",
+]);
 
 // Programmer-specific navigation items
 const programmerNavItems = [
@@ -99,13 +110,36 @@ export default async function ProgrammerLayout({
     redirect("/dashboard");
   }
 
+  // Check if user is on a management-type team to hide certain nav items
+  let filteredNavItems = programmerNavItems;
+  if (["programmer", "management"].includes(user.role)) {
+    const adminClient = createAdminClient();
+    const { data: userProfile } = await adminClient
+      .from("users")
+      .select("team_id")
+      .eq("id", user.id)
+      .single();
+    if (userProfile?.team_id) {
+      const { data: team } = await adminClient
+        .from("teams")
+        .select("team_type")
+        .eq("id", userProfile.team_id)
+        .single();
+      if (team?.team_type === "management") {
+        filteredNavItems = programmerNavItems.filter(
+          (item) => !managementTeamHiddenPaths.has(item.href)
+        );
+      }
+    }
+  }
+
   return (
     <>
       <SidebarWrapper
         userName={user.name || "Programmer"}
         userEmail={user.email}
         userPosition={user.position}
-        navItems={programmerNavItems}
+        navItems={filteredNavItems}
       >
         {children}
       </SidebarWrapper>

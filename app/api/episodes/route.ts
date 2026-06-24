@@ -597,17 +597,63 @@ export async function GET(request: NextRequest) {
     if (includeEvaluationStatus && episodes && episodes.length > 0) {
       const episodeIds = episodes.map((ep) => ep.id);
 
-      if (userData.role === "programmer") {
+      if (userData.role === "programmer" || userData.role === "management") {
+        // Check if user is on a management-type team (team-isolated evaluations)
+        let isManagementTeam = false;
+        let teamMemberIds: string[] = [];
+        const mgmtTeamUserIds = new Set<string>();
+
+        if (userData.team_id) {
+          const { data: team } = await createAdminClient()
+            .from("teams")
+            .select("team_type")
+            .eq("id", userData.team_id)
+            .single();
+          if (team?.team_type === "management") {
+            isManagementTeam = true;
+            const { data: members } = await createAdminClient()
+              .from("users")
+              .select("id")
+              .eq("team_id", userData.team_id);
+            teamMemberIds = (members || []).map(m => m.id);
+          }
+        }
+
+        // For regular programmers, fetch management-type team user IDs so their evals are visible
+        if (!isManagementTeam) {
+          const { data: mgmtTeamMembers } = await createAdminClient()
+            .from("users")
+            .select("id, teams(team_type)")
+            .not("team_id", "is", null);
+          for (const u of mgmtTeamMembers || []) {
+            const team = (u as any).teams;
+            if (team?.team_type === "management") {
+              mgmtTeamUserIds.add(u.id);
+            }
+          }
+        }
+
         // Programmers share evaluations — check if any programmer has evaluated each episode
-        const { data: evaluations } = await supabase
+        let evalQuery = supabase
           .from("episodic_evaluations")
-          .select("episode_id, evaluator:users!evaluator_id(name, role)")
+          .select("episode_id, evaluator_id, evaluator:users!evaluator_id(name, role)")
           .in("episode_id", episodeIds);
+
+        // Management-type team members only see their own team's evaluations
+        if (isManagementTeam) {
+          evalQuery = evalQuery.in("evaluator_id", teamMemberIds);
+        }
+
+        const { data: evaluations } = await evalQuery;
 
         if (evaluations) {
           for (const ev of evaluations as any[]) {
-            if (ev.evaluator?.role === "programmer") {
-              evaluationStatusMap[ev.episode_id] = { evaluated: true, evaluatedByName: ev.evaluator.name };
+            if (isManagementTeam) {
+              // Management team: show only their own team's evaluations
+              evaluationStatusMap[ev.episode_id] = { evaluated: true, evaluatedByName: ev.evaluator?.name };
+            } else if (ev.evaluator?.role === "programmer" || mgmtTeamUserIds.has(ev.evaluator_id)) {
+              // Regular programmer: show programmer evals AND management-type team evals
+              evaluationStatusMap[ev.episode_id] = { evaluated: true, evaluatedByName: ev.evaluator?.name };
             }
           }
         }

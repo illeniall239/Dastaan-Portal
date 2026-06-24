@@ -65,10 +65,29 @@ export async function GET(request: NextRequest) {
       .in("cross_team_share_id", shareIds);
 
     // Bulk fetch episodic_evaluations for all shares
-    const { data: allEpisodicEvals } = await adminClient
+    // Apply team isolation for management-type teams
+    let episodicEvalsQuery = adminClient
       .from("episodic_evaluations")
       .select("cross_team_share_id, episode_id, average_score, decision, comments, submitted_at")
       .in("cross_team_share_id", shareIds);
+
+    if (["programmer", "management"].includes(currentUser.role) && currentUser.team_id) {
+      const { data: team } = await adminClient
+        .from("teams")
+        .select("team_type")
+        .eq("id", currentUser.team_id)
+        .single();
+      if (team?.team_type === "management") {
+        const { data: members } = await adminClient
+          .from("users")
+          .select("id")
+          .eq("team_id", currentUser.team_id);
+        const memberIds = (members || []).map((m: any) => m.id);
+        episodicEvalsQuery = episodicEvalsQuery.in("evaluator_id", memberIds);
+      }
+    }
+
+    const { data: allEpisodicEvals } = await episodicEvalsQuery;
 
     // Group by share ID
     const evalsByShare = new Map<string, any[]>();

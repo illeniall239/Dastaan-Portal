@@ -486,10 +486,17 @@ export interface EpisodicEvaluationWithType {
   updated_at: string;
 }
 
+export interface ContentTeamEvalGroup<T> {
+  teamName: string;
+  evaluations: T[];
+  count: number;
+}
+
 export interface SegregatedEvaluations {
   evaluatorEvaluations: EvaluationWithType[];
   managementEvaluations: EvaluationWithType[];
   programmerEvaluations: EvaluationWithType[];
+  contentTeamEvaluations: ContentTeamEvalGroup<EvaluationWithType>[];
   total: number;
   evaluatorCount: number;
   managementCount: number;
@@ -500,6 +507,7 @@ export interface SegregatedEpisodicEvaluations {
   evaluatorEvaluations: EpisodicEvaluationWithType[];
   managementEvaluations: EpisodicEvaluationWithType[];
   programmerEvaluations: EpisodicEvaluationWithType[];
+  contentTeamEvaluations: ContentTeamEvalGroup<EpisodicEvaluationWithType>[];
   total: number;
   evaluatorCount: number;
   managementCount: number;

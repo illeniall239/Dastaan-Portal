@@ -33,6 +33,7 @@ export interface EnrichedReport {
     evaluator_name: string;
     average_score: number | null;
     decision: string | null;
+    teamName?: string;
   }> | null;
 }
 

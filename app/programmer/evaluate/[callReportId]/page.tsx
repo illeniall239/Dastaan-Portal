@@ -48,14 +48,31 @@ export default async function ProgrammerEvaluatePage({
     redirect("/unauthorized");
   }
 
-  // Check if user has evaluation submission access
+  // Check if user has evaluation submission access and team info
   const adminClient = createAdminClient();
   const { data: userProfile } = await adminClient
     .from("users")
-    .select("can_evaluate")
+    .select("can_evaluate, team_id")
     .eq("id", user.id)
     .single();
   const canEvaluate = userProfile?.can_evaluate !== false;
+
+  // Check if user is on a management-type team (team-isolated evaluation view)
+  let teamMemberIds: string[] | undefined;
+  if (["programmer", "management"].includes(user.role) && userProfile?.team_id) {
+    const { data: team } = await adminClient
+      .from("teams")
+      .select("team_type")
+      .eq("id", userProfile.team_id)
+      .single();
+    if (team?.team_type === "management") {
+      const { data: members } = await adminClient
+        .from("users")
+        .select("id")
+        .eq("team_id", userProfile.team_id);
+      teamMemberIds = (members || []).map(m => m.id);
+    }
+  }
 
   // Fetch the call report data
   let callReport: CallReport | null = null;
@@ -131,11 +148,15 @@ export default async function ProgrammerEvaluatePage({
       // Continue without detailed one-liner if there's an error
     }
 
-    // Fetch the programmer team's evaluation (shared across the whole team)
+    // Fetch the programmer team's evaluation (team-isolated for management teams)
     try {
-      const segregated = await getSegregatedEvaluations(callReportId);
-      if (segregated.programmerEvaluations.length > 0) {
-        existingProgrammerEvaluation = segregated.programmerEvaluations[0];
+      const segregated = await getSegregatedEvaluations(callReportId, teamMemberIds);
+      // For management-type teams, their evaluations are classified as 'management' type
+      const teamEvals = segregated.programmerEvaluations.length > 0
+        ? segregated.programmerEvaluations
+        : segregated.managementEvaluations;
+      if (teamEvals.length > 0) {
+        existingProgrammerEvaluation = teamEvals[0];
         canEdit = existingProgrammerEvaluation.evaluator_id === user.id;
       }
     } catch (evalError) {

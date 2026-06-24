@@ -2,7 +2,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Users, User, Code2, Star, MessageSquare, TrendingUp } from "lucide-react";
+import { Users, User, Code2, Building2, Star, MessageSquare, TrendingUp } from "lucide-react";
 import { formatDate } from "@/lib/utils/format-date";
 import type { SegregatedEpisodicEvaluations } from "@/types";
 
@@ -13,7 +13,7 @@ interface SegregatedEpisodicEvaluationsDisplayProps {
 export function SegregatedEpisodicEvaluationsDisplay({
   evaluations,
 }: SegregatedEpisodicEvaluationsDisplayProps) {
-  const { evaluatorEvaluations, managementEvaluations, programmerEvaluations, total, evaluatorCount, managementCount, programmerCount } = evaluations;
+  const { evaluatorEvaluations, managementEvaluations, programmerEvaluations, contentTeamEvaluations = [], total, evaluatorCount, managementCount, programmerCount } = evaluations;
 
   if (total === 0) {
     return null;
@@ -227,6 +227,32 @@ export function SegregatedEpisodicEvaluationsDisplay({
           </CardContent>
         </Card>
       )}
+
+      {/* Content Team Evaluations Sections */}
+      {contentTeamEvaluations.map((teamGroup) => (
+        <Card key={teamGroup.teamName}>
+          <CardHeader className="bg-gradient-to-r from-amber-50 to-orange-50">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Building2 className="h-5 w-5 text-amber-600" />
+                <CardTitle className="text-lg">{teamGroup.teamName} Evaluations</CardTitle>
+              </div>
+              <Badge variant="secondary">{teamGroup.count}</Badge>
+            </div>
+          </CardHeader>
+          <CardContent className="pt-6">
+            <div className="space-y-3">
+              {teamGroup.evaluations.map((evaluation) => (
+                <EpisodicEvaluationCard
+                  key={evaluation.id}
+                  evaluation={evaluation}
+                  isManagement={false}
+                />
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      ))}
 
       {/* Management Evaluations Section */}
       {managementCount > 0 && (

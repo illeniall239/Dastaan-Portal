@@ -13,6 +13,7 @@ import { CalendarIcon, UserIcon, FileTextIcon, StarIcon, TrendingUp, TrendingDow
 import { getEvaluationById } from "@/lib/evaluations/server";
 import { EvaluationProgressBar } from "@/components/evaluations/evaluation-progress-bar";
 import { BackButton } from "@/components/ui/back-button";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 // Add Next.js caching - revalidate every 5 minutes
 export const revalidate = 300;
@@ -44,7 +45,33 @@ export default async function ProgrammerEvaluationDetailPage({ params }: { param
     redirect("/programmer/evaluations-list");
   }
 
-  // Programmers can view any evaluation (no ownership check)
+  // Team isolation: management-type team users can only view their own team's evaluations
+  if (["programmer", "management"].includes(user.role)) {
+    const adminClient = createAdminClient();
+    const { data: userProfile } = await adminClient
+      .from("users")
+      .select("team_id")
+      .eq("id", user.id)
+      .single();
+    if (userProfile?.team_id) {
+      const { data: team } = await adminClient
+        .from("teams")
+        .select("team_type")
+        .eq("id", userProfile.team_id)
+        .single();
+      if (team?.team_type === "management") {
+        // Check if the evaluator is on the same team
+        const { data: evaluatorProfile } = await adminClient
+          .from("users")
+          .select("team_id")
+          .eq("id", evaluation.evaluator_id)
+          .single();
+        if (evaluatorProfile?.team_id !== userProfile.team_id) {
+          redirect("/programmer/evaluations-list");
+        }
+      }
+    }
+  }
 
   const createdDate = new Date(evaluation.created_at);
   const formattedDate = createdDate.toLocaleDateString("en-US", {

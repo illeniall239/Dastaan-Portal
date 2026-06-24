@@ -41,7 +41,7 @@ export default async function ProgrammerEvaluationsListPage({ searchParams }: { 
     .single();
 
   let isRestrictedProgrammer = false;
-  if (user.role === "programmer" && userProfile?.team_id) {
+  if (["programmer", "management"].includes(user.role) && userProfile?.team_id) {
     const { data: team } = await adminClient
       .from("teams")
       .select("team_type")
@@ -70,7 +70,7 @@ export default async function ProgrammerEvaluationsListPage({ searchParams }: { 
   // Fetch evaluations grouped by call_report_id
   // Restricted programmers (management-team) see only their own team's evaluations
   // Regular programmers see all programmer-role evaluations across all teams
-  let teamEvaluationsMap = new Map<string, Array<{ evaluator_id: string; evaluator_name: string; average_score: number | null; decision: string | null }>>();
+  let teamEvaluationsMap = new Map<string, Array<{ evaluator_id: string; evaluator_name: string; average_score: number | null; decision: string | null; teamName?: string }>>();
   try {
     teamEvaluationsMap = isRestrictedProgrammer && userProfile?.team_id
       ? await getTeamEvaluationsGrouped(userProfile.team_id)

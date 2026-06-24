@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 /**
  * Optimized evaluator stats/query helpers to avoid SELECT * and reduce payload.
@@ -296,10 +297,33 @@ export async function hasUserEvaluatedCallReport(userId: string, callReportId: s
 }
 
 /**
+ * Batch-fetch team info for a list of evaluator IDs.
+ * Returns a map of evaluator_id → { teamName, isManagementTeam }.
+ */
+async function getEvaluatorTeamMap(evaluatorIds: string[]) {
+  const map = new Map<string, { teamName: string; isManagementTeam: boolean }>();
+  if (evaluatorIds.length === 0) return map;
+
+  const { data: evaluatorTeams } = await createAdminClient()
+    .from("users")
+    .select("id, team_id, teams(name, team_type)")
+    .in("id", evaluatorIds);
+
+  for (const u of evaluatorTeams || []) {
+    const team = u.teams as any;
+    map.set(u.id, {
+      teamName: team?.name || "Unknown Team",
+      isManagementTeam: team?.team_type === "management",
+    });
+  }
+  return map;
+}
+
+/**
  * Get segregated evaluations for a call report (evaluator vs management)
  * Uses the call_report_evaluations_with_type view created in migration
  */
-export async function getSegregatedEvaluations(callReportId: string) {
+export async function getSegregatedEvaluations(callReportId: string, teamMemberIds?: string[]) {
   const supabase = await createClient();
 
   const { data, error } = await supabase
@@ -312,17 +336,50 @@ export async function getSegregatedEvaluations(callReportId: string) {
     throw new Error(`Failed to fetch segregated evaluations: ${error.message}`);
   }
 
-  const evaluations = data || [];
+  let evaluations = data || [];
 
-  // Separate evaluations by type into three categories
-  const evaluatorEvaluations = evaluations.filter(e => e.evaluation_type === 'evaluator');
-  const managementEvaluations = evaluations.filter(e => e.evaluation_type === 'management');
-  const programmerEvaluations = evaluations.filter(e => e.evaluation_type === 'programmer');
+  // If teamMemberIds provided, only include evaluations from those users (team isolation)
+  if (teamMemberIds) {
+    const memberSet = new Set(teamMemberIds);
+    evaluations = evaluations.filter(e => memberSet.has(e.evaluator_id));
+  }
+
+  // Fetch team info for all evaluators to identify management-type teams
+  const evaluatorIds = [...new Set(evaluations.map(e => e.evaluator_id))];
+  const evaluatorTeamMap = await getEvaluatorTeamMap(evaluatorIds);
+
+  // Separate evaluations — management-type team members go into team-specific buckets
+  const evaluatorEvaluations: typeof evaluations = [];
+  const managementEvaluations: typeof evaluations = [];
+  const programmerEvaluations: typeof evaluations = [];
+  const contentTeamMap = new Map<string, typeof evaluations>();
+
+  for (const e of evaluations) {
+    const teamInfo = evaluatorTeamMap.get(e.evaluator_id);
+    if (teamInfo?.isManagementTeam) {
+      const list = contentTeamMap.get(teamInfo.teamName) || [];
+      list.push(e);
+      contentTeamMap.set(teamInfo.teamName, list);
+    } else if (e.evaluation_type === 'evaluator') {
+      evaluatorEvaluations.push(e);
+    } else if (e.evaluation_type === 'programmer') {
+      programmerEvaluations.push(e);
+    } else {
+      managementEvaluations.push(e);
+    }
+  }
+
+  const contentTeamEvaluations = Array.from(contentTeamMap.entries()).map(([teamName, evals]) => ({
+    teamName,
+    evaluations: evals,
+    count: evals.length,
+  }));
 
   return {
     evaluatorEvaluations,
     managementEvaluations,
     programmerEvaluations,
+    contentTeamEvaluations,
     total: evaluations.length,
     evaluatorCount: evaluatorEvaluations.length,
     managementCount: managementEvaluations.length,
@@ -369,23 +426,56 @@ export async function hasManagementEvaluated(callReportId: string, userId: strin
 
 /**
  * Get all programmer evaluations grouped by call_report_id
- * Used in the programmer portal "Evaluated" tab to show team-wide evaluations
+ * Used in the programmer portal "Evaluated" tab to show team-wide evaluations.
+ * Also includes evaluations from management-type teams (e.g., Humera's team)
+ * so programmers can see those teams' evaluations under the team name.
  */
 export async function getAllProgrammerEvaluationsGrouped(): Promise<
-  Map<string, Array<{ evaluator_id: string; evaluator_name: string; average_score: number | null; decision: string | null }>>
+  Map<string, Array<{ evaluator_id: string; evaluator_name: string; average_score: number | null; decision: string | null; teamName?: string }>>
 > {
   const supabase = await createClient();
 
-  const { data, error } = await supabase
+  // Fetch programmer evaluations
+  const { data: progData, error: progError } = await supabase
     .from("call_report_evaluations_with_type")
     .select("call_report_id, evaluator_id, evaluator_name, average_score, decision")
     .eq("evaluation_type", "programmer")
     .order("created_at", { ascending: false });
 
-  if (error) throw new Error(`Failed to fetch programmer evaluations: ${error.message}`);
+  if (progError) throw new Error(`Failed to fetch programmer evaluations: ${progError.message}`);
 
-  const map = new Map<string, Array<{ evaluator_id: string; evaluator_name: string; average_score: number | null; decision: string | null }>>();
-  for (const row of data ?? []) {
+  // Fetch management-type team evaluations (both 'management' and 'programmer' type from those teams)
+  const adminClient = createAdminClient();
+  const { data: mgmtTeamUsers } = await adminClient
+    .from("users")
+    .select("id, teams(name, team_type)")
+    .not("team_id", "is", null);
+
+  // Build set of management-type team user IDs and their team names
+  const mgmtTeamUserMap = new Map<string, string>();
+  for (const u of mgmtTeamUsers || []) {
+    const team = u.teams as any;
+    if (team?.team_type === "management") {
+      mgmtTeamUserMap.set(u.id, team.name);
+    }
+  }
+
+  // Fetch evaluations from management-type team members
+  let mgmtTeamEvals: any[] = [];
+  if (mgmtTeamUserMap.size > 0) {
+    const { data } = await supabase
+      .from("call_report_evaluations_with_type")
+      .select("call_report_id, evaluator_id, evaluator_name, average_score, decision")
+      .in("evaluator_id", [...mgmtTeamUserMap.keys()])
+      .order("created_at", { ascending: false });
+    mgmtTeamEvals = data || [];
+  }
+
+  const map = new Map<string, Array<{ evaluator_id: string; evaluator_name: string; average_score: number | null; decision: string | null; teamName?: string }>>();
+
+  // Add programmer evaluations (exclude those from management-type teams to avoid duplicates)
+  for (const row of progData ?? []) {
+    if (mgmtTeamUserMap.has(row.evaluator_id)) continue;
     if (!map.has(row.call_report_id)) map.set(row.call_report_id, []);
     map.get(row.call_report_id)!.push({
       evaluator_id: row.evaluator_id,
@@ -394,6 +484,19 @@ export async function getAllProgrammerEvaluationsGrouped(): Promise<
       decision: row.decision,
     });
   }
+
+  // Add management-type team evaluations with team name
+  for (const row of mgmtTeamEvals) {
+    if (!map.has(row.call_report_id)) map.set(row.call_report_id, []);
+    map.get(row.call_report_id)!.push({
+      evaluator_id: row.evaluator_id,
+      evaluator_name: row.evaluator_name,
+      average_score: row.average_score,
+      decision: row.decision,
+      teamName: mgmtTeamUserMap.get(row.evaluator_id),
+    });
+  }
+
   return map;
 }
 
@@ -456,15 +559,42 @@ export async function getSegregatedEpisodicEvaluations(episodeId: string) {
 
   const evaluations = data || [];
 
-  // Separate evaluations by type into three categories
-  const evaluatorEvaluations = evaluations.filter(e => e.evaluation_type === 'evaluator');
-  const managementEvaluations = evaluations.filter(e => e.evaluation_type === 'management');
-  const programmerEvaluations = evaluations.filter(e => e.evaluation_type === 'programmer');
+  // Fetch team info for all evaluators to identify management-type teams
+  const evaluatorIds = [...new Set(evaluations.map(e => e.evaluator_id))];
+  const evaluatorTeamMap = await getEvaluatorTeamMap(evaluatorIds);
+
+  // Separate evaluations — management-type team members go into team-specific buckets
+  const evaluatorEvaluations: typeof evaluations = [];
+  const managementEvaluations: typeof evaluations = [];
+  const programmerEvaluations: typeof evaluations = [];
+  const contentTeamMap = new Map<string, typeof evaluations>();
+
+  for (const e of evaluations) {
+    const teamInfo = evaluatorTeamMap.get(e.evaluator_id);
+    if (teamInfo?.isManagementTeam) {
+      const list = contentTeamMap.get(teamInfo.teamName) || [];
+      list.push(e);
+      contentTeamMap.set(teamInfo.teamName, list);
+    } else if (e.evaluation_type === 'evaluator') {
+      evaluatorEvaluations.push(e);
+    } else if (e.evaluation_type === 'programmer') {
+      programmerEvaluations.push(e);
+    } else {
+      managementEvaluations.push(e);
+    }
+  }
+
+  const contentTeamEvaluations = Array.from(contentTeamMap.entries()).map(([teamName, evals]) => ({
+    teamName,
+    evaluations: evals,
+    count: evals.length,
+  }));
 
   return {
     evaluatorEvaluations,
     managementEvaluations,
     programmerEvaluations,
+    contentTeamEvaluations,
     total: evaluations.length,
     evaluatorCount: evaluatorEvaluations.length,
     managementCount: managementEvaluations.length,

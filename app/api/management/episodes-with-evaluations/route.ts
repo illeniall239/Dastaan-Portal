@@ -114,6 +114,23 @@ export async function GET(request: NextRequest) {
       evaluationsByEpisode.get(evaluation.episode_id).push(evaluation);
     });
 
+    // Batch-fetch team info for all evaluators to identify management-type teams
+    const allEvaluatorIds = [...new Set((allEvaluations || []).map((e: any) => e.evaluator_id))];
+    const evaluatorTeamMap = new Map<string, { teamName: string; isManagementTeam: boolean }>();
+    if (allEvaluatorIds.length > 0) {
+      const { data: evaluatorTeams } = await adminClient
+        .from("users")
+        .select("id, team_id, teams(name, team_type)")
+        .in("id", allEvaluatorIds);
+      for (const u of evaluatorTeams || []) {
+        const team = (u as any).teams;
+        evaluatorTeamMap.set(u.id, {
+          teamName: team?.name || "Unknown Team",
+          isManagementTeam: team?.team_type === "management",
+        });
+      }
+    }
+
     // Map episodes with their evaluations (no async/await needed now!)
     interface EpisodeData {
       id: string;
@@ -130,15 +147,38 @@ export async function GET(request: NextRequest) {
     const episodesWithEvaluations = (episodesData || []).map((episode: EpisodeData) => {
       const evaluations = evaluationsByEpisode.get(episode.id) || [];
 
-      // Segregate evaluations by type
-      const evaluatorEvaluations = evaluations.filter((e: any) => e.evaluation_type === 'evaluator');
-      const managementEvaluations = evaluations.filter((e: any) => e.evaluation_type === 'management');
-      const programmerEvaluations = evaluations.filter((e: any) => e.evaluation_type === 'programmer');
+      // Segregate evaluations by type, reclassifying management-type team members
+      const evaluatorEvaluations: any[] = [];
+      const managementEvaluations: any[] = [];
+      const programmerEvaluations: any[] = [];
+      const contentTeamMap = new Map<string, any[]>();
+
+      for (const e of evaluations) {
+        const teamInfo = evaluatorTeamMap.get(e.evaluator_id);
+        if (teamInfo?.isManagementTeam) {
+          const list = contentTeamMap.get(teamInfo.teamName) || [];
+          list.push(e);
+          contentTeamMap.set(teamInfo.teamName, list);
+        } else if (e.evaluation_type === 'evaluator') {
+          evaluatorEvaluations.push(e);
+        } else if (e.evaluation_type === 'programmer') {
+          programmerEvaluations.push(e);
+        } else {
+          managementEvaluations.push(e);
+        }
+      }
+
+      const contentTeamEvaluations = Array.from(contentTeamMap.entries()).map(([teamName, evals]) => ({
+        teamName,
+        evaluations: evals,
+        count: evals.length,
+      }));
 
       const segregatedEvaluations = {
         evaluatorEvaluations,
         managementEvaluations,
         programmerEvaluations,
+        contentTeamEvaluations,
         total: evaluations.length,
         evaluatorCount: evaluatorEvaluations.length,
         managementCount: managementEvaluations.length,

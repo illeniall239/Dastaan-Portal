@@ -82,7 +82,8 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       .order('submitted_at', { ascending: false });
 
     // Also fetch episodic evaluations linked to this share
-    const { data: episodicEvaluations } = await supabase
+    // Apply team isolation for management-type teams
+    let episodicEvalsQuery = supabase
       .from('episodic_evaluations')
       .select(`
         id,
@@ -95,7 +96,33 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         evaluator:users!episodic_evaluations_evaluator_id_fkey (id, name, email),
         episode:episodes!episodic_evaluations_episode_id_fkey (id, episode_number, title)
       `)
-      .eq('cross_team_share_id', id)
+      .eq('cross_team_share_id', id);
+
+    if (["programmer", "management"].includes(user.role)) {
+      const adminDb = createAdminClient();
+      const { data: userProfile } = await adminDb
+        .from("users")
+        .select("team_id")
+        .eq("id", user.id)
+        .single();
+      if (userProfile?.team_id) {
+        const { data: team } = await adminDb
+          .from("teams")
+          .select("team_type")
+          .eq("id", userProfile.team_id)
+          .single();
+        if (team?.team_type === "management") {
+          const { data: members } = await adminDb
+            .from("users")
+            .select("id")
+            .eq("team_id", userProfile.team_id);
+          const memberIds = (members || []).map((m: any) => m.id);
+          episodicEvalsQuery = episodicEvalsQuery.in("evaluator_id", memberIds);
+        }
+      }
+    }
+
+    const { data: episodicEvaluations } = await episodicEvalsQuery
       .order('submitted_at', { ascending: false });
 
     return new Response(JSON.stringify({ ...data, evaluations: evaluations || [], episodic_evaluations: episodicEvaluations || [] }), {
