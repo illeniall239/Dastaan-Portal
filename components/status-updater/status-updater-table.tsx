@@ -191,8 +191,8 @@ export function StatusUpdaterTable({ ideas, role, readOnly = false }: StatusUpda
           bVal = (b.director || "").toLowerCase();
           break;
         case "episodes":
-          aVal = a.received_episodes || 0;
-          bVal = b.received_episodes || 0;
+          aVal = a.actual_received_episodes || 0;
+          bVal = b.actual_received_episodes || 0;
           break;
         case "completion":
           aVal = a.completion_percentage || 0;
@@ -256,7 +256,7 @@ export function StatusUpdaterTable({ ideas, role, readOnly = false }: StatusUpda
             idea.one_liner_approved === "needs_improvement" ? "Needs Revision" :
               idea.one_liner_approved === "pending" ? "Pending" : "Rejected") : '',
         "Expected Episodes": idea.total_episodes ?? '',
-        "Episodes Received": idea.received_episodes ?? '',
+        "Episodes Received": idea.actual_received_episodes ?? '',
         "Script Completion %": idea.completion_percentage != null ? `${idea.completion_percentage.toFixed(0)}%` : '',
         "Script Aging (Days)": idea.days_active,
         "First Ep. Received": idea.first_episode_received_at
@@ -601,7 +601,7 @@ export function StatusUpdaterTable({ ideas, role, readOnly = false }: StatusUpda
 
                       {/* Episodes Received */}
                       <TableCell className="text-center text-[11px] text-slate-600 border-b">
-                        {idea.received_episodes ?? <span className="text-slate-300">-</span>}
+                        {idea.actual_received_episodes ?? <span className="text-slate-300">-</span>}
                       </TableCell>
 
                       {/* Script Completion % */}

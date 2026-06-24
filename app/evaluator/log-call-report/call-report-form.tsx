@@ -787,10 +787,43 @@ export function CallReportForm({
               <Label htmlFor="theme">Theme</Label>
               <Input
                 id="theme"
-                placeholder="Central theme of the story"
+                placeholder="Select or type a theme"
                 value={formData.theme}
                 onChange={handleInputChange}
+                list="theme-options"
               />
+              <datalist id="theme-options">
+                <option value="Family Dynamics (Larger Family - Main Conflict)" />
+                <option value="Family Dynamics (Smaller Family - Main Conflict)" />
+                <option value="Romance" />
+                <option value="Love at First Sight/Obsession" />
+                <option value="Secret Admirer" />
+                <option value="Mistaken Identity" />
+                <option value="Accidental Marriage" />
+                <option value="Forced Marriage" />
+                <option value="Extra Marital Affair" />
+                <option value="Second Marriage" />
+                <option value="Jealousy & Betrayal" />
+                <option value="Harassment" />
+                <option value="Tohmat" />
+                <option value="Revenge (Brutal)" />
+                <option value="Revenge (Strategic)" />
+                <option value="Rivalry" />
+                <option value="Women Empowerment" />
+                <option value="Women Empowerment (Self Justice)" />
+                <option value="Women Empowerment (Social Justice)" />
+                <option value="Social Issues" />
+                <option value="Social Issues (Legal)" />
+                <option value="Social Issues (Religious)" />
+                <option value="Self Made Success" />
+                <option value="Class Difference" />
+                <option value="Super Natural" />
+                <option value="Alpha Male" />
+                <option value="Anti Hero" />
+                <option value="Female Negative Lead" />
+                <option value="Love After Marriage" />
+                <option value="Greed" />
+              </datalist>
             </div>
 
             <div className="space-y-2">
