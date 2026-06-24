@@ -70,6 +70,12 @@ export interface ActiveIdeaDetail {
   programming_freezes?: number | null;
   programming_whats_next?: number | null;
   programming_overall?: number | null;
+  content_dev_conflict?: number | null;
+  content_dev_characters?: number | null;
+  content_dev_progression?: number | null;
+  content_dev_freezes?: number | null;
+  content_dev_whats_next?: number | null;
+  content_dev_overall?: number | null;
   management_conflict?: number | null;
   management_characters?: number | null;
   management_progression?: number | null;
@@ -79,6 +85,7 @@ export interface ActiveIdeaDetail {
   // Per-group evaluator counts
   content_eval_count?: number | null;
   programming_eval_count?: number | null;
+  content_dev_eval_count?: number | null;
   management_eval_count?: number | null;
 }
 

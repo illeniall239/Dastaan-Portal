@@ -16,11 +16,6 @@ interface EvaluatorGrade {
   avgScore: number | null;
 }
 
-interface MgmtGrade {
-  epRange: string;
-  avgScore: number | null;
-}
-
 interface Evaluator {
   id: string;
   name: string;
@@ -37,17 +32,19 @@ interface OneLinerAssessor {
   group: string;
 }
 
-const GROUPS = ["Management", "Programming", "Content"] as const;
+const GROUPS = ["Management", "Content Development", "Programming", "Content"] as const;
 type EvalGroup = typeof GROUPS[number];
 
 const GROUP_COLORS: Record<string, string> = {
   Management: "bg-purple-100 text-purple-700 border-purple-300",
+  "Content Development": "bg-orange-100 text-orange-700 border-orange-300",
   Programming: "bg-blue-100 text-blue-700 border-blue-300",
   Content: "bg-amber-100 text-amber-700 border-amber-300",
 };
 
 const GROUP_HEADER_COLORS: Record<string, string> = {
   Management: "bg-purple-50 text-purple-700",
+  "Content Development": "bg-orange-50 text-orange-700",
   Programming: "bg-blue-50 text-blue-700",
   Content: "bg-amber-50 text-amber-700",
 };
@@ -74,8 +71,6 @@ interface Project {
   lastEpDate: string | null;
   weekDelivery: Record<string, number>;
   weekRevisions: Record<string, number>;
-  humeraGrade: MgmtGrade | null;
-  salmanGrade: MgmtGrade | null;
   evaluatorGrades: EvaluatorGrade[];
   allEvaluatorGrades: Record<string, { epRange: string; avgScore: number | null }>;
   teamName: string | null;

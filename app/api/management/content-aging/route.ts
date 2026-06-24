@@ -7,10 +7,6 @@ import { RateLimitPresets } from "@/lib/rate-limit-redis";
 
 export const dynamic = "force-dynamic";
 
-const HUMERA_EMAIL = "humera.safder@geo.tv";
-const SALMAN_EMAIL = "salman.ahmed@geo.tv";
-const MGMT_EMAILS = [HUMERA_EMAIL, SALMAN_EMAIL, "mir@geo.tv"];
-
 function getISOWeek(date: Date): string {
   const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
   const dayNum = d.getUTCDay() || 7;
@@ -58,6 +54,19 @@ export async function GET(request: NextRequest) {
     }
 
     const admin = createAdminClient();
+
+    // Fetch content development team member IDs (teams with team_type='management')
+    // Exclude users who head non-management teams (e.g. Salman heads Programming Team but sits on mgmt team)
+    const { data: allTeams } = await admin.from("teams").select("id, team_type, team_head_id");
+    const mgmtTeamIds = (allTeams || []).filter((t: any) => t.team_type === "management").map((t: any) => t.id);
+    const otherTeamHeadIds = new Set(
+      (allTeams || []).filter((t: any) => t.team_type !== "management" && t.team_head_id).map((t: any) => t.team_head_id)
+    );
+    let contentDevIds = new Set<string>();
+    if (mgmtTeamIds.length > 0) {
+      const { data: cdUsers } = await admin.from("users").select("id").in("team_id", mgmtTeamIds);
+      contentDevIds = new Set((cdUsers || []).filter((u: any) => !otherTeamHeadIds.has(u.id)).map((u: any) => u.id));
+    }
 
     // 1. Fetch all active call reports
     const { data: callReports, error: crErr } = await admin
@@ -145,16 +154,6 @@ export async function GET(request: NextRequest) {
       .in("call_report_id", reportIds)
       .not("submitted_at", "is", null);
 
-    // 5. Fetch management evaluators to resolve IDs
-    const { data: mgmtEvaluators } = await admin
-      .from("users")
-      .select("id, name, email")
-      .in("email", MGMT_EMAILS);
-
-    const mgmtById = new Map((mgmtEvaluators || []).map((u: any) => [u.id, u]));
-    const humeraId = (mgmtEvaluators || []).find((u: any) => u.email === HUMERA_EMAIL)?.id;
-    const salmanId = (mgmtEvaluators || []).find((u: any) => u.email === SALMAN_EMAIL)?.id;
-
     // --- Build lookup maps ---
     const epsByReport = new Map<string, any[]>();
     for (const ep of episodes || []) {
@@ -185,8 +184,10 @@ export async function GET(request: NextRequest) {
       if (!oneLinerByReport.has(row.call_report_id)) oneLinerByReport.set(row.call_report_id, new Map());
       oneLinerByReport.get(row.call_report_id)!.set(row.evaluator_id, parseFloat(row.average_score));
       if (!globalOneLinerAssessorMap.has(row.evaluator_id)) {
-        const isMgmt = mgmtById.has(row.evaluator_id);
-        const group = isMgmt ? "Management" : assessor.role === "programmer" ? "Programming" : "Content";
+        const group = contentDevIds.has(row.evaluator_id) ? "Content Development"
+          : assessor.role === "programmer" ? "Programming"
+          : ["admin", "management", "executive"].includes(assessor.role) ? "Management"
+          : "Content";
         globalOneLinerAssessorMap.set(row.evaluator_id, { name: assessor.name, email: assessor.email, role: assessor.role, group });
       }
     }
@@ -269,21 +270,17 @@ export async function GET(request: NextRequest) {
       for (const [id, data] of evaluatorMap.entries()) {
         allEvaluatorGrades[id] = buildEvaluatorGrade(data);
         if (!globalEvaluatorMap.has(id)) {
-          const isMgmt = mgmtById.has(id);
-          const group = isMgmt ? "Management" : data.role === "programmer" ? "Programming" : "Content";
+          const group = contentDevIds.has(id) ? "Content Development"
+            : data.role === "programmer" ? "Programming"
+            : ["admin", "management", "executive"].includes(data.role) ? "Management"
+            : "Content";
           globalEvaluatorMap.set(id, { name: data.name, email: data.email, role: data.role, group });
         }
       }
 
-      // Extract Humera & Salman grades separately
-      const humeraData = humeraId ? evaluatorMap.get(humeraId) : null;
-      const salmanData = salmanId ? evaluatorMap.get(salmanId) : null;
-      const humeraGrade = humeraData ? buildEvaluatorGrade(humeraData) : null;
-      const salmanGrade = salmanData ? buildEvaluatorGrade(salmanData) : null;
-
-      // Generic evaluator grades — exclude management
+      // Generic evaluator grades — exclude content development team (shown in their own group)
       const evaluatorGrades = Array.from(evaluatorMap.entries())
-        .filter(([id]) => !mgmtById.has(id))
+        .filter(([id]) => !contentDevIds.has(id))
         .map(([id, data]) => {
           const { epRange, avgScore } = buildEvaluatorGrade(data);
           return { id, name: data.name, email: data.email, epRange, avgScore };
@@ -315,8 +312,6 @@ export async function GET(request: NextRequest) {
         lastEpDate: lastEpDate?.toISOString() || null,
         weekDelivery,
         weekRevisions,
-        humeraGrade,
-        salmanGrade,
         evaluatorGrades,
         allEvaluatorGrades,
         teamName: team?.name || null,

@@ -275,6 +275,7 @@ export function StatusUpdaterTable({ ideas, role, readOnly = false }: StatusUpda
         "Status": idea.status || '',
         "Content Team Overall": idea.content_overall ? `${idea.content_overall.toFixed(1)}${idea.content_eval_count ? ` (${idea.content_eval_count})` : ''}` : '',
         "Programming Overall": idea.programming_overall ? `${idea.programming_overall.toFixed(1)}${idea.programming_eval_count ? ` (${idea.programming_eval_count})` : ''}` : '',
+        "Content Development Overall": idea.content_dev_overall ? `${idea.content_dev_overall.toFixed(1)}${idea.content_dev_eval_count ? ` (${idea.content_dev_eval_count})` : ''}` : '',
         "Management Overall": idea.management_overall ? `${idea.management_overall.toFixed(1)}${idea.management_eval_count ? ` (${idea.management_eval_count})` : ''}` : '',
         "Remarks": idea.remarks || '',
       };
@@ -489,6 +490,7 @@ export function StatusUpdaterTable({ ideas, role, readOnly = false }: StatusUpda
                     <>
                       <TableHead className="bg-blue-50/50 font-bold text-blue-800 text-center border-x border-b px-2 whitespace-nowrap">Content Team Overall</TableHead>
                       <TableHead className="bg-purple-50/50 font-bold text-purple-800 text-center border-r border-b px-2 whitespace-nowrap">Programming Overall</TableHead>
+                      <TableHead className="bg-orange-50/50 font-bold text-orange-800 text-center border-r border-b px-2 whitespace-nowrap">Content Development</TableHead>
                       <TableHead className="bg-amber-50/50 font-bold text-amber-800 text-center border-r border-b px-2 whitespace-nowrap">Management Overall</TableHead>
                     </>
                   )}
@@ -792,6 +794,18 @@ export function StatusUpdaterTable({ ideas, role, readOnly = false }: StatusUpda
                                 <span className="font-bold text-purple-700 text-[11px]">{idea.programming_overall.toFixed(1)}</span>
                                 {(idea.programming_eval_count ?? 0) > 0 && (
                                   <span className="text-[9px] text-purple-500">({idea.programming_eval_count})</span>
+                                )}
+                              </div>
+                            ) : "-"}
+                          </TableCell>
+
+                          {/* Content Development Overall */}
+                          <TableCell className="bg-orange-50/20 border-r border-b text-center border-b">
+                            {idea.content_dev_overall ? (
+                              <div className="flex flex-col items-center">
+                                <span className="font-bold text-orange-700 text-[11px]">{idea.content_dev_overall.toFixed(1)}</span>
+                                {(idea.content_dev_eval_count ?? 0) > 0 && (
+                                  <span className="text-[9px] text-orange-500">({idea.content_dev_eval_count})</span>
                                 )}
                               </div>
                             ) : "-"}
