@@ -380,90 +380,12 @@ body[data-scroll-locked] {
     }
   }
 
-  /* Bento Gradients */
-  .bento-gradient-blue {
-    background: linear-gradient(135deg,
-        rgba(34, 71, 148, 0.03) 0%,
-        rgba(34, 71, 148, 0.08) 100%);
-  }
-
-  .bento-gradient-hero-blue {
-    background: linear-gradient(135deg,
-        rgba(34, 71, 148, 0.08) 0%,
-        rgba(34, 71, 148, 0.15) 100%);
-  }
-
-  .bento-gradient-orange {
-    background: linear-gradient(135deg,
-        rgba(247, 146, 36, 0.03) 0%,
-        rgba(247, 146, 36, 0.08) 100%);
-  }
-
-  .bento-gradient-hero-orange {
-    background: linear-gradient(135deg,
-        rgba(247, 146, 36, 0.08) 0%,
-        rgba(247, 146, 36, 0.15) 100%);
-  }
-
-  .bento-gradient-green {
-    background: linear-gradient(135deg,
-        rgba(16, 185, 129, 0.03) 0%,
-        rgba(16, 185, 129, 0.08) 100%);
-  }
-
-  .bento-gradient-hero-green {
-    background: linear-gradient(135deg,
-        rgba(16, 185, 129, 0.08) 0%,
-        rgba(16, 185, 129, 0.15) 100%);
-  }
-
-  .bento-gradient-purple {
-    background: linear-gradient(135deg,
-        rgba(139, 92, 246, 0.03) 0%,
-        rgba(139, 92, 246, 0.08) 100%);
-  }
-
-  .bento-gradient-red {
-    background: linear-gradient(135deg,
-        rgba(239, 68, 68, 0.03) 0%,
-        rgba(239, 68, 68, 0.08) 100%);
-  }
-
-  .bento-gradient-gray {
-    background: linear-gradient(135deg,
-        rgba(148, 163, 184, 0.02) 0%,
-        rgba(148, 163, 184, 0.06) 100%);
-  }
-
-  .bento-glass {
-    background: rgba(255, 255, 255, 0.7);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-  }
-
   /* Bento Card Base Styles */
   .bento-card {
-    border-radius: 12px;
+    border-radius: 8px;
     border: 1px solid rgb(226, 232, 240);
     background: white;
-    box-shadow: var(--shadow-bento-base);
-    transition: all var(--duration-normal) var(--ease-in-out);
-  }
-
-  .bento-card-interactive:hover {
-    box-shadow: var(--shadow-bento-hover);
-    transform: translateY(-2px);
-    outline: 1px solid rgba(34, 71, 148, 0.1);
-    outline-offset: -1px;
-  }
-
-  .bento-card-interactive:active {
-    box-shadow: var(--shadow-bento-active);
-    transform: translateY(0);
-  }
-
-  .bento-card-hero {
-    box-shadow: var(--shadow-bento-hero);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
   }
 
   /* Bento Border Accents */
@@ -532,59 +454,6 @@ body[data-scroll-locked] {
     color: #111827;
   }
 
-  /* Bento Animations */
-  .bento-animate-enter {
-    animation: bentoFadeIn 0.4s var(--ease-out) forwards;
-  }
-
-  .bento-stagger-1 {
-    animation-delay: 0ms;
-  }
-
-  .bento-stagger-2 {
-    animation-delay: 50ms;
-  }
-
-  .bento-stagger-3 {
-    animation-delay: 100ms;
-  }
-
-  .bento-stagger-4 {
-    animation-delay: 150ms;
-  }
-
-  .bento-stagger-5 {
-    animation-delay: 200ms;
-  }
-
-  .bento-stagger-6 {
-    animation-delay: 250ms;
-  }
-}
-
-/* Bento Keyframes */
-@keyframes bentoFadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(12px);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes bento-hover-wave {
-
-  0%,
-  100% {
-    transform: translateY(0);
-  }
-
-  50% {
-    transform: translateY(-2px);
-  }
 }
 
 /* ================================
@@ -626,9 +495,9 @@ body[data-scroll-locked] {
   /* Content Card Styles */
   .content-card {
     background: white;
-    border-radius: 20px;
+    border-radius: 8px;
     border: 1px solid rgba(0, 0, 0, 0.05);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
     min-height: 280px;
   }
 
@@ -644,188 +513,20 @@ body[data-scroll-locked] {
     color: var(--text-secondary, #6b7280);
   }
 
-  /* Enhanced Professional Bento Card Overrides */
+  /* Professional Bento Card Overrides */
   .bento-card.professional {
     background: white;
-    border-radius: 16px;
+    border-radius: 8px;
     border: 1px solid rgba(0, 0, 0, 0.06);
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  }
-
-  .bento-card.professional:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
-    border-color: rgba(0, 0, 0, 0.1);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
   }
 }
 
 /* Reduced motion support */
 @media (prefers-reduced-motion: reduce) {
-  .bento-card-interactive:hover {
-    transform: none;
-  }
-
-  .bento-animate-enter {
-    animation: none;
-    opacity: 1;
-    transform: none;
-  }
-
-  .luxury-card:hover {
-    transform: none !important;
-  }
 }
 
-/* ========================================
-   LUXURY MINIMAL UTILITIES
-   ======================================== */
-
-@layer utilities {
-
-  /* Premium Glass Morphism */
-  .luxury-glass {
-    background: var(--glass-bg);
-    backdrop-filter: blur(20px) saturate(180%);
-    -webkit-backdrop-filter: blur(20px) saturate(180%);
-    border: 0.5px solid var(--glass-border);
-    box-shadow: var(--glass-shadow);
-  }
-
-  .luxury-glass-mobile {
-    @apply luxury-glass;
-
-    @media (max-width: 640px) {
-      backdrop-filter: blur(12px) saturate(150%);
-      -webkit-backdrop-filter: blur(12px) saturate(150%);
-    }
-  }
-
-  /* Glass fallback for browsers without backdrop-filter support */
-  @supports not (backdrop-filter: blur(20px)) {
-
-    .luxury-glass,
-    .luxury-glass-mobile {
-      background: rgba(255, 255, 255, 0.95);
-    }
-  }
-
-  /* Ultra-Refined Card Styles */
-  .luxury-card {
-    background: white;
-    border: 0.5px solid var(--color-neutral-200);
-    border-radius: 16px;
-    box-shadow: var(--shadow-sm);
-    transition: transform var(--duration-normal) var(--ease-luxury),
-      box-shadow var(--duration-normal) var(--ease-luxury);
-  }
-
-  .luxury-card:hover {
-    transform: translateY(-1px);
-    box-shadow: var(--shadow-md);
-  }
-
-  .luxury-card-hero {
-    box-shadow: var(--shadow-lg);
-  }
-
-  /* Outline Icon Container */
-  .luxury-icon-outline {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 2.5rem;
-    height: 2.5rem;
-    border: 1px solid var(--color-neutral-300);
-    border-radius: 0.75rem;
-    transition: all var(--duration-normal) var(--ease-luxury);
-  }
-
-  .luxury-icon-outline:hover {
-    border-color: var(--color-neutral-400);
-    background: var(--color-neutral-50);
-  }
-
-  /* Premium Typography Classes */
-  .luxury-text-micro {
-    font-size: var(--font-size-xs);
-    font-weight: var(--font-weight-medium);
-    letter-spacing: var(--letter-spacing-wide);
-    text-transform: uppercase;
-    color: var(--color-neutral-500);
-  }
-
-  .luxury-text-label {
-    font-size: var(--font-size-sm);
-    font-weight: var(--font-weight-medium);
-    letter-spacing: var(--letter-spacing-wide);
-    text-transform: uppercase;
-    color: var(--color-neutral-500);
-  }
-
-  .luxury-text-body {
-    font-size: var(--font-size-base);
-    font-weight: var(--font-weight-normal);
-    letter-spacing: var(--letter-spacing-normal);
-    color: var(--color-neutral-700);
-    line-height: 1.6;
-  }
-
-  .luxury-text-stat {
-    font-size: var(--font-size-2xl);
-    font-weight: var(--font-weight-bold);
-    letter-spacing: var(--letter-spacing-tight);
-    color: var(--color-neutral-900);
-    line-height: 1;
-  }
-
-  .luxury-text-hero {
-    font-size: var(--font-size-3xl);
-    font-weight: var(--font-weight-black);
-    letter-spacing: var(--letter-spacing-tighter);
-    color: var(--color-neutral-900);
-    line-height: 1;
-  }
-
-  /* Micro Divider */
-  .luxury-divider {
-    height: 0.5px;
-    background: var(--color-neutral-200);
-  }
-
-  /* Subtle Background Tint */
-  .luxury-bg-tint-blue {
-    background: rgba(34, 71, 148, 0.02);
-  }
-
-  .luxury-bg-tint-hover {
-    transition: background var(--duration-normal) var(--ease-subtle);
-  }
-
-  .luxury-bg-tint-hover:hover {
-    background: var(--color-neutral-50);
-  }
-
-  /* Inner Glow Effect */
-  .luxury-inner-glow {
-    position: relative;
-  }
-
-  .luxury-inner-glow::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    border-radius: inherit;
-    padding: 1px;
-    background: linear-gradient(135deg,
-        rgba(255, 255, 255, 0.4) 0%,
-        rgba(255, 255, 255, 0) 50%);
-    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-    -webkit-mask-composite: xor;
-    mask-composite: exclude;
-    pointer-events: none;
-  }
-}
+/* Luxury utilities removed — unused */
 
 /* ================================
    MODERN DASHBOARD DESIGN SYSTEM
@@ -842,35 +543,23 @@ body[data-scroll-locked] {
 .modern-card {
   background: white;
   border: 1px solid #e5e7eb;
-  border-radius: 16px;
-  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
-  transition: all 0.2s ease;
-}
-
-.modern-card:hover {
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-  transform: translateY(-2px);
+  border-radius: 8px;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
 }
 
 /* Stat Card Styles */
 .stat-card {
-  padding: 24px;
-  border-radius: 16px;
-  transition: all 0.2s ease;
-}
-
-.stat-card:hover {
-  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-  transform: translateY(-4px);
+  padding: 16px;
+  border-radius: 8px;
 }
 
 .stat-card-accent {
-  background: linear-gradient(135deg, #224794 0%, #1a3770 100%);
+  background: #224794;
   color: white;
 }
 
 .stat-card-number {
-  font-size: 48px;
+  font-size: 28px;
   font-weight: 700;
   line-height: 1;
   letter-spacing: -0.02em;
@@ -887,9 +576,9 @@ body[data-scroll-locked] {
 .content-card {
   background: white;
   border: 1px solid #e5e7eb;
-  border-radius: 20px;
-  padding: 24px;
-  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+  padding: 16px;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
 }
 
 .content-card-title {

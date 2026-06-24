@@ -23,12 +23,11 @@ export function ModernContentCard({
   return (
     <div
       className={cn(
-        "bg-white rounded-2xl border border-gray-200 shadow-md p-6",
-        "hover:shadow-lg transition-shadow duration-200",
+        "bg-white rounded-lg border border-gray-200 shadow-sm p-4 sm:p-5",
         className
       )}
     >
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between mb-3">
         <div>
           <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
           {subtitle && (

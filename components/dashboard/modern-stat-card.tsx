@@ -24,10 +24,10 @@ export function ModernStatCard({
 }: ModernStatCardProps) {
   const content = (
     <div className="flex flex-col h-full">
-      <div className="flex items-start justify-between mb-4 min-h-[3rem]">
+      <div className="flex items-start justify-between mb-2">
         <h3
           className={cn(
-            "text-sm font-semibold uppercase tracking-wide",
+            "text-sm font-medium",
             accent ? "text-white/80" : "text-gray-500"
           )}
         >
@@ -46,7 +46,7 @@ export function ModernStatCard({
       <div className="mt-auto">
         <p
           className={cn(
-            "text-5xl font-bold mb-2",
+            "text-3xl font-bold mb-2",
             accent ? "text-white" : "text-gray-900"
           )}
         >
@@ -77,11 +77,10 @@ export function ModernStatCard({
       <Link
         href={href}
         className={cn(
-          "block p-6 rounded-2xl transition-all duration-200",
-          "hover:shadow-lg hover:-translate-y-1",
+          "block p-4 sm:p-5 rounded-lg transition-colors",
           accent
-            ? "bg-[#224794] text-white shadow-md"
-            : "bg-white border border-gray-200 shadow-md"
+            ? "bg-[#224794] text-white"
+            : "bg-white border border-gray-200 shadow-sm hover:border-gray-300"
         )}
       >
         {content}
@@ -92,10 +91,10 @@ export function ModernStatCard({
   return (
     <div
       className={cn(
-        "p-6 rounded-2xl",
+        "p-4 sm:p-5 rounded-lg",
         accent
-          ? "bg-[#224794] text-white shadow-md"
-          : "bg-white border border-gray-200 shadow-md"
+          ? "bg-[#224794] text-white"
+          : "bg-white border border-gray-200 shadow-sm"
       )}
     >
       {content}

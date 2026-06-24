@@ -36,7 +36,7 @@ export default async function ProgrammerDashboard() {
   }
 
   return (
-    <div className="mobile-container mobile-section space-y-6 animate-fade-in">
+    <div className="mobile-container mobile-section space-y-6">
       {/* Page Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -425,7 +425,7 @@ function DashboardContentSkeleton() {
         {[1, 2, 3, 4].map((i) => (
           <div
             key={i}
-            className="rounded-2xl border border-gray-200 bg-white p-6 shadow-md"
+            className="rounded-lg border border-gray-200 bg-white p-4 sm:p-5 shadow-sm"
           >
             <div className="h-4 w-24 bg-gray-200 rounded animate-pulse mb-4"></div>
             <div className="h-12 w-16 bg-gray-200 rounded animate-pulse"></div>
@@ -438,7 +438,7 @@ function DashboardContentSkeleton() {
         {[1, 2, 3].map((i) => (
           <div
             key={i}
-            className="rounded-2xl border border-gray-200 bg-white p-6 shadow-md"
+            className="rounded-lg border border-gray-200 bg-white p-4 sm:p-5 shadow-sm"
           >
             <div className="h-6 w-32 bg-gray-200 rounded animate-pulse mb-2"></div>
             <div className="h-4 w-48 bg-gray-200 rounded animate-pulse mb-4"></div>

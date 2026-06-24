@@ -110,7 +110,7 @@ export default async function ManagementDashboard({
   };
 
   return (
-    <div className="p-4 sm:p-6 space-y-4 sm:space-y-6 animate-fade-in">
+    <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
       {/* Page Header */}
       <ManagementHeader userName={user.name} />
 
@@ -130,107 +130,98 @@ export default async function ManagementDashboard({
           </div>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 lg:gap-6 lg:grid-cols-3">
-          <Link href="/management/active-projects" className="transition-transform hover:scale-105">
-            <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200 cursor-pointer hover:shadow-lg transition-shadow">
-              <CardHeader className="flex flex-row items-center justify-between pb-2 p-3 sm:p-4 lg:p-6">
-                <CardTitle className="text-sm font-medium text-blue-900">Active Projects</CardTitle>
-                <FileText className="h-4 w-4 md:h-5 md:w-5 text-blue-600" />
+          <Link href="/management/active-projects">
+            <Card className="bg-white border-l-4 border-l-blue-500 rounded-lg shadow-sm hover:border-gray-300 transition-colors cursor-pointer">
+              <CardHeader className="flex flex-row items-center justify-between pb-2 p-3 sm:p-4">
+                <CardTitle className="text-sm font-medium text-gray-600">Active Projects</CardTitle>
+                <FileText className="h-4 w-4 text-blue-500" />
               </CardHeader>
-              <CardContent className="p-3 sm:p-4 lg:p-6 pt-0">
-                <div className="text-xl sm:text-2xl md:text-3xl font-bold text-blue-900">
+              <CardContent className="p-3 sm:p-4 pt-0">
+                <div className="text-2xl font-bold text-gray-900">
                   {summary.totalActiveProjects}
                 </div>
-                <p className="text-xs text-blue-700 mt-1">Stories in development pipeline</p>
+                <p className="text-xs text-gray-500 mt-1">Stories in development pipeline</p>
               </CardContent>
             </Card>
           </Link>
 
-          <Link href="/management/pipeline-value" className="transition-transform hover:scale-105">
-            <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200 cursor-pointer hover:shadow-lg transition-shadow">
-              <CardHeader className="flex flex-row items-center justify-between pb-2 p-3 sm:p-4 lg:p-6">
-                <CardTitle className="text-sm font-medium text-green-900">Pipeline Value</CardTitle>
-                <DollarSign className="h-4 w-4 md:h-5 md:w-5 text-green-600" />
+          <Link href="/management/pipeline-value">
+            <Card className="bg-white border-l-4 border-l-green-500 rounded-lg shadow-sm hover:border-gray-300 transition-colors cursor-pointer">
+              <CardHeader className="flex flex-row items-center justify-between pb-2 p-3 sm:p-4">
+                <CardTitle className="text-sm font-medium text-gray-600">Pipeline Value</CardTitle>
+                <DollarSign className="h-4 w-4 text-green-500" />
               </CardHeader>
-              <CardContent className="p-3 sm:p-4 lg:p-6 pt-0">
-                <div className="text-xl sm:text-2xl md:text-3xl font-bold text-green-900">
+              <CardContent className="p-3 sm:p-4 pt-0">
+                <div className="text-2xl font-bold text-gray-900">
                   {formatCurrency(summary.pipelineValue)}
                 </div>
-                <p className="text-xs text-green-700 mt-1">Total contracts + negotiations</p>
+                <p className="text-xs text-gray-500 mt-1">Total contracts + negotiations</p>
               </CardContent>
             </Card>
           </Link>
 
-          <Link href="/management/contracts" className="transition-transform hover:scale-105">
-            <Card className="bg-gradient-to-br from-orange-50 to-orange-100 border-orange-200 cursor-pointer hover:shadow-lg transition-shadow">
-              <CardHeader className="flex flex-row items-center justify-between pb-2 p-3 sm:p-4 lg:p-6">
-                <CardTitle className="text-sm font-medium text-orange-900">
+          <Link href="/management/contracts">
+            <Card className="bg-white border-l-4 border-l-orange-500 rounded-lg shadow-sm hover:border-gray-300 transition-colors cursor-pointer">
+              <CardHeader className="flex flex-row items-center justify-between pb-2 p-3 sm:p-4">
+                <CardTitle className="text-sm font-medium text-gray-600">
                   Active Contracts
                 </CardTitle>
-                <Briefcase className="h-4 w-4 md:h-5 md:w-5 text-orange-600" />
+                <Briefcase className="h-4 w-4 text-orange-500" />
               </CardHeader>
-              <CardContent className="p-3 sm:p-4 lg:p-6 pt-0">
-                <div className="text-xl sm:text-2xl md:text-3xl font-bold text-orange-900">
+              <CardContent className="p-3 sm:p-4 pt-0">
+                <div className="text-2xl font-bold text-gray-900">
                   {summary.activeContracts}
                 </div>
-                <p className="text-xs text-orange-700 mt-1">Contracts currently in effect</p>
+                <p className="text-xs text-gray-500 mt-1">Contracts currently in effect</p>
               </CardContent>
             </Card>
           </Link>
 
-          <Link
-            href="/management/payments/overdue"
-            className="transition-transform hover:scale-105"
-          >
-            <Card className="bg-gradient-to-br from-red-50 to-red-100 border-red-200 cursor-pointer hover:shadow-lg transition-shadow">
-              <CardHeader className="flex flex-row items-center justify-between pb-2 p-3 sm:p-4 lg:p-6">
-                <CardTitle className="text-sm font-medium text-red-900">Overdue Payments</CardTitle>
-                <AlertTriangle className="h-4 w-4 md:h-5 md:w-5 text-red-600" />
+          <Link href="/management/payments/overdue">
+            <Card className="bg-white border-l-4 border-l-red-500 rounded-lg shadow-sm hover:border-gray-300 transition-colors cursor-pointer">
+              <CardHeader className="flex flex-row items-center justify-between pb-2 p-3 sm:p-4">
+                <CardTitle className="text-sm font-medium text-gray-600">Overdue Payments</CardTitle>
+                <AlertTriangle className="h-4 w-4 text-red-500" />
               </CardHeader>
-              <CardContent className="p-3 sm:p-4 lg:p-6 pt-0">
-                <div className="text-xl sm:text-2xl md:text-3xl font-bold text-red-900">
+              <CardContent className="p-3 sm:p-4 pt-0">
+                <div className="text-2xl font-bold text-gray-900">
                   {summary.overduePayments}
                 </div>
-                <p className="text-xs text-red-700 mt-1">Payments requiring attention</p>
+                <p className="text-xs text-gray-500 mt-1">Payments requiring attention</p>
               </CardContent>
             </Card>
           </Link>
 
-          <Link
-            href="/management/weekly-activities"
-            className="transition-transform hover:scale-105"
-          >
-            <Card className="bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200 cursor-pointer hover:shadow-lg transition-shadow">
-              <CardHeader className="flex flex-row items-center justify-between pb-2 p-3 sm:p-4 lg:p-6">
-                <CardTitle className="text-sm font-medium text-purple-900">
+          <Link href="/management/weekly-activities">
+            <Card className="bg-white border-l-4 border-l-purple-500 rounded-lg shadow-sm hover:border-gray-300 transition-colors cursor-pointer">
+              <CardHeader className="flex flex-row items-center justify-between pb-2 p-3 sm:p-4">
+                <CardTitle className="text-sm font-medium text-gray-600">
                   Weekly Activities
                 </CardTitle>
-                <Activity className="h-4 w-4 md:h-5 md:w-5 text-purple-600" />
+                <Activity className="h-4 w-4 text-purple-500" />
               </CardHeader>
-              <CardContent className="p-3 sm:p-4 lg:p-6 pt-0">
-                <div className="text-xl sm:text-2xl md:text-3xl font-bold text-purple-900">
+              <CardContent className="p-3 sm:p-4 pt-0">
+                <div className="text-2xl font-bold text-gray-900">
                   {summary.weeklyActivities}
                 </div>
-                <p className="text-xs text-purple-700 mt-1">Actions taken this week</p>
+                <p className="text-xs text-gray-500 mt-1">Actions taken this week</p>
               </CardContent>
             </Card>
           </Link>
 
-          <Link
-            href="/management/pending-evaluations"
-            className="transition-transform hover:scale-105"
-          >
-            <Card className="bg-gradient-to-br from-indigo-50 to-indigo-100 border-indigo-200 cursor-pointer hover:shadow-lg transition-shadow">
-              <CardHeader className="flex flex-row items-center justify-between pb-2 p-3 sm:p-4 lg:p-6">
-                <CardTitle className="text-sm font-medium text-indigo-900">
+          <Link href="/management/pending-evaluations">
+            <Card className="bg-white border-l-4 border-l-indigo-500 rounded-lg shadow-sm hover:border-gray-300 transition-colors cursor-pointer">
+              <CardHeader className="flex flex-row items-center justify-between pb-2 p-3 sm:p-4">
+                <CardTitle className="text-sm font-medium text-gray-600">
                   Approval Tracking
                 </CardTitle>
-                <Clock className="h-4 w-4 md:h-5 md:w-5 text-indigo-600" />
+                <Clock className="h-4 w-4 text-indigo-500" />
               </CardHeader>
-              <CardContent className="p-3 sm:p-4 lg:p-6 pt-0">
-                <div className="text-xl sm:text-2xl md:text-3xl font-bold text-indigo-900">
+              <CardContent className="p-3 sm:p-4 pt-0">
+                <div className="text-2xl font-bold text-gray-900">
                   {isMandatoryApprover ? mandatoryApproverPendingCount : workload.executives.pendingApprovals}
                 </div>
-                <p className="text-xs text-indigo-700 mt-1">
+                <p className="text-xs text-gray-500 mt-1">
                   {isMandatoryApprover ? "Awaiting your review" : "Awaiting committee decision"}
                 </p>
               </CardContent>

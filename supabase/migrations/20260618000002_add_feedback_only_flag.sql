@@ -53,8 +53,9 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- 4. Retroactively mark existing feedback-only evaluations
---    Criteria: all 9 scores stuck at default (5) AND has feedback content
+-- 4. Retroactively mark existing all-default-5 evaluations as feedback-only.
+--    Nobody genuinely scores all 9 criteria as exactly 5 — these are
+--    unscored submissions (with or without feedback attachments).
 UPDATE episodic_evaluations
 SET is_feedback_only = TRUE,
     overall_average = NULL,
@@ -69,8 +70,4 @@ WHERE conflict_of_content_score = 5
   AND dragness_score = 5
   AND freezes_score = 5
   AND whats_next_element_score = 5
-  AND overall_assessment_score = 5
-  AND (
-    feedback_attachments != '[]'::jsonb
-    OR feedback_text IS NOT NULL
-  );
+  AND overall_assessment_score = 5;

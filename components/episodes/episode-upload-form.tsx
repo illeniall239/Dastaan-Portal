@@ -136,7 +136,7 @@ export function EpisodeUploadForm({
 
             {/* File Upload */}
             <div className="space-y-2">
-              <Label className="text-sm sm:text-base">Attachment (Optional)</Label>
+              <Label className="text-sm sm:text-base">Attachment <span className="text-red-500">*</span></Label>
               <EpisodeFileUpload
                 file={episode.file}
                 onFileSelect={(file) => updateEpisode(index, "file", file)}
