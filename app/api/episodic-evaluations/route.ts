@@ -58,6 +58,21 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Evaluation access has been revoked" }, { status: 403 });
   }
 
+    // Check if programmer is on a content development (management-type) team
+    let isContentDevTeam = false;
+    let contentDevTeamMemberIds: string[] = [];
+    if (userData.role === "programmer") {
+      const { data: userWithTeam } = await adminClient.from("users").select("team_id").eq("id", user.id).single();
+      if (userWithTeam?.team_id) {
+        const { data: team } = await adminClient.from("teams").select("team_type").eq("id", userWithTeam.team_id).single();
+        if (team?.team_type === "management") {
+          isContentDevTeam = true;
+          const { data: teammates } = await adminClient.from("users").select("id").eq("team_id", userWithTeam.team_id);
+          contentDevTeamMemberIds = (teammates || []).map((t: any) => t.id);
+        }
+      }
+    }
+
     const body = await request.json();
 
     // Validate input
@@ -87,14 +102,17 @@ export async function POST(request: Request) {
     }
 
     // Check for duplicate evaluation
-    // Programmers share one evaluation per episode as a team — block if any programmer already evaluated it
-    // All other roles block only if the current user already evaluated it
+    // Regular programmers share one eval per episode — block if any programmer already evaluated
+    // Content dev team shares one eval per episode within their team
+    // All other roles block only if the current user already evaluated
     let duplicateQuery = adminClient
       .from("episodic_evaluations")
-      .select("id, evaluator:users!evaluator_id(role)")
+      .select("id, evaluator_id, evaluator:users!evaluator_id(role)")
       .eq("episode_id", evaluationData.episode_id);
 
-    if (userData.role !== "programmer") {
+    if (isContentDevTeam) {
+      duplicateQuery = (duplicateQuery as any).in("evaluator_id", contentDevTeamMemberIds);
+    } else if (userData.role !== "programmer") {
       duplicateQuery = (duplicateQuery as any).eq("evaluator_id", user.id);
     }
 
@@ -112,13 +130,20 @@ export async function POST(request: Request) {
 
     const { data: existingEvals } = await duplicateQuery.limit(10);
 
-    const existingEvaluation = userData.role === "programmer"
-      ? (existingEvals || []).find((e: any) => e.evaluator?.role === "programmer")
-      : (existingEvals || [])[0];
+    let existingEvaluation: any = null;
+    if (isContentDevTeam) {
+      existingEvaluation = (existingEvals || [])[0];
+    } else if (userData.role === "programmer") {
+      // Only block if a non-content-dev programmer already evaluated
+      existingEvaluation = (existingEvals || []).find((e: any) => e.evaluator?.role === "programmer");
+    } else {
+      existingEvaluation = (existingEvals || [])[0];
+    }
 
     if (existingEvaluation) {
+      const teamLabel = isContentDevTeam ? " by the content development team" : userData.role === "programmer" ? " by the programming team" : "";
       return NextResponse.json(
-        { error: "This episode has already been evaluated" + (evaluationData.revision_id ? " for this revision" : "") + (userData.role === "programmer" ? " by the programming team" : "") },
+        { error: "This episode has already been evaluated" + (evaluationData.revision_id ? " for this revision" : "") + teamLabel },
         { status: 409 }
       );
     }
@@ -357,7 +382,13 @@ export async function GET(request: NextRequest) {
         query = query.eq("evaluator_id", user.id);
       }
     } else if (userData.role === "programmer") {
-      // Need to re-build query with !inner join on users to filter by their role
+      // Regular programmer: show all programmer evals excluding content dev team members
+      const { data: mgmtTeams } = await adminClient2.from("teams").select("id").eq("team_type", "management");
+      let cdUserIds: string[] = [];
+      if (mgmtTeams && mgmtTeams.length > 0) {
+        const { data: cdUsers } = await adminClient2.from("users").select("id").in("team_id", mgmtTeams.map((t: any) => t.id));
+        cdUserIds = (cdUsers || []).map((u: any) => u.id);
+      }
       query = supabase
         .from("episodic_evaluations")
         .select(`
@@ -370,6 +401,9 @@ export async function GET(request: NextRequest) {
           )
         `, { count: "exact" })
         .eq("evaluator.role", "programmer");
+      if (cdUserIds.length > 0) {
+        query = query.not("evaluator_id", "in", `(${cdUserIds.join(",")})`);
+      }
     }
 
     // Apply filters

@@ -91,6 +91,16 @@ async function DashboardContent({ userId, userRole }: { userId: string; userRole
     }
   }
 
+  // For regular programmers: fetch content dev team member IDs to exclude from stats
+  let contentDevUserIds: string[] = [];
+  if (!isRestrictedProgrammer && userRole === "programmer") {
+    const { data: mgmtTeams } = await adminClient.from("teams").select("id").eq("team_type", "management");
+    if (mgmtTeams && mgmtTeams.length > 0) {
+      const { data: cdUsers } = await adminClient.from("users").select("id").in("team_id", mgmtTeams.map((t: any) => t.id));
+      contentDevUserIds = (cdUsers || []).map((u: any) => u.id);
+    }
+  }
+
   // Fetch ALL data in parallel
   const [statsData, recentCallReports, recentEvaluations, productionMetrics] = await Promise.all([
     Promise.all([
@@ -111,10 +121,14 @@ async function DashboardContent({ userId, userRole }: { userId: string; userRole
             .select("id", { count: "exact", head: true })
             .in("evaluator_id", teamMemberIds);
         }
-        return adminClient
+        let q = adminClient
           .from("evaluator_forms")
           .select(`id, evaluator:users!evaluator_id!inner(role)`, { count: "exact", head: true })
           .eq("evaluator.role", "programmer");
+        if (contentDevUserIds.length > 0) {
+          q = q.not("evaluator_id", "in", `(${contentDevUserIds.join(",")})`);
+        }
+        return q;
       })(),
       // Total episode evaluations count — programmer team only (adminClient bypasses RLS)
       (async () => {
@@ -124,10 +138,14 @@ async function DashboardContent({ userId, userRole }: { userId: string; userRole
             .select("id", { count: "exact", head: true })
             .in("evaluator_id", teamMemberIds);
         }
-        return adminClient
+        let q = adminClient
           .from("episodic_evaluations")
           .select(`id, evaluator:users!evaluator_id!inner(role)`, { count: "exact", head: true })
           .eq("evaluator.role", "programmer");
+        if (contentDevUserIds.length > 0) {
+          q = q.not("evaluator_id", "in", `(${contentDevUserIds.join(",")})`);
+        }
+        return q;
       })(),
     ]),
 
@@ -165,7 +183,7 @@ async function DashboardContent({ userId, userRole }: { userId: string; userRole
           .order("created_at", { ascending: false })
           .limit(5);
       }
-      return supabase
+      let q = supabase
         .from("evaluator_forms")
         .select(`
           *,
@@ -178,6 +196,10 @@ async function DashboardContent({ userId, userRole }: { userId: string; userRole
         .eq("evaluator.role", "programmer")
         .order("created_at", { ascending: false })
         .limit(5);
+      if (contentDevUserIds.length > 0) {
+        q = q.not("evaluator_id", "in", `(${contentDevUserIds.join(",")})`);
+      }
+      return q;
     })(),
 
     // Production metrics

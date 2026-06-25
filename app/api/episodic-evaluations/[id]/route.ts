@@ -87,14 +87,29 @@ export async function GET(
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
+    // Check if programmer is on a content dev (management-type) team
+    let contentDevTeamMemberIds: string[] | null = null;
+    if (userData.role === "programmer") {
+      const adminCheck = createAdminClient();
+      const { data: userWithTeam } = await adminCheck.from("users").select("team_id").eq("id", user.id).single();
+      if (userWithTeam?.team_id) {
+        const { data: team } = await adminCheck.from("teams").select("team_type").eq("id", userWithTeam.team_id).single();
+        if (team?.team_type === "management") {
+          const { data: teammates } = await adminCheck.from("users").select("id").eq("team_id", userWithTeam.team_id);
+          contentDevTeamMemberIds = (teammates || []).map((t: any) => t.id);
+        }
+      }
+    }
+
     let canView = false;
     if (["admin", "content_manager", "management", "executive"].includes(userData.role)) {
       canView = true;
     } else if (userData.role === "evaluator") {
-      // Evaluators can only view their own evaluations
       canView = evaluation.evaluator_id === user.id;
+    } else if (userData.role === "programmer" && contentDevTeamMemberIds) {
+      // Content dev team can only view their own team's evaluations
+      canView = contentDevTeamMemberIds.includes(evaluation.evaluator_id);
     } else if (userData.role === "programmer") {
-      // Programmers can view any evaluation done by the programming team
       canView = evaluation.evaluator?.role === "programmer";
     }
 
@@ -161,6 +176,19 @@ export async function DELETE(
     // Use admin client to bypass RLS — permissions are checked in code below
     const adminClient = createAdminClient();
 
+    // Check if programmer is on a content dev (management-type) team
+    let contentDevTeamMemberIds: string[] | null = null;
+    if (userData.role === "programmer") {
+      const { data: userWithTeam } = await adminClient.from("users").select("team_id").eq("id", user.id).single();
+      if (userWithTeam?.team_id) {
+        const { data: team } = await adminClient.from("teams").select("team_type").eq("id", userWithTeam.team_id).single();
+        if (team?.team_type === "management") {
+          const { data: teammates } = await adminClient.from("users").select("id").eq("team_id", userWithTeam.team_id);
+          contentDevTeamMemberIds = (teammates || []).map((t: any) => t.id);
+        }
+      }
+    }
+
     // Check if evaluation exists and get owner
     const { data: evaluation, error: fetchError } = await adminClient
       .from("episodic_evaluations")
@@ -182,9 +210,13 @@ export async function DELETE(
       );
     }
 
-    // Check permissions: owner, admin, or programmer (shared team evaluations)
-    const canDelete =
-      evaluation.evaluator_id === user.id || userData.role === "admin" || userData.role === "programmer";
+    // Check permissions: owner, admin, or same-team programmer
+    let canDelete = evaluation.evaluator_id === user.id || userData.role === "admin";
+    if (!canDelete && userData.role === "programmer") {
+      canDelete = contentDevTeamMemberIds
+        ? contentDevTeamMemberIds.includes(evaluation.evaluator_id)
+        : true; // regular programmers share evaluations
+    }
 
     if (!canDelete) {
       return NextResponse.json(
@@ -277,6 +309,21 @@ export async function PATCH(
   }
 
   try {
+    const adminClient = createAdminClient();
+
+    // Check if programmer is on a content dev (management-type) team
+    let contentDevMemberIds: string[] | null = null;
+    if (userData.role === "programmer") {
+      const { data: userWithTeam } = await adminClient.from("users").select("team_id").eq("id", user.id).single();
+      if (userWithTeam?.team_id) {
+        const { data: team } = await adminClient.from("teams").select("team_type").eq("id", userWithTeam.team_id).single();
+        if (team?.team_type === "management") {
+          const { data: teammates } = await adminClient.from("users").select("id").eq("team_id", userWithTeam.team_id);
+          contentDevMemberIds = (teammates || []).map((t: any) => t.id);
+        }
+      }
+    }
+
     // Ensure evaluation exists and get owner
     const { data: existing, error: fetchError } = await supabase
       .from("episodic_evaluations")
@@ -298,8 +345,13 @@ export async function PATCH(
       );
     }
 
-    // Owner, admin, or any programmer (programming team shares evaluations)
-    const canEdit = existing.evaluator_id === user.id || userData.role === "admin" || userData.role === "programmer";
+    // Owner, admin, or same-team programmer
+    let canEdit = existing.evaluator_id === user.id || userData.role === "admin";
+    if (!canEdit && userData.role === "programmer") {
+      canEdit = contentDevMemberIds
+        ? contentDevMemberIds.includes(existing.evaluator_id)
+        : true; // regular programmers share evaluations
+    }
     if (!canEdit) {
       return NextResponse.json(
         { error: "Forbidden - You don't have permission to edit this evaluation" },
