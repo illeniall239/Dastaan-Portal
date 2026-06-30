@@ -240,6 +240,9 @@ export function EpisodicEvaluationForm({
         overallAssessmentComment,
         decision,
         decisionNotes,
+        feedbackText,
+        feedbackAttachments,
+        isFeedbackOnly,
         accumulatedTimeMinutes: timeSpentMinutes,
       };
 
@@ -293,6 +296,9 @@ export function EpisodicEvaluationForm({
       setOverallAssessmentComment(pendingDraftData.overallAssessmentComment || "");
       setDecision(pendingDraftData.decision || "");
       setDecisionNotes(pendingDraftData.decisionNotes || "");
+      setFeedbackText(pendingDraftData.feedbackText || "");
+      setFeedbackAttachments(pendingDraftData.feedbackAttachments || []);
+      setIsFeedbackOnly(pendingDraftData.isFeedbackOnly || false);
 
       // Load accumulated time from draft
       setInitialTimeFromDraft(pendingDraftData.accumulatedTimeMinutes || 0);

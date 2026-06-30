@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { logger } from "@/lib/logger";
 import { createClient } from "@/lib/supabase/server";
-import { z } from "zod";
 import { applyRateLimit, addRateLimitHeaders, withCors } from "@/lib/api-middleware";
 import { RateLimitPresets } from "@/lib/rate-limit-redis";
 import {
@@ -9,28 +8,8 @@ import {
   forbiddenError,
   notFoundError,
   handleDatabaseError,
-  handleValidationError,
-  createSuccessResponse,
   internalError,
 } from "@/lib/api/errors";
-
-// Schema for validating draft data
-// All scoring fields are optional since drafts can be partial
-const draftDataSchema = z.object({
-  targetWriter: z.string().optional(),
-  perEpPriceRange: z.string().optional(),
-  slot: z.string().optional(),
-  premiseConflictScore: z.number().min(1).max(10).optional(),
-  storylinePlotScore: z.number().min(1).max(10).optional(),
-  episodicProgressionScore: z.number().min(1).max(10).optional(),
-  charactersScore: z.number().min(1).max(10).optional(),
-  dialoguesScore: z.number().min(1).max(10).optional(),
-  first2EpsRequired: z.boolean().optional(),
-  comments: z.string().optional(),
-  decision: z.enum(["approve", "reject", "needs_improvement"]).optional(),
-  decisionNotes: z.string().optional(),
-  accumulatedTimeMinutes: z.number().min(0).optional(),
-});
 
 export async function GET(
   request: Request,
@@ -102,16 +81,7 @@ export async function POST(
   }
 
   try {
-    const body = await request.json();
-
-    // Validate draft data
-    const validation = draftDataSchema.safeParse(body);
-
-    if (!validation.success) {
-      return handleValidationError(validation.error);
-    }
-
-    const draftData = validation.data;
+    const draftData = await request.json();
 
     // Check if call report exists
     const { data: callReport, error: callReportError } = await supabase

@@ -3,22 +3,8 @@ import { logger } from "@/lib/logger";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { episodeIdParamSchema } from "@/lib/validations/uuid-params";
-import { z } from "zod";
 import { applyRateLimit } from '@/lib/api-middleware';
 import { RateLimitPresets } from '@/lib/rate-limit-redis';
-
-// Schema for validating draft data
-const draftDataSchema = z.object({
-  noOfPages: z.number(),
-  noOfScenes: z.number(),
-  events: z.array(z.any()), // Array of EventItems
-  conflictScore: z.number(),
-  characterizationScore: z.number(),
-  progressionScore: z.number(),
-  freezesScore: z.number(),
-  whatsNextScore: z.number(),
-  accumulatedTimeMinutes: z.number().min(0).optional(),
-});
 
 export async function GET(
   request: Request,
@@ -127,19 +113,7 @@ export async function POST(
     );
   }
 
-    const body = await request.json();
-
-    // Validate draft data
-    const validation = draftDataSchema.safeParse(body);
-
-    if (!validation.success) {
-      return NextResponse.json(
-        { error: "Validation failed", details: validation.error.format() },
-        { status: 400 }
-      );
-    }
-
-    const draftData = validation.data;
+    const draftData = await request.json();
 
     // Check if episode exists
     const { data: episode, error: episodeError } = await supabase

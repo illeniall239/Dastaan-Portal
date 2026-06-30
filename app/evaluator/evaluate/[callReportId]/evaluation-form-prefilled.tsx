@@ -400,6 +400,7 @@ export function EvaluatorEvaluationForm({
     try {
       const draftData = {
         ...formData,
+        feedbackAttachments,
         accumulatedTimeMinutes: timeSpentMinutes,
       };
 
@@ -467,6 +468,7 @@ export function EvaluatorEvaluationForm({
         delayReason: "",
       });
 
+      setFeedbackAttachments(pendingDraftData.feedbackAttachments || []);
       setInitialTimeFromDraft(pendingDraftData.accumulatedTimeMinutes || 0);
       toast.success("Draft loaded successfully!");
       setShowDraftDialog(false);
