@@ -15,7 +15,7 @@ interface EpisodePermissionContext {
  *
  * Rules (in order):
  *  1. The user who logged the episode can always edit it.
- *  2. Privileged roles (content_manager, programmer, admin, management) can edit any episode.
+ *  2. Privileged roles (content_creator, content_manager, programmer, gcm, admin, management) can edit any episode.
  *  3. Any user on the same team as the episode's call report can edit it.
  */
 export function canEditEpisode(
@@ -29,7 +29,7 @@ export function canEditEpisode(
 
   // Privileged roles
   if (
-    ["content_manager", "programmer", "admin", "management"].includes(userRole)
+    ["content_creator", "content_manager", "programmer", "gcm", "admin", "management"].includes(userRole)
   )
     return true;
 

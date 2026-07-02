@@ -104,16 +104,7 @@ export default function GcmEpisodicEvaluationPage({ params }: EpisodePageProps) 
         const patchResponse = await fetch(`/api/episodic-evaluations/${existingEvaluation.id}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            no_of_pages: formData.no_of_pages,
-            no_of_scenes: formData.no_of_scenes,
-            events: formData.events,
-            conflict_of_content_score: formData.conflict_of_content_score,
-            characterization_score: formData.characterization_score,
-            story_progression_score: formData.story_progression_score,
-            freezes_score: formData.freezes_score,
-            whats_next_element_score: formData.whats_next_element_score,
-          }),
+          body: JSON.stringify(formData),
         });
         const patchData = await patchResponse.json();
         if (!patchResponse.ok) {
