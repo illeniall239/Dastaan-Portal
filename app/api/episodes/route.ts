@@ -619,15 +619,18 @@ export async function GET(request: NextRequest) {
           }
         }
 
-        // For regular programmers, fetch management-type team user IDs so their evals are visible
+        // For regular programmers, fetch management-type team user IDs to exclude from eval counts
         if (!isManagementTeam) {
-          const { data: mgmtTeamMembers } = await createAdminClient()
-            .from("users")
-            .select("id, teams(team_type)")
-            .not("team_id", "is", null);
-          for (const u of mgmtTeamMembers || []) {
-            const team = (u as any).teams;
-            if (team?.team_type === "management") {
+          const { data: mgmtTeams } = await createAdminClient()
+            .from("teams")
+            .select("id")
+            .eq("team_type", "management");
+          if (mgmtTeams && mgmtTeams.length > 0) {
+            const { data: mgmtUsers } = await createAdminClient()
+              .from("users")
+              .select("id")
+              .in("team_id", mgmtTeams.map((t: any) => t.id));
+            for (const u of mgmtUsers || []) {
               mgmtTeamUserIds.add(u.id);
             }
           }
@@ -651,8 +654,8 @@ export async function GET(request: NextRequest) {
             if (isManagementTeam) {
               // Management team: show only their own team's evaluations
               evaluationStatusMap[ev.episode_id] = { evaluated: true, evaluatedByName: ev.evaluator?.name };
-            } else if (ev.evaluator?.role === "programmer" || mgmtTeamUserIds.has(ev.evaluator_id)) {
-              // Regular programmer: show programmer evals AND management-type team evals
+            } else if (ev.evaluator?.role === "programmer" && !mgmtTeamUserIds.has(ev.evaluator_id)) {
+              // Regular programmer: show only non-management-team programmer evals
               evaluationStatusMap[ev.episode_id] = { evaluated: true, evaluatedByName: ev.evaluator?.name };
             }
           }
