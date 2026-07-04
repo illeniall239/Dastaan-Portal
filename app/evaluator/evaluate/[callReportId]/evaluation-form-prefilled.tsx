@@ -20,6 +20,7 @@ import { calculateOneLinerGrade, getOneLinerGradeColorClasses, oneLinerRatingSca
 import { useFormTimeTracking } from "@/lib/hooks/useFormTimeTracking";
 import { BackButton } from "@/components/ui/back-button";
 import { TagInput } from "@/components/ui/tag-input";
+import { ContentRevisions } from "@/components/ui/content-revisions";
 import {
   AlertDialog,
   AlertDialogContent,
@@ -579,6 +580,17 @@ export function EvaluatorEvaluationForm({
             )}
           </div>
         </div>
+      </div>
+
+      {/* Call Report Revisions — always visible, never dimmed */}
+      <div className="max-w-4xl mx-auto px-4 sm:px-6">
+        <ContentRevisions
+          entityId={callReport.id}
+          apiBasePath="/api/call-reports"
+          storageBucket="attachments"
+          canEdit={false}
+          entityType="call-report"
+        />
       </div>
 
       {/* Form body — dimmed + non-interactive when read-only */}

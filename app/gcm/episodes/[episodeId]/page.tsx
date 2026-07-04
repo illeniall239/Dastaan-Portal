@@ -10,6 +10,7 @@ import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
 import { Loader2, FileText, FilePenLine, Share2 } from "lucide-react";
 import { BackButton } from "@/components/ui/back-button";
+import { EpisodeRevisions } from "@/components/episodes/episode-revisions";
 import type { Episode, EpisodicEvaluation } from "@/types";
 import type { EpisodicEvaluationFormData } from "@/lib/validations/episodic-evaluations";
 
@@ -212,6 +213,15 @@ export default function GcmEpisodicEvaluationPage({ params }: EpisodePageProps) 
             Evaluating a <span className="font-semibold">specific revision</span> of this episode
           </p>
         </div>
+      )}
+
+      {/* Episode Revisions */}
+      {episodeId && (
+        <EpisodeRevisions
+          episodeId={episodeId}
+          canEdit={false}
+          userRole={currentUserRole || undefined}
+        />
       )}
 
       {/* Evaluation Form */}

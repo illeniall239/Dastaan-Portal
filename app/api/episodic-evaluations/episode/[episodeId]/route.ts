@@ -124,9 +124,25 @@ export async function GET(
     // Programmers share evaluations as a team — find any programmer's evaluation
     // Management-type team members only see their own team's evaluations
     // All other roles fetch only their own
+    // Fetch content dev member IDs to exclude from programmer scope
+    let contentDevUserIds: string[] = [];
+    if (!isManagementTeam && userData.role === "programmer") {
+      const adminClient2 = createAdminClient();
+      const { data: mgmtTeams } = await adminClient2.from("teams").select("id").eq("team_type", "management");
+      if (mgmtTeams && mgmtTeams.length > 0) {
+        const { data: cdUsers } = await adminClient2.from("users").select("id").in("team_id", mgmtTeams.map((t: any) => t.id));
+        contentDevUserIds = (cdUsers || []).map((u: any) => u.id);
+      }
+    }
+
     if (isManagementTeam) {
       evalQuery = evalQuery.in("evaluator_id", teamMemberIds);
-    } else if (userData.role !== "programmer") {
+    } else if (userData.role === "programmer") {
+      // Exclude content dev members from programmer scope
+      if (contentDevUserIds.length > 0) {
+        evalQuery = evalQuery.not("evaluator_id", "in", `(${contentDevUserIds.join(",")})`);
+      }
+    } else {
       evalQuery = evalQuery.eq("evaluator_id", user.id);
     }
 
@@ -142,10 +158,12 @@ export async function GET(
       evalQuery = evalQuery.is("cross_team_share_id", null);
     }
 
-    // For programmers, pick the first programmer's evaluation if multiple exist
+    // For programmers, pick the first non-content-dev programmer's evaluation if multiple exist
     const { data: evaluations, error } = await evalQuery.limit(10);
-    const evaluation = userData.role === "programmer"
-      ? (evaluations || []).find((e: any) => e.evaluator?.role === "programmer") ?? null
+    const evaluation = userData.role === "programmer" && !isManagementTeam
+      ? (evaluations || []).find((e: any) =>
+          e.evaluator?.role === "programmer" && !contentDevUserIds.includes(e.evaluator_id)
+        ) ?? null
       : (evaluations || [])[0] ?? null;
 
     if (error) {

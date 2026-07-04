@@ -1,15 +1,16 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { EpisodicEvaluationForm } from "@/components/episodic-evaluations/episodic-evaluation-form";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Loader2, FileText, Trash2 } from "lucide-react";
+import { Loader2, FileText, Trash2, FilePenLine } from "lucide-react";
 import { BackButton } from "@/components/ui/back-button";
+import { EpisodeRevisions } from "@/components/episodes/episode-revisions";
 import type { Episode, EpisodicEvaluation } from "@/types";
 import type { EpisodicEvaluationFormData } from "@/lib/validations/episodic-evaluations";
 
@@ -19,6 +20,8 @@ interface EpisodePageProps {
 
 export default function ProgrammerEpisodicEvaluationPage({ params }: EpisodePageProps) {
     const router = useRouter();
+    const searchParams = useSearchParams();
+    const revisionId = searchParams.get("revision_id") || undefined;
     const supabase = createClient();
 
     const [episodeId, setEpisodeId] = useState<string | null>(null);
@@ -120,7 +123,7 @@ export default function ProgrammerEpisodicEvaluationPage({ params }: EpisodePage
                 headers: {
                     "Content-Type": "application/json",
                 },
-                body: JSON.stringify(formData),
+                body: JSON.stringify({ ...formData, revision_id: revisionId || null }),
             });
 
             const data = await response.json();
@@ -214,6 +217,25 @@ export default function ProgrammerEpisodicEvaluationPage({ params }: EpisodePage
                     </p>
                 </div>
             </div>
+
+            {/* Revision evaluation banner */}
+            {revisionId && (
+                <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg flex items-center gap-2">
+                    <FilePenLine className="h-4 w-4 text-amber-600 shrink-0" />
+                    <p className="text-sm text-amber-800">
+                        Evaluating a <span className="font-semibold">specific revision</span> of this episode
+                    </p>
+                </div>
+            )}
+
+            {/* Episode Revisions */}
+            {episodeId && (
+                <EpisodeRevisions
+                    episodeId={episodeId}
+                    canEdit={false}
+                    userRole={currentUserRole || undefined}
+                />
+            )}
 
             {/* Evaluation Form */}
             <EpisodicEvaluationForm

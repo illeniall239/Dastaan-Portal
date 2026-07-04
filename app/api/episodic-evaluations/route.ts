@@ -130,12 +130,24 @@ export async function POST(request: Request) {
 
     const { data: existingEvals } = await duplicateQuery.limit(10);
 
+    // Fetch content dev member IDs so we can exclude them from programmer duplicate check
+    let contentDevUserIds: string[] = [];
+    if (!isContentDevTeam && userData.role === "programmer") {
+      const { data: mgmtTeams } = await adminClient.from("teams").select("id").eq("team_type", "management");
+      if (mgmtTeams && mgmtTeams.length > 0) {
+        const { data: cdUsers } = await adminClient.from("users").select("id").in("team_id", mgmtTeams.map((t: any) => t.id));
+        contentDevUserIds = (cdUsers || []).map((u: any) => u.id);
+      }
+    }
+
     let existingEvaluation: any = null;
     if (isContentDevTeam) {
       existingEvaluation = (existingEvals || [])[0];
     } else if (userData.role === "programmer") {
       // Only block if a non-content-dev programmer already evaluated
-      existingEvaluation = (existingEvals || []).find((e: any) => e.evaluator?.role === "programmer");
+      existingEvaluation = (existingEvals || []).find((e: any) =>
+        e.evaluator?.role === "programmer" && !contentDevUserIds.includes(e.evaluator_id)
+      );
     } else {
       existingEvaluation = (existingEvals || [])[0];
     }
