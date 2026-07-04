@@ -8,7 +8,7 @@ const baseNavItems = [
   { title: "Dashboard",           href: "/management",                    icon: "home" },
   { title: "Calendar",            href: "/management/calendar",           icon: "calendar" },
   { title: "Writer Engagement",   href: "/management/writers",            icon: "userPen" },
-  { title: "What's Cooking",      href: "/management/whats-cooking",      icon: "chefHat" },
+  { title: "Active Projects",      href: "/management/whats-cooking",      icon: "chefHat" },
   { title: "Script Bank",         href: "/management/story-bank",         icon: "fileText" },
   { title: "Idea Roadmap",        href: "/management/roadmap",            icon: "map" },
   { title: "Project Status",      href: "/management/status-updater",     icon: "listChecks" },
@@ -20,7 +20,7 @@ const baseNavItems = [
 ];
 
 const pendingEvaluationsItem = {
-  title: "Approval Tracking",
+  title: "Pending Evaluations",
   href: "/management/pending-evaluations",
   icon: "inbox",
 };

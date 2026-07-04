@@ -57,6 +57,7 @@ import type { EpisodeWithDetails, EpisodicEvaluationWithDetails } from "@/types"
 import { canEditEpisode as canEditEpisodeUtil } from "@/lib/episodes/permissions";
 import { BackButton } from "@/components/ui/back-button";
 import { formatDate } from "@/lib/utils/format-date";
+import { RevisionEvaluateList } from "@/components/episodes/revision-evaluate-list";
 
 interface CallReportWriter {
     id?: string;
@@ -944,8 +945,7 @@ export default function ProgrammerEpisodesPage() {
                                     <TableHeader>
                                         <TableRow>
                                             <TableHead>Project</TableHead>
-                                            <TableHead>Attachment</TableHead>
-                                            <TableHead>Status</TableHead>
+                                            <TableHead>Submissions</TableHead>
                                             <TableHead className="text-right">Actions</TableHead>
                                         </TableRow>
                                     </TableHeader>
@@ -1010,25 +1010,17 @@ export default function ProgrammerEpisodesPage() {
                                                                     </div>
                                                                 </TableCell>
                                                                 <TableCell>
-                                                                    {(() => {
-                                                                        const latestRev = (episode as any).latest_revision;
-                                                                        const displayUrl = latestRev?.attachment_url || episode.attachment_url;
-                                                                        const displayName = latestRev?.attachment_url ? latestRev.attachment_name : episode.attachment_name;
-                                                                        return displayUrl ? (
-                                                                            <button onClick={() => handleDownload(episode)} className="text-blue-600 hover:text-blue-800 hover:underline text-sm flex items-center gap-1">
-                                                                                <FileText className="h-4 w-4" /> {displayName}
-                                                                            </button>
-                                                                        ) : <span className="text-muted-foreground italic text-sm">No file</span>;
-                                                                    })()}
-                                                                </TableCell>
-                                                                <TableCell>
-                                                                    {isEvaluated ? <Badge className="bg-green-100 text-green-800 border-green-300"><CheckCircle2 className="h-3 w-3 mr-1" /> Evaluated{evaluatedByName ? ` by ${evaluatedByName}` : ""}</Badge> : <Badge variant="outline" className="text-amber-700 border-amber-300">Not Evaluated</Badge>}
-                                                                </TableCell>
-                                                                <TableCell className="text-right">
-                                                                    <div className="flex items-center justify-end gap-2">
-                                                                        <Button size="sm" variant={isEvaluated ? "outline" : "default"} onClick={() => router.push(`/programmer/episodes/${episode.id}`)}>
-                                                                            {isEvaluated ? <><Pencil className="h-4 w-4 mr-1" /> Edit</> : <><ClipboardCheck className="h-4 w-4 mr-1" /> Evaluate</>}
-                                                                        </Button>
+                                                                    <div className="flex items-center gap-2">
+                                                                        <div className="flex-1">
+                                                                            <RevisionEvaluateList
+                                                                                entityId={episode.id}
+                                                                                entityType="episode"
+                                                                                revisionCount={(episode as any).revision_count || 0}
+                                                                                portalPrefix="programmer"
+                                                                                originalFileName={episode.attachment_name}
+                                                                                originalDate={episode.original_submission_date || episode.call_report?.original_submission_date || episode.created_at}
+                                                                            />
+                                                                        </div>
                                                                         <DropdownMenu>
                                                                             <DropdownMenuTrigger asChild>
                                                                                 <Button variant="ghost" size="sm"><MoreVertical className="h-4 w-4" /></Button>
@@ -1113,12 +1105,16 @@ export default function ProgrammerEpisodesPage() {
                                                                         )}
                                                                         <span className="font-medium text-sm truncate">{episode.title || <span className="text-muted-foreground italic">Untitled</span>}</span>
                                                                     </div>
-                                                                    {isEvaluated ? <Badge className="bg-green-100 text-green-800 border-green-300 text-xs">{evaluatedByName ? `By ${evaluatedByName}` : "Done"}</Badge> : <Badge variant="outline" className="text-amber-700 border-amber-300 text-xs">Pending</Badge>}
                                                                 </div>
+                                                                <RevisionEvaluateList
+                                                                    entityId={episode.id}
+                                                                    entityType="episode"
+                                                                    revisionCount={(episode as any).revision_count || 0}
+                                                                    portalPrefix="programmer"
+                                                                    originalFileName={episode.attachment_name}
+                                                                    originalDate={episode.original_submission_date || episode.call_report?.original_submission_date || episode.created_at}
+                                                                />
                                                                 <div className="flex items-center gap-2 flex-wrap">
-                                                                    <Button size="sm" variant={isEvaluated ? "outline" : "default"} onClick={() => router.push(`/programmer/episodes/${episode.id}`)} className="flex-1">
-                                                                        {isEvaluated ? <>Edit</> : <>Evaluate</>}
-                                                                    </Button>
                                                                     {canEditEpisode(episode) && (
                                                                         <Button size="sm" variant="outline" onClick={() => router.push(`/programmer/episodes/${episode.id}/edit`)}>Edit</Button>
                                                                     )}

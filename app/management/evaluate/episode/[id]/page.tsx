@@ -1,15 +1,16 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { EpisodicEvaluationForm } from "@/components/episodic-evaluations/episodic-evaluation-form";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Loader2, FileText } from "lucide-react";
+import { Loader2, FileText, FilePenLine } from "lucide-react";
 import { BackButton } from "@/components/ui/back-button";
+import { EpisodeRevisions } from "@/components/episodes/episode-revisions";
 import type { Episode, EpisodicEvaluation } from "@/types";
 import type { EpisodicEvaluationFormData } from "@/lib/validations/episodic-evaluations";
 import { MANDATORY_APPROVER_EMAILS } from "@/lib/approvals/config";
@@ -20,6 +21,8 @@ interface EpisodePageProps {
 
 export default function ManagementEvaluateEpisodePage({ params }: EpisodePageProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const revisionId = searchParams.get("revision_id") || undefined;
   const supabase = createClient();
 
   const [episodeId, setEpisodeId] = useState<string | null>(null);
@@ -80,7 +83,10 @@ export default function ManagementEvaluateEpisodePage({ params }: EpisodePagePro
       setEpisode(episodeData.episode);
 
       // Check if user has already evaluated this episode
-      const evalResponse = await fetch(`/api/episodic-evaluations/episode/${episodeId}?_t=${Date.now()}`, { cache: 'no-store' });
+      const evalParams = new URLSearchParams();
+      if (revisionId) evalParams.set("revision_id", revisionId);
+      const evalBaseUrl = `/api/episodic-evaluations/episode/${episodeId}${evalParams.toString() ? `?${evalParams}` : ""}`;
+      const evalResponse = await fetch(`${evalBaseUrl}${evalBaseUrl.includes('?') ? '&' : '?'}_t=${Date.now()}`, { cache: 'no-store' });
       const evalData = await evalResponse.json();
 
       if (!evalResponse.ok) {
@@ -95,7 +101,7 @@ export default function ManagementEvaluateEpisodePage({ params }: EpisodePagePro
     } finally {
       setLoading(false);
     }
-  }, [episodeId, router]);
+  }, [episodeId, revisionId, router]);
 
   useEffect(() => {
     if (episodeId && userRole) {
@@ -120,6 +126,7 @@ export default function ManagementEvaluateEpisodePage({ params }: EpisodePagePro
         body: JSON.stringify({
           ...formData,
           episode_id: episodeId,
+          revision_id: revisionId || null,
         }),
       });
 
@@ -189,6 +196,27 @@ export default function ManagementEvaluateEpisodePage({ params }: EpisodePagePro
           </p>
         </div>
       </div>
+
+      {/* Revision evaluation banner */}
+      {revisionId && (
+        <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg flex items-center gap-2 mb-6">
+          <FilePenLine className="h-4 w-4 text-amber-600 shrink-0" />
+          <p className="text-sm text-amber-800">
+            Evaluating a <span className="font-semibold">specific revision</span> of this episode
+          </p>
+        </div>
+      )}
+
+      {/* Episode Revisions */}
+      {episodeId && (
+        <div className="mb-6">
+          <EpisodeRevisions
+            episodeId={episodeId}
+            canEdit={false}
+            userRole={userRole || undefined}
+          />
+        </div>
+      )}
 
       <EpisodicEvaluationForm
         episode={episode}

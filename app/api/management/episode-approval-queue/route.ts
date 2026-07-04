@@ -72,11 +72,22 @@ export async function GET(_request: NextRequest) {
     // Step 3: Fetch episode details with parent call report title
     const { data: episodesData, error: epErr } = await adminClient
       .from("episodes")
-      .select("id, episode_number, title, approval_status, approved_at, call_report_id")
+      .select("id, episode_number, title, approval_status, approved_at, call_report_id, attachment_name, original_submission_date, created_at")
       .in("id", evaluatedEpisodeIds)
       .order("episode_number", { ascending: true });
 
     if (epErr) throw new Error(`Failed to fetch episodes: ${epErr.message}`);
+
+    // Batch-fetch revision counts for episodes
+    const revisionCountMap: Record<string, number> = {};
+    const { data: epRevisionRows } = await adminClient
+      .from("episode_revisions")
+      .select("episode_id")
+      .in("episode_id", evaluatedEpisodeIds);
+    for (const row of epRevisionRows || []) {
+      const eid = row.episode_id as string;
+      revisionCountMap[eid] = (revisionCountMap[eid] || 0) + 1;
+    }
 
     // Step 4: Fetch parent call report titles
     const callReportIds = [
@@ -119,6 +130,9 @@ export async function GET(_request: NextRequest) {
         discussionCount: discussionCountMap[ep.id] || 0,
         approvalStatus: ep.approval_status || null,
         approvedAt: ep.approved_at || null,
+        attachmentName: ep.attachment_name || null,
+        originalSubmissionDate: ep.original_submission_date || ep.created_at || null,
+        revisionCount: revisionCountMap[ep.id] || 0,
       };
     });
 

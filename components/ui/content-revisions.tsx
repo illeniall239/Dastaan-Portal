@@ -172,10 +172,12 @@ export function ContentRevisions({
 
   const revisionsUrl = `${apiBasePath}/${entityId}/revisions`;
 
-  // Determine if user can set initial assessment
-  const canAssess = userRole && [
-    "content_manager", "content_creator", "admin", "management", "programmer", "gcm"
+  // Determine if user can view/set initial assessment
+  // Only content dept, management, and admin can see assessments
+  const canViewAssessment = userRole && [
+    "content_manager", "content_creator", "admin", "management"
   ].includes(userRole);
+  const canAssess = canViewAssessment;
 
   // Determine if user can evaluate revisions
   const canEvaluate = evaluateUrl && userRole && [
@@ -515,8 +517,8 @@ export function ContentRevisions({
           </div>
         )}
 
-        {/* Show read-only assessment badge if user can't assess but assessment exists */}
-        {!canAssess && revision.initial_assessment && (
+        {/* Show read-only assessment badge for users who can view but not set */}
+        {!canAssess && canViewAssessment && revision.initial_assessment && (
           <div className="flex items-center gap-1.5">
             <span className="text-xs text-muted-foreground">Assessment:</span>
             <Badge variant="outline" className="text-xs">
@@ -687,7 +689,7 @@ export function ContentRevisions({
                 Avg: {latestEvaluatedRevision.average_evaluation_score}/10
               </Badge>
             )}
-            {latestEvaluatedRevision.initial_assessment != null && (
+            {canViewAssessment && latestEvaluatedRevision.initial_assessment != null && (
               <Badge variant="outline" className="border-green-400 text-green-700">
                 Assessment: {latestEvaluatedRevision.initial_assessment}/10
               </Badge>

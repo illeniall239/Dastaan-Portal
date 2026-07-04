@@ -50,6 +50,7 @@ import { canEditEpisode as canEditEpisodeUtil } from "@/lib/episodes/permissions
 import { BackButton } from "@/components/ui/back-button";
 import { formatDate } from "@/lib/utils/format-date";
 import { ShareCrossTeamButton } from "@/components/call-report/share-cross-team-button";
+import { RevisionEvaluateList } from "@/components/episodes/revision-evaluate-list";
 
 interface CallReportWriter {
   id?: string;
@@ -1075,11 +1076,6 @@ export default function EvaluatorEpisodesPage() {
                       <div className="p-3 sm:p-4 space-y-3 bg-slate-50/50">
                         {project.episodes.map((episode) => {
                           const isEvaluated = evaluationStatus[episode.id];
-                          const latestRev = episode.latest_revision;
-                          const showRevised = latestRev?.attachment_url;
-                          const displayUrl = showRevised ? latestRev.attachment_url : episode.attachment_url;
-                          const displayName = showRevised ? latestRev.attachment_name : episode.attachment_name;
-
                           return (
                             <Card key={episode.id} className="border-slate-200">
                               <CardContent className="p-4 space-y-3">
@@ -1101,57 +1097,12 @@ export default function EvaluatorEpisodesPage() {
                                         {episode.approval_status === "approved" ? "Approved" : episode.approval_status === "needs_revision" ? "Needs Revision" : "Rejected"}
                                       </Badge>
                                     )}
-                                    {(episode as any).revision_count > 0 && (
-                                      <Badge variant="secondary" className="text-xs bg-purple-50 text-purple-700">
-                                        {(episode as any).revision_count} Revision{(episode as any).revision_count !== 1 ? "s" : ""}
-                                      </Badge>
-                                    )}
                                   </div>
-                                  {isEvaluated ? (
-                                    <Badge className="bg-green-100 text-green-800 border-green-300">
-                                      <CheckCircle2 className="h-3 w-3 mr-1" />
-                                      Evaluated
-                                    </Badge>
-                                  ) : (
-                                    <Badge variant="outline" className="text-amber-700 border-amber-300">
-                                      Not Evaluated
-                                    </Badge>
-                                  )}
                                 </div>
 
-                                {/* Row 2: Attachment */}
-                                {displayUrl ? (
-                                  <div className="flex items-start gap-2 text-sm">
-                                    <FileText className="h-4 w-4 text-blue-500 mt-0.5 flex-shrink-0" />
-                                    <div>
-                                      <button
-                                        onClick={() => handleDownload(episode)}
-                                        className="text-blue-600 hover:text-blue-800 hover:underline text-left"
-                                      >
-                                        {displayName}
-                                      </button>
-                                      {showRevised && (
-                                        <span className="ml-2 text-xs text-amber-600 font-medium bg-amber-50 px-1.5 py-0.5 rounded">
-                                          Revision #{latestRev.revision_number}
-                                        </span>
-                                      )}
-                                      {showRevised && latestRev.initial_assessment != null && (
-                                        <span className="ml-2 text-xs text-blue-600 font-medium bg-blue-50 px-1.5 py-0.5 rounded">
-                                          Revision Assessment: {latestRev.initial_assessment}/10{latestRev.assessed_by_name ? ` by ${latestRev.assessed_by_name}` : ""}
-                                        </span>
-                                      )}
-                                    </div>
-                                  </div>
-                                ) : (
-                                  <div className="flex items-center gap-2 text-sm text-muted-foreground italic">
-                                    <FileText className="h-4 w-4" />
-                                    No file attached
-                                  </div>
-                                )}
-
-                                {/* Row 3: Info */}
+                                {/* Row 2: Info */}
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1 text-sm">
-                                  {episode.initial_assessment != null && (
+                                  {episode.initial_assessment != null && currentUserRole && ["content_manager", "content_creator", "admin", "management"].includes(currentUserRole) && (
                                     <div className="flex items-center gap-2">
                                       <span className="text-muted-foreground">Initial Assessment:</span>
                                       <span className="font-semibold text-blue-700">{episode.initial_assessment}/10</span>
@@ -1165,6 +1116,16 @@ export default function EvaluatorEpisodesPage() {
                                     <span className="text-muted-foreground">{formatDate(episode.original_submission_date || episode.call_report?.original_submission_date || episode.created_at)}</span>
                                   </div>
                                 </div>
+
+                                {/* Revision Evaluate List */}
+                                <RevisionEvaluateList
+                                  entityId={episode.id}
+                                  entityType="episode"
+                                  revisionCount={(episode as any).revision_count || 0}
+                                  portalPrefix="evaluator"
+                                  originalFileName={episode.attachment_name}
+                                  originalDate={episode.original_submission_date || episode.call_report?.original_submission_date || episode.created_at}
+                                />
 
                                 {/* Row 4: Actions */}
                                 <div className="flex items-center justify-end gap-2 pt-2 border-t flex-wrap">
@@ -1186,24 +1147,6 @@ export default function EvaluatorEpisodesPage() {
                                     <Button size="sm" variant="outline" onClick={() => handleDownload(episode)}>
                                       <Download className="h-4 w-4 mr-1" />
                                       Download
-                                    </Button>
-                                  )}
-                                  {isEvaluated ? (
-                                    <Button
-                                      size="sm"
-                                      variant="outline"
-                                      onClick={() => router.push(`/evaluator/episodes/${episode.id}`)}
-                                    >
-                                      <Eye className="h-4 w-4 mr-1" />
-                                      View
-                                    </Button>
-                                  ) : (
-                                    <Button
-                                      size="sm"
-                                      onClick={() => router.push(`/evaluator/episodes/${episode.id}`)}
-                                    >
-                                      <ClipboardCheck className="h-4 w-4 mr-1" />
-                                      Evaluate
                                     </Button>
                                   )}
                                 </div>

@@ -10,16 +10,21 @@ export const dynamic = "force-dynamic";
  */
 export async function GET(request: NextRequest) {
   try {
+    const id = request.nextUrl.searchParams.get("id");
+    if (!id) {
+      return NextResponse.json({ error: "id is required" }, { status: 400 });
+    }
+
     const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const { data: { user } } = await supabase.auth.getUser();
 
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { data: currentUser } = await supabase
+    const adminClient = createAdminClient();
+
+    const { data: currentUser } = await adminClient
       .from("users")
       .select("role")
       .eq("id", user.id)
@@ -32,47 +37,43 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    const id = request.nextUrl.searchParams.get("id");
-    if (!id) {
-      return NextResponse.json({ error: "id is required" }, { status: 400 });
-    }
+    // Run episode + evaluations in parallel
+    const [epResult, evalsResult] = await Promise.all([
+      adminClient
+        .from("episodes")
+        .select(
+          `id, episode_number, title, approval_status, approved_at,
+           call_report:call_reports!call_report_id(id, call_report_id, working_title, logged_by:users!created_by(name))`
+        )
+        .eq("id", id)
+        .single(),
+      adminClient
+        .from("episodic_evaluations")
+        .select(
+          `id, overall_average, created_at,
+           no_of_pages, no_of_scenes, events, freeze_ending_scene,
+           summary_analysis, remarks, scenes_remarks, characterization_remarks,
+           conflict_of_content_score, conflict_of_content_comment,
+           characterization_score, characterization_comment,
+           story_progression_score, story_progression_comment,
+           main_event_score, main_event_comment,
+           small_event_score, small_event_comment,
+           dragness_score, dragness_comment,
+           freezes_score, freezes_comment,
+           whats_next_element_score, whats_next_element_comment,
+           overall_assessment_score, overall_assessment_comment,
+           evaluator:users!evaluator_id(name, email, role, team:teams!team_id(name))`
+        )
+        .eq("episode_id", id)
+        .order("created_at", { ascending: true }),
+    ]);
 
-    const adminClient = createAdminClient();
-
-    // 1. Episode details + parent call report
-    const { data: ep, error: epErr } = await adminClient
-      .from("episodes")
-      .select(
-        `id, episode_number, title, approval_status, approved_at,
-         call_report:call_reports!call_report_id(id, call_report_id, working_title, logged_by:users!created_by(name))`
-      )
-      .eq("id", id)
-      .single();
+    const { data: ep, error: epErr } = epResult;
+    const { data: evals } = evalsResult;
 
     if (epErr || !ep) {
       return NextResponse.json({ error: "Episode not found" }, { status: 404 });
     }
-
-    // 2. Episodic evaluations with all scoring criteria
-    const { data: evals } = await adminClient
-      .from("episodic_evaluations")
-      .select(
-        `id, overall_average, created_at,
-         no_of_pages, no_of_scenes, events, freeze_ending_scene,
-         summary_analysis, remarks, scenes_remarks, characterization_remarks,
-         conflict_of_content_score, conflict_of_content_comment,
-         characterization_score, characterization_comment,
-         story_progression_score, story_progression_comment,
-         main_event_score, main_event_comment,
-         small_event_score, small_event_comment,
-         dragness_score, dragness_comment,
-         freezes_score, freezes_comment,
-         whats_next_element_score, whats_next_element_comment,
-         overall_assessment_score, overall_assessment_comment,
-         evaluator:users!evaluator_id(name, email)`
-      )
-      .eq("episode_id", id)
-      .order("created_at", { ascending: true });
 
     const cr = (ep as any).call_report;
 
@@ -91,6 +92,8 @@ export async function GET(request: NextRequest) {
         id: e.id,
         evaluator_name: e.evaluator?.name || "Unknown",
         evaluator_email: e.evaluator?.email || "",
+        evaluator_role: e.evaluator?.role || null,
+        evaluator_team: e.evaluator?.team?.name || null,
         overall_average: e.overall_average ?? null,
         created_at: e.created_at || null,
         no_of_pages: e.no_of_pages ?? null,

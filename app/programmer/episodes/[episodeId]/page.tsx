@@ -75,7 +75,10 @@ export default function ProgrammerEpisodicEvaluationPage({ params }: EpisodePage
             setEpisode(episodeData.episode);
 
             // Check if evaluator has already evaluated this episode
-            const evalResponse = await fetch(`/api/episodic-evaluations/episode/${episodeId}?_t=${Date.now()}`, { cache: 'no-store' });
+            const evalParams = new URLSearchParams();
+            if (revisionId) evalParams.set("revision_id", revisionId);
+            const evalBaseUrl = `/api/episodic-evaluations/episode/${episodeId}${evalParams.toString() ? `?${evalParams}` : ""}`;
+            const evalResponse = await fetch(`${evalBaseUrl}${evalBaseUrl.includes('?') ? '&' : '?'}_t=${Date.now()}`, { cache: 'no-store' });
             const evalData = await evalResponse.json();
 
             if (!evalResponse.ok) {
@@ -90,7 +93,7 @@ export default function ProgrammerEpisodicEvaluationPage({ params }: EpisodePage
         } finally {
             setLoading(false);
         }
-    }, [episodeId, router]);
+    }, [episodeId, revisionId, router]);
 
     useEffect(() => {
         if (episodeId) {

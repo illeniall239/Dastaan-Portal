@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -14,7 +13,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ShareLinkDialog } from "@/components/management/share-link-dialog";
-import { Share2, FileText, CheckCircle, Star, Search } from "lucide-react";
+import { Share2, FileText, CheckCircle, Search } from "lucide-react";
 import { useDebounce } from "@/lib/hooks/useDebounce";
 
 interface ManagementEpisodesCardsProps {
@@ -22,7 +21,6 @@ interface ManagementEpisodesCardsProps {
 }
 
 export function ManagementEpisodesCards({ episodes }: ManagementEpisodesCardsProps) {
-  const router = useRouter();
   const [selectedEpisode, setSelectedEpisode] = useState<any>(null);
   const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -42,6 +40,7 @@ export function ManagementEpisodesCards({ episodes }: ManagementEpisodesCardsPro
           ep.stories?.genre,
           ep.call_reports?.working_title,
           ep.call_reports?.writer_name,
+          ep.call_reports?.creator?.team?.name,
         ];
         return fields.some((f) => f && String(f).toLowerCase().includes(q));
       });
@@ -77,9 +76,6 @@ export function ManagementEpisodesCards({ episodes }: ManagementEpisodesCardsPro
     setIsShareDialogOpen(true);
   };
 
-  const handleEvaluate = (episodeId: string) => {
-    router.push(`/management/evaluate/episode/${episodeId}`);
-  };
 
   if (episodes.length === 0) {
     return (
@@ -139,6 +135,7 @@ export function ManagementEpisodesCards({ episodes }: ManagementEpisodesCardsPro
           const genre = story?.genre;
           const writer = story?.writer_originator_name || callReport?.writer_name || "Unknown writer";
           const labelPrefix = story ? "Story" : "Writer Engagement";
+          const teamName = callReport?.creator?.team?.name;
 
           return (
             <Card key={sourceId}>
@@ -148,6 +145,11 @@ export function ManagementEpisodesCards({ episodes }: ManagementEpisodesCardsPro
                     <div className="flex items-center gap-3">
                       <CardTitle className="text-lg">{title}</CardTitle>
                       {genre && <Badge variant="outline">{genre}</Badge>}
+                      {teamName && (
+                        <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200">
+                          {teamName}
+                        </Badge>
+                      )}
                     </div>
                     <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
                       <span>{labelPrefix} lead: {writer}</span>
@@ -208,17 +210,6 @@ export function ManagementEpisodesCards({ episodes }: ManagementEpisodesCardsPro
                           </div>
                         </div>
                         <div className="flex items-center gap-2">
-                          <Button
-                            variant={episode.evaluation_count > 0 ? "outline" : "default"}
-                            size="sm"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleEvaluate(episode.id);
-                            }}
-                          >
-                            <Star className="h-3 w-3 mr-1" />
-                            {episode.evaluation_count > 0 ? "View Evaluation" : "Evaluate"}
-                          </Button>
                           <Button
                             size="sm"
                             variant="outline"

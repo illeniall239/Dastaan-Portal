@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { useRouter } from "next/navigation";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -15,7 +14,7 @@ import {
 } from "@/components/ui/select";
 import { ShareLinkDialog } from "@/components/management/share-link-dialog";
 import { CallReportDetailDialog } from "@/components/management/call-report-detail-dialog";
-import { CalendarDays, Users, FileText, Share2, Eye, Star, Search } from "lucide-react";
+import { CalendarDays, Users, FileText, Share2, Eye, Search } from "lucide-react";
 import { format } from "date-fns";
 import { useDebounce } from "@/lib/hooks/useDebounce";
 
@@ -24,7 +23,6 @@ interface ManagementCallReportsCardsProps {
 }
 
 export function ManagementCallReportsCards({ callReports }: ManagementCallReportsCardsProps) {
-  const router = useRouter();
   const [selectedReport, setSelectedReport] = useState<any>(null);
   const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
   const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
@@ -47,6 +45,7 @@ export function ManagementCallReportsCards({ callReports }: ManagementCallReport
           r.stories?.title,
           r.stories?.writer_originator_name,
           r.stories?.genre,
+          r.creator?.team?.name,
         ];
         return fields.some((f) => f && String(f).toLowerCase().includes(q));
       });
@@ -72,9 +71,6 @@ export function ManagementCallReportsCards({ callReports }: ManagementCallReport
     setIsDetailDialogOpen(true);
   };
 
-  const handleEvaluate = (reportId: string) => {
-    router.push(`/management/evaluate/call-report/${reportId}`);
-  };
 
   if (!callReports || callReports.length === 0) {
     return (
@@ -141,12 +137,20 @@ export function ManagementCallReportsCards({ callReports }: ManagementCallReport
           const storyTitle = report.stories?.title;
           const genre = report.stories?.genre;
           const writer = report.writer_name || report.stories?.writer_originator_name || "Unknown writer";
+          const teamName = report.creator?.team?.name;
 
           return (
             <Card key={report.id} className="flex flex-col">
               <CardHeader className="space-y-3">
                 <div className="space-y-1">
-                  <CardTitle className="text-lg leading-tight">{report.working_title}</CardTitle>
+                  <div className="flex items-center gap-2">
+                    <CardTitle className="text-lg leading-tight">{report.working_title}</CardTitle>
+                    {teamName && (
+                      <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200 shrink-0">
+                        {teamName}
+                      </Badge>
+                    )}
+                  </div>
                   {storyTitle && <p className="text-sm text-muted-foreground">Story: {storyTitle}</p>}
                 </div>
                 <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
@@ -218,17 +222,6 @@ export function ManagementCallReportsCards({ callReports }: ManagementCallReport
 
               <CardFooter className="pt-4 border-t">
                 <div className="flex items-center gap-2 w-full flex-wrap">
-                  <Button
-                    variant={report.evaluation_count > 0 ? "outline" : "default"}
-                    size="sm"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleEvaluate(report.id);
-                    }}
-                  >
-                    <Star className="h-3 w-3 mr-1" />
-                    {report.evaluation_count > 0 ? "View Evaluation" : "Evaluate"}
-                  </Button>
                   <Button
                     variant="outline"
                     size="sm"

@@ -10,16 +10,21 @@ export const dynamic = "force-dynamic";
  */
 export async function GET(request: NextRequest) {
   try {
+    const id = request.nextUrl.searchParams.get("id");
+    if (!id) {
+      return NextResponse.json({ error: "id is required" }, { status: 400 });
+    }
+
     const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const { data: { user } } = await supabase.auth.getUser();
 
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { data: currentUser } = await supabase
+    const adminClient = createAdminClient();
+
+    const { data: currentUser } = await adminClient
       .from("users")
       .select("role")
       .eq("id", user.id)
@@ -32,27 +37,60 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    const id = request.nextUrl.searchParams.get("id");
-    if (!id) {
-      return NextResponse.json({ error: "id is required" }, { status: 400 });
-    }
+    // Run all queries in parallel
+    const [crResult, writersResult, attachmentsResult, assessmentsResult, evalsResult] = await Promise.all([
+      adminClient
+        .from("call_reports")
+        .select(
+          `id, call_report_id, working_title, logline, category, content_type,
+           genre, target_slot, overall_rating, short_synopsis, episodic_synopsis,
+           theme, director, total_episodes, received_episodes,
+           idea_by, developed_by, management_member_name,
+           meeting_notes, next_steps, meeting_date, meeting_attendees, duration_minutes,
+           suggested_writer, logline_image_url,
+           logged_by:users!created_by(name)`
+        )
+        .eq("id", id)
+        .single(),
+      adminClient
+        .from("call_report_writers")
+        .select("writer_name, writer_email, display_order")
+        .eq("call_report_id", id)
+        .order("display_order"),
+      adminClient
+        .from("attachments")
+        .select("id, file_name, file_path, file_size, file_type, uploaded_at, uploader:users!uploaded_by(name)")
+        .eq("entity_type", "call_report")
+        .eq("entity_id", id)
+        .order("uploaded_at", { ascending: false }),
+      adminClient
+        .from("initial_assessments")
+        .select("id, score, comment, created_at, assessor:users!assessor_id(name, role)")
+        .eq("entity_type", "call_report")
+        .eq("entity_id", id)
+        .order("created_at", { ascending: true }),
+      adminClient
+        .from("evaluator_forms")
+        .select(
+          `id, average_score, decision, decision_notes, comments,
+           big_idea, theme, submitted_at,
+           conflict_of_content_score, conflict_of_content_comment,
+           characterization_score, characterization_comment,
+           story_progression_score, story_progression_comment,
+           whats_next_element_score, whats_next_element_comment,
+           overall_oneliner_grade_score, overall_oneliner_grade_comment,
+           evaluator:users!evaluator_id(name, email, role, team:teams!team_id(name))`
+        )
+        .eq("call_report_id", id)
+        .not("submitted_at", "is", null)
+        .order("submitted_at", { ascending: true }),
+    ]);
 
-    const adminClient = createAdminClient();
-
-    // 1. Call report + creator name
-    const { data: cr, error: crErr } = await adminClient
-      .from("call_reports")
-      .select(
-        `id, call_report_id, working_title, logline, category, content_type,
-         genre, target_slot, overall_rating, short_synopsis, episodic_synopsis,
-         theme, director, total_episodes, received_episodes,
-         idea_by, developed_by, management_member_name,
-         meeting_notes, next_steps, meeting_date, meeting_attendees, duration_minutes,
-         suggested_writer, logline_image_url,
-         logged_by:users!created_by(name)`
-      )
-      .eq("id", id)
-      .single();
+    const { data: cr, error: crErr } = crResult;
+    const { data: writers } = writersResult;
+    const { data: attachments } = attachmentsResult;
+    const { data: initialAssessments } = assessmentsResult;
+    const { data: evals } = evalsResult;
 
     if (crErr || !cr) {
       return NextResponse.json(
@@ -60,49 +98,6 @@ export async function GET(request: NextRequest) {
         { status: 404 }
       );
     }
-
-    // 2. Writers
-    const { data: writers } = await adminClient
-      .from("call_report_writers")
-      .select("writer_name, writer_email, display_order")
-      .eq("call_report_id", id)
-      .order("display_order");
-
-    // 3. Attachments
-    const { data: attachments } = await adminClient
-      .from("attachments")
-      .select("id, file_name, file_path, file_size, file_type, uploaded_at, uploader:users!uploaded_by(name)")
-      .eq("entity_type", "call_report")
-      .eq("entity_id", id)
-      .order("uploaded_at", { ascending: false });
-
-    // 4. Team initial assessments (per-user scores from initial_assessments table)
-    const { data: initialAssessments } = await adminClient
-      .from("initial_assessments")
-      .select("id, score, comment, created_at, assessor:users!assessor_id(name, role)")
-      .eq("entity_type", "call_report")
-      .eq("entity_id", id)
-      .order("created_at", { ascending: true });
-
-    // 4. Submitted evaluations with per-criteria scores + evaluator info
-    // evaluator_id FK → public.users, so the join works
-    const { data: evals } = await adminClient
-      .from("evaluator_forms")
-      .select(
-        `
-        id, average_score, decision, decision_notes, comments,
-        big_idea, theme, submitted_at,
-        conflict_of_content_score, conflict_of_content_comment,
-        characterization_score, characterization_comment,
-        story_progression_score, story_progression_comment,
-        whats_next_element_score, whats_next_element_comment,
-        overall_oneliner_grade_score, overall_oneliner_grade_comment,
-        evaluator:users!evaluator_id(name, email)
-      `
-      )
-      .eq("call_report_id", id)
-      .not("submitted_at", "is", null)
-      .order("submitted_at", { ascending: true });
 
     const loggedBy = (cr as any).logged_by;
 
@@ -159,6 +154,8 @@ export async function GET(request: NextRequest) {
         id: e.id,
         evaluator_name: e.evaluator?.name || "Unknown",
         evaluator_email: e.evaluator?.email || "",
+        evaluator_role: e.evaluator?.role || null,
+        evaluator_team: e.evaluator?.team?.name || null,
         average_score: e.average_score ?? null,
         conflict_of_content_score: e.conflict_of_content_score ?? null,
         conflict_of_content_comment: e.conflict_of_content_comment || null,

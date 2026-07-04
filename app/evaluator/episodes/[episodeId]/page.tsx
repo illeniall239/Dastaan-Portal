@@ -90,7 +90,7 @@ export default function EpisodicEvaluationPage({ params }: EpisodePageProps) {
     } finally {
       setLoading(false);
     }
-  }, [episodeId, router]);
+  }, [episodeId, revisionId, crossTeamShareId, router]);
 
   useEffect(() => {
     if (episodeId) {

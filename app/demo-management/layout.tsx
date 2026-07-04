@@ -13,7 +13,7 @@ const demoNavItems = [
     icon: "home",
   },
   {
-    title: "What's Cooking",
+    title: "Active Projects",
     href: "/demo-management/whats-cooking",
     icon: "chefHat",
   },

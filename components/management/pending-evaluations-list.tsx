@@ -25,6 +25,7 @@ import Link from "next/link";
 import { ContentRevisions } from "@/components/ui/content-revisions";
 import { CallReportDiscussion } from "@/components/call-reports/call-report-discussion";
 import { ShareCrossTeamButton } from "@/components/call-report/share-cross-team-button";
+import { RevisionEvaluateList } from "@/components/episodes/revision-evaluate-list";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -38,6 +39,8 @@ interface PendingCallReport {
   lastEvaluatedAt: string;
   evaluationCount: number;
   discussionCount: number;
+  revisionCount: number;
+  originalSubmissionDate: string | null;
 }
 
 interface ReviewedCallReport extends PendingCallReport {
@@ -50,6 +53,8 @@ interface ReviewEvaluation {
   id: string;
   evaluator_name: string;
   evaluator_email: string;
+  evaluator_role: string | null;
+  evaluator_team: string | null;
   average_score: number | null;
   conflict_of_content_score: number | null;
   conflict_of_content_comment: string | null;
@@ -265,7 +270,7 @@ export function PendingEvaluationsList({ userRole, userId }: PendingEvaluationsL
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Approval Tracking</h1>
+          <h1 className="text-2xl font-bold text-slate-900">Pending Evaluations</h1>
           <p className="text-sm text-slate-500 mt-0.5">
             Stories evaluated by the team that are awaiting your approval
           </p>
@@ -365,17 +370,21 @@ export function PendingEvaluationsList({ userRole, userId }: PendingEvaluationsL
                     </div>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
-                    <Button size="sm" variant="outline" asChild>
-                      <Link href={`/management/evaluate/call-report/${cr.id}`}>
-                        Evaluate
-                      </Link>
-                    </Button>
                     <ShareCrossTeamButton callReportId={cr.id} />
                     <Button size="sm" onClick={() => handleReview(cr)}>
                       Review
                     </Button>
                   </div>
                 </div>
+                <RevisionEvaluateList
+                  entityId={cr.id}
+                  entityType="call-report"
+                  revisionCount={cr.revisionCount}
+                  portalPrefix="management"
+                  originalFileName={cr.workingTitle}
+                  originalDate={cr.originalSubmissionDate}
+                  evaluateBasePath="/management/evaluate/call-report"
+                />
                 {userId && (
                   <CallReportDiscussion
                     callReportId={cr.id}
@@ -741,7 +750,14 @@ export function PendingEvaluationsList({ userRole, userId }: PendingEvaluationsL
                         {/* Evaluator header */}
                         <div className="flex items-start justify-between">
                           <div>
-                            <p className="font-medium text-sm">{ev.evaluator_name}</p>
+                            <div className="flex items-center gap-2">
+                              <p className="font-medium text-sm">{ev.evaluator_name}</p>
+                              {ev.evaluator_team && (
+                                <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4">
+                                  {ev.evaluator_team}
+                                </Badge>
+                              )}
+                            </div>
                             <p className="text-xs text-muted-foreground">{ev.evaluator_email}</p>
                             {ev.submitted_at && (
                               <p className="text-xs text-muted-foreground">{formatDate(ev.submitted_at)}</p>

@@ -514,7 +514,10 @@ export function EvaluatorEvaluationForm({
 
     const fetchExisting = async () => {
       try {
-        const res = await fetch(`/api/evaluator/forms/by-call-report/${callReport.id}`);
+        const evalParams = new URLSearchParams();
+        if (revisionId) evalParams.set("revision_id", revisionId);
+        const evalQuery = evalParams.toString() ? `?${evalParams}` : "";
+        const res = await fetch(`/api/evaluator/forms/by-call-report/${callReport.id}${evalQuery}`);
         if (res.ok) {
           const json = await res.json();
           if (json.evaluation) {

@@ -90,7 +90,7 @@ export default function GcmEpisodicEvaluationPage({ params }: EpisodePageProps) 
     } finally {
       setLoading(false);
     }
-  }, [episodeId, router]);
+  }, [episodeId, revisionId, crossTeamShareId, router]);
 
   useEffect(() => {
     if (episodeId) {

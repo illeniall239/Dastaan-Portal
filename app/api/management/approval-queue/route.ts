@@ -99,7 +99,7 @@ export async function GET(_request: NextRequest) {
 
       const { data: reviewedCRs } = await adminClient
         .from("call_reports")
-        .select("id, working_title, call_report_id, created_at")
+        .select("id, working_title, call_report_id, created_at, original_submission_date")
         .in("id", reviewedIds)
         .order("created_at", { ascending: false });
 
@@ -123,6 +123,8 @@ export async function GET(_request: NextRequest) {
           myNotes: dec?.notes ?? null,
           decidedAt: dec?.created_at ?? null,
           discussionCount: discussionCountMap[cr.id] || 0,
+          revisionCount: revisionCountMap[cr.id] || 0,
+          originalSubmissionDate: cr.original_submission_date || cr.created_at || null,
         };
       });
     }
@@ -131,10 +133,21 @@ export async function GET(_request: NextRequest) {
       return NextResponse.json({ success: true, callReports: [], reviewedCallReports: reviewedResult });
     }
 
+    // Batch-fetch revision counts for all evaluated call reports
+    const revisionCountMap: Record<string, number> = {};
+    const { data: revisionRows } = await adminClient
+      .from("call_report_revisions")
+      .select("call_report_id")
+      .in("call_report_id", evaluatedIds);
+    for (const row of revisionRows || []) {
+      const crid = row.call_report_id as string;
+      revisionCountMap[crid] = (revisionCountMap[crid] || 0) + 1;
+    }
+
     // Step 3b: Fetch pending call report details
     const { data: callReports, error: crErr } = await adminClient
       .from("call_reports")
-      .select("id, working_title, call_report_id, created_at")
+      .select("id, working_title, call_report_id, created_at, original_submission_date")
       .in("id", pendingIds)
       .order("created_at", { ascending: false });
 
@@ -157,6 +170,8 @@ export async function GET(_request: NextRequest) {
         lastEvaluatedAt: stats?.latestAt || cr.created_at,
         evaluationCount: scores.length,
         discussionCount: discussionCountMap[cr.id] || 0,
+        revisionCount: revisionCountMap[cr.id] || 0,
+        originalSubmissionDate: cr.original_submission_date || cr.created_at || null,
       };
     });
 

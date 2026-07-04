@@ -29,12 +29,16 @@ interface CallReport {
 }
 
 export default async function ProgrammerEvaluatePage({
-  params
+  params,
+  searchParams,
 }: {
-  params: Promise<{ callReportId: string }>
+  params: Promise<{ callReportId: string }>;
+  searchParams: Promise<{ revision_id?: string }>;
 }) {
   const resolvedParams = await params;
+  const resolvedSearchParams = await searchParams;
   const { callReportId } = resolvedParams;
+  const revisionId = resolvedSearchParams.revision_id;
 
   const user = await getCurrentUser();
 
@@ -182,6 +186,7 @@ export default async function ProgrammerEvaluatePage({
         detailedOneLiner={detailedOneLiner}
         portalPrefix="programmer"
         existingEvaluation={existingProgrammerEvaluation}
+        revisionId={revisionId}
         canEdit={canEvaluate && canEdit}
         viewOnly={!canEvaluate}
       />

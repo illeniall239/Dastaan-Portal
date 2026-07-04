@@ -4,7 +4,6 @@ import { EvaluatorEvaluationForm } from "@/app/evaluator/evaluate/[callReportId]
 import { getAttachmentsForEntityServer } from "@/lib/attachments/server";
 import { getEvaluationProgress } from "@/lib/evaluations/assignments";
 import { getDetailedOneLinersByCallReport } from "@/lib/detailed-one-liner/server";
-import { hasUserEvaluatedCallReport } from "@/lib/evaluations/server";
 
 interface Writer {
   writer_id: string;
@@ -28,12 +27,16 @@ interface CallReport {
 }
 
 export default async function ManagementEvaluateCallReportPage({
-  params
+  params,
+  searchParams,
 }: {
-  params: Promise<{ id: string }>
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ revision_id?: string }>;
 }) {
   const resolvedParams = await params;
   const { id: callReportId } = resolvedParams;
+  const resolvedSearchParams = await searchParams;
+  const revisionId = resolvedSearchParams.revision_id || undefined;
 
   const user = await getCurrentUser();
 
@@ -58,20 +61,21 @@ export default async function ManagementEvaluateCallReportPage({
     const { createClient } = await import("@/lib/supabase/server");
     const supabase = await createClient();
 
-    // Check if user has already evaluated this call report
-    const hasEvaluated = await hasUserEvaluatedCallReport(user.id, callReportId);
+    // Check if user has already evaluated this call report (scoped by revision)
+    let evalQuery = supabase
+      .from("evaluator_forms")
+      .select("*")
+      .eq("evaluator_id", user.id)
+      .eq("call_report_id", callReportId);
 
-    // If already evaluated, fetch the existing evaluation
-    if (hasEvaluated) {
-      const { data: evaluationData } = await supabase
-        .from("evaluator_forms")
-        .select("*")
-        .eq("evaluator_id", user.id)
-        .eq("call_report_id", callReportId)
-        .single();
-
-      existingEvaluation = evaluationData;
+    if (revisionId) {
+      evalQuery = evalQuery.eq("revision_id", revisionId);
+    } else {
+      evalQuery = evalQuery.is("revision_id", null);
     }
+
+    const { data: evaluationData } = await evalQuery.maybeSingle();
+    existingEvaluation = evaluationData;
 
     // Fetch the call report
     const { data, error } = await supabase
@@ -153,6 +157,7 @@ export default async function ManagementEvaluateCallReportPage({
         isManagementEvaluation={true}
         existingEvaluation={existingEvaluation}
         portalPrefix="management"
+        revisionId={revisionId}
       />
     </div>
   );

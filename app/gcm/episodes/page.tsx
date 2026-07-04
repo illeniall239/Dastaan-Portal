@@ -54,6 +54,7 @@ import type { EpisodeWithDetails } from "@/types";
 import { canEditEpisode as canEditEpisodeUtil } from "@/lib/episodes/permissions";
 import { BackButton } from "@/components/ui/back-button";
 import { formatDate } from "@/lib/utils/format-date";
+import { RevisionEvaluateList } from "@/components/episodes/revision-evaluate-list";
 
 interface CallReportWriter {
   id?: string;
@@ -864,9 +865,8 @@ export default function GcmEpisodesPage() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Project</TableHead>
-                      <TableHead>Attachment</TableHead>
                       <TableHead>Logged By</TableHead>
-                      <TableHead>Date</TableHead>
+                      <TableHead>Submissions</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -880,7 +880,7 @@ export default function GcmEpisodesPage() {
                             className="bg-slate-50 hover:bg-slate-100 cursor-pointer border-t-2 border-slate-200"
                             onClick={() => toggleProject(project.projectId)}
                           >
-                            <TableCell colSpan={5} className="font-semibold py-4">
+                            <TableCell colSpan={4} className="font-semibold py-4">
                               <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-3">
                                   {isExpanded ? (
@@ -936,15 +936,6 @@ export default function GcmEpisodesPage() {
                                         v{episode.version}
                                       </Badge>
                                     )}
-                                    {isEvaluated ? (
-                                      <Badge className="bg-emerald-100 text-emerald-700 text-[10px] px-1 py-0 h-4">
-                                        Evaluated
-                                      </Badge>
-                                    ) : (
-                                      <Badge className="bg-slate-100 text-slate-600 text-[10px] px-1 py-0 h-4">
-                                        Not Evaluated
-                                      </Badge>
-                                    )}
                                     {episode.approval_status && (
                                       <Badge className={
                                         episode.approval_status === "approved" ? "bg-emerald-100 text-emerald-700 text-[10px] px-1 py-0 h-4" :
@@ -957,44 +948,20 @@ export default function GcmEpisodesPage() {
                                   </div>
                                 </TableCell>
                                 <TableCell>
-                                  {episode.attachment_url ? (
-                                    <button
-                                      onClick={() => handleDownload(episode)}
-                                      className="text-blue-600 hover:text-blue-800 hover:underline text-sm flex items-center gap-1"
-                                    >
-                                      <FileText className="h-4 w-4" />
-                                      {episode.attachment_name}
-                                    </button>
-                                  ) : (
-                                    <span className="text-muted-foreground italic text-sm">No file</span>
-                                  )}
-                                </TableCell>
-                                <TableCell>
                                   {episode.logged_by_user?.name || "Unknown"}
                                 </TableCell>
                                 <TableCell>
-                                  {formatDate(episode.original_submission_date || episode.call_report?.original_submission_date || episode.created_at)}
-                                </TableCell>
-                                <TableCell className="text-right">
-                                  <div className="flex items-center justify-end gap-2">
-                                    {isEvaluated ? (
-                                      <Button
-                                        size="sm"
-                                        variant="outline"
-                                        onClick={() => router.push(`/gcm/episodes/${episode.id}?evaluated=1`)}
-                                      >
-                                        <Eye className="h-4 w-4 mr-1" />
-                                        View
-                                      </Button>
-                                    ) : (
-                                      <Button
-                                        size="sm"
-                                        onClick={() => router.push(`/gcm/episodes/${episode.id}`)}
-                                      >
-                                        <ClipboardCheck className="h-4 w-4 mr-1" />
-                                        Evaluate
-                                      </Button>
-                                    )}
+                                  <div className="flex items-center gap-2">
+                                    <div className="flex-1">
+                                      <RevisionEvaluateList
+                                        entityId={episode.id}
+                                        entityType="episode"
+                                        revisionCount={(episode as any).revision_count || 0}
+                                        portalPrefix="gcm"
+                                        originalFileName={episode.attachment_name}
+                                        originalDate={episode.original_submission_date || episode.call_report?.original_submission_date || episode.created_at}
+                                      />
+                                    </div>
                                     <DropdownMenu>
                                       <DropdownMenuTrigger asChild>
                                         <Button variant="ghost" size="sm">
@@ -1091,11 +1058,6 @@ export default function GcmEpisodesPage() {
                                         v{episode.version}
                                       </Badge>
                                     )}
-                                    {isEvaluated ? (
-                                      <Badge className="flex-shrink-0 bg-emerald-100 text-emerald-700 text-[10px] px-1 py-0 h-4">Evaluated</Badge>
-                                    ) : (
-                                      <Badge className="flex-shrink-0 bg-slate-100 text-slate-600 text-[10px] px-1 py-0 h-4">Not Evaluated</Badge>
-                                    )}
                                     {episode.approval_status && (
                                       <Badge className={`flex-shrink-0 ${
                                         episode.approval_status === "approved" ? "bg-emerald-100 text-emerald-700 text-[10px] px-1 py-0 h-4" :
@@ -1110,34 +1072,18 @@ export default function GcmEpisodesPage() {
                                 </div>
                               </div>
                               <div className="flex flex-col gap-3">
-                                <div className="text-sm min-w-0">
-                                  {episode.attachment_url ? (
-                                    <button
-                                      onClick={() => handleDownload(episode)}
-                                      className="text-blue-600 hover:text-blue-800 hover:underline flex items-center gap-1 w-full"
-                                    >
-                                      <FileText className="h-4 w-4 flex-shrink-0" />
-                                      <span className="truncate">{episode.attachment_name}</span>
-                                    </button>
-                                  ) : (
-                                    <span className="text-muted-foreground italic">No file</span>
-                                  )}
-                                </div>
+                                <RevisionEvaluateList
+                                  entityId={episode.id}
+                                  entityType="episode"
+                                  revisionCount={(episode as any).revision_count || 0}
+                                  portalPrefix="gcm"
+                                  originalFileName={episode.attachment_name}
+                                  originalDate={episode.original_submission_date || episode.call_report?.original_submission_date || episode.created_at}
+                                />
                                 <div className="flex items-center gap-2 flex-wrap">
                                   <span className="text-sm text-muted-foreground flex-1">
                                     By: {episode.logged_by_user?.name || "Unknown"}
                                   </span>
-                                  {isEvaluated ? (
-                                    <Button size="sm" variant="outline" onClick={() => router.push(`/gcm/episodes/${episode.id}?evaluated=1`)} className="touch-target">
-                                      <Eye className="h-4 w-4 mr-1" />
-                                      View
-                                    </Button>
-                                  ) : (
-                                    <Button size="sm" onClick={() => router.push(`/gcm/episodes/${episode.id}`)} className="touch-target">
-                                      <ClipboardCheck className="h-4 w-4 mr-1" />
-                                      Evaluate
-                                    </Button>
-                                  )}
                                   {canEditEpisode(episode) && (
                                     <Button size="sm" variant="outline" onClick={() => router.push(`/gcm/episodes/${episode.id}/edit`)} className="touch-target">
                                       <Pencil className="h-4 w-4 mr-1" />

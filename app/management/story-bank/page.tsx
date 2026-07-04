@@ -51,7 +51,7 @@ export default async function ManagementStoryBankPage() {
       updated_at,
       meeting_type,
       created_by,
-      creator:users!created_by(name, email),
+      creator:users!created_by(name, email, team:teams!team_id(name)),
       stories:stories(
         id,
         story_id,
@@ -143,7 +143,8 @@ export default async function ManagementStoryBankPage() {
         working_title,
         writer_name,
         meeting_date,
-        meeting_type
+        meeting_type,
+        creator:users!created_by(team:teams!team_id(name))
       )
     `)
     .order("created_at", { ascending: false });

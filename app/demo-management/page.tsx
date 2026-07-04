@@ -460,7 +460,7 @@ export default function DemoManagementDashboard() {
         <Link href="/demo-management/whats-cooking">
           <Card className="cursor-pointer hover:shadow-lg transition-shadow">
             <CardHeader>
-              <CardTitle className="text-base">What&apos;s Cooking</CardTitle>
+              <CardTitle className="text-base">Active Projects</CardTitle>
             </CardHeader>
             <CardContent>
               <p className="text-sm text-muted-foreground">

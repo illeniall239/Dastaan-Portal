@@ -33,6 +33,7 @@ import Link from "next/link";
 import { DiscussionThread } from "@/components/call-reports/call-report-discussion";
 import { ContentRevisions } from "@/components/ui/content-revisions";
 import { ShareCrossTeamButton } from "@/components/call-report/share-cross-team-button";
+import { RevisionEvaluateList } from "@/components/episodes/revision-evaluate-list";
 import { formatDistanceToNow } from "date-fns";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -50,12 +51,17 @@ interface EpisodeQueueItem {
   discussionCount: number;
   approvalStatus: "approved" | "rejected" | "needs_revision" | null;
   approvedAt: string | null;
+  attachmentName: string | null;
+  originalSubmissionDate: string | null;
+  revisionCount: number;
 }
 
 interface ReviewEvaluation {
   id: string;
   evaluator_name: string;
   evaluator_email: string;
+  evaluator_role: string | null;
+  evaluator_team: string | null;
   overall_average: number | null;
   created_at: string | null;
   no_of_pages: number | null;
@@ -313,7 +319,7 @@ export function PendingEpisodeApprovalsList({
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Approval Tracking</h1>
+          <h1 className="text-2xl font-bold text-slate-900">Pending Evaluations</h1>
           <p className="text-sm text-slate-500 mt-0.5">
             Episodes evaluated by the team, grouped by drama
           </p>
@@ -470,9 +476,16 @@ export function PendingEpisodeApprovalsList({
                       >
                         <div className="flex items-start justify-between">
                           <div>
-                            <p className="font-medium text-sm">
-                              {ev.evaluator_name}
-                            </p>
+                            <div className="flex items-center gap-2">
+                              <p className="font-medium text-sm">
+                                {ev.evaluator_name}
+                              </p>
+                              {ev.evaluator_team && (
+                                <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4">
+                                  {ev.evaluator_team}
+                                </Badge>
+                              )}
+                            </div>
                             <p className="text-xs text-muted-foreground">
                               {ev.evaluator_email}
                             </p>
@@ -773,9 +786,6 @@ function EpisodeSubCard({
 
         {/* Action buttons */}
         <div className="flex items-center gap-2 shrink-0">
-          <Button size="sm" variant="outline" asChild>
-            <Link href={`/management/evaluate/episode/${ep.id}`}>Evaluate</Link>
-          </Button>
           {ep.callReportId && (
             <ShareCrossTeamButton
               callReportId={ep.callReportId}
@@ -787,6 +797,19 @@ function EpisodeSubCard({
             {reviewed ? "View" : "Review"}
           </Button>
         </div>
+      </div>
+
+      {/* Submissions list */}
+      <div className="px-4 pb-3">
+        <RevisionEvaluateList
+          entityId={ep.id}
+          entityType="episode"
+          revisionCount={ep.revisionCount}
+          portalPrefix="management"
+          originalFileName={ep.attachmentName}
+          originalDate={ep.originalSubmissionDate}
+          evaluateBasePath="/management/evaluate/episode"
+        />
       </div>
 
       {/* Expanded content */}

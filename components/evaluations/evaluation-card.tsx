@@ -36,6 +36,7 @@ import { IndividualEvaluationProgress } from "@/components/evaluations/individua
 import { ShareCrossTeamButton } from "@/components/call-report/share-cross-team-button";
 import { MANDATORY_APPROVERS } from "@/lib/approvals/config";
 import { CallReportDiscussion } from "@/components/call-reports/call-report-discussion";
+import { RevisionEvaluateList } from "@/components/episodes/revision-evaluate-list";
 
 function ScoreBox({
   label,
@@ -394,7 +395,7 @@ export function EvaluationCard({
                     </Badge>
                     <span className="text-purple-600">{ep.logged_by_name}</span>
                   </div>
-                  {(ep.average_initial_assessment ?? ep.initial_assessment) != null && (
+                  {currentUserRole && ["content_manager", "content_creator", "admin", "management"].includes(currentUserRole) && (ep.average_initial_assessment ?? ep.initial_assessment) != null && (
                     <Badge variant="secondary" className="text-[10px] px-1 py-0 h-4 bg-blue-50 text-blue-700">
                       Initial Assessment {(ep.average_initial_assessment ?? ep.initial_assessment)}/10
                     </Badge>
@@ -426,31 +427,23 @@ export function EvaluationCard({
           )}
         </div>
 
-        <div className="flex justify-end gap-2 pt-4 border-t">
+        {/* Revision Evaluate List */}
+        <div className="pt-4 border-t space-y-3">
+          <RevisionEvaluateList
+            entityId={report.id}
+            entityType="call-report"
+            revisionCount={report.revision_count || 0}
+            portalPrefix={portalPrefix}
+            originalFileName={report.working_title}
+            originalDate={report.original_submission_date || report.logged_at || report.created_at}
+          />
           {isTeamHead && (
-            <ShareCrossTeamButton
-              callReportId={report.id}
-              currentTeamId={currentTeamId}
-            />
-          )}
-          {hasEvaluated || (teamEvaluations && teamEvaluations.length > 0) ? (
-            <Button size="sm" asChild variant="outline">
-              <Link href={`/${portalPrefix}/evaluate/${report.id}`}>
-                <FileTextIcon className="h-4 w-4 mr-2" />
-                View Details
-              </Link>
-            </Button>
-          ) : (
-            <Button
-              size="sm"
-              asChild
-              className="bg-[#224794] hover:bg-[#1a3670]"
-            >
-              <Link href={`/${portalPrefix}/evaluate/${report.id}`}>
-                <ClipboardListIcon className="h-4 w-4 mr-2" />
-                {hasDraft ? "Continue Evaluation" : "Evaluate This Project"}
-              </Link>
-            </Button>
+            <div className="flex justify-end">
+              <ShareCrossTeamButton
+                callReportId={report.id}
+                currentTeamId={currentTeamId}
+              />
+            </div>
           )}
         </div>
 

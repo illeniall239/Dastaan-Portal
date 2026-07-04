@@ -17,12 +17,23 @@ export async function GET(
   const rate = await applyRateLimit(request, RateLimitPresets.relaxed, user.id);
   if (!rate.success) return rate.response!;
 
-  const { data, error } = await supabase
+  // Scope by revision_id to distinguish original vs revision evaluations
+  const url = new URL(request.url);
+  const revisionId = url.searchParams.get("revision_id");
+
+  let query = supabase
     .from("evaluator_forms")
     .select("*")
     .eq("call_report_id", callReportId)
-    .eq("evaluator_id", user.id)
-    .maybeSingle();
+    .eq("evaluator_id", user.id);
+
+  if (revisionId) {
+    query = query.eq("revision_id", revisionId);
+  } else {
+    query = query.is("revision_id", null);
+  }
+
+  const { data, error } = await query.maybeSingle();
 
   if (error && error.code !== 'PGRST116') {
     return withCors(request, NextResponse.json({ error: "Failed to fetch evaluation", details: error.message }, { status: 500 }));
