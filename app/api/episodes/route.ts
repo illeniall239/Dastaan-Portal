@@ -370,6 +370,7 @@ export async function GET(request: NextRequest) {
     const groupByProject = searchParams.get("group_by_project") === "true";
     const projectLimit = Math.min(50, Math.max(1, parseInt(searchParams.get("project_limit") || "20", 10)));
     const projectPage = Math.max(1, parseInt(searchParams.get("project_page") || "1", 10));
+    const searchTerm = searchParams.get("search")?.trim() || "";
 
     interface EpisodeData {
       id: string;
@@ -478,13 +479,27 @@ export async function GET(request: NextRequest) {
 
       // Get unique project IDs in order of most recent episode
       const seenProjects = new Set<string>();
-      const orderedProjectIds: string[] = [];
+      let orderedProjectIds: string[] = [];
       for (const ep of paginatedProjects || []) {
         if (ep.call_report_id && !seenProjects.has(ep.call_report_id)) {
           seenProjects.add(ep.call_report_id);
           orderedProjectIds.push(ep.call_report_id);
         }
       }
+
+      // Server-side search: filter projects by call_report fields before pagination
+      if (searchTerm && orderedProjectIds.length > 0) {
+        const { data: matchingReports } = await createAdminClient()
+          .from("call_reports")
+          .select("id")
+          .in("id", orderedProjectIds)
+          .or(`working_title.ilike.%${searchTerm}%,writer_name.ilike.%${searchTerm}%`);
+
+        const matchingIds = new Set((matchingReports || []).map((r: { id: string }) => r.id));
+        orderedProjectIds = orderedProjectIds.filter(id => matchingIds.has(id));
+      }
+
+      totalProjects = orderedProjectIds.length;
 
       // Slice for current page
       const projectIdsForPage = orderedProjectIds.slice(projectOffset, projectOffset + projectLimit);

@@ -293,7 +293,10 @@ export function ContentRevisions({
 
   const handleDownload = (revision: EpisodeRevision) => {
     if (revision.attachment_url) {
-      window.open(revision.attachment_url, "_blank");
+      window.open(
+        `/api/storage/download?url=${encodeURIComponent(revision.attachment_url)}&bucket=${encodeURIComponent(storageBucket)}`,
+        "_blank"
+      );
     }
   };
 

@@ -166,7 +166,7 @@ export default function EvaluatorEpisodesPage() {
   const [myEvaluations, setMyEvaluations] = useState<EpisodicEvaluationWithDetails[]>([]);
   const [evaluationsLoading, setEvaluationsLoading] = useState(false);
 
-  const fetchEpisodesAndStatus = useCallback(async (page: number = 1, append: boolean = false) => {
+  const fetchEpisodesAndStatus = useCallback(async (page: number = 1, append: boolean = false, search: string = "") => {
     // Cancel any in-flight request
     episodesAbortRef.current?.abort();
     const controller = new AbortController();
@@ -207,8 +207,9 @@ export default function EvaluatorEpisodesPage() {
       }
 
       // Fetch episodes with project-based pagination (20 projects at a time, all their episodes)
+      const searchParam = search ? `&search=${encodeURIComponent(search)}` : "";
       const response = await fetch(
-        `/api/episodes?group_by_project=true&project_limit=20&project_page=${page}&include_evaluation_status=true&_t=${Date.now()}`,
+        `/api/episodes?group_by_project=true&project_limit=20&project_page=${page}&include_evaluation_status=true${searchParam}&_t=${Date.now()}`,
         { cache: 'no-store', signal: controller.signal }
       );
       const data = await response.json();
@@ -257,9 +258,9 @@ export default function EvaluatorEpisodesPage() {
   // Load more projects
   const loadMoreProjects = useCallback(() => {
     if (!loadingMore && hasMoreProjects) {
-      fetchEpisodesAndStatus(projectPage + 1, true);
+      fetchEpisodesAndStatus(projectPage + 1, true, debouncedSearchTerm);
     }
-  }, [loadingMore, hasMoreProjects, projectPage, fetchEpisodesAndStatus]);
+  }, [loadingMore, hasMoreProjects, projectPage, fetchEpisodesAndStatus, debouncedSearchTerm]);
 
   const fetchCallReports = useCallback(async () => {
     setFetchingData(true);
@@ -361,13 +362,25 @@ export default function EvaluatorEpisodesPage() {
     }
   }, [activeTab, callReports.length, fetchCallReports]);
 
-  // Search debounce effect (300ms)
+  // Server-side search: debounce input, then re-fetch from API
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearchTerm(searchTerm);
-    }, 300);
+    }, 400);
     return () => clearTimeout(timer);
   }, [searchTerm]);
+
+  const prevSearchRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (prevSearchRef.current === null) {
+      prevSearchRef.current = debouncedSearchTerm;
+      return;
+    }
+    if (prevSearchRef.current === debouncedSearchTerm) return;
+    prevSearchRef.current = debouncedSearchTerm;
+    fetchEpisodesAndStatus(1, false, debouncedSearchTerm);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debouncedSearchTerm]);
 
   useEffect(() => {
     const numbers = existingEpisodesForSource
@@ -653,21 +666,8 @@ export default function EvaluatorEpisodesPage() {
     }
   };
 
-  // Memoize filtering to avoid re-filtering on every render
-  // Use debouncedSearchTerm for better performance during typing
-  const filteredEpisodes = useMemo(() => {
-    if (!debouncedSearchTerm.trim()) return episodes;
-
-    const searchLower = debouncedSearchTerm.toLowerCase();
-    return episodes.filter((episode) => (
-      episode.episode_number.toString().includes(searchLower) ||
-      episode.title?.toLowerCase().includes(searchLower) ||
-      episode.call_report?.working_title?.toLowerCase().includes(searchLower) ||
-      episode.call_report?.writer_name?.toLowerCase().includes(searchLower) ||
-      episode.story?.title?.toLowerCase().includes(searchLower) ||
-      episode.logged_by_user?.name?.toLowerCase().includes(searchLower)
-    ));
-  }, [episodes, debouncedSearchTerm]);
+  // Episodes are already filtered server-side when search is active
+  const filteredEpisodes = episodes;
 
   // Group episodes by project (call_report or story), tracking evaluation progress
   const groupEpisodesByProject = (episodeList: EpisodeWithDetails[]): ProjectGroup[] => {

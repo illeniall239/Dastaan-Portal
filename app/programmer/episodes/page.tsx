@@ -169,7 +169,7 @@ export default function ProgrammerEpisodesPage() {
     const [evaluationsLoading, setEvaluationsLoading] = useState(false);
     const [deletingEvaluationId, setDeletingEvaluationId] = useState<string | null>(null);
 
-    const fetchEpisodesAndStatus = useCallback(async (page: number = 1, append: boolean = false) => {
+    const fetchEpisodesAndStatus = useCallback(async (page: number = 1, append: boolean = false, search: string = "") => {
         if (page === 1) {
             setLoading(true);
         } else {
@@ -195,10 +195,20 @@ export default function ProgrammerEpisodesPage() {
                 setCurrentTeamId(userData.team_id || null);
             }
 
+            // Cancel previous search request if this is a new search
+            if (search && searchAbortRef.current) {
+                searchAbortRef.current.abort();
+            }
+            const abortController = new AbortController();
+            if (search) {
+                searchAbortRef.current = abortController;
+            }
+
             // Fetch episodes with project-based pagination (20 projects at a time, all their episodes)
+            const searchParam = search ? `&search=${encodeURIComponent(search)}` : "";
             const response = await fetch(
-                `/api/episodes?group_by_project=true&project_limit=20&project_page=${page}&include_evaluation_status=true&_t=${Date.now()}`,
-                { cache: 'no-store' }
+                `/api/episodes?group_by_project=true&project_limit=20&project_page=${page}&include_evaluation_status=true${searchParam}&_t=${Date.now()}`,
+                { cache: 'no-store', signal: abortController.signal }
             );
             const data = await response.json();
 
@@ -232,6 +242,7 @@ export default function ProgrammerEpisodesPage() {
             setHasMoreProjects(data.pagination?.hasMoreProjects || false);
             setTotalProjects(data.pagination?.totalProjects || 0);
         } catch (error: any) {
+            if (error?.name === "AbortError") return; // Cancelled by newer request
             console.error("Error fetching episodes:", error);
             toast.error(error.message || "Failed to load episodes");
         } finally {
@@ -243,9 +254,9 @@ export default function ProgrammerEpisodesPage() {
     // Load more projects
     const loadMoreProjects = useCallback(() => {
         if (!loadingMore && hasMoreProjects) {
-            fetchEpisodesAndStatus(projectPage + 1, true);
+            fetchEpisodesAndStatus(projectPage + 1, true, debouncedSearchTerm);
         }
-    }, [loadingMore, hasMoreProjects, projectPage, fetchEpisodesAndStatus]);
+    }, [loadingMore, hasMoreProjects, projectPage, fetchEpisodesAndStatus, debouncedSearchTerm]);
 
     const fetchCallReports = useCallback(async () => {
         setFetchingData(true);
@@ -319,13 +330,35 @@ export default function ProgrammerEpisodesPage() {
         }
     }, [activeTab, callReports.length, fetchCallReports]);
 
-    // Search debounce effect (300ms)
+    // Server-side search: debounce input, then re-fetch from API
+    const searchAbortRef = useRef<AbortController | null>(null);
     useEffect(() => {
         const timer = setTimeout(() => {
             setDebouncedSearchTerm(searchTerm);
-        }, 300);
+        }, 400);
         return () => clearTimeout(timer);
     }, [searchTerm]);
+
+    // Track previous search to avoid re-fetching on mount
+    const prevSearchRef = useRef<string | null>(null);
+    useEffect(() => {
+        // Skip initial mount (handled by the initial fetch effect)
+        if (prevSearchRef.current === null) {
+            prevSearchRef.current = debouncedSearchTerm;
+            return;
+        }
+        // Skip if search hasn't actually changed
+        if (prevSearchRef.current === debouncedSearchTerm) return;
+        prevSearchRef.current = debouncedSearchTerm;
+
+        // Cancel any in-flight search request
+        if (searchAbortRef.current) {
+            searchAbortRef.current.abort();
+        }
+
+        fetchEpisodesAndStatus(1, false, debouncedSearchTerm);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [debouncedSearchTerm]);
 
     useEffect(() => {
         const numbers = existingEpisodesForSource
@@ -609,20 +642,8 @@ export default function ProgrammerEpisodesPage() {
         }
     };
 
-    // Memoize filtering to avoid re-filtering on every render
-    const filteredEpisodes = useMemo(() => {
-        if (!debouncedSearchTerm.trim()) return episodes;
-
-        const searchLower = debouncedSearchTerm.toLowerCase();
-        return episodes.filter((episode) => (
-            episode.episode_number.toString().includes(searchLower) ||
-            episode.title?.toLowerCase().includes(searchLower) ||
-            episode.call_report?.working_title?.toLowerCase().includes(searchLower) ||
-            episode.call_report?.writer_name?.toLowerCase().includes(searchLower) ||
-            episode.story?.title?.toLowerCase().includes(searchLower) ||
-            episode.logged_by_user?.name?.toLowerCase().includes(searchLower)
-        ));
-    }, [episodes, debouncedSearchTerm]);
+    // Episodes are already filtered server-side when search is active
+    const filteredEpisodes = episodes;
 
     // Group episodes by project (call_report or story), tracking evaluation progress
     const groupEpisodesByProject = (episodeList: EpisodeWithDetails[]): ProjectGroup[] => {

@@ -127,8 +127,14 @@ export function DiscussionThread({
   const [sending, setSending] = useState(false);
   const [message, setMessage] = useState("");
   const [expanded, setExpanded] = useState(defaultExpanded ?? !compact);
-  const bottomRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  const scrollToBottom = () => {
+    if (containerRef.current) {
+      containerRef.current.scrollTop = containerRef.current.scrollHeight;
+    }
+  };
 
   const apiUrl = `${apiBasePath}/${entityId}/discussions`;
 
@@ -153,7 +159,7 @@ export function DiscussionThread({
   // Scroll to bottom when messages load or new one arrives
   useEffect(() => {
     if (expanded && !loading && discussions.length > 0) {
-      bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+      scrollToBottom();
     }
   }, [discussions, expanded, loading]);
 
@@ -174,7 +180,7 @@ export function DiscussionThread({
       setMessage("");
       setDiscussions((prev) => [...prev, data.discussion]);
       // Scroll after state update
-      setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: "smooth" }), 50);
+      setTimeout(scrollToBottom, 50);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Failed to send message";
       toast.error(msg);
@@ -213,7 +219,6 @@ export function DiscussionThread({
           />
         ))
       )}
-      <div ref={bottomRef} />
     </div>
   );
 
@@ -282,7 +287,7 @@ export function DiscussionThread({
 
         {expanded && (
           <CardContent className="pt-0 px-4 pb-4 space-y-3">
-            <div className="max-h-60 overflow-y-auto pr-1">
+            <div ref={containerRef} className="max-h-60 overflow-y-auto pr-1">
               {messageList}
             </div>
             {sendForm}
@@ -310,7 +315,7 @@ export function DiscussionThread({
         </p>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="max-h-96 overflow-y-auto pr-1">
+        <div ref={containerRef} className="max-h-96 overflow-y-auto pr-1">
           {messageList}
         </div>
         {sendForm}

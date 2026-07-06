@@ -5,7 +5,8 @@ import { idParamSchema } from "@/lib/validations/uuid-params";
 import { applyRateLimit } from "@/lib/api-middleware";
 import { RateLimitPresets } from "@/lib/rate-limit-redis";
 import { logAuditAction, getRequestContext } from "@/lib/audit/server";
-import { createNotifications, getUserIdsByRoles, excludeUserFromList } from "@/lib/notifications/server";
+import { createNotifications, excludeUserFromList } from "@/lib/notifications/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { canUploadRevision } from "@/lib/episodes/permissions";
 import { z } from "zod";
 
@@ -262,12 +263,36 @@ export async function POST(
       logger.error("Audit log error:", auditError);
     }
 
-    // Notify management + content managers of the new episode revision
+    // Notify relevant teams: programming, management, content dev, and uploader's team
     try {
-      const recipients = excludeUserFromList(
-        await getUserIdsByRoles(["management", "content_manager"]),
-        user.id
-      );
+      const admin = createAdminClient();
+
+      // Get teams by type: production (programming), management (content dev + mgmt)
+      const { data: relevantTeams } = await admin
+        .from("teams")
+        .select("id")
+        .in("team_type", ["production", "management"]);
+      const relevantTeamIds = (relevantTeams || []).map((t: { id: string }) => t.id);
+
+      // Add uploader's team if not already included
+      if (userData.team_id && !relevantTeamIds.includes(userData.team_id)) {
+        relevantTeamIds.push(userData.team_id);
+      }
+
+      // Get all users from these teams + management role users
+      const [{ data: teamUsers }, { data: mgmtUsers }] = await Promise.all([
+        relevantTeamIds.length > 0
+          ? admin.from("users").select("id").in("team_id", relevantTeamIds).eq("status", "active")
+          : Promise.resolve({ data: [] }),
+        admin.from("users").select("id").eq("role", "management").eq("status", "active"),
+      ]);
+
+      const recipientSet = new Set<string>();
+      (teamUsers || []).forEach((u: { id: string }) => recipientSet.add(u.id));
+      (mgmtUsers || []).forEach((u: { id: string }) => recipientSet.add(u.id));
+
+      const recipients = excludeUserFromList([...recipientSet], user.id);
+
       if (recipients.length > 0) {
         const epLabel = episode.episode_number ? `EP${episode.episode_number}` : "Episode";
         await createNotifications(
