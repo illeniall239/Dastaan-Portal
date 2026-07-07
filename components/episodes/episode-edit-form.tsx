@@ -103,7 +103,6 @@ export function EpisodeEditForm({ episode, onSuccess }: EpisodeEditFormProps) {
         attachment_url,
         attachment_name,
         attachment_type,
-        original_submission_date: originalSubmissionDate || null,
       };
 
       await updateEpisodeClient(episode.id, updateData);
@@ -202,24 +201,7 @@ export function EpisodeEditForm({ episode, onSuccess }: EpisodeEditFormProps) {
             )}
           </div>
 
-          {/* Original Submission Date */}
-          <div className="space-y-2">
-            <Label htmlFor="original-submission-date">
-              Original Submission Date{" "}
-              <span className="text-slate-400 font-normal text-xs">(optional)</span>
-            </Label>
-            <Input
-              id="original-submission-date"
-              type="date"
-              value={originalSubmissionDate}
-              onChange={(e) => setOriginalSubmissionDate(e.target.value)}
-              max={new Date().toISOString().split("T")[0]}
-              disabled={loading}
-            />
-            <p className="text-xs text-muted-foreground">
-              Only fill in when backfilling a historical entry. Leave blank to use the logged date.
-            </p>
-          </div>
+          {/* Original Submission Date - only shown on creation, not editable */}
 
           {/* Additional Information */}
           <div className="space-y-2">

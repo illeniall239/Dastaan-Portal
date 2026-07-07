@@ -99,6 +99,8 @@ export async function POST(
         attachment_name,
         attachment_type: attachment_type || existing.attachment_type,
         additional_info: additional_info ?? existing.additional_info,
+        original_submission_date: existing.original_submission_date || existing.created_at,
+        initial_assessment: existing.initial_assessment,
         logged_by: user.id,
       })
       .select()

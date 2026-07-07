@@ -313,7 +313,6 @@ export function CallReportForm({
           next_steps: formData.nextSteps || undefined,
           status: formData.status || undefined,
           overall_rating: formData.overallRating,
-          original_submission_date: formData.originalSubmissionDate || undefined,
           attachments_to_delete: attachmentsMarkedForDeletion.length > 0 ? attachmentsMarkedForDeletion : undefined,
         };
 
@@ -556,6 +555,7 @@ export function CallReportForm({
               />
             </div>
 
+            {mode === "create" && (
             <div className="space-y-2">
               <Label htmlFor="originalSubmissionDate">
                 Original Submission Date{" "}
@@ -571,6 +571,7 @@ export function CallReportForm({
               />
               <p className="text-xs text-slate-400">Only fill in when backfilling a historical entry. Leave blank to use today&apos;s date.</p>
             </div>
+            )}
 
             <div className="space-y-2">
               <Label htmlFor="category">Source of Idea</Label>
