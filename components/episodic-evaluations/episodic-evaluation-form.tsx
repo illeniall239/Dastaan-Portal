@@ -329,8 +329,7 @@ export function EpisodicEvaluationForm({
           .from("attachments")
           .upload(path, file, { upsert: false });
         if (uploadError) throw uploadError;
-        const { data: urlData } = supabase.storage.from("attachments").getPublicUrl(path);
-        uploaded.push({ url: urlData.publicUrl, name: file.name });
+        uploaded.push({ url: path, name: file.name });
       }
       setFeedbackAttachments(prev => [...prev, ...uploaded]);
     } catch (err: any) {
@@ -990,61 +989,87 @@ export function EpisodicEvaluationForm({
       </div>{/* end viewOnly wrapper */}
 
       {/* Feedback Communication */}
-      {!isReadOnly && (
+      {(!isReadOnly || feedbackText || feedbackAttachments.length > 0) && (
         <Card className="p-4 border border-gray-200">
           <div className="space-y-4">
             <div>
-              <h3 className="text-base font-semibold text-gray-800">Feedback Communication <span className="text-sm font-normal text-gray-500">(optional)</span></h3>
-              <p className="text-xs text-gray-500 mt-0.5">Attach email or written feedback evidence submitted alongside this evaluation.</p>
+              <h3 className="text-base font-semibold text-gray-800">Feedback Communication {!isReadOnly && <span className="text-sm font-normal text-gray-500">(optional)</span>}</h3>
+              {!isReadOnly && <p className="text-xs text-gray-500 mt-0.5">Attach email or written feedback evidence submitted alongside this evaluation.</p>}
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="feedbackText">Email / Communication Text</Label>
-              <Textarea
-                id="feedbackText"
-                placeholder="Paste email or communication content here..."
-                value={feedbackText}
-                onChange={(e) => setFeedbackText(e.target.value)}
-                rows={4}
-                className="resize-none"
-              />
-            </div>
-            <div className="space-y-3">
-              <Label>Supporting Attachments</Label>
-              {feedbackAttachments.length > 0 && (
-                <div className="space-y-1.5">
-                  {feedbackAttachments.map((att, idx) => (
-                    <div key={idx} className="flex items-center gap-2 text-sm text-gray-700 border rounded-md px-3 py-2 bg-gray-50">
-                      <Paperclip className="h-4 w-4 text-gray-400 shrink-0" />
-                      <a href={att.url} target="_blank" rel="noopener noreferrer" className="truncate flex-1 hover:underline text-blue-600">{att.name}</a>
-                      <button
-                        type="button"
-                        onClick={() => setFeedbackAttachments(prev => prev.filter((_, i) => i !== idx))}
-                        className="text-gray-400 hover:text-red-500 shrink-0"
-                        aria-label="Remove attachment"
-                      >
-                        ✕
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-              <label className="inline-flex items-center gap-2 cursor-pointer border border-gray-300 rounded-md px-3 py-2 text-sm hover:bg-gray-50 transition-colors">
-                {feedbackUploading ? (
-                  <><Loader2 className="h-4 w-4 animate-spin" /> Uploading...</>
-                ) : (
-                  <><Paperclip className="h-4 w-4" /> Add Files</>
+            {isReadOnly ? (
+              <>
+                {feedbackText && (
+                  <div className="space-y-2">
+                    <Label>Email / Communication Text</Label>
+                    <div className="bg-gray-50 border rounded-md p-3 text-sm text-gray-700 whitespace-pre-wrap">{feedbackText}</div>
+                  </div>
                 )}
-                <input
-                  type="file"
-                  accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
-                  multiple
-                  className="sr-only"
-                  onChange={handleFeedbackFileUpload}
-                  disabled={feedbackUploading}
-                />
-              </label>
-              <p className="text-xs text-gray-400">PDF, DOC, DOCX, JPG, PNG — max 10MB each</p>
-            </div>
+                {feedbackAttachments.length > 0 && (
+                  <div className="space-y-2">
+                    <Label>Supporting Attachments</Label>
+                    <div className="space-y-1.5">
+                      {feedbackAttachments.map((att, idx) => (
+                        <div key={idx} className="flex items-center gap-2 text-sm text-gray-700 border rounded-md px-3 py-2 bg-gray-50">
+                          <Paperclip className="h-4 w-4 text-gray-400 shrink-0" />
+                          <a href={`/api/storage/download?url=${encodeURIComponent(att.url)}&bucket=attachments`} target="_blank" rel="noopener noreferrer" className="truncate flex-1 hover:underline text-blue-600">{att.name}</a>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </>
+            ) : (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="feedbackText">Email / Communication Text</Label>
+                  <Textarea
+                    id="feedbackText"
+                    placeholder="Paste email or communication content here..."
+                    value={feedbackText}
+                    onChange={(e) => setFeedbackText(e.target.value)}
+                    rows={4}
+                    className="resize-none"
+                  />
+                </div>
+                <div className="space-y-3">
+                  <Label>Supporting Attachments</Label>
+                  {feedbackAttachments.length > 0 && (
+                    <div className="space-y-1.5">
+                      {feedbackAttachments.map((att, idx) => (
+                        <div key={idx} className="flex items-center gap-2 text-sm text-gray-700 border rounded-md px-3 py-2 bg-gray-50">
+                          <Paperclip className="h-4 w-4 text-gray-400 shrink-0" />
+                          <a href={`/api/storage/download?url=${encodeURIComponent(att.url)}&bucket=attachments`} target="_blank" rel="noopener noreferrer" className="truncate flex-1 hover:underline text-blue-600">{att.name}</a>
+                          <button
+                            type="button"
+                            onClick={() => setFeedbackAttachments(prev => prev.filter((_, i) => i !== idx))}
+                            className="text-gray-400 hover:text-red-500 shrink-0"
+                            aria-label="Remove attachment"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <label className="inline-flex items-center gap-2 cursor-pointer border border-gray-300 rounded-md px-3 py-2 text-sm hover:bg-gray-50 transition-colors">
+                    {feedbackUploading ? (
+                      <><Loader2 className="h-4 w-4 animate-spin" /> Uploading...</>
+                    ) : (
+                      <><Paperclip className="h-4 w-4" /> Add Files</>
+                    )}
+                    <input
+                      type="file"
+                      accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                      multiple
+                      className="sr-only"
+                      onChange={handleFeedbackFileUpload}
+                      disabled={feedbackUploading}
+                    />
+                  </label>
+                  <p className="text-xs text-gray-400">PDF, DOC, DOCX, JPG, PNG — max 10MB each</p>
+                </div>
+              </>
+            )}
           </div>
         </Card>
       )}

@@ -229,8 +229,7 @@ export function EvaluatorEvaluationForm({
           .from("attachments")
           .upload(path, file, { upsert: false });
         if (uploadError) throw uploadError;
-        const { data: urlData } = supabase.storage.from("attachments").getPublicUrl(path);
-        uploaded.push({ url: urlData.publicUrl, name: file.name });
+        uploaded.push({ url: path, name: file.name });
       }
       setFeedbackAttachments(prev => [...prev, ...uploaded]);
     } catch (err: any) {
@@ -1281,7 +1280,7 @@ export function EvaluatorEvaluationForm({
                     {feedbackAttachments.map((att, idx) => (
                       <div key={idx} className="flex items-center gap-2 text-sm text-gray-700 border rounded-md px-3 py-2 bg-gray-50">
                         <PaperclipIcon className="h-4 w-4 text-gray-400 shrink-0" />
-                        <a href={att.url} target="_blank" rel="noopener noreferrer" className="truncate flex-1 hover:underline text-blue-600">{att.name}</a>
+                        <a href={`/api/storage/download?url=${encodeURIComponent(att.url)}&bucket=attachments`} target="_blank" rel="noopener noreferrer" className="truncate flex-1 hover:underline text-blue-600">{att.name}</a>
                         <button
                           type="button"
                           onClick={() => setFeedbackAttachments(prev => prev.filter((_, i) => i !== idx))}

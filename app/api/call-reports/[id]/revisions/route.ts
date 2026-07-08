@@ -283,7 +283,7 @@ export async function POST(
       const { data: relevantTeams } = await admin
         .from("teams")
         .select("id")
-        .in("team_type", ["production", "management"]);
+        .in("team_type", ["production", "management", "programmer"]);
       const relevantTeamIds = (relevantTeams || []).map((t: { id: string }) => t.id);
 
       // Add uploader's team if not already included

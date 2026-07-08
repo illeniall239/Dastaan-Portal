@@ -164,7 +164,7 @@ export async function POST(
     // Verify episode exists
     const { data: episode, error: episodeError } = await supabase
       .from("episodes")
-      .select("id, episode_number, call_report_id, story_id, logged_by")
+      .select("id, episode_number, call_report_id, story_id, logged_by, call_report:call_reports!call_report_id(working_title)")
       .eq("id", id)
       .single();
 
@@ -271,7 +271,7 @@ export async function POST(
       const { data: relevantTeams } = await admin
         .from("teams")
         .select("id")
-        .in("team_type", ["production", "management"]);
+        .in("team_type", ["production", "management", "programmer"]);
       const relevantTeamIds = (relevantTeams || []).map((t: { id: string }) => t.id);
 
       // Add uploader's team if not already included
@@ -295,11 +295,13 @@ export async function POST(
 
       if (recipients.length > 0) {
         const epLabel = episode.episode_number ? `EP${episode.episode_number}` : "Episode";
+        const storyTitle = (episode.call_report as any)?.working_title;
+        const titleSuffix = storyTitle ? ` — "${storyTitle}"` : "";
         await createNotifications(
           recipients,
           "info",
-          `New revision: ${epLabel}`,
-          `Revision ${nextRevisionNumber} has been uploaded for ${epLabel}.`,
+          `New revision: ${epLabel}${titleSuffix}`,
+          `Revision ${nextRevisionNumber} has been uploaded for ${epLabel}${storyTitle ? ` of "${storyTitle}"` : ""}.`,
           "episode",
           id,
           user.id
