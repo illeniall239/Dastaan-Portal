@@ -66,10 +66,8 @@ function formatDate(dateStr: string) {
   return d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
 }
 
-function getPublicUrl(filePath: string) {
-  // Use Supabase public URL pattern — same bucket used by existing attachment system
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  return `${supabaseUrl}/storage/v1/object/public/attachments/${filePath}`;
+function getDownloadUrl(filePath: string) {
+  return `/api/storage/download?url=${encodeURIComponent(filePath)}&bucket=attachments`;
 }
 
 interface FeedbackFormProps {
@@ -522,7 +520,7 @@ export function StoryFeedbackClient({ callReports, initialFeedback, currentUserI
                     {entry.attachments.map((att) => (
                       <a
                         key={att.id}
-                        href={getPublicUrl(att.file_path)}
+                        href={getDownloadUrl(att.file_path)}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="inline-flex items-center gap-1 text-xs px-2 py-1 bg-slate-100 hover:bg-slate-200 rounded-md border border-slate-200 transition-colors"

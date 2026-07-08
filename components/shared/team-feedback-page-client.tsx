@@ -590,9 +590,8 @@ function getAttachmentIcon(fileType: string) {
   return <File className="h-3 w-3" />;
 }
 
-function getPublicUrl(filePath: string): string {
-  const base = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
-  return `${base}/storage/v1/object/public/attachments/${filePath}`;
+function getDownloadUrl(filePath: string): string {
+  return `/api/storage/download?url=${encodeURIComponent(filePath)}&bucket=attachments`;
 }
 
 function formatFeedbackDate(dateStr: string): string {
@@ -644,7 +643,7 @@ function ProgrammerFeedbackSection({ entries }: { entries: ProgrammerFeedbackEnt
                   {entry.attachments.map((att) => (
                     <a
                       key={att.id}
-                      href={getPublicUrl(att.file_path)}
+                      href={getDownloadUrl(att.file_path)}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="inline-flex items-center gap-1 text-xs px-2 py-1 bg-white hover:bg-slate-50 rounded border border-slate-200 transition-colors"
