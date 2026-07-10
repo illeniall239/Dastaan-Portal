@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
 
 interface FileUploadProps {
-  onFileUpload: (file: File) => void;
+  onFileUpload: (file: File) => void | Promise<void>;
   onFileRemove: (fileName: string) => void;
   uploadedFiles: File[];
   uploadProgress?: Record<string, number>; // file name to progress percentage

@@ -30,6 +30,7 @@ import { DirectorSelect } from "@/components/directors/director-select";
 import type { Writer, CallReportWriter } from "@/types";
 import { useFormAutosave } from "@/lib/hooks/useFormAutosave";
 import { DraftRestoreBanner } from "@/components/ui/draft-restore-banner";
+import { createClient } from "@/lib/supabase/client";
 
 interface User {
   id: string;
@@ -158,6 +159,7 @@ export function CallReportForm({
   const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({});
   const [existingAttachments, setExistingAttachments] = useState<AttachmentRecord[]>(memoizedInitialAttachments);
   const [attachmentsMarkedForDeletion, setAttachmentsMarkedForDeletion] = useState<string[]>([]);
+  const [draftAttachments, setDraftAttachments] = useState<AttachmentRecord[]>([]);
 
   useEffect(() => {
     setExistingAttachments(memoizedInitialAttachments);
@@ -218,8 +220,9 @@ export function CallReportForm({
       ...formData,
       writers,
       loglineImageUrl,
+      draftAttachments,
     });
-  }, [formData, writers, loglineImageUrl, saveDraft, mode]);
+  }, [formData, writers, loglineImageUrl, draftAttachments, saveDraft, mode]);
 
   const handleRestoreDraft = useCallback(async () => {
     const data = await loadDraft();
@@ -253,15 +256,25 @@ export function CallReportForm({
       });
       if (d.writers) setWriters(d.writers);
       if (d.loglineImageUrl) setLoglineImageUrl(d.loglineImageUrl);
+      if (d.draftAttachments?.length > 0) setDraftAttachments(d.draftAttachments);
       setDraftDismissed(true);
       toast.success("Draft restored");
     }
   }, [loadDraft]);
 
   const handleDiscardDraft = useCallback(async () => {
+    if (draftAttachments.length > 0) {
+      try {
+        const supabase = createClient();
+        await supabase.storage.from('attachments').remove(draftAttachments.map(a => a.file_path));
+      } catch {
+        // Non-fatal
+      }
+      setDraftAttachments([]);
+    }
     await clearDraft();
     setDraftDismissed(true);
-  }, [clearDraft]);
+  }, [clearDraft, draftAttachments]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { id, value } = e.target;
@@ -272,16 +285,58 @@ export function CallReportForm({
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleFileUpload = (file: File) => {
-    setFilesToUpload(prev => [...prev, file]);
+  const handleFileUpload = async (file: File) => {
+    if (mode === "create") {
+      try {
+        setUploadProgress(prev => ({ ...prev, [file.name]: 0 }));
+        const supabase = createClient();
+        const ext = file.name.includes('.') ? '.' + file.name.split('.').pop() : '';
+        const path = `drafts/${userId}/${crypto.randomUUID()}${ext}`;
+        const { error } = await supabase.storage.from('attachments').upload(path, file, {
+          cacheControl: '3600',
+          upsert: false,
+          contentType: file.type || undefined,
+        });
+        setUploadProgress(prev => { const p = { ...prev }; delete p[file.name]; return p; });
+        if (error) throw error;
+        setDraftAttachments(prev => [...prev, {
+          id: path,
+          file_name: file.name,
+          file_path: path,
+          file_size: file.size,
+          file_type: file.type || null,
+        }]);
+      } catch {
+        setUploadProgress(prev => { const p = { ...prev }; delete p[file.name]; return p; });
+        toast.error(`Failed to upload ${file.name}`);
+      }
+    } else {
+      setFilesToUpload(prev => [...prev, file]);
+    }
   };
 
   const handleFileRemove = (fileName: string) => {
     setFilesToUpload(prev => prev.filter(f => f.name !== fileName));
   };
 
+  const handleDraftAttachmentRemove = async (attachment: AttachmentRecord) => {
+    setDraftAttachments(prev => prev.filter(a => a.file_path !== attachment.file_path));
+    try {
+      const supabase = createClient();
+      await supabase.storage.from('attachments').remove([attachment.file_path]);
+    } catch {
+      // Non-fatal
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!formData.category) {
+      toast.error("Please select a Source of Idea before submitting.");
+      return;
+    }
+
     setIsLoading(true);
 
     try {
@@ -473,7 +528,35 @@ export function CallReportForm({
               });
             }
           }
-          toast.success(`Writer Engagement Report logged successfully with ${filesToUpload.length} attachment(s)!`);
+        }
+
+        // Link draft-uploaded attachments to the new call report
+        if (draftAttachments.length > 0 && result.id) {
+          const supabase = createClient();
+          for (const att of draftAttachments) {
+            try {
+              const ext = att.file_name.includes('.') ? '.' + att.file_name.split('.').pop() : '';
+              const newPath = `call_report/${result.id}/${crypto.randomUUID()}${ext}`;
+              await supabase.storage.from('attachments').move(att.file_path, newPath);
+              await supabase.from('attachments').insert({
+                entity_type: 'call_report',
+                entity_id: result.id,
+                file_name: att.file_name,
+                file_path: newPath,
+                file_size: att.file_size,
+                file_type: att.file_type || 'application/octet-stream',
+                uploaded_by: userId,
+              });
+            } catch (err) {
+              console.error("Error linking draft attachment:", err);
+              toast.error(`Failed to attach ${att.file_name}`);
+            }
+          }
+        }
+
+        const totalAttachments = filesToUpload.length + draftAttachments.length;
+        if (totalAttachments > 0) {
+          toast.success(`Writer Engagement Report logged successfully with ${totalAttachments} attachment(s)!`);
         } else {
           toast.success("Writer Engagement Report logged successfully!");
         }
@@ -977,6 +1060,32 @@ export function CallReportForm({
           maxFileSize={20}
           acceptedFileTypes={['.pdf', '.doc', '.docx', '.ppt', '.pptx', '.txt', '.jpeg', '.jpg', '.png']}
         />
+
+        {/* Draft-uploaded attachments (create mode) */}
+        {draftAttachments.length > 0 && (
+          <Card>
+            <CardHeader className="p-3 sm:p-4 md:p-6">
+              <CardTitle className="text-base sm:text-lg">Uploaded Attachments</CardTitle>
+            </CardHeader>
+            <CardContent className="p-3 sm:p-4 md:p-6 pt-0">
+              <div className="space-y-3">
+                {draftAttachments.map((attachment) => (
+                  <div key={attachment.file_path} className="flex items-center justify-between gap-3 border rounded p-3 flex-wrap">
+                    <div>
+                      <p className="text-sm font-medium">{attachment.file_name}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {attachment.file_type || "Unknown type"} • {attachment.file_size ? formatFileSize(attachment.file_size) : "Unknown size"}
+                      </p>
+                    </div>
+                    <Button variant="ghost" size="sm" type="button" onClick={() => handleDraftAttachmentRemove(attachment)}>
+                      Remove
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Form Actions - sticky on mobile */}
         <div className="flex flex-col sm:flex-row justify-end gap-3 sticky bottom-0 bg-white/80 backdrop-blur supports-[backdrop-filter]:bg-white/60 p-3 sm:p-0 sm:static sm:bg-transparent sm:backdrop-blur-0">
