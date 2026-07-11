@@ -147,7 +147,7 @@ export function EvaluatorEvaluationForm({
     // Descriptive evaluation
     themesOfDrama: [] as string[],
     correspondingDramas: [] as string[],
-    themeCategory: "" as "" | "commercial" | "non_commercial" | "commercial_edge",
+    themeCategory: "" as "" | "commercial" | "non_commercial" | "commercial_edge" | "signature_commercial",
     audienceFocus: "" as "" | "male_centric" | "female_centric" | "both",
     noOfTracks: "" as string,
     closingRemarks: "",
@@ -972,8 +972,9 @@ export function EvaluatorEvaluationForm({
               <div className="flex flex-col sm:flex-row gap-3">
                 {[
                   { value: "commercial", label: "Commercial" },
-                  { value: "non_commercial", label: "Non Commercial" },
+                  { value: "non_commercial", label: "Non Commercial/Experimental" },
                   { value: "commercial_edge", label: "Commercial Edge" },
+                  { value: "signature_commercial", label: "Signature Commercial" },
                 ].map((option) => (
                   <label
                     key={option.value}

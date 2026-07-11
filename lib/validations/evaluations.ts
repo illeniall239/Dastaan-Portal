@@ -32,7 +32,7 @@ export const createEvaluationSchema = z.object({
   // Descriptive evaluation
   themes_of_drama: z.array(z.string()).optional(),
   corresponding_dramas: z.array(z.string()).optional(),
-  theme_category: z.enum(["commercial", "non_commercial", "commercial_edge"]).optional(),
+  theme_category: z.enum(["commercial", "non_commercial", "commercial_edge", "signature_commercial"]).optional(),
   audience_focus: z.enum(["male_centric", "female_centric", "both"]).optional(),
   no_of_tracks: z.number().int().min(0).optional(),
   closing_remarks: z.string().optional(),
@@ -87,7 +87,7 @@ export const updateEvaluationSchema = z.object({
   // Descriptive evaluation
   themes_of_drama: z.array(z.string()).optional(),
   corresponding_dramas: z.array(z.string()).optional(),
-  theme_category: z.enum(["commercial", "non_commercial", "commercial_edge"]).nullable().optional(),
+  theme_category: z.enum(["commercial", "non_commercial", "commercial_edge", "signature_commercial"]).nullable().optional(),
   audience_focus: z.enum(["male_centric", "female_centric", "both"]).nullable().optional(),
   no_of_tracks: z.number().int().min(0).nullable().optional(),
   closing_remarks: z.string().optional(),
