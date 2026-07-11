@@ -87,6 +87,12 @@ export interface ActiveIdeaDetail {
   programming_eval_count?: number | null;
   content_dev_eval_count?: number | null;
   management_eval_count?: number | null;
+  // Descriptive evaluation completeness
+  has_theme_category?: boolean;
+  has_audience_focus?: boolean;
+  has_no_of_tracks?: boolean;
+  has_closing_remarks?: boolean;
+  has_themes_of_drama?: boolean;
 }
 
 /**
@@ -132,6 +138,31 @@ export async function getActiveIdeasByGenre(
       });
     }
 
+    // Fetch descriptive evaluation completeness per call report
+    const descMap = new Map<string, any>();
+    const { data: rawEvals } = await supabase
+      .from('evaluator_forms')
+      .select('call_report_id, theme_category, audience_focus, no_of_tracks, closing_remarks, themes_of_drama')
+      .not('submitted_at', 'is', null);
+
+    if (rawEvals) {
+      const grouped = new Map<string, any[]>();
+      for (const row of rawEvals) {
+        const list = grouped.get(row.call_report_id) || [];
+        list.push(row);
+        grouped.set(row.call_report_id, list);
+      }
+      for (const [crId, rows] of grouped) {
+        descMap.set(crId, {
+          has_theme_category: rows.some((r: any) => r.theme_category != null),
+          has_audience_focus: rows.some((r: any) => r.audience_focus != null),
+          has_no_of_tracks: rows.some((r: any) => r.no_of_tracks != null),
+          has_closing_remarks: rows.some((r: any) => r.closing_remarks != null && r.closing_remarks !== ''),
+          has_themes_of_drama: rows.some((r: any) => r.themes_of_drama != null && Array.isArray(r.themes_of_drama) && r.themes_of_drama.length > 0),
+        });
+      }
+    }
+
     const now = new Date();
 
     const msPerDay = 1000 * 60 * 60 * 24;
@@ -143,6 +174,8 @@ export async function getActiveIdeasByGenre(
       const firstEpDate = report.first_episode_received_at ? new Date(report.first_episode_received_at) : null;
       const lastEpDate = report.last_episode_received_at ? new Date(report.last_episode_received_at) : null;
 
+      const desc = descMap.get(report.id);
+
       return {
         ...report,
         days_active: daysActive,
@@ -151,6 +184,11 @@ export async function getActiveIdeasByGenre(
         writer_names: report.writer_name ? [report.writer_name] : [],
         genre: Array.isArray(report.genre) ? report.genre : (report.genre ? [report.genre] : ['Other']),
         evaluator_scores: null, // Aggregated scores are top-level
+        has_theme_category: desc?.has_theme_category ?? false,
+        has_audience_focus: desc?.has_audience_focus ?? false,
+        has_no_of_tracks: desc?.has_no_of_tracks ?? false,
+        has_closing_remarks: desc?.has_closing_remarks ?? false,
+        has_themes_of_drama: desc?.has_themes_of_drama ?? false,
       };
     });
   } catch (error) {

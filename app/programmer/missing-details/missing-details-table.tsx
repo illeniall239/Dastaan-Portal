@@ -22,6 +22,11 @@ const CHECKED_FIELDS = [
   { key: "idea_by", label: "Idea By", check: (idea: ActiveIdeaDetail) => !idea.idea_by },
   { key: "developed_by", label: "Developed By", check: (idea: ActiveIdeaDetail) => !idea.developed_by },
   { key: "management_member_name", label: "Management Member", check: (idea: ActiveIdeaDetail) => !idea.management_member_name },
+  { key: "has_theme_category", label: "Theme Category", check: (idea: ActiveIdeaDetail) => !idea.has_theme_category },
+  { key: "has_audience_focus", label: "Audience Focus", check: (idea: ActiveIdeaDetail) => !idea.has_audience_focus },
+  { key: "has_no_of_tracks", label: "No. of Tracks", check: (idea: ActiveIdeaDetail) => !idea.has_no_of_tracks },
+  { key: "has_closing_remarks", label: "Closing Remarks", check: (idea: ActiveIdeaDetail) => !idea.has_closing_remarks },
+  { key: "has_themes_of_drama", label: "Themes of Drama", check: (idea: ActiveIdeaDetail) => !idea.has_themes_of_drama },
 ] as const;
 
 function getMissingFields(idea: ActiveIdeaDetail): string[] {
@@ -177,7 +182,7 @@ export function MissingDetailsTable({ ideas, teamMap }: MissingDetailsTableProps
                             {idea.writer_name || "No writer"} &middot; {idea.call_report_id}
                           </p>
                         </div>
-                        <div className="flex flex-wrap gap-1.5 shrink-0">
+                        <div className="flex flex-wrap gap-1.5">
                           {idea.missingFields.length > 0 ? (
                             idea.missingFields.map(field => (
                               <Badge key={field} variant="outline" className="text-[10px] border-red-300 text-red-600 bg-red-50">
