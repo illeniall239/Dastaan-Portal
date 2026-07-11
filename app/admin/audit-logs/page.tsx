@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useFreezeColumns } from "@/lib/hooks/useFreezeColumns";
 import {
   Select,
   SelectContent,
@@ -70,6 +71,7 @@ export default function AuditLogsPage() {
   const [endDate, setEndDate] = useState("");
   const [selectedLog, setSelectedLog] = useState<AuditLog | null>(null);
   const [freezePanes, setFreezePanes] = useState(false);
+  const freezeRef = useFreezeColumns(freezePanes);
 
   const fetchAuditLogs = async (offset: number = 0) => {
     setLoading(true);
@@ -290,10 +292,10 @@ export default function AuditLogsPage() {
           ) : (
             <>
               <div className="rounded-md border">
-                <Table wrapperClassName="max-h-[70vh]">
+                <Table wrapperClassName="max-h-[70vh]" wrapperRef={freezeRef}>
                   <TableHeader>
-                    <TableRow className={freezePanes ? "sticky top-0 z-10" : ""}>
-                      <TableHead className={`bg-background ${freezePanes ? "sticky left-0 z-20 shadow-[2px_0_5px_rgba(0,0,0,0.06)]" : ""}`}>Timestamp</TableHead>
+                    <TableRow>
+                      <TableHead className="bg-background">Timestamp</TableHead>
                       <TableHead className="bg-background">User</TableHead>
                       <TableHead className="bg-background">Action</TableHead>
                       <TableHead className="bg-background">Entity Type</TableHead>
@@ -305,7 +307,7 @@ export default function AuditLogsPage() {
                   <TableBody>
                     {logs.map((log) => (
                       <TableRow key={log.id}>
-                        <TableCell className={`font-mono text-xs bg-background ${freezePanes ? "sticky left-0 z-[9] shadow-[2px_0_5px_rgba(0,0,0,0.06)]" : ""}`}>
+                        <TableCell className="font-mono text-xs bg-background">
                           {format(new Date(log.timestamp), "yyyy-MM-dd HH:mm:ss")}
                         </TableCell>
                         <TableCell>

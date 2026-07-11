@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Loader2, RefreshCw, Pin } from "lucide-react";
+import { useFreezeColumns } from "@/lib/hooks/useFreezeColumns";
 
 type Range = "7d" | "30d" | "3m" | "all";
 
@@ -69,10 +70,10 @@ function Num({ value }: { value: number }) {
   );
 }
 
-function PersonRow({ p, freeze }: { p: PersonData; freeze: boolean }) {
+function PersonRow({ p }: { p: PersonData }) {
   return (
     <tr className="border-b border-slate-100 hover:bg-slate-50">
-      <td className={`px-4 py-3 ${freeze ? "sticky left-0 z-[9] bg-white shadow-[2px_0_5px_rgba(0,0,0,0.06)]" : ""}`}>
+      <td className="px-4 py-3">
         <div className="flex items-center gap-2.5 min-w-0">
           <div className="relative shrink-0">
             <div className="h-8 w-8 rounded-full bg-teal-100 flex items-center justify-center">
@@ -129,6 +130,7 @@ export function KeyPersonnelSection() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [freezePanes, setFreezePanes] = useState(false);
+  const freezeRef = useFreezeColumns(freezePanes, 1);
 
   const fetchData = useCallback(async (r: Range) => {
     setLoading(true);
@@ -217,11 +219,11 @@ export function KeyPersonnelSection() {
                   No data found for key personnel.
                 </div>
               ) : (
-                <div className="overflow-auto max-h-[60vh]">
+                <div ref={freezeRef} className="overflow-auto max-h-[60vh]">
                   <table className="w-full text-xs">
                     <thead>
-                      <tr className={`border-b bg-slate-50 ${freezePanes ? "sticky top-0 z-10" : ""}`}>
-                        <th className={`px-4 py-2 text-left text-[10px] uppercase tracking-wide text-slate-400 font-medium bg-slate-50 ${freezePanes ? "sticky left-0 z-20 shadow-[2px_0_5px_rgba(0,0,0,0.06)]" : ""}`}>Person</th>
+                      <tr className="border-b bg-slate-50">
+                        <th className="px-4 py-2 text-left text-[10px] uppercase tracking-wide text-slate-400 font-medium bg-slate-50">Person</th>
                         <th className="px-4 py-2 text-center text-[10px] uppercase tracking-wide text-slate-400 font-medium whitespace-nowrap bg-slate-50">Evals Done</th>
                         <th className="px-4 py-2 text-center text-[10px] uppercase tracking-wide text-slate-400 font-medium whitespace-nowrap bg-slate-50">Eps Eval</th>
                         {/* Pending Eps Eval column hidden for now — data available via pending_eps_evals */}
@@ -231,7 +233,7 @@ export function KeyPersonnelSection() {
                       </tr>
                     </thead>
                     <tbody>
-                      {data.map(p => <PersonRow key={p.user_id} p={p} freeze={freezePanes} />)}
+                      {data.map(p => <PersonRow key={p.user_id} p={p} />)}
                     </tbody>
                   </table>
                 </div>

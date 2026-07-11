@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useFreezeColumns } from "@/lib/hooks/useFreezeColumns";
 import {
   Select,
   SelectContent,
@@ -79,6 +80,7 @@ export default function ActivityLogsPage() {
   const [pagination, setPagination] = useState({ total: 0, limit: 50, offset: 0, hasMore: false });
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [freezePanes, setFreezePanes] = useState(false);
+  const freezeRef = useFreezeColumns(freezePanes);
 
   const [typeFilter, setTypeFilter] = useState("all");
   const [routeFilter, setRouteFilter] = useState("");
@@ -249,11 +251,11 @@ export default function ActivityLogsPage() {
           </div>
         </CardHeader>
         <CardContent className="p-0">
-          <div className="overflow-auto max-h-[70vh]">
+          <div ref={freezeRef} className="overflow-auto max-h-[70vh]">
             <Table>
               <TableHeader>
-                <TableRow className={freezePanes ? "sticky top-0 z-10" : ""}>
-                  <TableHead className={`w-36 bg-background ${freezePanes ? "sticky left-0 z-20 shadow-[2px_0_5px_rgba(0,0,0,0.06)]" : ""}`}>Timestamp</TableHead>
+                <TableRow>
+                  <TableHead className="w-36 bg-background">Timestamp</TableHead>
                   <TableHead className="w-28 bg-background">Type</TableHead>
                   <TableHead className="w-36 bg-background">User</TableHead>
                   <TableHead className="bg-background">Route</TableHead>
@@ -276,7 +278,7 @@ export default function ActivityLogsPage() {
                   return (
                     <>
                       <TableRow key={log.id} className="cursor-pointer hover:bg-muted/50" onClick={() => setExpandedId(expandedId === log.id ? null : log.id)}>
-                        <TableCell className={`text-xs text-muted-foreground whitespace-nowrap bg-background ${freezePanes ? "sticky left-0 z-[9] shadow-[2px_0_5px_rgba(0,0,0,0.06)]" : ""}`}>
+                        <TableCell className="text-xs text-muted-foreground whitespace-nowrap bg-background">
                           {format(new Date(log.timestamp), "MMM d, HH:mm:ss")}
                         </TableCell>
                         <TableCell><TypeBadge type={log.type} /></TableCell>

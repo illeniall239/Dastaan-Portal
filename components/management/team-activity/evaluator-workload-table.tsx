@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Gauge, Pin } from "lucide-react";
+import { useFreezeColumns } from "@/lib/hooks/useFreezeColumns";
 import { TeamBadge } from "@/components/shared/team-badge";
 
 interface WorkloadItem {
@@ -37,6 +38,7 @@ function CompletionBar({ completed, assigned }: { completed: number; assigned: n
 
 export function EvaluatorWorkloadTable({ data }: EvaluatorWorkloadTableProps) {
   const [freezePanes, setFreezePanes] = useState(false);
+  const freezeRef = useFreezeColumns(freezePanes, 1);
   const maxPending = Math.max(...data.map(d => d.pending), 1);
 
   return (
@@ -59,11 +61,11 @@ export function EvaluatorWorkloadTable({ data }: EvaluatorWorkloadTableProps) {
             No evaluator data found.
           </div>
         ) : (
-          <div className="overflow-auto max-h-[60vh]">
+          <div ref={freezeRef} className="overflow-auto max-h-[60vh]">
             <table className="w-full text-xs">
               <thead>
-                <tr className={`border-b bg-slate-50 ${freezePanes ? "sticky top-0 z-10" : ""}`}>
-                  <th className={`text-left px-4 py-2 text-[10px] uppercase tracking-wide text-slate-400 font-medium bg-slate-50 ${freezePanes ? "sticky left-0 z-20 shadow-[2px_0_5px_rgba(0,0,0,0.06)]" : ""}`}>Evaluator</th>
+                <tr className="border-b bg-slate-50">
+                  <th className="text-left px-4 py-2 text-[10px] uppercase tracking-wide text-slate-400 font-medium bg-slate-50">Evaluator</th>
                   <th className="text-left px-4 py-2 text-[10px] uppercase tracking-wide text-slate-400 font-medium bg-slate-50">Team</th>
                   <th className="text-center px-4 py-2 text-[10px] uppercase tracking-wide text-slate-400 font-medium bg-slate-50">Assigned</th>
                   <th className="text-center px-4 py-2 text-[10px] uppercase tracking-wide text-slate-400 font-medium bg-slate-50">Completed</th>
@@ -78,7 +80,7 @@ export function EvaluatorWorkloadTable({ data }: EvaluatorWorkloadTableProps) {
                     key={item.evaluator_id}
                     className={item.overdue > 0 ? "bg-red-50 hover:bg-red-100/50" : "hover:bg-slate-50"}
                   >
-                    <td className={`px-4 py-2.5 ${freezePanes ? `sticky left-0 z-[9] shadow-[2px_0_5px_rgba(0,0,0,0.06)] ${item.overdue > 0 ? "bg-red-50" : "bg-white"}` : ""}`}>
+                    <td className="px-4 py-2.5">
                       <div className="flex items-center gap-2">
                         <div className="h-6 w-6 rounded-full bg-slate-200 flex items-center justify-center shrink-0">
                           <span className="text-[10px] font-medium text-slate-600">

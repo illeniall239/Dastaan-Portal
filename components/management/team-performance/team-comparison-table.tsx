@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { useFreezeColumns } from "@/lib/hooks/useFreezeColumns";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -27,6 +28,7 @@ export function TeamComparisonTable({ teams, filteredType }: TeamComparisonTable
   const [sortField, setSortField] = useState<SortField>('team_name');
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
   const [freezePanes, setFreezePanes] = useState(false);
+  const freezeRef = useFreezeColumns(freezePanes);
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
@@ -88,10 +90,10 @@ export function TeamComparisonTable({ teams, filteredType }: TeamComparisonTable
       <CardContent>
         <div className="rounded-md border overflow-hidden">
           <div className="overflow-x-auto max-w-full">
-            <Table className="text-sm" wrapperClassName="max-h-[60vh]">
+            <Table className="text-sm" wrapperClassName="max-h-[60vh]" wrapperRef={freezeRef}>
               <TableHeader>
-                <TableRow className={`bg-white ${freezePanes ? "sticky top-0 z-10" : ""}`}>
-                  <TableHead className={`text-xs bg-white ${freezePanes ? "sticky left-0 z-20 shadow-[2px_0_5px_rgba(0,0,0,0.06)]" : ""}`}>
+                <TableRow className="bg-white">
+                  <TableHead className="text-xs bg-white">
                     <Button
                       variant="ghost"
                       size="sm"
@@ -169,7 +171,7 @@ export function TeamComparisonTable({ teams, filteredType }: TeamComparisonTable
                 ) : (
                   sortedTeams.map((team) => (
                     <TableRow key={team.team_id} className="hover:bg-teal-50/50">
-                      <TableCell className={`font-medium bg-white ${freezePanes ? "sticky left-0 z-[9] shadow-[2px_0_5px_rgba(0,0,0,0.06)]" : ""}`}>{team.team_name}</TableCell>
+                      <TableCell className="font-medium bg-white">{team.team_name}</TableCell>
                       <TableCell className="text-center">{team.team_member_count || 0}</TableCell>
                       <TableCell className="text-center font-semibold">{team.call_reports_created || 0}</TableCell>
                       <TableCell className="text-center font-semibold">{team.evaluations_completed || 0}</TableCell>

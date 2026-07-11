@@ -6,6 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Pin } from 'lucide-react';
+import { useFreezeColumns } from '@/lib/hooks/useFreezeColumns';
 import { CrossTeamShare } from '@/types';
 import { formatDistanceToNow, format, differenceInHours, differenceInDays } from 'date-fns';
 
@@ -20,6 +21,7 @@ export function CrossTeamSharesTable({ readOnly = false }: CrossTeamSharesTableP
   const [statusFilter, setStatusFilter] = useState('all');
   const [directionFilter, setDirectionFilter] = useState('all');
   const [freezePanes, setFreezePanes] = useState(false);
+  const freezeRef = useFreezeColumns(freezePanes, 1);
 
   useEffect(() => {
     fetchShares();
@@ -177,11 +179,11 @@ export function CrossTeamSharesTable({ readOnly = false }: CrossTeamSharesTableP
           </div>
         </CardHeader>
         <CardContent className="p-0">
-          <div className="overflow-auto max-h-[70vh]">
+          <div ref={freezeRef} className="overflow-auto max-h-[70vh]">
             <table className="w-full text-sm">
               <thead>
-                <tr className={`border-b bg-gray-50/80 ${freezePanes ? "sticky top-0 z-10" : ""}`}>
-                  <th className={`text-left p-3 font-medium text-gray-600 bg-gray-50 ${freezePanes ? "sticky left-0 z-20 shadow-[2px_0_5px_rgba(0,0,0,0.06)]" : ""}`}>Project</th>
+                <tr className="border-b bg-gray-50/80">
+                  <th className="text-left p-3 font-medium text-gray-600 bg-gray-50">Project</th>
                   <th className="text-left p-3 font-medium text-gray-600 bg-gray-50">From Team</th>
                   <th className="text-left p-3 font-medium text-gray-600 bg-gray-50">To Team</th>
                   <th className="text-left p-3 font-medium text-gray-600 bg-gray-50">Requested By</th>
@@ -202,7 +204,7 @@ export function CrossTeamSharesTable({ readOnly = false }: CrossTeamSharesTableP
                 ) : (
                   filteredShares.map(share => (
                     <tr key={share.id} className="border-b hover:bg-gray-50/50">
-                      <td className={`p-3 ${freezePanes ? "sticky left-0 z-[9] bg-white shadow-[2px_0_5px_rgba(0,0,0,0.06)]" : ""}`}>
+                      <td className="p-3">
                         <div className="font-medium text-gray-900">
                           {(share as any).call_report?.working_title || 'Untitled'}
                         </div>

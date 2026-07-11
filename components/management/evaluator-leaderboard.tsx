@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useFreezeColumns } from "@/lib/hooks/useFreezeColumns";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -25,6 +26,7 @@ export function EvaluatorLeaderboard({ evaluators }: EvaluatorLeaderboardProps) 
   const [selectedLabel, setSelectedLabel] = useState("All Time");
   const [dateRange, setDateRange] = useState<{ from?: Date; to?: Date }>({});
   const [freezePanes, setFreezePanes] = useState(false);
+  const freezeRef = useFreezeColumns(freezePanes);
 
   // React Query hook for fetching evaluator stats with time range filtering
   const { data: apiStats, isLoading } = useEvaluatorStats({
@@ -89,11 +91,11 @@ export function EvaluatorLeaderboard({ evaluators }: EvaluatorLeaderboardProps) 
           </div>
         ) : (
           <div className="bg-white rounded-lg border">
-            <div className="overflow-auto max-h-[70vh]">
+            <div ref={freezeRef} className="overflow-auto max-h-[70vh]">
               <Table>
                 <TableHeader>
-                  <TableRow className={freezePanes ? "sticky top-0 z-10" : ""}>
-                    <TableHead className={`text-xs sm:text-sm bg-background ${freezePanes ? "sticky left-0 z-20 shadow-[2px_0_5px_rgba(0,0,0,0.06)]" : ""}`}>Evaluator</TableHead>
+                  <TableRow>
+                    <TableHead className="text-xs sm:text-sm bg-background">Evaluator</TableHead>
                     <TableHead className="text-center text-xs sm:text-sm bg-background">Writer Engagement Reports</TableHead>
                     <TableHead className="text-center text-xs sm:text-sm bg-background">Episodic Evaluations</TableHead>
                     <TableHead className="text-center text-xs sm:text-sm bg-background">One-liner Evaluations</TableHead>
@@ -111,7 +113,7 @@ export function EvaluatorLeaderboard({ evaluators }: EvaluatorLeaderboardProps) 
                   ) : (
                     sortedEvaluators.map((evaluator) => (
                       <TableRow key={evaluator.id}>
-                        <TableCell className={`p-2 sm:p-4 bg-white ${freezePanes ? "sticky left-0 z-[9] shadow-[2px_0_5px_rgba(0,0,0,0.06)]" : ""}`}>
+                        <TableCell className="p-2 sm:p-4 bg-white">
                           <div>
                             <p className="font-medium text-xs sm:text-sm">{evaluator.name}</p>
                             <p className="text-[10px] sm:text-xs text-muted-foreground">{evaluator.email}</p>

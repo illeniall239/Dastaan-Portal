@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useFreezeColumns } from "@/lib/hooks/useFreezeColumns";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -14,6 +15,7 @@ interface WriterProductivityTableProps {
 
 export function WriterProductivityTable({ writers }: WriterProductivityTableProps) {
   const [freezePanes, setFreezePanes] = useState(false);
+  const freezeRef = useFreezeColumns(freezePanes);
   // Show first 10 writers
   const displayedWriters = writers.slice(0, 10);
 
@@ -36,11 +38,11 @@ export function WriterProductivityTable({ writers }: WriterProductivityTableProp
             No writer data available
           </div>
         ) : (
-          <div className="overflow-auto max-h-[60vh]">
+          <div ref={freezeRef} className="overflow-auto max-h-[60vh]">
             <Table>
               <TableHeader>
-                <TableRow className={`bg-slate-50 ${freezePanes ? "sticky top-0 z-10" : ""}`}>
-                  <TableHead className={`font-semibold text-slate-700 bg-slate-50 ${freezePanes ? "sticky left-0 z-20 shadow-[2px_0_5px_rgba(0,0,0,0.06)]" : ""}`}>Writer</TableHead>
+                <TableRow className="bg-slate-50">
+                  <TableHead className="font-semibold text-slate-700 bg-slate-50">Writer</TableHead>
                   <TableHead className="font-semibold text-slate-700 text-center bg-slate-50">Projects</TableHead>
                   <TableHead className="font-semibold text-slate-700 text-center bg-slate-50">Episodes</TableHead>
                   <TableHead className="font-semibold text-slate-700 w-[140px] bg-slate-50">Completion</TableHead>
@@ -49,7 +51,7 @@ export function WriterProductivityTable({ writers }: WriterProductivityTableProp
               <TableBody>
                 {displayedWriters.map((writer, index) => (
                   <TableRow key={writer.writerName} className="hover:bg-slate-50">
-                    <TableCell className={`font-medium text-slate-900 bg-white ${freezePanes ? "sticky left-0 z-[9] shadow-[2px_0_5px_rgba(0,0,0,0.06)]" : ""}`}>
+                    <TableCell className="font-medium text-slate-900 bg-white">
                       <div className="flex items-center gap-2">
                         <span className="w-5 h-5 rounded-full bg-slate-200 flex items-center justify-center text-xs font-bold text-slate-600">
                           {index + 1}

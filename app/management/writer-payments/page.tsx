@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useFreezeColumns } from "@/lib/hooks/useFreezeColumns";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -48,6 +49,7 @@ export default function WriterPaymentsPage() {
   const [expandedWriter, setExpandedWriter] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [freezePanes, setFreezePanes] = useState(false);
+  const freezeRef = useFreezeColumns(freezePanes);
 
   useEffect(() => {
     fetchFinancialSummary();
@@ -239,17 +241,17 @@ export default function WriterPaymentsPage() {
           <CardTitle>Writer Financial Summary</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="overflow-auto max-h-[70vh]">
+          <div ref={freezeRef} className="overflow-auto max-h-[70vh]">
             <Table>
               <TableHeader>
-                <TableRow className={freezePanes ? "sticky top-0 z-10" : ""}>
-                  <TableHead className={`bg-background ${freezePanes ? "sticky left-0 z-20 shadow-[2px_0_5px_rgba(0,0,0,0.06)]" : ""}`}>Writer / Producer</TableHead>
-                  <TableHead className="text-right bg-background">Negotiated</TableHead>
-                  <TableHead className="text-right bg-background">Contracted</TableHead>
-                  <TableHead className="text-right bg-background">Paid</TableHead>
-                  <TableHead className="text-right bg-background">Outstanding</TableHead>
-                  <TableHead className="text-center bg-background">Projects</TableHead>
-                  <TableHead className="text-center bg-background">Details</TableHead>
+                <TableRow>
+                  <TableHead>Writer / Producer</TableHead>
+                  <TableHead className="text-right">Negotiated</TableHead>
+                  <TableHead className="text-right">Contracted</TableHead>
+                  <TableHead className="text-right">Paid</TableHead>
+                  <TableHead className="text-right">Outstanding</TableHead>
+                  <TableHead className="text-center">Projects</TableHead>
+                  <TableHead className="text-center">Details</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -263,7 +265,7 @@ export default function WriterPaymentsPage() {
                   summary.map((writer) => (
                     <>
                       <TableRow key={writer.writer_name} className="hover:bg-slate-50">
-                        <TableCell className={`font-medium bg-white ${freezePanes ? "sticky left-0 z-[9] shadow-[2px_0_5px_rgba(0,0,0,0.06)]" : ""}`}>{writer.writer_name}</TableCell>
+                        <TableCell className="font-medium">{writer.writer_name}</TableCell>
                         <TableCell className="text-right">
                           {formatCurrency(writer.total_negotiated)}
                         </TableCell>

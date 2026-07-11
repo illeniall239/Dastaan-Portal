@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useFreezeColumns } from "@/lib/hooks/useFreezeColumns";
 import type { ContentDeliveryItem } from "@/types";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
@@ -23,6 +24,7 @@ export function ContentDeliveryTable({ items }: ContentDeliveryTableProps) {
   const [sortField, setSortField] = useState<keyof ContentDeliveryItem | null>(null);
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
   const [freezePanes, setFreezePanes] = useState(false);
+  const freezeRef = useFreezeColumns(freezePanes);
 
   const handleSort = (field: keyof ContentDeliveryItem) => {
     if (sortField === field) {
@@ -85,11 +87,11 @@ export function ContentDeliveryTable({ items }: ContentDeliveryTableProps) {
       </Button>
     </div>
     <div className="rounded-md border">
-      <Table wrapperClassName="max-h-[70vh]">
+      <Table wrapperClassName="max-h-[70vh]" wrapperRef={freezeRef}>
         <TableHeader>
-          <TableRow className={freezePanes ? "sticky top-0 z-10" : ""}>
+          <TableRow>
             <TableHead
-              className={`cursor-pointer hover:bg-gray-50 bg-background ${freezePanes ? "sticky left-0 z-20 shadow-[2px_0_5px_rgba(0,0,0,0.06)]" : ""}`}
+              className="cursor-pointer hover:bg-gray-50 bg-background"
               onClick={() => handleSort("project_name")}
             >
               Project
@@ -141,7 +143,7 @@ export function ContentDeliveryTable({ items }: ContentDeliveryTableProps) {
         <TableBody>
           {sortedItems.map((item) => (
             <TableRow key={item.id}>
-              <TableCell className={`bg-white ${freezePanes ? "sticky left-0 z-[9] shadow-[2px_0_5px_rgba(0,0,0,0.06)]" : ""}`}>
+              <TableCell className="bg-white">
                 <div>
                   <div className="font-medium">{item.project_name}</div>
                   <div className="text-xs text-muted-foreground">

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { useFreezeColumns } from "@/lib/hooks/useFreezeColumns";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -49,6 +50,7 @@ export function StagePipelineTable({ stories, onStoryClick }: StagePipelineTable
   const [sortField, setSortField] = useState<SortField>("days_in_current_stage");
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
   const [freezePanes, setFreezePanes] = useState(false);
+  const freezeRef = useFreezeColumns(freezePanes);
 
   // Get unique genres for filter
   const uniqueGenres = useMemo(() => {
@@ -220,10 +222,10 @@ export function StagePipelineTable({ stories, onStoryClick }: StagePipelineTable
 
       {/* Table */}
       <Card>
-          <Table wrapperClassName="max-h-[70vh]">
+          <Table wrapperClassName="max-h-[70vh]" wrapperRef={freezeRef}>
             <TableHeader>
-              <TableRow className={`bg-slate-50 ${freezePanes ? "sticky top-0 z-10" : ""}`}>
-                <TableHead className={`w-[250px] bg-slate-50 ${freezePanes ? "sticky left-0 z-20 shadow-[2px_0_5px_rgba(0,0,0,0.06)]" : ""}`}>
+              <TableRow className="bg-slate-50">
+                <TableHead className="w-[250px] bg-slate-50">
                   <Button
                     variant="ghost"
                     size="sm"
@@ -286,7 +288,7 @@ export function StagePipelineTable({ stories, onStoryClick }: StagePipelineTable
                       onClick={() => onStoryClick(story)}
                     >
                       {/* Story Details */}
-                      <TableCell className={`bg-white ${freezePanes ? "sticky left-0 z-[9] shadow-[2px_0_5px_rgba(0,0,0,0.06)]" : ""}`}>
+                      <TableCell className="bg-white">
                         <div>
                           <div className="text-base font-bold leading-relaxed text-slate-900 mb-1">
                             {story.title}

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
+import { useFreezeColumns } from "@/lib/hooks/useFreezeColumns";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
@@ -200,6 +201,7 @@ export default function ContentAgingPage() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [freezePanes, setFreezePanes] = useState(false);
+  const freezeRef = useFreezeColumns(freezePanes);
 
   useEffect(() => {
     (async () => {
@@ -462,7 +464,7 @@ export default function ContentAgingPage() {
       </div>
 
       {/* Table */}
-      <div className="flex-1 min-h-0 overflow-auto px-6 py-4">
+      <div ref={freezeRef} className="flex-1 min-h-0 overflow-auto px-6 py-4">
         {loading ? (
           <div className="flex items-center justify-center h-64">
             <div className="text-muted-foreground">Loading content aging data...</div>
@@ -472,15 +474,15 @@ export default function ContentAgingPage() {
             <div className="text-muted-foreground">No projects match the current filters.</div>
           </div>
         ) : activeTab === "target" ? (
-          <TargetAgingTable projects={filtered} visibleEvaluators={visibleEvaluators} visibleOneLinerAssessors={visibleOneLinerAssessors} freezePanes={freezePanes} />
+          <TargetAgingTable projects={filtered} visibleEvaluators={visibleEvaluators} visibleOneLinerAssessors={visibleOneLinerAssessors} />
         ) : (
           <table className="w-full text-sm border-separate border-spacing-0" style={{ minWidth }}>
-            <thead className={freezePanes ? "sticky top-0 z-[15]" : ""}>
+            <thead>
               {/* Row 1: group/role labels */}
               <tr className="bg-muted/80">
-                <Th sticky freeze={freezePanes} left={0} width={W_NUM} rowSpan={3}>#</Th>
-                <Th sticky freeze={freezePanes} left={W_NUM} width={W_TITLE} rowSpan={3}>Title</Th>
-                <Th sticky freeze={freezePanes} left={W_NUM + W_TITLE} width={W_WRITER} rowSpan={3}>Writer</Th>
+                <Th width={W_NUM} rowSpan={3}>#</Th>
+                <Th width={W_TITLE} rowSpan={3}>Title</Th>
+                <Th width={W_WRITER} rowSpan={3}>Writer</Th>
                 {/* Agreement & Slot spans rows 1+2 so sub-cols land in row 3 */}
                 <th colSpan={4} rowSpan={2} className="px-3 py-1.5 text-xs font-semibold text-center border-b border-r border-border bg-slate-100 text-slate-600 uppercase tracking-wide">
                   Agreement &amp; Slot
@@ -586,11 +588,10 @@ export default function ContentAgingPage() {
             <tbody>
               {filtered.map((project, idx) => (
                 <tr key={project.id} className="border-b hover:bg-muted/30 align-middle">
-                  {/* Sticky cells */}
-                  <Td sticky freeze={freezePanes} left={0} width={W_NUM} className="text-muted-foreground text-xs text-center">
+                  <Td width={W_NUM} className="text-muted-foreground text-xs text-center">
                     {idx + 1}
                   </Td>
-                  <Td sticky freeze={freezePanes} left={W_NUM} width={W_TITLE} className="font-medium">
+                  <Td width={W_TITLE} className="font-medium">
                     <span title={project.workingTitle} className="block truncate max-w-[190px]">{project.workingTitle}</span>
                     {project.commitment && (
                       <span className="block text-xs text-gray-400 font-normal mt-0.5 truncate max-w-[190px]">
@@ -598,7 +599,7 @@ export default function ContentAgingPage() {
                       </span>
                     )}
                   </Td>
-                  <Td sticky freeze={freezePanes} left={W_NUM + W_TITLE} width={W_WRITER} className="text-muted-foreground text-xs">
+                  <Td width={W_WRITER} className="text-muted-foreground text-xs">
                     {project.writerName ?? "—"}
                   </Td>
 
@@ -780,17 +781,17 @@ export default function ContentAgingPage() {
   );
 }
 
-function TargetAgingTable({ projects, visibleEvaluators, visibleOneLinerAssessors, freezePanes }: { projects: Project[]; visibleEvaluators: Evaluator[]; visibleOneLinerAssessors: OneLinerAssessor[]; freezePanes: boolean }) {
+function TargetAgingTable({ projects, visibleEvaluators, visibleOneLinerAssessors }: { projects: Project[]; visibleEvaluators: Evaluator[]; visibleOneLinerAssessors: OneLinerAssessor[] }) {
   const minWidth = STICKY_TOTAL + 650 + visibleOneLinerAssessors.length * 90 + visibleEvaluators.length * 2 * 80;
 
   return (
     <table className="w-full text-sm border-separate border-spacing-0" style={{ minWidth }}>
-      <thead className={freezePanes ? "sticky top-0 z-[15]" : ""}>
+      <thead>
         {/* Row 1: level group headers (Management / Programming / Evaluator) */}
         <tr className="bg-muted/80">
-          <Th sticky freeze={freezePanes} left={0} width={W_NUM} rowSpan={3}>#</Th>
-          <Th sticky freeze={freezePanes} left={W_NUM} width={W_TITLE} rowSpan={3}>Title</Th>
-          <Th sticky freeze={freezePanes} left={W_NUM + W_TITLE} width={W_WRITER} rowSpan={3}>Writer</Th>
+          <Th width={W_NUM} rowSpan={3}>#</Th>
+          <Th width={W_TITLE} rowSpan={3}>Title</Th>
+          <Th width={W_WRITER} rowSpan={3}>Writer</Th>
           <th colSpan={7} className="px-3 py-1.5 text-xs font-semibold text-center border-b border-r border-border bg-slate-100 text-slate-600 uppercase tracking-wide" rowSpan={2}>
             Project Details
           </th>
@@ -867,11 +868,11 @@ function TargetAgingTable({ projects, visibleEvaluators, visibleOneLinerAssessor
       <tbody>
         {projects.map((project, idx) => (
           <tr key={project.id} className="border-b hover:bg-muted/30 align-middle">
-            <Td sticky freeze={freezePanes} left={0} width={W_NUM} className="text-muted-foreground text-xs text-center">{idx + 1}</Td>
-            <Td sticky freeze={freezePanes} left={W_NUM} width={W_TITLE} className="font-medium">
+            <Td width={W_NUM} className="text-muted-foreground text-xs text-center">{idx + 1}</Td>
+            <Td width={W_TITLE} className="font-medium">
               <span title={project.workingTitle} className="block truncate max-w-[190px]">{project.workingTitle}</span>
             </Td>
-            <Td sticky freeze={freezePanes} left={W_NUM + W_TITLE} width={W_WRITER} className="text-muted-foreground text-xs">
+            <Td width={W_WRITER} className="text-muted-foreground text-xs">
               {project.writerName ?? "—"}
             </Td>
             <Td width={90}>{project.slot ?? "—"}</Td>
@@ -927,24 +928,19 @@ function StatPill({ label, value, color }: { label: string; value: number; color
 }
 
 function Th({
-  children, sticky, freeze, left, width, center, rowSpan, className,
+  children, width, center, rowSpan, className,
 }: {
   children: React.ReactNode;
-  sticky?: boolean;
-  freeze?: boolean;
-  left?: number;
   width?: number;
   center?: boolean;
   rowSpan?: number;
   className?: string;
 }) {
-  const isSticky = sticky && freeze;
   return (
     <th
       rowSpan={rowSpan}
-      className={`px-2 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap border-b border-r border-border ${center ? "text-center" : ""} ${isSticky ? "sticky z-[25] bg-muted/60" : ""} ${className ?? ""}`}
+      className={`px-2 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap border-b border-r border-border ${center ? "text-center" : ""} ${className ?? ""}`}
       style={{
-        left: isSticky ? left : undefined,
         minWidth: width,
         maxWidth: width,
         width: width,
@@ -956,22 +952,17 @@ function Th({
 }
 
 function Td({
-  children, sticky, freeze, left, width, center, className,
+  children, width, center, className,
 }: {
   children: React.ReactNode;
-  sticky?: boolean;
-  freeze?: boolean;
-  left?: number;
   width?: number;
   center?: boolean;
   className?: string;
 }) {
-  const isSticky = sticky && freeze;
   return (
     <td
-      className={`px-2 py-2 border-r border-border/60 ${center ? "text-center" : ""} ${isSticky ? "sticky z-10 bg-background" : ""} ${className ?? ""}`}
+      className={`px-2 py-2 border-r border-border/60 ${center ? "text-center" : ""} ${className ?? ""}`}
       style={{
-        left: isSticky ? left : undefined,
         minWidth: width,
         maxWidth: width,
         width: width,
