@@ -9,6 +9,9 @@ import {
   Clock,
   CalendarIcon,
   Globe,
+  Film,
+  BookOpen,
+  ListChecks,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -147,6 +150,48 @@ async function DashboardContent({ userId, userRole }: { userId: string; userRole
         }
         return q;
       })(),
+      // Total episodes across all projects
+      (async () => {
+        let q = adminClient
+          .from("consolidated_cms_view")
+          .select("total_episodes, received_episodes");
+        if (isRestrictedProgrammer && teamId) q = q.eq("team_id", teamId);
+        return q;
+      })(),
+      // One-liner evaluation status breakdown (submitted vs pending)
+      (async () => {
+        if (isRestrictedProgrammer) {
+          return adminClient
+            .from("evaluator_forms")
+            .select("submitted_at, call_report_id")
+            .in("evaluator_id", teamMemberIds);
+        }
+        let q = adminClient
+          .from("evaluator_forms")
+          .select("submitted_at, call_report_id, evaluator:users!evaluator_id!inner(role)")
+          .eq("evaluator.role", "programmer");
+        if (contentDevUserIds.length > 0) {
+          q = q.not("evaluator_id", "in", `(${contentDevUserIds.join(",")})`);
+        }
+        return q;
+      })(),
+      // Episodic evaluation status breakdown (submitted vs pending)
+      (async () => {
+        if (isRestrictedProgrammer) {
+          return adminClient
+            .from("episodic_evaluations")
+            .select("submitted_at")
+            .in("evaluator_id", teamMemberIds);
+        }
+        let q = adminClient
+          .from("episodic_evaluations")
+          .select("submitted_at, evaluator:users!evaluator_id!inner(role)")
+          .eq("evaluator.role", "programmer");
+        if (contentDevUserIds.length > 0) {
+          q = q.not("evaluator_id", "in", `(${contentDevUserIds.join(",")})`);
+        }
+        return q;
+      })(),
     ]),
 
     // Recent call reports
@@ -211,10 +256,29 @@ async function DashboardContent({ userId, userRole }: { userId: string; userRole
     callReportsRes,
     totalOneLinerEvaluationsRes,
     totalEpisodeEvaluationsRes,
+    episodeStatsRes,
+    oneLinerBreakdownRes,
+    epEvalBreakdownRes,
   ] = statsData;
   const callReportsCount = callReportsRes.count || 0;
   const totalOneLinerEvaluationsCount = totalOneLinerEvaluationsRes.count || 0;
   const totalEpisodeEvaluationsCount = totalEpisodeEvaluationsRes.count || 0;
+
+  // Episode totals
+  const episodeData = (episodeStatsRes.data || []) as any[];
+  const totalEpisodesAvailable = episodeData.reduce((s: number, r: any) => s + (r.total_episodes || 0), 0);
+  const totalEpisodesReceived = episodeData.reduce((s: number, r: any) => s + (r.received_episodes || 0), 0);
+
+  // One-liner breakdown
+  const oneLinerData = (oneLinerBreakdownRes.data || []) as any[];
+  const oneLinersEvaluated = oneLinerData.filter((e: any) => e.submitted_at).length;
+  const oneLinersPending = oneLinerData.filter((e: any) => !e.submitted_at).length;
+  const uniqueOneLinersUploaded = new Set(oneLinerData.map((e: any) => e.call_report_id)).size;
+
+  // Episode evaluation breakdown
+  const epEvalData = (epEvalBreakdownRes.data || []) as any[];
+  const episodesEvaluated = epEvalData.filter((e: any) => e.submitted_at).length;
+  const episodesNotEvaluated = epEvalData.filter((e: any) => !e.submitted_at).length;
 
   // Process recent call reports
   const processedReports = (recentCallReports.data || []).map((report: any) => {
@@ -260,31 +324,36 @@ async function DashboardContent({ userId, userRole }: { userId: string; userRole
   return (
     <>
       {/* Stat Cards Row */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <ModernStatCard
-          title="Total One-liner Evaluations"
-          value={totalOneLinerEvaluationsCount}
+          title="Projects Logged"
+          value={callReportsCount}
+          icon={FileText}
+          href="/programmer/call-reports"
+        />
+
+        <ModernStatCard
+          title="Episodes Received"
+          value={totalEpisodesReceived}
+          icon={CheckCircle2}
+          href="/programmer/episodes"
+        />
+
+        <ModernStatCard
+          title="One-Liner Evaluations"
+          value={oneLinersEvaluated}
           icon={Globe}
           href="/programmer/evaluations-list"
           accent={true}
         />
 
         <ModernStatCard
-          title="Total Episode Evaluations"
-          value={totalEpisodeEvaluationsCount}
-          icon={CheckCircle2}
+          title="Episode Evaluations"
+          value={episodesEvaluated}
+          icon={ListChecks}
           href="/programmer/episodes"
           accent={true}
         />
-
-
-        <ModernStatCard
-          title="Total Writer Engagement Reports"
-          value={callReportsCount}
-          icon={FileText}
-          href="/programmer/call-reports"
-        />
-
       </div>
 
       {/* Production Pipeline Metrics */}

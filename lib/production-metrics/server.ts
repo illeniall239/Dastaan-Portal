@@ -134,6 +134,9 @@ export async function getProductionMetrics(
         on_air_title,
         aired_date,
         aired_completed,
+        total_episodes,
+        received_episodes,
+        created_at,
         team_id,
         team:teams(
           id,
@@ -244,59 +247,21 @@ export async function getProductionMetrics(
         (report.call_report_writers && Array.isArray(report.call_report_writers) && report.call_report_writers[0]?.writer?.name) ||
         'Unknown';
 
-      // Metric 2: Stories in discussion with details
-      if (isStatusInCategory(status, 'STORIES_IN_DISCUSSION')) {
-        storiesInDiscussion++;
-        storiesInDiscussionDetails.push({
-          id: report.id,
-          working_title: report.working_title || 'Untitled',
-          writer_name: writerName,
-          target_slot: slot,
-          created_at: report.created_at || report.inserted_at || '',
+      const totalEps = report.total_episodes || 0;
+      const receivedEps = report.received_episodes || 0;
+
+      // Metric 7: Projects aired (completed their run) — check first, independent
+      if (report.aired_completed === true) {
+        airedProjects.push({
+          working_title: report.working_title,
+          on_air_title: report.on_air_title || report.working_title,
+          aired_date: report.aired_date || '',
+          slot: slot,
           team: report.team || undefined,
         });
       }
 
-      // Metric 3: Scripts in writing (with slot breakdown and details)
-      if (isStatusInCategory(status, 'SCRIPTS_IN_WRITING')) {
-        scriptsInWritingBySlot[slot] = (scriptsInWritingBySlot[slot] || 0) + 1;
-        scriptsInWritingDetails.push({
-          id: report.id,
-          working_title: report.working_title || 'Untitled',
-          writer_name: writerName,
-          target_slot: slot,
-          status: status,
-          team: report.team || undefined,
-        });
-      }
-
-      // Metric 4: Scripts completed (with slot breakdown and details)
-      if (isStatusInCategory(status, 'SCRIPTS_COMPLETED')) {
-        scriptsCompletedBySlot[slot] = (scriptsCompletedBySlot[slot] || 0) + 1;
-        scriptsCompletedDetails.push({
-          id: report.id,
-          working_title: report.working_title || 'Untitled',
-          writer_name: writerName,
-          target_slot: slot,
-          status: status,
-          team: report.team || undefined,
-        });
-      }
-
-      // Metric 5: Projects on shoot with details
-      if (isStatusInCategory(status, 'PROJECTS_ON_SHOOT')) {
-        projectsOnShoot++;
-        projectsOnShootDetails.push({
-          id: report.id,
-          working_title: report.working_title || 'Untitled',
-          writer_name: writerName,
-          target_slot: slot,
-          status: status,
-          team: report.team || undefined,
-        });
-      }
-
-      // Metric 6: Projects on air with details
+      // Categorize into one pipeline stage (status-based first, then episode-based fallback)
       if (isStatusInCategory(status, 'PROJECTS_ON_AIR')) {
         projectsOnAir++;
         projectsOnAirDetails.push({
@@ -307,15 +272,47 @@ export async function getProductionMetrics(
           status: status,
           team: report.team || undefined,
         });
-      }
-
-      // Metric 7: Projects aired (completed their run)
-      if (report.aired_completed === true) {
-        airedProjects.push({
-          working_title: report.working_title,
-          on_air_title: report.on_air_title || report.working_title,
-          aired_date: report.aired_date || '',
-          slot: slot,
+      } else if (isStatusInCategory(status, 'PROJECTS_ON_SHOOT')) {
+        projectsOnShoot++;
+        projectsOnShootDetails.push({
+          id: report.id,
+          working_title: report.working_title || 'Untitled',
+          writer_name: writerName,
+          target_slot: slot,
+          status: status,
+          team: report.team || undefined,
+        });
+      } else if (isStatusInCategory(status, 'SCRIPTS_COMPLETED') || (totalEps > 0 && receivedEps >= totalEps)) {
+        // All committed episodes received = script completed
+        scriptsCompletedBySlot[slot] = (scriptsCompletedBySlot[slot] || 0) + 1;
+        scriptsCompletedDetails.push({
+          id: report.id,
+          working_title: report.working_title || 'Untitled',
+          writer_name: writerName,
+          target_slot: slot,
+          status: status || 'Script Completed',
+          team: report.team || undefined,
+        });
+      } else if (isStatusInCategory(status, 'SCRIPTS_IN_WRITING') || receivedEps > 0) {
+        // Some episodes received = script in writing
+        scriptsInWritingBySlot[slot] = (scriptsInWritingBySlot[slot] || 0) + 1;
+        scriptsInWritingDetails.push({
+          id: report.id,
+          working_title: report.working_title || 'Untitled',
+          writer_name: writerName,
+          target_slot: slot,
+          status: status || 'In Writing',
+          team: report.team || undefined,
+        });
+      } else {
+        // No episodes received or unrecognized status = story in discussion
+        storiesInDiscussion++;
+        storiesInDiscussionDetails.push({
+          id: report.id,
+          working_title: report.working_title || 'Untitled',
+          writer_name: writerName,
+          target_slot: slot,
+          created_at: report.created_at || report.inserted_at || '',
           team: report.team || undefined,
         });
       }
