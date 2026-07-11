@@ -969,16 +969,16 @@ export function EvaluatorEvaluationForm({
             {/* Category of Theme/Subject */}
             <div className="space-y-2">
               <Label className="font-semibold">Category of Theme/Subject</Label>
-              <div className="flex flex-col sm:flex-row gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {[
-                  { value: "commercial", label: "Commercial" },
-                  { value: "non_commercial", label: "Non Commercial/Experimental" },
-                  { value: "commercial_edge", label: "Commercial Edge" },
-                  { value: "signature_commercial", label: "Signature Commercial" },
+                  { value: "commercial", label: "Commercial", description: "A drama made to attract a large audience, achieve high ratings, and generate strong commercial success through entertaining and emotionally engaging stories." },
+                  { value: "non_commercial", label: "Non Commercial/Experimental", description: "A drama that focuses on meaningful storytelling, realism, or social issues, where creative value is given more importance than ratings." },
+                  { value: "commercial_edge", label: "Commercial Edge", description: "A drama that combines mass appeal with a fresh concept or unique storytelling, aiming to achieve both strong ratings and quality." },
+                  { value: "signature_commercial", label: "Signature Commercial", description: "A premium, flagship drama that represents a channel's creative identity through outstanding storytelling, production quality, and lasting impact." },
                 ].map((option) => (
                   <label
                     key={option.value}
-                    className={`flex items-center gap-2 p-3 rounded-lg border-2 cursor-pointer transition-all flex-1 ${
+                    className={`flex items-start gap-2 p-3 rounded-lg border-2 cursor-pointer transition-all ${
                       formData.themeCategory === option.value
                         ? "border-blue-500 bg-blue-50"
                         : "border-gray-200 hover:border-blue-300 hover:bg-blue-50/30"
@@ -990,9 +990,12 @@ export function EvaluatorEvaluationForm({
                       value={option.value}
                       checked={formData.themeCategory === option.value}
                       onChange={(e) => setFormData((prev) => ({ ...prev, themeCategory: e.target.value as any }))}
-                      className="h-4 w-4 text-blue-600 focus:ring-blue-500"
+                      className="h-4 w-4 text-blue-600 focus:ring-blue-500 mt-0.5"
                     />
-                    <span className="text-sm font-medium">{option.label}</span>
+                    <div>
+                      <span className="text-sm font-medium">{option.label}</span>
+                      <p className="text-xs text-muted-foreground mt-0.5">{option.description}</p>
+                    </div>
                   </label>
                 ))}
               </div>
