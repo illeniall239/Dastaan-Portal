@@ -432,6 +432,7 @@ export interface EvaluationWithType {
   themes_of_drama?: string[];
   corresponding_dramas?: string[];
   theme_category?: string | null;
+  audience_focus?: string | null;
   no_of_tracks?: number | null;
   closing_remarks?: string | null;
   average_score: number;

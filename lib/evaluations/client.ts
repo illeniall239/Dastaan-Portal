@@ -27,6 +27,7 @@ export interface Evaluation {
   themes_of_drama?: string[];
   corresponding_dramas?: string[];
   theme_category?: string;
+  audience_focus?: string;
   no_of_tracks?: number;
   closing_remarks?: string;
   // Legacy criteria (kept for old evaluations)
@@ -73,6 +74,7 @@ export interface CreateEvaluationInput {
   themes_of_drama?: string[];
   corresponding_dramas?: string[];
   theme_category?: string;
+  audience_focus?: string;
   no_of_tracks?: number;
   closing_remarks?: string;
   // Other
@@ -113,6 +115,7 @@ export interface UpdateEvaluationInput {
   themes_of_drama?: string[];
   corresponding_dramas?: string[];
   theme_category?: string | null;
+  audience_focus?: string | null;
   no_of_tracks?: number | null;
   closing_remarks?: string | null;
   // Other
@@ -174,6 +177,7 @@ export async function createEvaluationClient(evaluationData: CreateEvaluationInp
       themes_of_drama: evaluationData.themes_of_drama || [],
       corresponding_dramas: evaluationData.corresponding_dramas || [],
       theme_category: evaluationData.theme_category || null,
+      audience_focus: evaluationData.audience_focus || null,
       no_of_tracks: evaluationData.no_of_tracks ?? null,
       closing_remarks: evaluationData.closing_remarks || null,
       // Other
@@ -239,6 +243,7 @@ export async function updateEvaluationClient(evaluationData: UpdateEvaluationInp
     themes_of_drama,
     corresponding_dramas,
     theme_category,
+    audience_focus,
     no_of_tracks,
     closing_remarks,
     first_2_eps_required,
@@ -271,6 +276,7 @@ export async function updateEvaluationClient(evaluationData: UpdateEvaluationInp
     themes_of_drama: themes_of_drama ?? [],
     corresponding_dramas: corresponding_dramas ?? [],
     theme_category: theme_category ?? null,
+    audience_focus: audience_focus ?? null,
     no_of_tracks: no_of_tracks ?? null,
     closing_remarks: closing_remarks ?? null,
     // Other

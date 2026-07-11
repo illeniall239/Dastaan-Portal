@@ -68,6 +68,7 @@ export async function createEvaluation(evaluationData: CreateEvaluationInput) {
       themes_of_drama: evaluationData.themes_of_drama || [],
       corresponding_dramas: evaluationData.corresponding_dramas || [],
       theme_category: evaluationData.theme_category || null,
+      audience_focus: evaluationData.audience_focus || null,
       no_of_tracks: evaluationData.no_of_tracks ?? null,
       closing_remarks: evaluationData.closing_remarks || null,
       comments: evaluationData.comments || null,
