@@ -201,7 +201,7 @@ export default function ContentAgingPage() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [freezePanes, setFreezePanes] = useState(false);
-  const freezeRef = useFreezeColumns(freezePanes);
+  const freezeRef = useFreezeColumns(freezePanes, 3);
 
   useEffect(() => {
     (async () => {
@@ -362,7 +362,7 @@ export default function ContentAgingPage() {
   const minWidth = STICKY_TOTAL + 1140 + visibleEvaluators.length * 160 + visibleOneLinerAssessors.length * 90 + dynamicCols * 60;
 
   return (
-    <div className="flex flex-col" style={{ height: 'calc(100vh - 4rem)' }}>
+    <div className="flex flex-col overflow-hidden" style={{ height: 'calc(100vh - 4rem)' }}>
       {/* Header */}
       <div className="flex-shrink-0 border-b bg-background px-6 py-4">
         <div className="flex items-center justify-between mb-3">
@@ -384,19 +384,6 @@ export default function ContentAgingPage() {
               <span className="text-muted-foreground text-sm">({filtered.length} of {projects.length} projects)</span>
             )}
           </div>
-          <Button
-            variant={freezePanes ? "default" : "outline"}
-            size="sm"
-            onClick={() => setFreezePanes(f => !f)}
-            className="gap-2"
-          >
-            <Pin className="h-4 w-4" />
-            {freezePanes ? "Unfreeze Panes" : "Freeze Panes"}
-          </Button>
-          <Button variant="outline" size="sm" onClick={activeTab === "aging" ? exportToExcel : exportTargetAgingToExcel} disabled={loading || filtered.length === 0} className="gap-2">
-            <Download className="h-4 w-4" />
-            Export Excel
-          </Button>
         </div>
 
         {/* Tab switcher */}
@@ -459,12 +446,28 @@ export default function ContentAgingPage() {
               </button>
             ))}
           </div>
+          <div className="flex gap-2">
+            <Button
+              variant={freezePanes ? "default" : "outline"}
+              size="sm"
+              onClick={() => setFreezePanes(f => !f)}
+              className="gap-1.5 h-8 text-xs"
+            >
+              <Pin className="h-3.5 w-3.5" />
+              {freezePanes ? "Unfreeze" : "Freeze Panes"}
+            </Button>
+            <Button variant="outline" size="sm" onClick={activeTab === "aging" ? exportToExcel : exportTargetAgingToExcel} disabled={loading || filtered.length === 0} className="gap-1.5 h-8 text-xs">
+              <Download className="h-3.5 w-3.5" />
+              Export Excel
+            </Button>
+          </div>
           {/* Evaluator filter — Target Aging tab only */}
         </div>
       </div>
 
       {/* Table */}
-      <div ref={freezeRef} className="flex-1 min-h-0 overflow-auto px-6 py-4">
+      <div className="flex-1 min-h-0 overflow-hidden">
+      <div ref={freezeRef} className="overflow-auto h-full py-4">
         {loading ? (
           <div className="flex items-center justify-center h-64">
             <div className="text-muted-foreground">Loading content aging data...</div>
@@ -776,6 +779,7 @@ export default function ContentAgingPage() {
             </tbody>
           </table>
         )}
+      </div>
       </div>
     </div>
   );

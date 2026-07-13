@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { EpisodeFileUpload } from "@/components/episodes/episode-file-upload";
 import { toast } from "sonner";
@@ -169,6 +170,7 @@ export function ContentRevisions({
 
   const [file, setFile] = useState<File | null>(null);
   const [comment, setComment] = useState("");
+  const [originalSubmissionDate, setOriginalSubmissionDate] = useState("");
 
   const revisionsUrl = `${apiBasePath}/${entityId}/revisions`;
 
@@ -248,6 +250,7 @@ export function ContentRevisions({
           attachment_name,
           attachment_type,
           comment: comment.trim() || null,
+          original_submission_date: originalSubmissionDate || null,
         }),
       });
 
@@ -259,6 +262,7 @@ export function ContentRevisions({
       toast.success(`Revision ${data.revision.revision_number} added`);
       setFile(null);
       setComment("");
+      setOriginalSubmissionDate("");
       setShowAddForm(false);
       fetchRevisions();
     } catch (error: any) {
@@ -382,6 +386,29 @@ export function ContentRevisions({
         )}
       </div>
 
+      <div className={size === "default" ? "space-y-2" : ""}>
+        {size === "default" && (
+          <Label htmlFor="revision-original-date">
+            Original Submission Date{" "}
+            <span className="text-slate-400 font-normal text-xs">(optional)</span>
+          </Label>
+        )}
+        <Input
+          id={size === "default" ? "revision-original-date" : undefined}
+          type="date"
+          value={originalSubmissionDate}
+          onChange={(e) => setOriginalSubmissionDate(e.target.value)}
+          max={new Date().toISOString().split("T")[0]}
+          disabled={submitting}
+          className={size === "sm" ? "text-sm" : ""}
+        />
+        {size === "default" && (
+          <p className="text-xs text-muted-foreground">
+            Only fill in when backfilling a historical entry. Leave blank to use today&apos;s date.
+          </p>
+        )}
+      </div>
+
       <div className="flex gap-2">
         <Button
           size={size}
@@ -407,6 +434,7 @@ export function ContentRevisions({
             setShowAddForm(false);
             setFile(null);
             setComment("");
+            setOriginalSubmissionDate("");
           }}
           disabled={submitting}
         >
@@ -467,7 +495,7 @@ export function ContentRevisions({
             <p className="text-xs text-muted-foreground">
               {isCompact ? "" : "Uploaded by "}
               {revision.uploaded_by_user?.name || "Unknown"} &middot;{" "}
-              {formatDate(revision.created_at)}
+              {formatDate(revision.original_submission_date || revision.created_at)}
             </p>
           </div>
 

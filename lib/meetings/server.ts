@@ -424,7 +424,7 @@ export async function getAllCallReports() {
     const reportIds = data.map((r: any) => r.id);
     const { data: revisionData } = await supabase
       .from("call_report_revisions")
-      .select("call_report_id, revision_number, comment, created_at")
+      .select("call_report_id, revision_number, comment, created_at, original_submission_date")
       .in("call_report_id", reportIds)
       .order("revision_number", { ascending: false });
 
@@ -433,7 +433,7 @@ export async function getAllCallReports() {
         const rid = rev.call_report_id;
         if (!revisionMap[rid]) {
           // First entry per report is the latest (desc order)
-          revisionMap[rid] = { count: 1, latest_comment: rev.comment, latest_date: rev.created_at };
+          revisionMap[rid] = { count: 1, latest_comment: rev.comment, latest_date: rev.original_submission_date || rev.created_at };
         } else {
           revisionMap[rid].count++;
         }

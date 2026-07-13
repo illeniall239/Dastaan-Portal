@@ -682,6 +682,7 @@ export interface EpisodeRevision {
   comment?: string | null;
   uploaded_by?: string | null;
   created_at: string;
+  original_submission_date?: string | null;
   initial_assessment?: number | null;
   assessed_by?: string | null;
   assessed_at?: string | null;
@@ -722,6 +723,7 @@ export interface CallReportRevision {
   comment?: string | null;
   uploaded_by?: string | null;
   created_at: string;
+  original_submission_date?: string | null;
   initial_assessment?: number | null;
   assessed_by?: string | null;
   assessed_at?: string | null;

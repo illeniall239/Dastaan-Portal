@@ -117,7 +117,7 @@ export async function GET(request: NextRequest) {
     const { data: epRevisions } = episodeIds.length
       ? await admin
           .from("episode_revisions")
-          .select("episode_id, revision_number, created_at")
+          .select("episode_id, revision_number, created_at, original_submission_date")
           .in("episode_id", episodeIds)
       : { data: [] };
 
@@ -243,7 +243,7 @@ export async function GET(request: NextRequest) {
       const weekRevisions: Record<string, number> = {};
       for (const rev of (epRevisions as any[]) || []) {
         if (episodeToReport.get(rev.episode_id) !== cr.id) continue;
-        const week = getISOWeek(new Date(rev.created_at));
+        const week = getISOWeek(new Date(rev.original_submission_date ?? rev.created_at));
         weekRevisions[week] = (weekRevisions[week] || 0) + 1;
       }
 

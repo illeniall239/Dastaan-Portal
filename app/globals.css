@@ -24,21 +24,39 @@
 [data-freeze-cols] th { background-color: hsl(var(--muted)); }
 [data-freeze-cols] td { background-color: hsl(var(--background)); }
 
-[data-freeze-cols] th:nth-child(1),
+/* Frozen header columns — only first row (handles rowSpan headers) */
+[data-freeze-cols] thead tr:first-child th:nth-child(1) {
+  position: sticky;
+  left: var(--freeze-col-0-left, 0px);
+  z-index: 25;
+}
+[data-freeze-cols] thead tr:first-child th:nth-child(2) {
+  position: sticky;
+  left: var(--freeze-col-1-left, 0px);
+  z-index: 25;
+}
+[data-freeze-cols] thead tr:first-child th:nth-child(3) {
+  position: sticky;
+  left: var(--freeze-col-2-left, 0px);
+  z-index: 25;
+  box-shadow: 2px 0 5px rgba(0,0,0,0.06);
+}
+/* Frozen body columns */
 [data-freeze-cols] td:nth-child(1) {
   position: sticky;
   left: var(--freeze-col-0-left, 0px);
   z-index: 12;
 }
-[data-freeze-cols] th:nth-child(2),
 [data-freeze-cols] td:nth-child(2) {
   position: sticky;
   left: var(--freeze-col-1-left, 0px);
   z-index: 12;
-  box-shadow: 2px 0 5px rgba(0,0,0,0.06);
 }
-[data-freeze-cols] thead th:nth-child(-n+2) {
-  z-index: 25;
+[data-freeze-cols] td:nth-child(3) {
+  position: sticky;
+  left: var(--freeze-col-2-left, 0px);
+  z-index: 12;
+  box-shadow: 2px 0 5px rgba(0,0,0,0.06);
 }
 
 @layer base {

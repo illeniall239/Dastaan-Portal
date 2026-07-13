@@ -97,7 +97,8 @@ export async function GET(request: NextRequest) {
             revision_number,
             attachment_name,
             comment,
-            created_at
+            created_at,
+            original_submission_date
           )
         `)
         .in('cross_team_share_id', shareIds);
