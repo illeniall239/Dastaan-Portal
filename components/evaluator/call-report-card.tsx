@@ -137,7 +137,7 @@ export function CallReportCard({ report, portalPrefix = "evaluator", isTeamHead 
               </CardDescription>
             </div>
             <div className="text-right text-sm text-muted-foreground">
-              <div>Logged: {formattedDateTime}</div>
+              <div>{report.original_submission_date ? "Original" : "Logged"}: {formattedDateTime}</div>
               {report.logged_by && (
                 <div>By: {report.logged_by}</div>
               )}

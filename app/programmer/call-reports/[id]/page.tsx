@@ -211,7 +211,7 @@ export default async function ProgrammerCallReportDetailPage({ params }: { param
           <CardContent className="pt-4">
             <div className="grid grid-cols-2 gap-x-8 gap-y-3 text-sm">
               <div>
-                <p className="text-slate-500 font-medium">Logged On</p>
+                <p className="text-slate-500 font-medium">{report.original_submission_date ? "Original Submission Date" : "Logged On"}</p>
                 <p className="text-slate-900 mt-0.5">{isDateOnly ? formatDateLong(loggedTimestamp) : formatDateTimeLong(loggedTimestamp)}</p>
               </div>
               <div>

@@ -165,6 +165,7 @@ export function ContentRevisions({
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [expanded, setExpanded] = useState(!compact);
   const [savingAssessmentId, setSavingAssessmentId] = useState<string | null>(null);
+  const [savingDateId, setSavingDateId] = useState<string | null>(null);
 
   const [expandedEvalRevisionId, setExpandedEvalRevisionId] = useState<string | null>(null);
 
@@ -333,6 +334,34 @@ export function ContentRevisions({
     }
   };
 
+  const handleOriginalDateChange = async (revision: EpisodeRevision, dateValue: string) => {
+    setSavingDateId(revision.id);
+    try {
+      const response = await fetch(`${revisionsUrl}/${revision.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ original_submission_date: dateValue || null }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || "Failed to update date");
+      }
+
+      setRevisions((prev) =>
+        prev.map((r) =>
+          r.id === revision.id ? { ...r, original_submission_date: dateValue || null } : r
+        )
+      );
+      toast.success(dateValue ? `Original date set: ${dateValue}` : "Original date cleared");
+    } catch (error: any) {
+      console.error("Error updating original submission date:", error);
+      toast.error(error.message || "Failed to update date");
+    } finally {
+      setSavingDateId(null);
+    }
+  };
+
   // Find the latest evaluated revision (highest revision_number with evaluation_count > 0)
   const latestEvaluatedRevision = [...revisions]
     .filter((r) => (r.evaluation_count || 0) > 0)
@@ -495,8 +524,41 @@ export function ContentRevisions({
             <p className="text-xs text-muted-foreground">
               {isCompact ? "" : "Uploaded by "}
               {revision.uploaded_by_user?.name || "Unknown"} &middot;{" "}
-              {formatDate(revision.original_submission_date || revision.created_at)}
+              {revision.original_submission_date ? (
+                <>
+                  Original: {formatDate(revision.original_submission_date)}
+                  {!isCompact && (
+                    <> &middot; Uploaded: {formatDate(revision.created_at)}</>
+                  )}
+                </>
+              ) : (
+                formatDate(revision.created_at)
+              )}
             </p>
+            {canEdit && !isCompact && (
+              <div className="flex items-center gap-2">
+                <label className="text-xs text-muted-foreground whitespace-nowrap">Original Date:</label>
+                <input
+                  type="date"
+                  value={revision.original_submission_date || ""}
+                  onChange={(e) => handleOriginalDateChange(revision, e.target.value)}
+                  max={new Date().toISOString().split("T")[0]}
+                  disabled={savingDateId === revision.id}
+                  className="text-xs border rounded px-1.5 py-0.5 text-muted-foreground bg-white disabled:opacity-50"
+                />
+                {savingDateId === revision.id && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />}
+                {revision.original_submission_date && (
+                  <button
+                    type="button"
+                    onClick={() => handleOriginalDateChange(revision, "")}
+                    disabled={savingDateId === revision.id}
+                    className="text-xs text-red-500 hover:text-red-700 disabled:opacity-50"
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Badges and actions on right */}

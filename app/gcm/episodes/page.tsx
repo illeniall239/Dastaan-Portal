@@ -1077,7 +1077,13 @@ export default function GcmEpisodesPage() {
                                       </Badge>
                                     )}
                                   </div>
-                                  <span className="text-xs text-muted-foreground flex-shrink-0">{formatDate(episode.original_submission_date || episode.call_report?.original_submission_date || episode.created_at)}</span>
+                                  <span className="text-xs text-muted-foreground flex-shrink-0">
+                                    {(episode.original_submission_date || episode.call_report?.original_submission_date) ? (
+                                      <>Original: {formatDate(episode.original_submission_date || episode.call_report?.original_submission_date)}</>
+                                    ) : (
+                                      formatDate(episode.created_at)
+                                    )}
+                                  </span>
                                 </div>
                               </div>
                               <div className="flex flex-col gap-3">

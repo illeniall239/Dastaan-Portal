@@ -24,6 +24,7 @@ interface Revision {
   attachment_name?: string | null;
   comment?: string | null;
   created_at: string;
+  original_submission_date?: string | null;
   uploaded_by_user?: { name: string } | null;
 }
 
@@ -202,7 +203,7 @@ export function RevisionEvaluateList({
                       <span className="truncate">{rev.attachment_name}</span>
                     </span>
                   )}
-                  <span className="shrink-0">&middot; {formatDate(rev.created_at)}</span>
+                  <span className="shrink-0">&middot; {formatDate(rev.original_submission_date || rev.created_at)}</span>
                 </div>
               </div>
               <div className="shrink-0 flex items-center gap-1.5">

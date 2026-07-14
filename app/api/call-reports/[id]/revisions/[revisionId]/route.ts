@@ -52,22 +52,41 @@ export async function PATCH(
     }
 
     const body = await request.json();
-    const score = body.initial_assessment;
+    const updatePayload: Record<string, any> = {};
 
-    if (typeof score !== "number" || score < 1 || score > 10) {
-      return NextResponse.json(
-        { error: "initial_assessment must be a number between 1 and 10" },
-        { status: 400 }
-      );
+    // Handle initial_assessment
+    if (body.initial_assessment !== undefined) {
+      const score = body.initial_assessment;
+      if (typeof score !== "number" || score < 1 || score > 10) {
+        return NextResponse.json(
+          { error: "initial_assessment must be a number between 1 and 10" },
+          { status: 400 }
+        );
+      }
+      updatePayload.initial_assessment = score;
+      updatePayload.assessed_by = user.id;
+      updatePayload.assessed_at = new Date().toISOString();
+    }
+
+    // Handle original_submission_date
+    if ("original_submission_date" in body) {
+      const dateVal = body.original_submission_date;
+      if (dateVal !== null && (typeof dateVal !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(dateVal))) {
+        return NextResponse.json(
+          { error: "original_submission_date must be a YYYY-MM-DD string or null" },
+          { status: 400 }
+        );
+      }
+      updatePayload.original_submission_date = dateVal;
+    }
+
+    if (Object.keys(updatePayload).length === 0) {
+      return NextResponse.json({ error: "No valid fields to update" }, { status: 400 });
     }
 
     const { data: revision, error } = await supabase
       .from("call_report_revisions")
-      .update({
-        initial_assessment: score,
-        assessed_by: user.id,
-        assessed_at: new Date().toISOString(),
-      })
+      .update(updatePayload)
       .eq("id", revisionId)
       .eq("call_report_id", id)
       .select()
