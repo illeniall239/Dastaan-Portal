@@ -1114,8 +1114,8 @@ export default function EvaluatorEpisodesPage() {
                                     <span>{episode.logged_by_user?.name || "Unknown"}</span>
                                     <span className="text-muted-foreground">&middot;</span>
                                     <span className="text-muted-foreground">
-                                      {(episode.original_submission_date || episode.call_report?.original_submission_date) ? (
-                                        <>Original: {formatDate(episode.original_submission_date || episode.call_report?.original_submission_date)}</>
+                                      {episode.original_submission_date ? (
+                                        <>Original: {formatDate(episode.original_submission_date)}</>
                                       ) : (
                                         formatDate(episode.created_at)
                                       )}
@@ -1130,7 +1130,7 @@ export default function EvaluatorEpisodesPage() {
                                   revisionCount={(episode as any).revision_count || 0}
                                   portalPrefix="evaluator"
                                   originalFileName={episode.attachment_name}
-                                  originalDate={episode.original_submission_date || episode.call_report?.original_submission_date || episode.created_at}
+                                  originalDate={episode.original_submission_date || episode.created_at}
                                 />
 
                                 {/* Row 4: Actions */}

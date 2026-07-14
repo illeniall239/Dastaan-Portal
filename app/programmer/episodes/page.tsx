@@ -1039,7 +1039,7 @@ export default function ProgrammerEpisodesPage() {
                                                                                 revisionCount={(episode as any).revision_count || 0}
                                                                                 portalPrefix="programmer"
                                                                                 originalFileName={episode.attachment_name}
-                                                                                originalDate={episode.original_submission_date || episode.call_report?.original_submission_date || episode.created_at}
+                                                                                originalDate={episode.original_submission_date || episode.created_at}
                                                                             />
                                                                         </div>
                                                                         <DropdownMenu>
@@ -1133,7 +1133,7 @@ export default function ProgrammerEpisodesPage() {
                                                                     revisionCount={(episode as any).revision_count || 0}
                                                                     portalPrefix="programmer"
                                                                     originalFileName={episode.attachment_name}
-                                                                    originalDate={episode.original_submission_date || episode.call_report?.original_submission_date || episode.created_at}
+                                                                    originalDate={episode.original_submission_date || episode.created_at}
                                                                 />
                                                                 <div className="flex items-center gap-2 flex-wrap">
                                                                     {canEditEpisode(episode) && (
