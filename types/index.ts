@@ -44,7 +44,8 @@ export type UserRole =
   | "legal"
   | "finance"
   | "content_creator"
-  | "programmer";
+  | "programmer"
+  | "management_viewer";
 
 export interface User {
   id: string;

@@ -21,6 +21,7 @@ export const USER_ROLES = {
   GCM: 'gcm',
   LEGAL: 'legal',
   FINANCE: 'finance',
+  MANAGEMENT_VIEWER: 'management_viewer',
 } as const;
 
 export type UserRole = typeof USER_ROLES[keyof typeof USER_ROLES];

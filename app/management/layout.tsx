@@ -34,12 +34,27 @@ export default async function ManagementLayout({
 
   if (!user) redirect("/login");
 
-  if (!["admin", "management", "executive"].includes(user.role)) {
+  if (!["admin", "management", "executive", "management_viewer"].includes(user.role)) {
     redirect("/dashboard");
   }
 
   // Approval Tracking is visible to all management members
-  const navItems = [...baseNavItems.slice(0, 7), pendingEvaluationsItem, ...baseNavItems.slice(7)];
+  let navItems = [...baseNavItems.slice(0, 7), pendingEvaluationsItem, ...baseNavItems.slice(7)];
+
+  // management_viewer: data/quantity reports only — no scripts, evaluations, or one-liners
+  if (user.role === "management_viewer") {
+    const blockedHrefs = [
+      "/management/story-bank",
+      "/management/evaluations",
+      "/management/evaluator-bias",
+      "/management/pending-evaluations",
+      "/management/teams",
+      "/management/cross-team-shares",
+      "/management/writers",
+      "/management/calendar",
+    ];
+    navItems = navItems.filter((item) => !blockedHrefs.includes(item.href));
+  }
 
   return (
     <>

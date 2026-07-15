@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
     // Check if user is authenticated and has management role
     const user = await getCurrentUser();
     
-    if (!user || !['admin', 'management', 'executive'].includes(user.role)) {
+    if (!user || !['admin', 'management', 'executive', 'management_viewer'].includes(user.role)) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
         status: 401,
         headers: { 'Content-Type': 'application/json' },

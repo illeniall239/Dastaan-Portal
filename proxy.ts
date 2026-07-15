@@ -5,7 +5,7 @@ import { logger } from "@/lib/logger";
 // Define role-based protected routes
 const protectedRoutes: Record<string, string[]> = {
   "/admin": ["admin"],
-  "/management": ["management", "admin"],
+  "/management": ["management", "management_viewer", "admin"],
   "/approvals": ["executive", "admin"],
   "/evaluations": ["evaluator", "content_manager", "admin"],
   "/legal": ["legal", "admin"],
@@ -165,6 +165,7 @@ export async function proxy(request: NextRequest) {
         case "admin":
           return NextResponse.redirect(new URL("/admin", request.url));
         case "management":
+        case "management_viewer":
           return NextResponse.redirect(new URL("/management", request.url));
         case "content_manager":
         case "content_creator":
@@ -185,6 +186,7 @@ export async function proxy(request: NextRequest) {
         case "admin":
           return NextResponse.redirect(new URL("/admin", request.url));
         case "management":
+        case "management_viewer":
           return NextResponse.redirect(new URL("/management", request.url));
         case "content_manager":
         case "content_creator":

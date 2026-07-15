@@ -23,7 +23,7 @@ export default async function ManagementContractTermsPage() {
     .eq("id", user.id)
     .single();
 
-  if (!userData || !["management", "admin"].includes(userData.role)) {
+  if (!userData || !["management", "management_viewer", "admin"].includes(userData.role)) {
     redirect("/dashboard");
   }
 

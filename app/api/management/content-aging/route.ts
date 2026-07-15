@@ -25,6 +25,30 @@ function getWeekLabel(isoWeek: string): string {
   return monday.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
 }
 
+function getMondayFromISOWeek(isoWeek: string): Date {
+  const [year, weekPart] = isoWeek.split("-W");
+  const week = parseInt(weekPart);
+  const jan4 = new Date(Date.UTC(parseInt(year), 0, 4));
+  const dayOfWeek = jan4.getUTCDay() || 7;
+  return new Date(jan4.getTime() + (1 - dayOfWeek) * 86400000 + (week - 1) * 7 * 86400000);
+}
+
+function getFirstActiveMonday(dateStr: string): Date {
+  const d = new Date(dateStr + "T00:00:00Z");
+  const day = d.getUTCDay();
+  if (day === 1) return d;
+  const daysToAdd = day === 0 ? 1 : (8 - day);
+  return new Date(d.getTime() + daysToAdd * 86400000);
+}
+
+function getExpectedPerWeek(schedule: string): number | null {
+  return schedule.endsWith("_per_week") ? parseInt(schedule) : null;
+}
+
+function getExpectedPerMonth(schedule: string): number | null {
+  return schedule.endsWith("_per_month") ? parseInt(schedule) : null;
+}
+
 function buildEvaluatorGrade(data: { epNums: number[]; scores: number[] }) {
   const sorted = [...data.epNums].sort((a, b) => a - b);
   const epRange = sorted.length === 0 ? "" : sorted.length === 1 ? `EP ${sorted[0]}` : `EP ${sorted[0]}–${sorted[sorted.length - 1]}`;
@@ -49,7 +73,7 @@ export async function GET(request: NextRequest) {
       .eq("id", user.id)
       .single();
 
-    if (!profile || !["admin", "management", "executive", "programmer"].includes(profile.role)) {
+    if (!profile || !["admin", "management", "executive", "programmer", "management_viewer"].includes(profile.role)) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
@@ -94,7 +118,7 @@ export async function GET(request: NextRequest) {
     // 1b. Fetch writer commitments for these call reports
     const { data: commitments } = await admin
       .from("writer_commitments")
-      .select("call_report_id, commitment_schedule, commitment_schedule_custom, commitment_type, project_initiation_date")
+      .select("call_report_id, commitment_schedule, commitment_schedule_custom, commitment_type, project_initiation_date, revised_commitment_date")
       .in("call_report_id", reportIds);
 
     const commitmentMap = Object.fromEntries(
@@ -206,13 +230,6 @@ export async function GET(request: NextRequest) {
       const epsReq = neg?.estimated_episodes || cr.total_episodes || null;
       const epsBehind = totalEps !== null ? Math.max(0, totalEps - epsReceived) : null;
 
-      let status: "RECEIVED" | "BEHIND" | "ON_TRACK" | null = null;
-      if (totalEps !== null) {
-        if (epsReceived >= totalEps) status = "RECEIVED";
-        else if (epsBehind && epsBehind > 0) status = "BEHIND";
-        else status = "ON_TRACK";
-      }
-
       // Deadline & remaining eps
       const deadline = neg?.expected_completion_date || null;
       const epsRemaining = epsReq !== null ? Math.max(0, epsReq - epsReceived) : null;
@@ -231,12 +248,66 @@ export async function GET(request: NextRequest) {
       const firstEpDate = epEffectiveDates.length ? new Date(Math.min(...epEffectiveDates.map((d) => d.getTime()))) : null;
       const lastEpDate  = epEffectiveDates.length ? new Date(Math.max(...epEffectiveDates.map((d) => d.getTime()))) : null;
 
-      // Week-wise delivery
+      // Week-wise delivery (must be built before status computation)
       const weekDelivery: Record<string, number> = {};
       for (const ep of crEpisodes) {
         const week = getISOWeek(new Date(ep.original_submission_date ?? ep.created_at));
         weekDelivery[week] = (weekDelivery[week] || 0) + 1;
         allWeeks.add(week);
+      }
+
+      // Pace-aware status: uses cumulative delta from commitment schedule
+      let status: "RECEIVED" | "BEHIND" | "ON_TRACK" | null = null;
+      if (totalEps !== null) {
+        if (epsReceived >= totalEps) {
+          status = "RECEIVED";
+        } else {
+          const commitment = commitmentMap[cr.id];
+          if (commitment) {
+            const effectiveStart = commitment.revised_commitment_date || commitment.project_initiation_date;
+            const epw = getExpectedPerWeek(commitment.commitment_schedule);
+            const epm = getExpectedPerMonth(commitment.commitment_schedule);
+
+            if (epw !== null && effectiveStart) {
+              const sortedDeliveryWeeks = Object.keys(weekDelivery).sort();
+              const firstMonday = getFirstActiveMonday(effectiveStart);
+              let runDel = 0;
+              let latestDelta: number | null = null;
+              for (const w of sortedDeliveryWeeks) {
+                const wMon = getMondayFromISOWeek(w);
+                if (wMon.toISOString().slice(0, 10) < effectiveStart) continue;
+                runDel += weekDelivery[w];
+                const elapsed = Math.round((wMon.getTime() - firstMonday.getTime()) / (7 * 86400000)) + 1;
+                latestDelta = runDel - (epw * elapsed);
+              }
+              status = (latestDelta !== null && latestDelta < 0) ? "BEHIND" : "ON_TRACK";
+            } else if (epm !== null && effectiveStart) {
+              const startDate = new Date(effectiveStart + "T00:00:00Z");
+              let runDel = 0;
+              let latestDelta: number | null = null;
+              const sortedWeeks = Object.keys(weekDelivery).sort();
+              const monthSeen = new Map<string, number>();
+              for (const w of sortedWeeks) {
+                const wMon = getMondayFromISOWeek(w);
+                if (wMon.toISOString().slice(0, 10) < effectiveStart) continue;
+                const mKey = `${wMon.getUTCFullYear()}-${wMon.getUTCMonth()}`;
+                monthSeen.set(mKey, (monthSeen.get(mKey) || 0) + (weekDelivery[w] || 0));
+              }
+              const sortedMonths = Array.from(monthSeen.entries()).sort((a, b) => a[0].localeCompare(b[0]));
+              for (const [mKey, delivered] of sortedMonths) {
+                runDel += delivered;
+                const [y, m] = mKey.split("-").map(Number);
+                const monthsElapsed = (y - startDate.getUTCFullYear()) * 12 + (m - startDate.getUTCMonth()) + 1;
+                latestDelta = runDel - (epm * Math.max(1, monthsElapsed));
+              }
+              status = (latestDelta !== null && latestDelta < 0) ? "BEHIND" : "ON_TRACK";
+            } else {
+              status = (epsBehind && epsBehind > 0) ? "BEHIND" : "ON_TRACK";
+            }
+          } else {
+            status = (epsBehind && epsBehind > 0) ? "BEHIND" : "ON_TRACK";
+          }
+        }
       }
 
       // Week-wise revisions

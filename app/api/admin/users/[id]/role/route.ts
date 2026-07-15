@@ -18,6 +18,7 @@ const roleUpdateSchema = z.object({
     "legal",
     "finance",
     "management",
+    "management_viewer",
     "admin",
   ]),
 });

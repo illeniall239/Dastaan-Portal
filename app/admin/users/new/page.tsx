@@ -383,6 +383,12 @@ export default function NewUserPage() {
                               Management
                             </div>
                           </SelectItem>
+                          <SelectItem value="management_viewer">
+                            <div className="flex items-center gap-2">
+                              <div className="h-2 w-2 rounded-full bg-amber-500" />
+                              Management Viewer (Data Only)
+                            </div>
+                          </SelectItem>
                           <SelectItem value="content_team">
                             <div className="flex items-center gap-2">
                               <div className="h-2 w-2 rounded-full bg-blue-500" />

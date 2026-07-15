@@ -44,7 +44,7 @@ export async function GET(request: NextRequest) {
       .eq("id", user.id)
       .single();
 
-    if (!userData || !["management", "admin", "executive"].includes(userData.role)) {
+    if (!userData || !["management", "management_viewer", "admin", "executive"].includes(userData.role)) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 

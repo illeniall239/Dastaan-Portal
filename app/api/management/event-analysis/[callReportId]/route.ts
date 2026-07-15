@@ -40,7 +40,7 @@ export async function GET(
       .eq("id", user.id)
       .single();
 
-    if (!userData || !["management", "admin"].includes(userData.role)) {
+    if (!userData || !["management", "management_viewer", "admin"].includes(userData.role)) {
       return NextResponse.json(
         { error: "Forbidden - Only management can access event analysis" },
         { status: 403 }

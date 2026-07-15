@@ -33,7 +33,7 @@ export default async function WhatsCookingPage() {
     .single();
 
   // Check if user has permission (admin, management, executive)
-  if (!userData || !["admin", "management", "executive"].includes(userData.role)) {
+  if (!userData || !["admin", "management", "executive", "management_viewer"].includes(userData.role)) {
     redirect("/dashboard");
   }
 

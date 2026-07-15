@@ -122,6 +122,7 @@ export function ChangeRoleDialog({
                 <SelectItem value="legal">Legal</SelectItem>
                 <SelectItem value="finance">Finance</SelectItem>
                 <SelectItem value="management">Management</SelectItem>
+                <SelectItem value="management_viewer">Management Viewer (Data Only)</SelectItem>
                 <SelectItem value="admin">Admin</SelectItem>
               </SelectContent>
             </Select>

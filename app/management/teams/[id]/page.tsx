@@ -50,7 +50,7 @@ export default async function TeamDetailPage({ params }: { params: Promise<{ id:
     .eq("id", user.id)
     .single();
 
-  if (!userData || !["admin", "management"].includes(userData.role)) {
+  if (!userData || !["admin", "management", "management_viewer"].includes(userData.role)) {
     redirect("/dashboard");
   }
 

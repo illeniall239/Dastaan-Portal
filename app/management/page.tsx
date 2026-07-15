@@ -54,7 +54,7 @@ export default async function ManagementDashboard({
   }
 
   // Redirect if not management, executive, or admin
-  if (!["admin", "management", "executive"].includes(user.role)) {
+  if (!["admin", "management", "executive", "management_viewer"].includes(user.role)) {
     redirect("/dashboard");
   }
 
@@ -209,24 +209,26 @@ export default async function ManagementDashboard({
             </Card>
           </Link>
 
-          <Link href="/management/pending-evaluations">
-            <Card className="bg-white border-l-4 border-l-indigo-500 rounded-lg shadow-sm hover:border-gray-300 transition-colors cursor-pointer">
-              <CardHeader className="flex flex-row items-center justify-between pb-2 p-3 sm:p-4">
-                <CardTitle className="text-sm font-medium text-gray-600">
-                  Approval Tracking
-                </CardTitle>
-                <Clock className="h-4 w-4 text-indigo-500" />
-              </CardHeader>
-              <CardContent className="p-3 sm:p-4 pt-0">
-                <div className="text-2xl font-bold text-gray-900">
-                  {isMandatoryApprover ? mandatoryApproverPendingCount : workload.executives.pendingApprovals}
-                </div>
-                <p className="text-xs text-gray-500 mt-1">
-                  {isMandatoryApprover ? "Awaiting your review" : "Awaiting committee decision"}
-                </p>
-              </CardContent>
-            </Card>
-          </Link>
+          {user.role !== "management_viewer" && (
+            <Link href="/management/pending-evaluations">
+              <Card className="bg-white border-l-4 border-l-indigo-500 rounded-lg shadow-sm hover:border-gray-300 transition-colors cursor-pointer">
+                <CardHeader className="flex flex-row items-center justify-between pb-2 p-3 sm:p-4">
+                  <CardTitle className="text-sm font-medium text-gray-600">
+                    Approval Tracking
+                  </CardTitle>
+                  <Clock className="h-4 w-4 text-indigo-500" />
+                </CardHeader>
+                <CardContent className="p-3 sm:p-4 pt-0">
+                  <div className="text-2xl font-bold text-gray-900">
+                    {isMandatoryApprover ? mandatoryApproverPendingCount : workload.executives.pendingApprovals}
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">
+                    {isMandatoryApprover ? "Awaiting your review" : "Awaiting committee decision"}
+                  </p>
+                </CardContent>
+              </Card>
+            </Link>
+          )}
         </div>
       </div>
 

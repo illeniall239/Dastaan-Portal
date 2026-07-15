@@ -20,7 +20,7 @@ export async function PATCH(
     .eq("id", user.id)
     .single();
 
-  if (!profile || !["admin", "management", "executive", "programmer"].includes(profile.role)) {
+  if (!profile || !["admin", "management", "executive", "programmer", "management_viewer"].includes(profile.role)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
   const body = await request.json();

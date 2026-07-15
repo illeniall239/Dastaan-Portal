@@ -11,6 +11,8 @@ export const departmentToRole = (department: string): UserRole => {
       return "evaluator";
     case "management":
       return "management";
+    case "management_viewer":
+      return "management_viewer";
     case "content_team":
       return "content_creator";
     case "gcm":
@@ -63,6 +65,7 @@ export const signupSchema = z
     department: z.enum([
       "evaluator",
       "management",
+      "management_viewer",
       "content_team",
       "programming_team",
     ], {
@@ -169,6 +172,7 @@ export const adminCreateUserSchema = z.object({
     "content_head",
     "evaluator",
     "management",
+    "management_viewer",
     "content_team",
     "gcm",
     "programming_team",

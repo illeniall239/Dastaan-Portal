@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
 import { BackButton } from "@/components/ui/back-button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Download, Search, X, Clock, Pin } from "lucide-react";
 import { toast } from "sonner";
 
@@ -82,6 +83,7 @@ interface Project {
     commitment_schedule_custom?: string | null;
     commitment_type: string;
     project_initiation_date: string;
+    revised_commitment_date?: string | null;
   } | null;
 }
 
@@ -122,6 +124,14 @@ function isWeekOnOrAfter(isoWeek: string, dateStr: string): boolean {
   return monday.toISOString().slice(0, 10) >= dateStr;
 }
 
+function getFirstActiveMonday(dateStr: string): Date {
+  const d = new Date(dateStr + "T00:00:00Z");
+  const day = d.getUTCDay();
+  if (day === 1) return d;
+  const daysToAdd = day === 0 ? 1 : (8 - day);
+  return new Date(d.getTime() + daysToAdd * 86400000);
+}
+
 function commitmentScheduleLabel(schedule: string, custom?: string | null): string {
   const map: Record<string, string> = {
     "1_per_week": "1 ep/week",
@@ -134,6 +144,25 @@ function commitmentScheduleLabel(schedule: string, custom?: string | null): stri
     "custom": custom || "Custom",
   };
   return map[schedule] ?? schedule;
+}
+
+function getProjectAvgOneLiner(grades: Record<string, number>): number | null {
+  const scores = Object.values(grades);
+  return scores.length ? Math.round((scores.reduce((a, b) => a + b, 0) / scores.length) * 10) / 10 : null;
+}
+
+function getProjectAvgEpisodic(grades: Record<string, { avgScore: number | null }>): number | null {
+  const scores = Object.values(grades).map(g => g.avgScore).filter((s): s is number => s !== null);
+  return scores.length ? Math.round((scores.reduce((a, b) => a + b, 0) / scores.length) * 10) / 10 : null;
+}
+
+function matchesRatingBucket(avg: number | null, bucket: string): boolean {
+  if (bucket === "all") return true;
+  if (bucket === "high") return avg !== null && avg >= 8;
+  if (bucket === "mid") return avg !== null && avg >= 6 && avg < 8;
+  if (bucket === "low") return avg !== null && avg < 6;
+  if (bucket === "unrated") return avg === null;
+  return true;
 }
 
 function groupWeeksByMonth(weeks: Week[]): MonthGroup[] {
@@ -200,6 +229,12 @@ export default function ContentAgingPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [slotFilter, setSlotFilter] = useState<string>("all");
+  const [teamHeadFilter, setTeamHeadFilter] = useState<string>("all");
+  const [scheduleFilter, setScheduleFilter] = useState<string>("all");
+  const [writerFilter, setWriterFilter] = useState<string>("all");
+  const [oneLinerRatingFilter, setOneLinerRatingFilter] = useState<string>("all");
+  const [episodicRatingFilter, setEpisodicRatingFilter] = useState<string>("all");
   const [freezePanes, setFreezePanes] = useState(false);
   const freezeRef = useFreezeColumns(freezePanes, 3);
 
@@ -236,6 +271,49 @@ export default function ContentAgingPage() {
     [oneLinerAssessors, selectedOneLinerIds]
   );
 
+  const cumulativeData = useMemo(() => {
+    const result = new Map<string, {
+      weekDeltas: Record<string, number>;
+      monthDeltas: Record<string, number>;
+    }>();
+    const allWeeksSorted = monthGroups.flatMap((mg) => mg.weeks);
+    for (const project of projects) {
+      const c = project.commitment;
+      if (!c) { result.set(project.id, { weekDeltas: {}, monthDeltas: {} }); continue; }
+      const effectiveStart = c.revised_commitment_date || c.project_initiation_date;
+      const expPerWeek = getExpectedPerWeek(c.commitment_schedule);
+      const expPerMonth = getExpectedPerMonth(c.commitment_schedule);
+      const weekDeltas: Record<string, number> = {};
+      const monthDeltas: Record<string, number> = {};
+      if (expPerWeek !== null && effectiveStart) {
+        const firstMonday = getFirstActiveMonday(effectiveStart);
+        let runningDelivered = 0;
+        for (const w of allWeeksSorted) {
+          if (!isWeekOnOrAfter(w.isoWeek, effectiveStart)) continue;
+          runningDelivered += project.weekDelivery[w.isoWeek] ?? 0;
+          const weekMonday = getMondayFromISOWeek(w.isoWeek);
+          const weeksElapsed = Math.round((weekMonday.getTime() - firstMonday.getTime()) / (7 * 86400000)) + 1;
+          weekDeltas[w.isoWeek] = runningDelivered - (expPerWeek * weeksElapsed);
+        }
+      }
+      if (expPerMonth !== null && effectiveStart) {
+        const startDate = new Date(effectiveStart + "T00:00:00Z");
+        let runningDelivered = 0;
+        for (const mg of monthGroups) {
+          const firstWeek = mg.weeks[0];
+          if (!firstWeek || !isWeekOnOrAfter(firstWeek.isoWeek, effectiveStart)) continue;
+          const monthTotal = mg.weeks.reduce((s, w) => s + (project.weekDelivery[w.isoWeek] ?? 0), 0);
+          runningDelivered += monthTotal;
+          const monthMonday = getMondayFromISOWeek(firstWeek.isoWeek);
+          const monthsElapsed = (monthMonday.getUTCFullYear() - startDate.getUTCFullYear()) * 12 + (monthMonday.getUTCMonth() - startDate.getUTCMonth()) + 1;
+          monthDeltas[mg.key] = runningDelivered - (expPerMonth * Math.max(1, monthsElapsed));
+        }
+      }
+      result.set(project.id, { weekDeltas, monthDeltas });
+    }
+    return result;
+  }, [projects, monthGroups]);
+
   const toggleEvaluator = (id: string) => {
     setSelectedEvaluatorIds((prev) => {
       const next = new Set(prev);
@@ -244,9 +322,28 @@ export default function ContentAgingPage() {
     });
   };
 
+  const allSlots = useMemo(() => Array.from(new Set(projects.map((p) => p.slot).filter(Boolean) as string[])).sort(), [projects]);
+  const allTeamHeads = useMemo(() => Array.from(new Set(projects.map((p) => p.teamHeadName).filter(Boolean) as string[])).sort(), [projects]);
+  const allWriters = useMemo(() => Array.from(new Set(projects.map((p) => p.writerName).filter(Boolean) as string[])).sort(), [projects]);
+  const allSchedules = useMemo(() => {
+    const labels = new Map<string, string>();
+    for (const p of projects) {
+      if (p.commitment?.commitment_schedule) {
+        labels.set(p.commitment.commitment_schedule, commitmentScheduleLabel(p.commitment.commitment_schedule, p.commitment.commitment_schedule_custom));
+      }
+    }
+    return Array.from(labels.entries()).sort((a, b) => a[1].localeCompare(b[1]));
+  }, [projects]);
+
   const filtered = useMemo(() => {
     return projects.filter((p) => {
       if (statusFilter !== "all" && p.status !== statusFilter) return false;
+      if (slotFilter !== "all" && p.slot !== slotFilter) return false;
+      if (teamHeadFilter !== "all" && p.teamHeadName !== teamHeadFilter) return false;
+      if (scheduleFilter !== "all" && p.commitment?.commitment_schedule !== scheduleFilter) return false;
+      if (writerFilter !== "all" && p.writerName !== writerFilter) return false;
+      if (!matchesRatingBucket(getProjectAvgOneLiner(p.oneLinerGrades), oneLinerRatingFilter)) return false;
+      if (!matchesRatingBucket(getProjectAvgEpisodic(p.allEvaluatorGrades), episodicRatingFilter)) return false;
       if (search) {
         const q = search.toLowerCase();
         return (
@@ -257,7 +354,7 @@ export default function ContentAgingPage() {
       }
       return true;
     });
-  }, [projects, statusFilter, search]);
+  }, [projects, statusFilter, slotFilter, teamHeadFilter, scheduleFilter, writerFilter, oneLinerRatingFilter, episodicRatingFilter, search]);
 
   const stats = useMemo(() => ({
     total: projects.length,
@@ -416,52 +513,119 @@ export default function ContentAgingPage() {
         )}
 
         {/* Filters */}
-        <div className="flex gap-3 mt-3 flex-wrap">
-          <div className="relative">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search title, writer, team..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="pl-8 h-8 w-64"
-            />
-            {search && (
-              <button onClick={() => setSearch("")} className="absolute right-2 top-2 text-muted-foreground hover:text-foreground">
-                <X className="h-4 w-4" />
-              </button>
-            )}
-          </div>
-          <div className="flex gap-1">
-            {(["all", "RECEIVED", "BEHIND", "ON_TRACK"] as const).map((s) => (
-              <button
-                key={s}
-                onClick={() => setStatusFilter(s)}
-                className={`px-3 py-1 rounded text-xs font-medium border transition-colors ${
-                  statusFilter === s
-                    ? "bg-primary text-primary-foreground border-primary"
-                    : "bg-background border-border text-muted-foreground hover:bg-muted"
-                }`}
+        <div className="space-y-3 mt-3">
+          <div className="flex gap-3 flex-wrap items-center">
+            <div className="relative flex-1 min-w-[200px] max-w-xs">
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search title, writer, team..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="pl-8 h-9"
+              />
+              {search && (
+                <button onClick={() => setSearch("")} className="absolute right-2 top-2.5 text-muted-foreground hover:text-foreground">
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+            <div className="flex gap-2 ml-auto">
+              <Button
+                variant={freezePanes ? "default" : "outline"}
+                size="sm"
+                onClick={() => setFreezePanes(f => !f)}
+                className="gap-1.5 h-9 text-xs"
               >
-                {s === "all" ? "All" : s === "RECEIVED" ? "Received" : s === "BEHIND" ? "Behind" : "On Track"}
-              </button>
-            ))}
+                <Pin className="h-3.5 w-3.5" />
+                {freezePanes ? "Unfreeze" : "Freeze Panes"}
+              </Button>
+              <Button variant="outline" size="sm" onClick={activeTab === "aging" ? exportToExcel : exportTargetAgingToExcel} disabled={loading || filtered.length === 0} className="gap-1.5 h-9 text-xs">
+                <Download className="h-3.5 w-3.5" />
+                Export Excel
+              </Button>
+            </div>
           </div>
-          <div className="flex gap-2">
-            <Button
-              variant={freezePanes ? "default" : "outline"}
-              size="sm"
-              onClick={() => setFreezePanes(f => !f)}
-              className="gap-1.5 h-8 text-xs"
-            >
-              <Pin className="h-3.5 w-3.5" />
-              {freezePanes ? "Unfreeze" : "Freeze Panes"}
-            </Button>
-            <Button variant="outline" size="sm" onClick={activeTab === "aging" ? exportToExcel : exportTargetAgingToExcel} disabled={loading || filtered.length === 0} className="gap-1.5 h-8 text-xs">
-              <Download className="h-3.5 w-3.5" />
-              Export Excel
-            </Button>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-3">
+            <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as StatusFilter)}>
+              <SelectTrigger className="h-9 text-xs">
+                <SelectValue placeholder="All Statuses" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Statuses</SelectItem>
+                <SelectItem value="RECEIVED">Received</SelectItem>
+                <SelectItem value="BEHIND">Behind</SelectItem>
+                <SelectItem value="ON_TRACK">On Track</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={slotFilter} onValueChange={setSlotFilter}>
+              <SelectTrigger className="h-9 text-xs">
+                <SelectValue placeholder="All Slots" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Slots</SelectItem>
+                {allSlots.map((s) => (
+                  <SelectItem key={s} value={s}>{s}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={teamHeadFilter} onValueChange={setTeamHeadFilter}>
+              <SelectTrigger className="h-9 text-xs">
+                <SelectValue placeholder="All Team Heads" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Team Heads</SelectItem>
+                {allTeamHeads.map((t) => (
+                  <SelectItem key={t} value={t}>{t}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={writerFilter} onValueChange={setWriterFilter}>
+              <SelectTrigger className="h-9 text-xs">
+                <SelectValue placeholder="All Writers" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Writers</SelectItem>
+                {allWriters.map((w) => (
+                  <SelectItem key={w} value={w}>{w}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={scheduleFilter} onValueChange={setScheduleFilter}>
+              <SelectTrigger className="h-9 text-xs">
+                <SelectValue placeholder="All Schedules" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Schedules</SelectItem>
+                {allSchedules.map(([key, label]) => (
+                  <SelectItem key={key} value={key}>{label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={oneLinerRatingFilter} onValueChange={setOneLinerRatingFilter}>
+              <SelectTrigger className="h-9 text-xs">
+                <SelectValue placeholder="One-liner Rating" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All One-liner Ratings</SelectItem>
+                <SelectItem value="high">High (8+)</SelectItem>
+                <SelectItem value="mid">Medium (6–8)</SelectItem>
+                <SelectItem value="low">Low (&lt;6)</SelectItem>
+                <SelectItem value="unrated">Unrated</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={episodicRatingFilter} onValueChange={setEpisodicRatingFilter}>
+              <SelectTrigger className="h-9 text-xs">
+                <SelectValue placeholder="Episodic Rating" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Episodic Ratings</SelectItem>
+                <SelectItem value="high">High (8+)</SelectItem>
+                <SelectItem value="mid">Medium (6–8)</SelectItem>
+                <SelectItem value="low">Low (&lt;6)</SelectItem>
+                <SelectItem value="unrated">Unrated</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
-          {/* Evaluator filter — Target Aging tab only */}
         </div>
       </div>
 
@@ -660,43 +824,21 @@ export default function ContentAgingPage() {
                   <Td width={110}>{fmt(project.firstEpDate)}</Td>
                   <Td width={110}>{fmt(project.lastEpDate)}</Td>
 
-                  {/* Month week cells */}
+                  {/* Month week cells — cumulative deltas */}
                   {monthGroups.flatMap((mg) => {
                     const weekCounts = mg.weeks.map((w) => project.weekDelivery[w.isoWeek] ?? 0);
                     const monthTotal = weekCounts.reduce((s, c) => s + c, 0);
                     const c = project.commitment;
+                    const projCum = cumulativeData.get(project.id);
                     const expPerWeek = c ? getExpectedPerWeek(c.commitment_schedule) : null;
                     const expPerMonth = c ? getExpectedPerMonth(c.commitment_schedule) : null;
-
-                    let monthBehind: number | null = null;
-                    if (c && expPerMonth !== null) {
-                      const firstWeekOfMonth = mg.weeks[0];
-                      if (firstWeekOfMonth && isWeekOnOrAfter(firstWeekOfMonth.isoWeek, c.project_initiation_date)) {
-                        monthBehind = monthTotal - expPerMonth;
-                      }
-                    }
-                    let weeklyMonthBehind: number | null = null;
-                    if (c && expPerWeek !== null) {
-                      let sum = 0;
-                      let hasAny = false;
-                      mg.weeks.forEach((w) => {
-                        if (isWeekOnOrAfter(w.isoWeek, c.project_initiation_date)) {
-                          sum += (project.weekDelivery[w.isoWeek] ?? 0) - expPerWeek;
-                          hasAny = true;
-                        }
-                      });
-                      if (hasAny) weeklyMonthBehind = sum;
-                    }
+                    const isCustom = c?.commitment_schedule === "custom";
 
                     return [
                       ...mg.weeks.map((w, i) => {
                         const count = project.weekDelivery[w.isoWeek] ?? 0;
-                        let behindValue: number | null = null;
-                        let weekActive = false;
-                        if (c && expPerWeek !== null && isWeekOnOrAfter(w.isoWeek, c.project_initiation_date)) {
-                          behindValue = count - expPerWeek;
-                          weekActive = true;
-                        }
+                        const behindValue = projCum?.weekDeltas[w.isoWeek] ?? null;
+                        const weekActive = behindValue !== null;
                         return (
                           <Td key={`${mg.key}-w${i}`} width={55} center>
                             {count > 0 ? (
@@ -713,13 +855,15 @@ export default function ContentAgingPage() {
                                     behindValue === 0 ? (
                                       <span className="text-gray-400">0</span>
                                     ) : (
-                                      <span className={behindValue! < 0 ? "text-red-600 font-medium" : "text-green-600 font-medium"}>
-                                        {behindValue! > 0 ? `+${behindValue}` : behindValue}
+                                      <span className={behindValue < 0 ? "text-red-600 font-medium" : "text-green-600 font-medium"}>
+                                        {behindValue > 0 ? `+${behindValue}` : behindValue}
                                       </span>
                                     )
                                   ) : (
                                     <span className="text-gray-300">—</span>
                                   )
+                                ) : isCustom ? (
+                                  <span className="text-gray-400 cursor-help" title={c.commitment_schedule_custom || "Custom schedule"}>⬥</span>
                                 ) : (
                                   <span className="text-gray-300">—</span>
                                 )}
@@ -746,8 +890,21 @@ export default function ContentAgingPage() {
                           <span className="text-muted-foreground/30">·</span>
                         )}
                         {c && (() => {
-                          const behind = expPerWeek !== null ? weeklyMonthBehind : monthBehind;
-                          if (behind === null) return null;
+                          let behind: number | null = null;
+                          if (expPerWeek !== null && projCum) {
+                            const lastActive = [...mg.weeks].reverse().find((w) => w.isoWeek in projCum.weekDeltas);
+                            behind = lastActive ? projCum.weekDeltas[lastActive.isoWeek] : null;
+                          } else if (expPerMonth !== null && projCum) {
+                            behind = projCum.monthDeltas[mg.key] ?? null;
+                          }
+                          if (behind === null) {
+                            if (isCustom) return (
+                              <div className="text-xs mt-0.5 leading-none">
+                                <span className="text-gray-400 cursor-help" title={c.commitment_schedule_custom || "Custom schedule"}>⬥</span>
+                              </div>
+                            );
+                            return null;
+                          }
                           return (
                             <div className="text-xs mt-0.5 leading-none">
                               {behind === 0 ? (

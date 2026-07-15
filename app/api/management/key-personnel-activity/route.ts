@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
       .eq("id", user.id)
       .single();
 
-    if (!["admin", "management"].includes(currentUser?.role)) {
+    if (!["admin", "management", "management_viewer"].includes(currentUser?.role)) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
