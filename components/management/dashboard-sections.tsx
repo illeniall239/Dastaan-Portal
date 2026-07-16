@@ -162,9 +162,14 @@ export async function ScriptingEpisodeSection() {
  * Pipeline Overview Section - Async Component
  */
 export async function PipelineOverviewSection() {
+  const supabase = await createClient();
+  const { data: { user: authUser } } = await supabase.auth.getUser();
+  const { data: profile } = authUser ? await supabase.from("users").select("role").eq("id", authUser.id).single() : { data: null };
+  const isViewer = profile?.role === "management_viewer";
+
   const [pipelineData, recentActivities] = await Promise.all([
     getPipelineOverview(),
-    getRecentActivity(10), // Fetch 10 most recent activities
+    isViewer ? Promise.resolve([]) : getRecentActivity(10),
   ]);
 
   return (
@@ -194,7 +199,7 @@ export async function PipelineOverviewSection() {
         />
       </div>
 
-      <DynamicRecentActivityCard activities={recentActivities} />
+      {!isViewer && <DynamicRecentActivityCard activities={recentActivities} />}
     </div>
   );
 }

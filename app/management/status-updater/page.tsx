@@ -7,6 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 export default function ManagementStatusUpdaterPage() {
   const [ideasData, setIdeasData] = useState<any[]>([]);
+  const [userRole, setUserRole] = useState<string>("management");
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -16,13 +17,14 @@ export default function ManagementStatusUpdaterPage() {
       setLoading(true);
       // Fetch data from the API route
       const response = await fetch('/api/management/active-ideas');
-      
+
       if (!response.ok) {
         throw new Error(`Failed to fetch data: ${response.status} ${response.statusText}`);
       }
-      
+
       const result = await response.json();
-      setIdeasData(result);
+      setIdeasData(result.ideas || result);
+      if (result.userRole) setUserRole(result.userRole);
       setError(null);
     } catch (err) {
       console.error('Error fetching data:', err);
@@ -83,7 +85,7 @@ export default function ManagementStatusUpdaterPage() {
               ))}
             </div>
           ) : (
-            <StatusUpdaterTable ideas={ideasData} role="management" readOnly={true} />
+            <StatusUpdaterTable ideas={ideasData} role={userRole} readOnly={true} />
           )}
         </CardContent>
       </Card>

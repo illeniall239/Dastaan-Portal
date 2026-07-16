@@ -261,6 +261,8 @@ const W_WRITER = 140;
 const STICKY_TOTAL = W_NUM + W_TITLE + W_WRITER;
 
 export default function ContentAgingPage() {
+  const [userRole, setUserRole] = useState<string>("");
+  const isViewerOnly = userRole === "management_viewer";
   const [activeTab, setActiveTab] = useState<"aging" | "target" | "tracking">("aging");
   const [projects, setProjects] = useState<Project[]>([]);
   const [weeks, setWeeks] = useState<Week[]>([]);
@@ -290,6 +292,7 @@ export default function ContentAgingPage() {
         const res = await fetch(`/api/management/content-aging?_t=${Date.now()}`);
         if (!res.ok) throw new Error("Failed to fetch");
         const data = await res.json();
+        if (data.userRole) setUserRole(data.userRole);
         setProjects(data.projects || []);
         setWeeks(data.weeks || []);
         const evs: Evaluator[] = data.evaluators || [];
@@ -329,13 +332,13 @@ export default function ContentAgingPage() {
 
   const monthGroups = useMemo(() => groupWeeksByMonth(weeks), [weeks]);
   const visibleEvaluators = useMemo(
-    () => evaluators.filter((e) => selectedEvaluatorIds.has(e.id)),
-    [evaluators, selectedEvaluatorIds]
+    () => isViewerOnly ? [] : evaluators.filter((e) => selectedEvaluatorIds.has(e.id)),
+    [evaluators, selectedEvaluatorIds, isViewerOnly]
   );
 
   const visibleOneLinerAssessors = useMemo(
-    () => oneLinerAssessors.filter((a) => selectedOneLinerIds.has(a.id)),
-    [oneLinerAssessors, selectedOneLinerIds]
+    () => isViewerOnly ? [] : oneLinerAssessors.filter((a) => selectedOneLinerIds.has(a.id)),
+    [oneLinerAssessors, selectedOneLinerIds, isViewerOnly]
   );
 
   const cumulativeData = useMemo(() => {
@@ -719,30 +722,34 @@ export default function ContentAgingPage() {
                 ))}
               </SelectContent>
             </Select>
-            <Select value={oneLinerRatingFilter} onValueChange={setOneLinerRatingFilter}>
-              <SelectTrigger className="h-9 text-xs">
-                <SelectValue placeholder="One-liner Rating" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All One-liner Ratings</SelectItem>
-                <SelectItem value="high">High (8+)</SelectItem>
-                <SelectItem value="mid">Medium (6–8)</SelectItem>
-                <SelectItem value="low">Low (&lt;6)</SelectItem>
-                <SelectItem value="unrated">Unrated</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={episodicRatingFilter} onValueChange={setEpisodicRatingFilter}>
-              <SelectTrigger className="h-9 text-xs">
-                <SelectValue placeholder="Episodic Rating" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Episodic Ratings</SelectItem>
-                <SelectItem value="high">High (8+)</SelectItem>
-                <SelectItem value="mid">Medium (6–8)</SelectItem>
-                <SelectItem value="low">Low (&lt;6)</SelectItem>
-                <SelectItem value="unrated">Unrated</SelectItem>
-              </SelectContent>
-            </Select>
+            {!isViewerOnly && (
+              <>
+                <Select value={oneLinerRatingFilter} onValueChange={setOneLinerRatingFilter}>
+                  <SelectTrigger className="h-9 text-xs">
+                    <SelectValue placeholder="One-liner Rating" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All One-liner Ratings</SelectItem>
+                    <SelectItem value="high">High (8+)</SelectItem>
+                    <SelectItem value="mid">Medium (6–8)</SelectItem>
+                    <SelectItem value="low">Low (&lt;6)</SelectItem>
+                    <SelectItem value="unrated">Unrated</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Select value={episodicRatingFilter} onValueChange={setEpisodicRatingFilter}>
+                  <SelectTrigger className="h-9 text-xs">
+                    <SelectValue placeholder="Episodic Rating" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Episodic Ratings</SelectItem>
+                    <SelectItem value="high">High (8+)</SelectItem>
+                    <SelectItem value="mid">Medium (6–8)</SelectItem>
+                    <SelectItem value="low">Low (&lt;6)</SelectItem>
+                    <SelectItem value="unrated">Unrated</SelectItem>
+                  </SelectContent>
+                </Select>
+              </>
+            )}
           </div>
         </div>
       </div>

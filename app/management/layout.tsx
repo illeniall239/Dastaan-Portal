@@ -44,7 +44,8 @@ export default async function ManagementLayout({
   // management_viewer: data/quantity reports only — no scripts, evaluations, or one-liners
   if (user.role === "management_viewer") {
     const blockedHrefs = [
-      "/management/story-bank",
+      "/management/whats-cooking",
+      "/management/roadmap",
       "/management/evaluations",
       "/management/evaluator-bias",
       "/management/pending-evaluations",
@@ -54,6 +55,7 @@ export default async function ManagementLayout({
       "/management/calendar",
     ];
     navItems = navItems.filter((item) => !blockedHrefs.includes(item.href));
+    navItems.push({ title: "Contract Terms", href: "/management/contract-terms", icon: "fileText" });
   }
 
   return (
@@ -66,7 +68,7 @@ export default async function ManagementLayout({
       >
         {children}
       </SidebarWrapper>
-      <AssistantChat portalKey="management" />
+      {user.role !== "management_viewer" && <AssistantChat portalKey="management" />}
     </>
   );
 }

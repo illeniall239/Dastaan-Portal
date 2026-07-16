@@ -405,7 +405,7 @@ export async function GET(request: NextRequest) {
       .map(([id, data]) => ({ id, name: data.name, email: data.email, role: data.role, group: data.group }))
       .sort((a, b) => a.name.localeCompare(b.name));
 
-    return NextResponse.json({ projects, weeks, evaluators, oneLinerAssessors });
+    return NextResponse.json({ projects, weeks, evaluators, oneLinerAssessors, userRole: profile.role });
   } catch (error) {
     logger.error(`Content aging API error: ${error instanceof Error ? error.stack || error.message : JSON.stringify(error)}`);
     return NextResponse.json({ error: "An unexpected error occurred" }, { status: 500 });

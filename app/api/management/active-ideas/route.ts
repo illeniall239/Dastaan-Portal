@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
     // Get active ideas details
     const ideasData = await getActiveIdeasDetails();
 
-    return new Response(JSON.stringify(ideasData.details), {
+    return new Response(JSON.stringify({ ideas: ideasData.details, userRole: user.role }), {
       status: 200,
       headers: { 'Content-Type': 'application/json' },
     });

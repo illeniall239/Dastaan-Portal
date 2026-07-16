@@ -46,7 +46,7 @@ interface StatusUpdaterTableProps {
 }
 
 export function StatusUpdaterTable({ ideas, role, readOnly = false }: StatusUpdaterTableProps) {
-  const showManagementColumns = role !== "evaluator";
+  const showManagementColumns = role !== "evaluator" && role !== "management_viewer";
   const showStageStatusRemarks = true;
   const [freezePanes, setFreezePanes] = useState(false);
   const freezeRef = useFreezeColumns(freezePanes);
@@ -252,11 +252,13 @@ export function StatusUpdaterTable({ ideas, role, readOnly = false }: StatusUpda
           : idea.writer_name || '',
         "Director": idea.director || '',
         "Slot": idea.slot || '',
-        "Short Synopsis": idea.logline || '',
-        "Evaluation Decision": idea.one_liner_approved ?
-          (idea.one_liner_approved === "approved" ? "Approved" :
-            idea.one_liner_approved === "needs_improvement" ? "Needs Revision" :
-              idea.one_liner_approved === "pending" ? "Pending" : "Rejected") : '',
+        ...(showManagementColumns ? {
+          "Short Synopsis": idea.logline || '',
+          "Evaluation Decision": idea.one_liner_approved ?
+            (idea.one_liner_approved === "approved" ? "Approved" :
+              idea.one_liner_approved === "needs_improvement" ? "Needs Revision" :
+                idea.one_liner_approved === "pending" ? "Pending" : "Rejected") : '',
+        } : {}),
         "Expected Episodes": idea.total_episodes ?? '',
         "Episodes Received": idea.actual_received_episodes ?? '',
         "Script Completion %": idea.completion_percentage != null ? `${idea.completion_percentage.toFixed(0)}%` : '',
@@ -272,13 +274,14 @@ export function StatusUpdaterTable({ ideas, role, readOnly = false }: StatusUpda
         "Monthly Breakdown": idea.monthly_episode_receipts && Object.keys(idea.monthly_episode_receipts).length > 0 ?
           Object.values(idea.monthly_episode_receipts).reduce((a: number, b: number) => a + b, 0) + ' eps' : '',
         "Theme": idea.theme || '',
-        // Always include management columns for programming portal export
         "Stage": STAGE_OPTIONS.find(s => s.key === getStageKey(idea.status))?.label || '',
         "Status": idea.status || '',
-        "Content Team Overall": idea.content_overall ? `${idea.content_overall.toFixed(1)}${idea.content_eval_count ? ` (${idea.content_eval_count})` : ''}` : '',
-        "Programming Overall": idea.programming_overall ? `${idea.programming_overall.toFixed(1)}${idea.programming_eval_count ? ` (${idea.programming_eval_count})` : ''}` : '',
-        "Content Development Overall": idea.content_dev_overall ? `${idea.content_dev_overall.toFixed(1)}${idea.content_dev_eval_count ? ` (${idea.content_dev_eval_count})` : ''}` : '',
-        "Management Overall": idea.management_overall ? `${idea.management_overall.toFixed(1)}${idea.management_eval_count ? ` (${idea.management_eval_count})` : ''}` : '',
+        ...(showManagementColumns ? {
+          "Content Team Overall": idea.content_overall ? `${idea.content_overall.toFixed(1)}${idea.content_eval_count ? ` (${idea.content_eval_count})` : ''}` : '',
+          "Programming Overall": idea.programming_overall ? `${idea.programming_overall.toFixed(1)}${idea.programming_eval_count ? ` (${idea.programming_eval_count})` : ''}` : '',
+          "Content Development Overall": idea.content_dev_overall ? `${idea.content_dev_overall.toFixed(1)}${idea.content_dev_eval_count ? ` (${idea.content_dev_eval_count})` : ''}` : '',
+          "Management Overall": idea.management_overall ? `${idea.management_overall.toFixed(1)}${idea.management_eval_count ? ` (${idea.management_eval_count})` : ''}` : '',
+        } : {}),
         "Remarks": idea.remarks || '',
       };
 
@@ -470,8 +473,8 @@ export function StatusUpdaterTable({ ideas, role, readOnly = false }: StatusUpda
                   <TableHead className="font-bold text-slate-700 border-b whitespace-nowrap">Writer</TableHead>
                   <TableHead className="font-bold text-slate-700 border-b whitespace-nowrap">Director</TableHead>
                   <TableHead className="font-bold text-slate-700 border-b whitespace-nowrap">Slot</TableHead>
-                  <TableHead className="font-bold text-slate-700 border-b whitespace-nowrap">Short Synopsis</TableHead>
-                  <TableHead className="font-bold text-slate-700 text-center border-b whitespace-nowrap">Evaluation Decision</TableHead>
+                  {showManagementColumns && <TableHead className="font-bold text-slate-700 border-b whitespace-nowrap">Short Synopsis</TableHead>}
+                  {showManagementColumns && <TableHead className="font-bold text-slate-700 text-center border-b whitespace-nowrap">Evaluation Decision</TableHead>}
                   <TableHead className="font-bold text-slate-700 text-center cursor-pointer border-b whitespace-nowrap" onClick={() => handleSort("episodes")}>Expected Episodes</TableHead>
                   <TableHead className="font-bold text-slate-700 text-center cursor-pointer border-b whitespace-nowrap" onClick={() => handleSort("episodes")}>Episodes Received</TableHead>
                   <TableHead className="font-bold text-slate-700 text-center cursor-pointer border-b whitespace-nowrap" onClick={() => handleSort("completion")}>Script Completion %</TableHead>
@@ -564,39 +567,43 @@ export function StatusUpdaterTable({ ideas, role, readOnly = false }: StatusUpda
                         {idea.slot || <span className="text-slate-300">-</span>}
                       </TableCell>
 
-                      {/* Short Synopsis */}
-                      <TableCell className="text-[11px] text-slate-600 border-b">
-                        {idea.logline || <span className="text-slate-300">-</span>}
-                      </TableCell>
+                      {showManagementColumns && (
+                        <>
+                          {/* Short Synopsis */}
+                          <TableCell className="text-[11px] text-slate-600 border-b">
+                            {idea.logline || <span className="text-slate-300">-</span>}
+                          </TableCell>
 
-                      {/* Evaluation Decision */}
-                      <TableCell className="text-center border-b">
-                        {idea.one_liner_approved ? (
-                          <div className="flex flex-col items-center gap-0.5">
-                            <Badge
-                              className={cn(
-                                "text-[10px] font-bold px-1.5 py-0 h-5 border-none",
-                                idea.one_liner_approved === "approved"
-                                  ? "bg-emerald-100 text-emerald-700"
-                                  : idea.one_liner_approved === "needs_improvement"
-                                    ? "bg-amber-100 text-amber-700"
-                                    : idea.one_liner_approved === "pending"
-                                      ? "bg-slate-100 text-slate-600"
-                                      : "bg-rose-100 text-rose-700"
-                              )}
-                            >
-                              {idea.one_liner_approved === "approved" ? "Approved" : idea.one_liner_approved === "needs_improvement" ? "Needs Revision" : idea.one_liner_approved === "pending" ? "Pending" : "Rejected"}
-                            </Badge>
-                            {idea.total_evaluators ? (
-                              <span className="text-[9px] text-slate-400">
-                                {idea.approval_count || 0}/{idea.total_evaluators}
-                              </span>
-                            ) : null}
-                          </div>
-                        ) : (
-                          <span className="text-[10px] text-slate-300">-</span>
-                        )}
-                      </TableCell>
+                          {/* Evaluation Decision */}
+                          <TableCell className="text-center border-b">
+                            {idea.one_liner_approved ? (
+                              <div className="flex flex-col items-center gap-0.5">
+                                <Badge
+                                  className={cn(
+                                    "text-[10px] font-bold px-1.5 py-0 h-5 border-none",
+                                    idea.one_liner_approved === "approved"
+                                      ? "bg-emerald-100 text-emerald-700"
+                                      : idea.one_liner_approved === "needs_improvement"
+                                        ? "bg-amber-100 text-amber-700"
+                                        : idea.one_liner_approved === "pending"
+                                          ? "bg-slate-100 text-slate-600"
+                                          : "bg-rose-100 text-rose-700"
+                                  )}
+                                >
+                                  {idea.one_liner_approved === "approved" ? "Approved" : idea.one_liner_approved === "needs_improvement" ? "Needs Revision" : idea.one_liner_approved === "pending" ? "Pending" : "Rejected"}
+                                </Badge>
+                                {idea.total_evaluators ? (
+                                  <span className="text-[9px] text-slate-400">
+                                    {idea.approval_count || 0}/{idea.total_evaluators}
+                                  </span>
+                                ) : null}
+                              </div>
+                            ) : (
+                              <span className="text-[10px] text-slate-300">-</span>
+                            )}
+                          </TableCell>
+                        </>
+                      )}
 
                       {/* Expected Episodes */}
                       <TableCell className="text-center text-[11px] text-slate-600 border-b">

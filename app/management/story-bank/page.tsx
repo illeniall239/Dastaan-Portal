@@ -26,7 +26,7 @@ export default async function ManagementStoryBankPage() {
     .eq("id", user.id)
     .single();
 
-  if (!userData || !["admin", "management", "executive"].includes(userData.role)) {
+  if (!userData || !["admin", "management", "executive", "management_viewer"].includes(userData.role)) {
     redirect("/dashboard");
   }
 
@@ -204,7 +204,7 @@ export default async function ManagementStoryBankPage() {
         </div>
       </div>
 
-      <StoryBank callReports={callReportsWithAttachments} episodes={episodesWithCounts} />
+      <StoryBank callReports={callReportsWithAttachments} episodes={episodesWithCounts} userRole={userData.role} />
     </div>
   );
 }

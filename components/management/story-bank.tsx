@@ -7,9 +7,16 @@ import { ManagementEpisodesCards } from "@/components/management/management-epis
 interface StoryBankProps {
   callReports: any[];
   episodes: any[];
+  userRole?: string;
 }
 
-export function StoryBank({ callReports, episodes }: StoryBankProps) {
+export function StoryBank({ callReports, episodes, userRole }: StoryBankProps) {
+  const isViewerOnly = userRole === "management_viewer";
+
+  if (isViewerOnly) {
+    return <ManagementCallReportsCards callReports={callReports} userRole={userRole} />;
+  }
+
   return (
     <Tabs defaultValue="call-reports" className="w-full">
       <TabsList className="grid w-full grid-cols-2 max-w-md">

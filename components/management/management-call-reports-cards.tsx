@@ -20,9 +20,11 @@ import { useDebounce } from "@/lib/hooks/useDebounce";
 
 interface ManagementCallReportsCardsProps {
   callReports: any[];
+  userRole?: string;
 }
 
-export function ManagementCallReportsCards({ callReports }: ManagementCallReportsCardsProps) {
+export function ManagementCallReportsCards({ callReports, userRole }: ManagementCallReportsCardsProps) {
+  const isViewerOnly = userRole === "management_viewer";
   const [selectedReport, setSelectedReport] = useState<any>(null);
   const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
   const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
@@ -177,14 +179,14 @@ export function ManagementCallReportsCards({ callReports }: ManagementCallReport
               </CardHeader>
 
               <CardContent className="flex-1 space-y-4">
-                {report.logline && (
+                {!isViewerOnly && report.logline && (
                   <div className="space-y-1">
                     <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Logline</p>
                     <p className="text-sm leading-relaxed">{report.logline}</p>
                   </div>
                 )}
 
-                {report.meeting_notes && (
+                {!isViewerOnly && report.meeting_notes && (
                   <div className="space-y-1">
                     <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Meeting Notes</p>
                     <p className="text-sm text-muted-foreground line-clamp-3">{report.meeting_notes}</p>
@@ -212,7 +214,7 @@ export function ManagementCallReportsCards({ callReports }: ManagementCallReport
                   </div>
                 )}
 
-                {report.next_steps && (
+                {!isViewerOnly && report.next_steps && (
                   <div className="space-y-1">
                     <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Next Steps</p>
                     <p className="text-sm text-muted-foreground line-clamp-2">{report.next_steps}</p>
@@ -220,32 +222,34 @@ export function ManagementCallReportsCards({ callReports }: ManagementCallReport
                 )}
               </CardContent>
 
-              <CardFooter className="pt-4 border-t">
-                <div className="flex items-center gap-2 w-full flex-wrap">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleViewDetails(report);
-                    }}
-                  >
-                    <Eye className="h-3 w-3 mr-1" />
-                    View Details
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleShare(report);
-                    }}
-                  >
-                    <Share2 className="h-3 w-3 mr-1" />
-                    Share
-                  </Button>
-                </div>
-              </CardFooter>
+              {!isViewerOnly && (
+                <CardFooter className="pt-4 border-t">
+                  <div className="flex items-center gap-2 w-full flex-wrap">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleViewDetails(report);
+                      }}
+                    >
+                      <Eye className="h-3 w-3 mr-1" />
+                      View Details
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleShare(report);
+                      }}
+                    >
+                      <Share2 className="h-3 w-3 mr-1" />
+                      Share
+                    </Button>
+                  </div>
+                </CardFooter>
+              )}
             </Card>
           );
         })}
