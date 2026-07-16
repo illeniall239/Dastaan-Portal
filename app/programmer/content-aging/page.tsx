@@ -1,13 +1,14 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, Fragment } from "react";
+import { useCallback, useRef } from "react";
 import { useFreezeColumns } from "@/lib/hooks/useFreezeColumns";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
 import { BackButton } from "@/components/ui/back-button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Download, Search, X, Clock, Pin } from "lucide-react";
+import { Download, Search, X, Clock, Pin, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 interface EvaluatorGrade {
@@ -84,7 +85,34 @@ interface Project {
     commitment_type: string;
     project_initiation_date: string;
     revised_commitment_date?: string | null;
+    delay_notes?: string | null;
   } | null;
+}
+
+interface TrackingRevision {
+  revisionNumber: number;
+  receivedDate: string | null;
+  feedbackDate: string | null;
+}
+
+interface TrackingEpisode {
+  id: string;
+  episodeNumber: number;
+  firstCopyDate: string | null;
+  firstCopyFeedbackDate: string | null;
+  revisions: TrackingRevision[];
+  paymentRequestDate: string | null;
+  paymentDate: string | null;
+  trackingStatus: string | null;
+}
+
+interface TrackingProject {
+  id: string;
+  workingTitle: string;
+  writerName: string | null;
+  trackingNotes: string | null;
+  episodes: TrackingEpisode[];
+  maxRevisions: number;
 }
 
 interface Week {
@@ -116,6 +144,20 @@ function getExpectedPerWeek(schedule: string): number | null {
 
 function getExpectedPerMonth(schedule: string): number | null {
   if (schedule.endsWith("_per_month")) return parseInt(schedule);
+  return null;
+}
+
+function getProductionPhase(totalEps: number | null, epsReceived: number): string | null {
+  if (!totalEps || epsReceived === 0) return null;
+  const thresholds: Record<number, { preCast: number; preProduction: number; productionStart: number }> = {
+    30: { preCast: 3, preProduction: 10, productionStart: 15 },
+    50: { preCast: 8, preProduction: 18, productionStart: 25 },
+  };
+  const t = thresholds[totalEps];
+  if (!t) return null;
+  if (epsReceived >= t.productionStart) return "Production Start";
+  if (epsReceived >= t.preProduction) return "Pre Production";
+  if (epsReceived >= t.preCast) return "Pre Cast";
   return null;
 }
 
@@ -219,7 +261,7 @@ const W_WRITER = 140;
 const STICKY_TOTAL = W_NUM + W_TITLE + W_WRITER;
 
 export default function ContentAgingPage() {
-  const [activeTab, setActiveTab] = useState<"aging" | "target">("aging");
+  const [activeTab, setActiveTab] = useState<"aging" | "target" | "tracking">("aging");
   const [projects, setProjects] = useState<Project[]>([]);
   const [weeks, setWeeks] = useState<Week[]>([]);
   const [evaluators, setEvaluators] = useState<Evaluator[]>([]);
@@ -227,6 +269,10 @@ export default function ContentAgingPage() {
   const [oneLinerAssessors, setOneLinerAssessors] = useState<OneLinerAssessor[]>([]);
   const [selectedOneLinerIds, setSelectedOneLinerIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
+  const [trackingProjects, setTrackingProjects] = useState<TrackingProject[]>([]);
+  const [trackingMaxRevisions, setTrackingMaxRevisions] = useState(0);
+  const [trackingLoading, setTrackingLoading] = useState(false);
+  const trackingLoaded = useRef(false);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [slotFilter, setSlotFilter] = useState<string>("all");
@@ -260,6 +306,27 @@ export default function ContentAgingPage() {
     })();
   }, []);
 
+  const loadTracking = useCallback(async () => {
+    if (trackingLoaded.current) return;
+    setTrackingLoading(true);
+    try {
+      const res = await fetch(`/api/management/content-aging/tracking?_t=${Date.now()}`);
+      if (!res.ok) throw new Error("Failed to fetch");
+      const data = await res.json();
+      setTrackingProjects(data.projects || []);
+      setTrackingMaxRevisions(data.globalMaxRevisions || 0);
+      trackingLoaded.current = true;
+    } catch {
+      toast.error("Failed to load tracking data");
+    } finally {
+      setTrackingLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (activeTab === "tracking") loadTracking();
+  }, [activeTab, loadTracking]);
+
   const monthGroups = useMemo(() => groupWeeksByMonth(weeks), [weeks]);
   const visibleEvaluators = useMemo(
     () => evaluators.filter((e) => selectedEvaluatorIds.has(e.id)),
@@ -273,43 +340,52 @@ export default function ContentAgingPage() {
 
   const cumulativeData = useMemo(() => {
     const result = new Map<string, {
-      weekDeltas: Record<string, number>;
-      monthDeltas: Record<string, number>;
+      weekDeltas: Record<string, number>;   // per-week delta: delivered - expected
+      monthDeltas: Record<string, number>;  // sum of per-week deltas for each month
+      tillDeltas: Record<string, number>;   // running cumulative of month deltas
     }>();
-    const allWeeksSorted = monthGroups.flatMap((mg) => mg.weeks);
     for (const project of projects) {
       const c = project.commitment;
-      if (!c) { result.set(project.id, { weekDeltas: {}, monthDeltas: {} }); continue; }
+      if (!c) { result.set(project.id, { weekDeltas: {}, monthDeltas: {}, tillDeltas: {} }); continue; }
       const effectiveStart = c.revised_commitment_date || c.project_initiation_date;
       const expPerWeek = getExpectedPerWeek(c.commitment_schedule);
       const expPerMonth = getExpectedPerMonth(c.commitment_schedule);
       const weekDeltas: Record<string, number> = {};
       const monthDeltas: Record<string, number> = {};
+      const tillDeltas: Record<string, number> = {};
       if (expPerWeek !== null && effectiveStart) {
-        const firstMonday = getFirstActiveMonday(effectiveStart);
-        let runningDelivered = 0;
-        for (const w of allWeeksSorted) {
-          if (!isWeekOnOrAfter(w.isoWeek, effectiveStart)) continue;
-          runningDelivered += project.weekDelivery[w.isoWeek] ?? 0;
-          const weekMonday = getMondayFromISOWeek(w.isoWeek);
-          const weeksElapsed = Math.round((weekMonday.getTime() - firstMonday.getTime()) / (7 * 86400000)) + 1;
-          weekDeltas[w.isoWeek] = runningDelivered - (expPerWeek * weeksElapsed);
+        let runningTill = 0;
+        for (const mg of monthGroups) {
+          let monthDelta = 0;
+          let hasActiveWeek = false;
+          for (const w of mg.weeks) {
+            if (!isWeekOnOrAfter(w.isoWeek, effectiveStart)) continue;
+            hasActiveWeek = true;
+            const delivered = project.weekDelivery[w.isoWeek] ?? 0;
+            const delta = delivered - expPerWeek;
+            weekDeltas[w.isoWeek] = delta;
+            monthDelta += delta;
+          }
+          if (hasActiveWeek) {
+            monthDeltas[mg.key] = monthDelta;
+            runningTill += monthDelta;
+            tillDeltas[mg.key] = runningTill;
+          }
         }
       }
       if (expPerMonth !== null && effectiveStart) {
-        const startDate = new Date(effectiveStart + "T00:00:00Z");
-        let runningDelivered = 0;
+        let runningTill = 0;
         for (const mg of monthGroups) {
           const firstWeek = mg.weeks[0];
           if (!firstWeek || !isWeekOnOrAfter(firstWeek.isoWeek, effectiveStart)) continue;
-          const monthTotal = mg.weeks.reduce((s, w) => s + (project.weekDelivery[w.isoWeek] ?? 0), 0);
-          runningDelivered += monthTotal;
-          const monthMonday = getMondayFromISOWeek(firstWeek.isoWeek);
-          const monthsElapsed = (monthMonday.getUTCFullYear() - startDate.getUTCFullYear()) * 12 + (monthMonday.getUTCMonth() - startDate.getUTCMonth()) + 1;
-          monthDeltas[mg.key] = runningDelivered - (expPerMonth * Math.max(1, monthsElapsed));
+          const monthDelivered = mg.weeks.reduce((s, w) => s + (project.weekDelivery[w.isoWeek] ?? 0), 0);
+          const delta = monthDelivered - expPerMonth;
+          monthDeltas[mg.key] = delta;
+          runningTill += delta;
+          tillDeltas[mg.key] = runningTill;
         }
       }
-      result.set(project.id, { weekDeltas, monthDeltas });
+      result.set(project.id, { weekDeltas, monthDeltas, tillDeltas });
     }
     return result;
   }, [projects, monthGroups]);
@@ -396,6 +472,7 @@ export default function ContentAgingPage() {
     const weekHeaders = monthGroups.flatMap((mg) => [
       ...mg.weeks.map((_, i) => `${mg.label} W${i + 1}`),
       `${mg.label} Total`,
+      `Total Till ${mg.label}`,
     ]);
 
     const evalHeaders = visibleEvaluators.flatMap((e) => [`${e.name} (Episodes)`, `${e.name} (Grade)`]);
@@ -404,12 +481,13 @@ export default function ContentAgingPage() {
     const headers = [
       "Sr", "Title", "Writer", "Agreement Date", "Slot",
       ...evalHeaders,
-      "Total EPS", "EPS REQ", "EPS Received",
+      "Total EPS", "EPS REQ", "EPS Received", "Phase",
       "Deadline", "Project On Air",
       "EPS Remaining", "Per Month EPS Required",
       "First Ep Date", "Last Ep Date", "Status",
       ...oneLinerHeaders,
       ...weekHeaders,
+      "Reason for Delay",
     ];
 
     const rows = filtered.map((p, i) => [
@@ -425,6 +503,7 @@ export default function ContentAgingPage() {
       p.totalEps ?? "",
       p.epsReq ?? "",
       p.epsReceived,
+      getProductionPhase(p.totalEps, p.epsReceived) ?? "",
       fmt(p.deadline),
       fmt(p.onAirDate),
       p.epsRemaining ?? "",
@@ -433,10 +512,16 @@ export default function ContentAgingPage() {
       fmt(p.lastEpDate),
       p.status ?? "",
       ...visibleOneLinerAssessors.map((a) => p.oneLinerGrades[a.id] ?? ""),
-      ...monthGroups.flatMap((mg) => {
-        const weekCounts = mg.weeks.map((w) => p.weekDelivery[w.isoWeek] ?? 0);
-        return [...weekCounts, weekCounts.reduce((s, c) => s + c, 0)];
-      }),
+      ...(() => {
+        const projCum = cumulativeData.get(p.id);
+        return monthGroups.flatMap((mg) => {
+          const weekCounts = mg.weeks.map((w) => p.weekDelivery[w.isoWeek] ?? 0);
+          const monthSum = weekCounts.reduce((s, v) => s + v, 0);
+          const tillDelta = projCum?.tillDeltas[mg.key] ?? "";
+          return [...weekCounts, monthSum, tillDelta];
+        });
+      })(),
+      p.commitment?.delay_notes ?? "",
     ]);
 
     const tableHTML = `<table><thead><tr>${headers.map((h) => `<th>${h}</th>`).join("")}</tr></thead><tbody>${rows.map((r) => `<tr>${r.map((c) => `<td>${c}</td>`).join("")}</tr>`).join("")}</tbody></table>`;
@@ -452,7 +537,7 @@ export default function ContentAgingPage() {
     if (filtered.length === 0) { toast.error("No data to export"); return; }
     const evalHeaders = visibleEvaluators.flatMap((e) => [`${e.name} (Episodes)`, `${e.name} (Grade)`]);
     const oneLinerHeaders = visibleOneLinerAssessors.map((a) => `${a.name} (One-Liner)`);
-    const headers = ["S.NO", "Titles", "Writer", "Slot", "Team Head", "Total EPS", "Eps Req", "Eps In Hand", "Deadline", "Project On Air", ...oneLinerHeaders, ...evalHeaders];
+    const headers = ["S.NO", "Titles", "Writer", "Slot", "Team Head", "Total EPS", "Eps Req", "Eps In Hand", "Phase", "Deadline", "Project On Air", ...oneLinerHeaders, ...evalHeaders, "Reason for Delay"];
     const rows = filtered.map((p, i) => [
       i + 1,
       p.workingTitle,
@@ -462,6 +547,7 @@ export default function ContentAgingPage() {
       p.totalEps ?? "",
       p.epsReq ?? "",
       p.epsReceived,
+      getProductionPhase(p.totalEps, p.epsReceived) ?? "",
       fmt(p.deadline),
       fmt(p.onAirDate),
       ...visibleOneLinerAssessors.map((a) => p.oneLinerGrades[a.id] ?? ""),
@@ -469,6 +555,7 @@ export default function ContentAgingPage() {
         const g = p.allEvaluatorGrades[e.id];
         return [g?.epRange ?? "", g?.avgScore ?? ""];
       }),
+      p.commitment?.delay_notes ?? "",
     ]);
     const tableHTML = `<table><thead><tr>${headers.map((h) => `<th>${h}</th>`).join("")}</tr></thead><tbody>${rows.map((r) => `<tr>${r.map((c) => `<td>${c}</td>`).join("")}</tr>`).join("")}</tbody></table>`;
     const blob = new Blob([tableHTML], { type: "application/vnd.ms-excel" });
@@ -480,8 +567,35 @@ export default function ContentAgingPage() {
   };
 
   // Total dynamic cols for minWidth calculation
-  const dynamicCols = monthGroups.reduce((s, mg) => s + mg.weeks.length + 1, 0);
-  const minWidth = STICKY_TOTAL + 1140 + visibleEvaluators.length * 160 + visibleOneLinerAssessors.length * 90 + dynamicCols * 60;
+  const exportTrackingToExcel = () => {
+    if (trackingProjects.length === 0) { toast.error("No data to export"); return; }
+    const revHeaders = Array.from({ length: trackingMaxRevisions }, (_, i) => [`${i + 1}${i === 0 ? "st" : i === 1 ? "nd" : i === 2 ? "rd" : "th"} Revised`, "Feedback"]).flat();
+    const headers = ["Project", "Episode #", "1st Copy Received", "Feedback", ...revHeaders, "Payment Request Date", "Payment Date", "Writer's Commitment", "Status"];
+    const rows: (string | number | null)[][] = [];
+    for (const p of trackingProjects) {
+      for (const ep of p.episodes) {
+        const revCells: (string | null)[] = [];
+        for (let i = 0; i < trackingMaxRevisions; i++) {
+          const rev = ep.revisions[i];
+          revCells.push(rev?.receivedDate ?? "", rev?.feedbackDate ?? "");
+        }
+        rows.push([
+          p.workingTitle, ep.episodeNumber, ep.firstCopyDate, ep.firstCopyFeedbackDate,
+          ...revCells, ep.paymentRequestDate ?? "", ep.paymentDate ?? "", p.trackingNotes ?? "", ep.trackingStatus ?? "",
+        ]);
+      }
+    }
+    const tableHTML = `<table><thead><tr>${headers.map((h) => `<th>${h}</th>`).join("")}</tr></thead><tbody>${rows.map((r) => `<tr>${r.map((c) => `<td>${c ?? ""}</td>`).join("")}</tr>`).join("")}</tbody></table>`;
+    const blob = new Blob([tableHTML], { type: "application/vnd.ms-excel" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = `tracking_${new Date().toISOString().split("T")[0]}.xls`;
+    link.click();
+    toast.success("Exported successfully");
+  };
+
+  const dynamicCols = monthGroups.reduce((s, mg) => s + mg.weeks.length + 2, 0);
+  const minWidth = STICKY_TOTAL + 1230 + visibleEvaluators.length * 160 + visibleOneLinerAssessors.length * 90 + dynamicCols * 60;
 
   return (
     <div className="flex flex-col overflow-hidden" style={{ height: 'calc(100vh - 4rem)' }}>
@@ -510,7 +624,7 @@ export default function ContentAgingPage() {
 
         {/* Tab switcher */}
         <div className="flex gap-1 mt-3">
-          {(["aging", "target"] as const).map((tab) => (
+          {(["aging", "target", "tracking"] as const).map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -520,13 +634,13 @@ export default function ContentAgingPage() {
                   : "border-transparent text-muted-foreground hover:text-foreground"
               }`}
             >
-              {tab === "aging" ? "Content Aging" : "Target Aging"}
+              {tab === "aging" ? "Content Aging" : tab === "target" ? "Target Aging" : "Tracking"}
             </button>
           ))}
         </div>
 
-        {/* Stats */}
-        {!loading && (
+        {/* Stats — hide on tracking tab */}
+        {!loading && activeTab !== "tracking" && (
           <div className="flex gap-4 mt-3 flex-wrap">
             <StatPill label="Total Projects" value={stats.total} color="blue" />
             <StatPill label="Fully Received" value={stats.received} color="green" />
@@ -537,8 +651,16 @@ export default function ContentAgingPage() {
           </div>
         )}
 
-        {/* Filters */}
-        <div className="space-y-3 mt-3">
+        {/* Export button — always visible */}
+        <div className="flex gap-2 justify-end mt-3">
+          <Button variant="outline" size="sm" onClick={activeTab === "aging" ? exportToExcel : activeTab === "target" ? exportTargetAgingToExcel : exportTrackingToExcel} disabled={activeTab === "tracking" ? trackingLoading || trackingProjects.length === 0 : loading || filtered.length === 0} className="gap-1.5 h-9 text-xs">
+            <Download className="h-3.5 w-3.5" />
+            Export Excel
+          </Button>
+        </div>
+
+        {/* Filters — hide on tracking tab */}
+        <div className={`space-y-3 mt-3 ${activeTab === "tracking" ? "hidden" : ""}`}>
           <div className="flex gap-3 flex-wrap items-center">
             <div className="relative flex-1 min-w-[200px] max-w-xs">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -563,10 +685,6 @@ export default function ContentAgingPage() {
               >
                 <Pin className="h-3.5 w-3.5" />
                 {freezePanes ? "Unfreeze" : "Freeze Panes"}
-              </Button>
-              <Button variant="outline" size="sm" onClick={activeTab === "aging" ? exportToExcel : exportTargetAgingToExcel} disabled={loading || filtered.length === 0} className="gap-1.5 h-9 text-xs">
-                <Download className="h-3.5 w-3.5" />
-                Export Excel
               </Button>
             </div>
           </div>
@@ -657,7 +775,20 @@ export default function ContentAgingPage() {
       {/* Table */}
       <div className="flex-1 min-h-0 overflow-hidden">
       <div ref={freezeRef} className="overflow-auto h-full py-4">
-        {loading ? (
+        {activeTab === "tracking" ? (
+          trackingLoading ? (
+            <div className="flex items-center justify-center h-64 gap-2">
+              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+              <span className="text-muted-foreground">Loading tracking data...</span>
+            </div>
+          ) : trackingProjects.length === 0 ? (
+            <div className="flex items-center justify-center h-64">
+              <div className="text-muted-foreground">No projects with episodes found.</div>
+            </div>
+          ) : (
+            <TrackingTable projects={trackingProjects} globalMaxRevisions={trackingMaxRevisions} onUpdate={(projects) => setTrackingProjects(projects)} />
+          )
+        ) : loading ? (
           <div className="flex items-center justify-center h-64">
             <div className="text-muted-foreground">Loading content aging data...</div>
           </div>
@@ -700,12 +831,12 @@ export default function ContentAgingPage() {
                   );
                 })}
                 {/* Episode Tracking spans rows 1+2 so sub-cols land in row 3 */}
-                <th colSpan={8} rowSpan={2} className="px-3 py-1.5 text-xs font-semibold text-center border-b border-r border-border bg-amber-50 text-amber-700 uppercase tracking-wide">
+                <th colSpan={9} rowSpan={2} className="px-3 py-1.5 text-xs font-semibold text-center border-b border-r border-border bg-amber-50 text-amber-700 uppercase tracking-wide">
                   Episode Tracking
                 </th>
                 {/* Month groups span rows 1+2 so week cols land in row 3 */}
                 {monthGroups.map((mg) => (
-                  <th key={mg.key} colSpan={mg.weeks.length + 1} rowSpan={2} className="px-3 py-1.5 text-xs font-semibold text-center border-b border-r border-border bg-green-50 text-green-700 uppercase tracking-wide">
+                  <th key={mg.key} colSpan={mg.weeks.length + 2} rowSpan={2} className="px-3 py-1.5 text-xs font-semibold text-center border-b border-r border-border bg-green-50 text-green-700 uppercase tracking-wide">
                     {mg.label}
                   </th>
                 ))}
@@ -763,6 +894,7 @@ export default function ContentAgingPage() {
                 <Th width={75} center>Total EPS</Th>
                 <Th width={70} center>EPS REQ</Th>
                 <Th width={75} center>Received</Th>
+                <Th width={90} center>Phase</Th>
                 <Th width={110}>Deadline</Th>
                 <Th width={75} center>Remaining</Th>
                 <Th width={95} center>Per Month</Th>
@@ -774,7 +906,9 @@ export default function ContentAgingPage() {
                     <Th key={`${mg.key}-w${i}`} width={55} center>{`W${i + 1}`}</Th>
                   )),
                   <Th key={`${mg.key}-total`} width={60} center className="font-bold">Total</Th>,
+                  <Th key={`${mg.key}-till`} width={70} center className="font-bold bg-amber-50 text-amber-800 !whitespace-normal leading-tight">Till {mg.label}</Th>,
                 ])}
+                <Th width={160} center className="bg-red-50 text-red-700 !whitespace-normal leading-tight">Reason for Delay</Th>
               </tr>
             </thead>
             <tbody>
@@ -833,6 +967,16 @@ export default function ContentAgingPage() {
                       {project.epsReceived}
                     </span>
                   </Td>
+                  <Td width={90} center>
+                    {(() => {
+                      const phase = getProductionPhase(project.totalEps, project.epsReceived);
+                      if (!phase) return <span className="text-muted-foreground/30">·</span>;
+                      const color = phase === "Production Start" ? "text-green-700 bg-green-50"
+                        : phase === "Pre Production" ? "text-blue-700 bg-blue-50"
+                        : "text-amber-700 bg-amber-50";
+                      return <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${color}`}>{phase}</span>;
+                    })()}
+                  </Td>
                   <Td width={110}>{fmt(project.deadline)}</Td>
                   <Td width={75} center>
                     {project.epsRemaining !== null ? (
@@ -849,21 +993,21 @@ export default function ContentAgingPage() {
                   <Td width={110}>{fmt(project.firstEpDate)}</Td>
                   <Td width={110}>{fmt(project.lastEpDate)}</Td>
 
-                  {/* Month week cells — cumulative deltas */}
+                  {/* Month week cells — per-week deltas, month total, till date */}
                   {monthGroups.flatMap((mg) => {
                     const weekCounts = mg.weeks.map((w) => project.weekDelivery[w.isoWeek] ?? 0);
-                    const monthTotal = weekCounts.reduce((s, c) => s + c, 0);
+                    const monthDelivery = weekCounts.reduce((s, c) => s + c, 0);
                     const c = project.commitment;
                     const projCum = cumulativeData.get(project.id);
-                    const expPerWeek = c ? getExpectedPerWeek(c.commitment_schedule) : null;
-                    const expPerMonth = c ? getExpectedPerMonth(c.commitment_schedule) : null;
                     const isCustom = c?.commitment_schedule === "custom";
+                    const monthDelta = projCum?.monthDeltas[mg.key] ?? null;
+                    const tillDelta = projCum?.tillDeltas[mg.key] ?? null;
 
                     return [
                       ...mg.weeks.map((w, i) => {
                         const count = project.weekDelivery[w.isoWeek] ?? 0;
-                        const behindValue = projCum?.weekDeltas[w.isoWeek] ?? null;
-                        const weekActive = behindValue !== null;
+                        const weekDelta = projCum?.weekDeltas[w.isoWeek] ?? null;
+                        const weekActive = weekDelta !== null;
                         return (
                           <Td key={`${mg.key}-w${i}`} width={55} center>
                             {count > 0 ? (
@@ -875,17 +1019,13 @@ export default function ContentAgingPage() {
                             )}
                             {c && (
                               <div className="text-xs mt-0.5 leading-none">
-                                {expPerWeek !== null ? (
-                                  weekActive ? (
-                                    behindValue === 0 ? (
-                                      <span className="text-gray-400">0</span>
-                                    ) : (
-                                      <span className={behindValue < 0 ? "text-red-600 font-medium" : "text-green-600 font-medium"}>
-                                        {behindValue > 0 ? `+${behindValue}` : behindValue}
-                                      </span>
-                                    )
+                                {weekActive ? (
+                                  weekDelta === 0 ? (
+                                    <span className="text-gray-400">0</span>
                                   ) : (
-                                    <span className="text-gray-300">—</span>
+                                    <span className={weekDelta < 0 ? "text-red-600 font-medium" : "text-green-600 font-medium"}>
+                                      {weekDelta > 0 ? `+${weekDelta}` : weekDelta}
+                                    </span>
                                   )
                                 ) : isCustom ? (
                                   <span className="text-gray-400 cursor-help" title={c.commitment_schedule_custom || "Custom schedule"}>⬥</span>
@@ -907,22 +1047,15 @@ export default function ContentAgingPage() {
                         );
                       }),
                       <Td key={`${mg.key}-total`} width={60} center>
-                        {monthTotal > 0 ? (
+                        {monthDelivery > 0 ? (
                           <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-green-100 text-green-700 text-xs font-bold">
-                            {monthTotal}
+                            {monthDelivery}
                           </span>
                         ) : (
                           <span className="text-muted-foreground/30">·</span>
                         )}
                         {c && (() => {
-                          let behind: number | null = null;
-                          if (expPerWeek !== null && projCum) {
-                            const lastActive = [...mg.weeks].reverse().find((w) => w.isoWeek in projCum.weekDeltas);
-                            behind = lastActive ? projCum.weekDeltas[lastActive.isoWeek] : null;
-                          } else if (expPerMonth !== null && projCum) {
-                            behind = projCum.monthDeltas[mg.key] ?? null;
-                          }
-                          if (behind === null) {
+                          if (monthDelta === null) {
                             if (isCustom) return (
                               <div className="text-xs mt-0.5 leading-none">
                                 <span className="text-gray-400 cursor-help" title={c.commitment_schedule_custom || "Custom schedule"}>⬥</span>
@@ -932,11 +1065,11 @@ export default function ContentAgingPage() {
                           }
                           return (
                             <div className="text-xs mt-0.5 leading-none">
-                              {behind === 0 ? (
+                              {monthDelta === 0 ? (
                                 <span className="text-gray-400">0</span>
                               ) : (
-                                <span className={behind < 0 ? "text-red-600 font-medium" : "text-green-600 font-medium"}>
-                                  {behind > 0 ? `+${behind}` : behind}
+                                <span className={monthDelta < 0 ? "text-red-600 font-medium" : "text-green-600 font-medium"}>
+                                  {monthDelta > 0 ? `+${monthDelta}` : monthDelta}
                                 </span>
                               )}
                             </div>
@@ -954,8 +1087,22 @@ export default function ContentAgingPage() {
                           );
                         })()}
                       </Td>,
+                      <Td key={`${mg.key}-till`} width={70} center className="bg-amber-50/50">
+                        {tillDelta === null ? (
+                          <span className="text-muted-foreground/30">·</span>
+                        ) : (
+                          <span className={`font-bold ${tillDelta === 0 ? "text-gray-400" : tillDelta < 0 ? "text-red-600" : "text-green-600"}`}>
+                            {tillDelta === 0 ? "0" : tillDelta > 0 ? `+${tillDelta}` : tillDelta}
+                          </span>
+                        )}
+                      </Td>,
                     ];
                   })}
+                  <Td width={160} className="text-xs text-muted-foreground">
+                    {project.commitment?.delay_notes ? (
+                      <span title={project.commitment.delay_notes} className="block truncate max-w-[150px]">{project.commitment.delay_notes}</span>
+                    ) : ""}
+                  </Td>
                 </tr>
               ))}
             </tbody>
@@ -968,7 +1115,7 @@ export default function ContentAgingPage() {
 }
 
 function TargetAgingTable({ projects, visibleEvaluators, visibleOneLinerAssessors, onUpdate }: { projects: Project[]; visibleEvaluators: Evaluator[]; visibleOneLinerAssessors: OneLinerAssessor[]; onUpdate?: (id: string, patch: Partial<Pick<Project, "deadline" | "onAirDate">>) => void }) {
-  const minWidth = STICKY_TOTAL + 650 + visibleOneLinerAssessors.length * 90 + visibleEvaluators.length * 2 * 80;
+  const minWidth = STICKY_TOTAL + 740 + visibleOneLinerAssessors.length * 90 + visibleEvaluators.length * 2 * 80;
 
   return (
     <table className="w-full text-sm border-separate border-spacing-0" style={{ minWidth }}>
@@ -978,7 +1125,7 @@ function TargetAgingTable({ projects, visibleEvaluators, visibleOneLinerAssessor
           <Th width={W_NUM} rowSpan={3}>#</Th>
           <Th width={W_TITLE} rowSpan={3}>Title</Th>
           <Th width={W_WRITER} rowSpan={3}>Writer</Th>
-          <th colSpan={7} className="px-3 py-1.5 text-xs font-semibold text-center border-b border-r border-border bg-slate-100 text-slate-600 uppercase tracking-wide" rowSpan={2}>
+          <th colSpan={8} className="px-3 py-1.5 text-xs font-semibold text-center border-b border-r border-border bg-slate-100 text-slate-600 uppercase tracking-wide" rowSpan={2}>
             Project Details
           </th>
           {/* One-liner group headers in Row 1 (names go in Row 2, label goes in Row 3) */}
@@ -1000,6 +1147,7 @@ function TargetAgingTable({ projects, visibleEvaluators, visibleOneLinerAssessor
               </th>
             );
           })}
+          <Th width={160} rowSpan={3} className="bg-red-50 text-red-700 !whitespace-normal leading-tight">Reason for Delay</Th>
         </tr>
         {/* Row 2: one-liner individual names + episodic evaluator names */}
         <tr className="bg-muted/60">
@@ -1029,6 +1177,7 @@ function TargetAgingTable({ projects, visibleEvaluators, visibleOneLinerAssessor
           <Th width={80} center>Total EPS</Th>
           <Th width={75} center>Eps Req</Th>
           <Th width={80} center>Eps In Hand</Th>
+          <Th width={90} center>Phase</Th>
           <Th width={110}>Deadline</Th>
           <Th width={110}>Project On Air</Th>
           {/* One-liner group labels in Row 3 (names are in Row 2) */}
@@ -1067,6 +1216,16 @@ function TargetAgingTable({ projects, visibleEvaluators, visibleOneLinerAssessor
             <Td width={75} center>{project.epsReq ?? "—"}</Td>
             <Td width={80} center>
               <span className={project.epsReceived > 0 ? "font-semibold text-green-700" : ""}>{project.epsReceived}</span>
+            </Td>
+            <Td width={90} center>
+              {(() => {
+                const phase = getProductionPhase(project.totalEps, project.epsReceived);
+                if (!phase) return <span className="text-muted-foreground/30">·</span>;
+                const color = phase === "Production Start" ? "text-green-700 bg-green-50"
+                  : phase === "Pre Production" ? "text-blue-700 bg-blue-50"
+                  : "text-amber-700 bg-amber-50";
+                return <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${color}`}>{phase}</span>;
+              })()}
             </Td>
             <Td width={110}>
               {onUpdate ? (
@@ -1113,6 +1272,9 @@ function TargetAgingTable({ projects, visibleEvaluators, visibleOneLinerAssessor
                   ];
                 })
             )}
+            <Td width={160} className="text-xs text-muted-foreground !whitespace-normal leading-snug">
+              {project.commitment?.delay_notes ?? ""}
+            </Td>
           </tr>
         ))}
       </tbody>
@@ -1178,5 +1340,161 @@ function Td({
     >
       {children}
     </td>
+  );
+}
+
+// ============================================================
+// Editable Cell — click to edit, shows Save button, then displays saved value
+// ============================================================
+function EditableCell({ value, onSave, placeholder = "—" }: { value: string | null; onSave: (v: string) => Promise<void>; placeholder?: string }) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(value ?? "");
+  const [saved, setSaved] = useState(value ?? "");
+  const [saving, setSaving] = useState(false);
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      await onSave(draft);
+      setSaved(draft);
+      setEditing(false);
+    } catch { /* toast handled by caller */ }
+    setSaving(false);
+  };
+
+  if (editing) {
+    return (
+      <div className="flex items-center gap-1">
+        <input
+          type="text"
+          autoFocus
+          className="flex-1 text-xs bg-white border border-blue-300 focus:outline-none focus:ring-1 focus:ring-blue-400 rounded px-1.5 py-1.5 text-center"
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter") handleSave(); if (e.key === "Escape") { setDraft(saved); setEditing(false); } }}
+        />
+        <button
+          onClick={handleSave}
+          disabled={saving}
+          className="text-[10px] px-1.5 py-0.5 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 whitespace-nowrap"
+        >
+          {saving ? "..." : "Save"}
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className="cursor-pointer text-center text-xs px-1 py-0.5 rounded hover:bg-muted/50 min-h-[22px] flex items-center justify-center"
+      onClick={() => { setDraft(saved); setEditing(true); }}
+      title="Click to edit"
+    >
+      {saved || <span className="text-muted-foreground/40">{placeholder}</span>}
+    </div>
+  );
+}
+
+// ============================================================
+// Tracking Table Component
+// ============================================================
+function TrackingTable({
+  projects,
+  globalMaxRevisions,
+  onUpdate,
+}: {
+  projects: TrackingProject[];
+  globalMaxRevisions: number;
+  onUpdate: (projects: TrackingProject[]) => void;
+}) {
+  const revColCount = globalMaxRevisions * 2;
+  const totalCols = 4 + revColCount + 4;
+  const minWidth = 50 + 110 * 2 + revColCount * 110 + 120 * 2 + 180 + 140;
+
+  const saveEpisodeField = async (episodeId: string, field: string, value: string) => {
+    const res = await fetch("/api/management/content-aging/tracking", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ episode_id: episodeId, [field]: value || null }),
+    });
+    if (!res.ok) { toast.error("Failed to save"); throw new Error("Failed"); }
+  };
+
+  const saveProjectNotes = async (callReportId: string, value: string) => {
+    const res = await fetch("/api/management/content-aging/tracking", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ call_report_id: callReportId, tracking_notes: value || null }),
+    });
+    if (!res.ok) { toast.error("Failed to save"); throw new Error("Failed"); }
+    onUpdate(projects.map((p) => p.id === callReportId ? { ...p, trackingNotes: value || null } : p));
+  };
+
+  const ordinal = (n: number) => n === 1 ? "1st" : n === 2 ? "2nd" : n === 3 ? "3rd" : `${n}th`;
+
+  return (
+    <table className="w-full text-xs border-separate border-spacing-0" style={{ minWidth }}>
+      <thead className="sticky top-0 z-10">
+        <tr className="bg-muted/80">
+          <th className="px-2 py-2 text-left text-xs font-semibold border-b border-r border-border whitespace-nowrap" style={{ width: 50 }}>Ep #</th>
+          <th className="px-2 py-2 text-center text-xs font-semibold border-b border-r border-border whitespace-nowrap bg-blue-50 text-blue-700" style={{ width: 110 }}>1st Copy Received</th>
+          <th className="px-2 py-2 text-center text-xs font-semibold border-b border-r border-border whitespace-nowrap bg-amber-50 text-amber-700" style={{ width: 110 }}>Feedback</th>
+          {Array.from({ length: globalMaxRevisions }, (_, i) => [
+            <th key={`rev-${i}`} className="px-2 py-2 text-center text-xs font-semibold border-b border-r border-border whitespace-nowrap bg-blue-50 text-blue-700" style={{ width: 110 }}>
+              {ordinal(i + 1)} Revised
+            </th>,
+            <th key={`fb-${i}`} className="px-2 py-2 text-center text-xs font-semibold border-b border-r border-border whitespace-nowrap bg-amber-50 text-amber-700" style={{ width: 110 }}>
+              Feedback
+            </th>,
+          ]).flat()}
+          <th className="px-2 py-2 text-center text-xs font-semibold border-b border-r border-border whitespace-nowrap bg-green-50 text-green-700" style={{ width: 120 }}>Payment Request</th>
+          <th className="px-2 py-2 text-center text-xs font-semibold border-b border-r border-border whitespace-nowrap bg-green-50 text-green-700" style={{ width: 120 }}>Payment Date</th>
+          <th className="px-2 py-2 text-center text-xs font-semibold border-b border-r border-border whitespace-nowrap bg-orange-50 text-orange-700" style={{ width: 180 }}>Writer&apos;s Commitment</th>
+          <th className="px-2 py-2 text-center text-xs font-semibold border-b border-r border-border whitespace-nowrap bg-purple-50 text-purple-700" style={{ width: 140 }}>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {projects.map((project) => (
+          <Fragment key={project.id}>
+            <tr className="bg-slate-100 border-b border-border">
+              <td colSpan={totalCols} className="px-3 py-2 border-b border-r border-border">
+                <div className="flex items-center gap-3">
+                  <span className="font-bold text-sm">{project.workingTitle}</span>
+                  {project.writerName && <span className="text-muted-foreground">— {project.writerName}</span>}
+                </div>
+              </td>
+            </tr>
+            {project.episodes.map((ep, epIdx) => (
+              <tr key={ep.id} className="border-b hover:bg-muted/30">
+                <td className="px-2 py-1.5 border-r border-border/60 text-center font-medium">{ep.episodeNumber}</td>
+                <td className="px-2 py-1.5 border-r border-border/60 text-center text-blue-700">{ep.firstCopyDate ?? ""}</td>
+                <td className="px-2 py-1.5 border-r border-border/60 text-center text-amber-700">{ep.firstCopyFeedbackDate ?? ""}</td>
+                {Array.from({ length: globalMaxRevisions }, (_, i) => {
+                  const rev = ep.revisions[i];
+                  return [
+                    <td key={`rev-${i}`} className="px-2 py-1.5 border-r border-border/60 text-center text-blue-700">{rev?.receivedDate ?? ""}</td>,
+                    <td key={`fb-${i}`} className="px-2 py-1.5 border-r border-border/60 text-center text-amber-700">{rev?.feedbackDate ?? ""}</td>,
+                  ];
+                }).flat()}
+                <td className="px-1 py-0.5 border-r border-border/60">
+                  <EditableCell value={ep.paymentRequestDate} onSave={(v) => saveEpisodeField(ep.id, "payment_request_date", v)} />
+                </td>
+                <td className="px-1 py-0.5 border-r border-border/60">
+                  <EditableCell value={ep.paymentDate} onSave={(v) => saveEpisodeField(ep.id, "payment_date", v)} />
+                </td>
+                {epIdx === 0 ? (
+                  <td className="px-1 py-0.5 border-r border-border/60 align-top" rowSpan={project.episodes.length}>
+                    <EditableCell value={project.trackingNotes} onSave={(v) => saveProjectNotes(project.id, v)} />
+                  </td>
+                ) : null}
+                <td className="px-1 py-0.5 border-r border-border/60">
+                  <EditableCell value={ep.trackingStatus} onSave={(v) => saveEpisodeField(ep.id, "tracking_status", v)} />
+                </td>
+              </tr>
+            ))}
+          </Fragment>
+        ))}
+      </tbody>
+    </table>
   );
 }

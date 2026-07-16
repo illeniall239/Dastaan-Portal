@@ -1001,9 +1001,9 @@ export function EvaluatorEvaluationForm({
               </div>
             </div>
 
-            {/* Audience Focus */}
+            {/* Character Centric */}
             <div className="space-y-2">
-              <Label className="font-semibold">Audience Focus</Label>
+              <Label className="font-semibold">Character Centric</Label>
               <div className="flex flex-col sm:flex-row gap-3">
                 {[
                   { value: "male_centric", label: "Male Centric" },

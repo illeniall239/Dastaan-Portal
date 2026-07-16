@@ -118,7 +118,7 @@ export async function GET(request: NextRequest) {
     // 1b. Fetch writer commitments for these call reports
     const { data: commitments } = await admin
       .from("writer_commitments")
-      .select("call_report_id, commitment_schedule, commitment_schedule_custom, commitment_type, project_initiation_date, revised_commitment_date")
+      .select("call_report_id, commitment_schedule, commitment_schedule_custom, commitment_type, project_initiation_date, revised_commitment_date, delay_notes")
       .in("call_report_id", reportIds);
 
     const commitmentMap = Object.fromEntries(
