@@ -343,10 +343,11 @@ export default function ContentAgingPage() {
 
   const cumulativeData = useMemo(() => {
     const result = new Map<string, {
-      weekDeltas: Record<string, number>;   // per-week delta: delivered - expected
-      monthDeltas: Record<string, number>;  // sum of per-week deltas for each month
-      tillDeltas: Record<string, number>;   // running cumulative of month deltas
+      weekDeltas: Record<string, number>;
+      monthDeltas: Record<string, number>;
+      tillDeltas: Record<string, number>;
     }>();
+    const allWeeksSorted = monthGroups.flatMap((mg) => mg.weeks);
     for (const project of projects) {
       const c = project.commitment;
       if (!c) { result.set(project.id, { weekDeltas: {}, monthDeltas: {}, tillDeltas: {} }); continue; }
@@ -355,42 +356,73 @@ export default function ContentAgingPage() {
       const expPerMonth = getExpectedPerMonth(c.commitment_schedule);
       const weekDeltas: Record<string, number> = {};
       const monthDeltas: Record<string, number> = {};
-      const tillDeltas: Record<string, number> = {};
       if (expPerWeek !== null && effectiveStart) {
-        let runningTill = 0;
-        for (const mg of monthGroups) {
-          let monthDelta = 0;
-          let hasActiveWeek = false;
-          for (const w of mg.weeks) {
-            if (!isWeekOnOrAfter(w.isoWeek, effectiveStart)) continue;
-            hasActiveWeek = true;
-            const delivered = project.weekDelivery[w.isoWeek] ?? 0;
-            const delta = delivered - expPerWeek;
-            weekDeltas[w.isoWeek] = delta;
-            monthDelta += delta;
-          }
-          if (hasActiveWeek) {
-            monthDeltas[mg.key] = monthDelta;
-            runningTill += monthDelta;
-            tillDeltas[mg.key] = runningTill;
-          }
+        const firstMonday = getFirstActiveMonday(effectiveStart);
+        let runningDelivered = 0;
+        for (const w of allWeeksSorted) {
+          if (!isWeekOnOrAfter(w.isoWeek, effectiveStart)) continue;
+          runningDelivered += project.weekDelivery[w.isoWeek] ?? 0;
+          const weekMonday = getMondayFromISOWeek(w.isoWeek);
+          const weeksElapsed = Math.round((weekMonday.getTime() - firstMonday.getTime()) / (7 * 86400000)) + 1;
+          weekDeltas[w.isoWeek] = runningDelivered - (expPerWeek * weeksElapsed);
         }
       }
       if (expPerMonth !== null && effectiveStart) {
-        let runningTill = 0;
+        const startDate = new Date(effectiveStart + "T00:00:00Z");
+        let runningDelivered = 0;
         for (const mg of monthGroups) {
           const firstWeek = mg.weeks[0];
           if (!firstWeek || !isWeekOnOrAfter(firstWeek.isoWeek, effectiveStart)) continue;
-          const monthDelivered = mg.weeks.reduce((s, w) => s + (project.weekDelivery[w.isoWeek] ?? 0), 0);
-          const delta = monthDelivered - expPerMonth;
-          monthDeltas[mg.key] = delta;
-          runningTill += delta;
-          tillDeltas[mg.key] = runningTill;
+          const monthTotal = mg.weeks.reduce((s, w) => s + (project.weekDelivery[w.isoWeek] ?? 0), 0);
+          runningDelivered += monthTotal;
+          const monthMonday = getMondayFromISOWeek(firstWeek.isoWeek);
+          const monthsElapsed = (monthMonday.getUTCFullYear() - startDate.getUTCFullYear()) * 12 + (monthMonday.getUTCMonth() - startDate.getUTCMonth()) + 1;
+          monthDeltas[mg.key] = runningDelivered - (expPerMonth * Math.max(1, monthsElapsed));
         }
       }
-      result.set(project.id, { weekDeltas, monthDeltas, tillDeltas });
+      result.set(project.id, { weekDeltas, monthDeltas, tillDeltas: {} });
     }
     return result;
+    // --- NEW FORMULA (per-period delta + Till column) — commented out for future use ---
+    // const result = new Map<string, { weekDeltas: Record<string, number>; monthDeltas: Record<string, number>; tillDeltas: Record<string, number>; }>();
+    // for (const project of projects) {
+    //   const c = project.commitment;
+    //   if (!c) { result.set(project.id, { weekDeltas: {}, monthDeltas: {}, tillDeltas: {} }); continue; }
+    //   const effectiveStart = c.revised_commitment_date || c.project_initiation_date;
+    //   const expPerWeek = getExpectedPerWeek(c.commitment_schedule);
+    //   const expPerMonth = getExpectedPerMonth(c.commitment_schedule);
+    //   const weekDeltas: Record<string, number> = {};
+    //   const monthDeltas: Record<string, number> = {};
+    //   const tillDeltas: Record<string, number> = {};
+    //   if (expPerWeek !== null && effectiveStart) {
+    //     let runningTill = 0;
+    //     for (const mg of monthGroups) {
+    //       let monthDelta = 0; let hasActiveWeek = false;
+    //       for (const w of mg.weeks) {
+    //         if (!isWeekOnOrAfter(w.isoWeek, effectiveStart)) continue;
+    //         hasActiveWeek = true;
+    //         const delivered = project.weekDelivery[w.isoWeek] ?? 0;
+    //         const delta = delivered - expPerWeek;
+    //         weekDeltas[w.isoWeek] = delta;
+    //         monthDelta += delta;
+    //       }
+    //       if (hasActiveWeek) { monthDeltas[mg.key] = monthDelta; runningTill += monthDelta; tillDeltas[mg.key] = runningTill; }
+    //     }
+    //   }
+    //   if (expPerMonth !== null && effectiveStart) {
+    //     let runningTill = 0;
+    //     for (const mg of monthGroups) {
+    //       const firstWeek = mg.weeks[0];
+    //       if (!firstWeek || !isWeekOnOrAfter(firstWeek.isoWeek, effectiveStart)) continue;
+    //       const monthDelivered = mg.weeks.reduce((s, w) => s + (project.weekDelivery[w.isoWeek] ?? 0), 0);
+    //       const delta = monthDelivered - expPerMonth;
+    //       monthDeltas[mg.key] = delta; runningTill += delta; tillDeltas[mg.key] = runningTill;
+    //     }
+    //   }
+    //   result.set(project.id, { weekDeltas, monthDeltas, tillDeltas });
+    // }
+    // return result;
+    // --- END NEW FORMULA ---
   }, [projects, monthGroups]);
 
   const toggleEvaluator = (id: string) => {
@@ -450,7 +482,7 @@ export default function ContentAgingPage() {
     const weekHeaders = monthGroups.flatMap((mg) => [
       ...mg.weeks.map((_, i) => `${mg.label} W${i + 1}`),
       `${mg.label} Total`,
-      `Total Till ${mg.label}`,
+      // `Total Till ${mg.label}`,  // --- Till column removed (old cumulative formula) ---
     ]);
 
     const evalHeaders = visibleEvaluators.flatMap((e) => [`${e.name} (Episodes)`, `${e.name} (Grade)`]);
@@ -495,8 +527,8 @@ export default function ContentAgingPage() {
         return monthGroups.flatMap((mg) => {
           const weekCounts = mg.weeks.map((w) => p.weekDelivery[w.isoWeek] ?? 0);
           const monthSum = weekCounts.reduce((s, v) => s + v, 0);
-          const tillDelta = projCum?.tillDeltas[mg.key] ?? "";
-          return [...weekCounts, monthSum, tillDelta];
+          // const tillDelta = projCum?.tillDeltas[mg.key] ?? "";  // --- Till column removed (old cumulative formula) ---
+          return [...weekCounts, monthSum];
         });
       })(),
       p.commitment?.delay_notes ?? "",
@@ -572,7 +604,7 @@ export default function ContentAgingPage() {
   };
 
   // Total dynamic cols for minWidth calculation
-  const dynamicCols = monthGroups.reduce((s, mg) => s + mg.weeks.length + 2, 0);
+  const dynamicCols = monthGroups.reduce((s, mg) => s + mg.weeks.length + 1, 0);
   const minWidth = STICKY_TOTAL + 1230 + visibleEvaluators.length * 160 + visibleOneLinerAssessors.length * 90 + dynamicCols * 60;
 
   return (
@@ -818,7 +850,7 @@ export default function ContentAgingPage() {
                 </th>
                 {/* Month groups span rows 1+2 so week cols land in row 3 */}
                 {monthGroups.map((mg) => (
-                  <th key={mg.key} colSpan={mg.weeks.length + 2} rowSpan={2} className="px-3 py-1.5 text-xs font-semibold text-center border-b border-r border-border bg-green-50 text-green-700 uppercase tracking-wide">
+                  <th key={mg.key} colSpan={mg.weeks.length + 1} rowSpan={2} className="px-3 py-1.5 text-xs font-semibold text-center border-b border-r border-border bg-green-50 text-green-700 uppercase tracking-wide">
                     {mg.label}
                   </th>
                 ))}
@@ -888,7 +920,7 @@ export default function ContentAgingPage() {
                     <Th key={`${mg.key}-w${i}`} width={55} center>{`W${i + 1}`}</Th>
                   )),
                   <Th key={`${mg.key}-total`} width={60} center className="font-bold">Total</Th>,
-                  <Th key={`${mg.key}-till`} width={70} center className="font-bold bg-amber-50 text-amber-800 !whitespace-normal leading-tight">Till {mg.label}</Th>,
+                  // <Th key={`${mg.key}-till`} width={70} center className="font-bold bg-amber-50 text-amber-800 !whitespace-normal leading-tight">Till {mg.label}</Th>,
                 ])}
                 <Th width={160} center className="bg-red-50 text-red-700 !whitespace-normal leading-tight">Reason for Delay</Th>
               </tr>
@@ -975,21 +1007,19 @@ export default function ContentAgingPage() {
                   <Td width={110}>{fmt(project.firstEpDate)}</Td>
                   <Td width={110}>{fmt(project.lastEpDate)}</Td>
 
-                  {/* Month week cells — per-week deltas, month total, till date */}
+                  {/* Month week cells — cumulative deltas */}
                   {monthGroups.flatMap((mg) => {
                     const weekCounts = mg.weeks.map((w) => project.weekDelivery[w.isoWeek] ?? 0);
                     const monthDelivery = weekCounts.reduce((s, c) => s + c, 0);
                     const c = project.commitment;
                     const projCum = cumulativeData.get(project.id);
                     const isCustom = c?.commitment_schedule === "custom";
-                    const monthDelta = projCum?.monthDeltas[mg.key] ?? null;
-                    const tillDelta = projCum?.tillDeltas[mg.key] ?? null;
 
                     return [
                       ...mg.weeks.map((w, i) => {
                         const count = project.weekDelivery[w.isoWeek] ?? 0;
-                        const weekDelta = projCum?.weekDeltas[w.isoWeek] ?? null;
-                        const weekActive = weekDelta !== null;
+                        const behindValue = projCum?.weekDeltas[w.isoWeek] ?? null;
+                        const weekActive = behindValue !== null;
                         return (
                           <Td key={`${mg.key}-w${i}`} width={55} center>
                             {count > 0 ? (
@@ -1002,11 +1032,11 @@ export default function ContentAgingPage() {
                             {c && (
                               <div className="text-xs mt-0.5 leading-none">
                                 {weekActive ? (
-                                  weekDelta === 0 ? (
+                                  behindValue === 0 ? (
                                     <span className="text-gray-400">0</span>
                                   ) : (
-                                    <span className={weekDelta < 0 ? "text-red-600 font-medium" : "text-green-600 font-medium"}>
-                                      {weekDelta > 0 ? `+${weekDelta}` : weekDelta}
+                                    <span className={behindValue < 0 ? "text-red-600 font-medium" : "text-green-600 font-medium"}>
+                                      {behindValue > 0 ? `+${behindValue}` : behindValue}
                                     </span>
                                   )
                                 ) : isCustom ? (
@@ -1037,7 +1067,13 @@ export default function ContentAgingPage() {
                           <span className="text-muted-foreground/30">·</span>
                         )}
                         {c && (() => {
-                          if (monthDelta === null) {
+                          let behind: number | null = null;
+                          if (projCum) {
+                            const lastActive = [...mg.weeks].reverse().find((w) => w.isoWeek in projCum.weekDeltas);
+                            behind = lastActive ? projCum.weekDeltas[lastActive.isoWeek] : null;
+                            if (behind === null) behind = projCum.monthDeltas[mg.key] ?? null;
+                          }
+                          if (behind === null) {
                             if (isCustom) return (
                               <div className="text-xs mt-0.5 leading-none">
                                 <span className="text-gray-400 cursor-help" title={c.commitment_schedule_custom || "Custom schedule"}>⬥</span>
@@ -1047,11 +1083,11 @@ export default function ContentAgingPage() {
                           }
                           return (
                             <div className="text-xs mt-0.5 leading-none">
-                              {monthDelta === 0 ? (
+                              {behind === 0 ? (
                                 <span className="text-gray-400">0</span>
                               ) : (
-                                <span className={monthDelta < 0 ? "text-red-600 font-medium" : "text-green-600 font-medium"}>
-                                  {monthDelta > 0 ? `+${monthDelta}` : monthDelta}
+                                <span className={behind < 0 ? "text-red-600 font-medium" : "text-green-600 font-medium"}>
+                                  {behind > 0 ? `+${behind}` : behind}
                                 </span>
                               )}
                             </div>
@@ -1069,15 +1105,15 @@ export default function ContentAgingPage() {
                           );
                         })()}
                       </Td>,
-                      <Td key={`${mg.key}-till`} width={70} center className="bg-amber-50/50">
-                        {tillDelta === null ? (
-                          <span className="text-muted-foreground/30">·</span>
-                        ) : (
-                          <span className={`font-bold ${tillDelta === 0 ? "text-gray-400" : tillDelta < 0 ? "text-red-600" : "text-green-600"}`}>
-                            {tillDelta === 0 ? "0" : tillDelta > 0 ? `+${tillDelta}` : tillDelta}
-                          </span>
-                        )}
-                      </Td>,
+                      // <Td key={`${mg.key}-till`} width={70} center className="bg-amber-50/50">
+                      //   {tillDelta === null ? (
+                      //     <span className="text-muted-foreground/30">·</span>
+                      //   ) : (
+                      //     <span className={`font-bold ${tillDelta === 0 ? "text-gray-400" : tillDelta < 0 ? "text-red-600" : "text-green-600"}`}>
+                      //       {tillDelta === 0 ? "0" : tillDelta > 0 ? `+${tillDelta}` : tillDelta}
+                      //     </span>
+                      //   )}
+                      // </Td>,
                     ];
                   })}
                   <Td width={160} className="text-xs text-muted-foreground !whitespace-normal leading-snug">
