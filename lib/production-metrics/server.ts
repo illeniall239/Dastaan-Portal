@@ -135,7 +135,6 @@ export async function getProductionMetrics(
         aired_date,
         aired_completed,
         total_episodes,
-        received_episodes,
         created_at,
         team_id,
         team:teams(
@@ -156,11 +155,31 @@ export async function getProductionMetrics(
       query = query.eq('team_id', teamId);
     }
 
-    const { data: callReports, error } = await query;
+    // Query actual episode records to determine which projects have episodes logged
+    const episodesQuery = supabase
+      .from('episodes')
+      .select('call_report_id')
+      .eq('is_current', true)
+      .not('call_report_id', 'is', null);
+
+    const [callReportsResult, episodesResult] = await Promise.all([query, episodesQuery]);
+
+    const { data: callReports, error } = callReportsResult;
+    const { data: episodeRows, error: episodesError } = episodesResult;
 
     if (error) {
       console.error('Error fetching production metrics:', error);
       return getEmptyMetrics();
+    }
+
+    // Build map of call_report_id → actual episode count
+    const episodeCountByProject = new Map<string, number>();
+    if (episodeRows && !episodesError) {
+      for (const row of episodeRows) {
+        if (row.call_report_id) {
+          episodeCountByProject.set(row.call_report_id, (episodeCountByProject.get(row.call_report_id) || 0) + 1);
+        }
+      }
     }
 
     // --- Metric 1: Writers Engaged (from writer_engagements table, last 30 days) ---
@@ -247,9 +266,6 @@ export async function getProductionMetrics(
         (report.call_report_writers && Array.isArray(report.call_report_writers) && report.call_report_writers[0]?.writer?.name) ||
         'Unknown';
 
-      const totalEps = report.total_episodes || 0;
-      const receivedEps = report.received_episodes || 0;
-
       // Metric 7: Projects aired (completed their run) — check first, independent
       if (report.aired_completed === true) {
         airedProjects.push({
@@ -282,8 +298,8 @@ export async function getProductionMetrics(
           status: status,
           team: report.team || undefined,
         });
-      } else if (isStatusInCategory(status, 'SCRIPTS_COMPLETED') || (totalEps > 0 && receivedEps >= totalEps)) {
-        // All committed episodes received = script completed
+      } else if (report.total_episodes > 0 && (episodeCountByProject.get(report.id) || 0) >= report.total_episodes) {
+        // Actual episodes received match total committed = script completed
         scriptsCompletedBySlot[slot] = (scriptsCompletedBySlot[slot] || 0) + 1;
         scriptsCompletedDetails.push({
           id: report.id,
@@ -293,8 +309,8 @@ export async function getProductionMetrics(
           status: status || 'Script Completed',
           team: report.team || undefined,
         });
-      } else if (isStatusInCategory(status, 'SCRIPTS_IN_WRITING') || receivedEps > 0) {
-        // Some episodes received = script in writing
+      } else if (episodeCountByProject.has(report.id) || isStatusInCategory(status, 'SCRIPTS_IN_WRITING')) {
+        // Any actual episodes logged in DB = script in writing
         scriptsInWritingBySlot[slot] = (scriptsInWritingBySlot[slot] || 0) + 1;
         scriptsInWritingDetails.push({
           id: report.id,
