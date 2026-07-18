@@ -285,7 +285,8 @@ export default function ContentAgingPage() {
   const [episodicRatingFilter, setEpisodicRatingFilter] = useState<string>("all");
   const [freezePanes, setFreezePanes] = useState(false);
   const freezeRef = useFreezeColumns(freezePanes, 3);
-
+  const [deliveryPeriod, setDeliveryPeriod] = useState<"monthly" | "quarterly" | "biannual" | "annual">("monthly");
+  const [deliveryRank, setDeliveryRank] = useState<"all" | "max" | "min">("all");
   useEffect(() => {
     (async () => {
       try {
@@ -446,6 +447,38 @@ export default function ContentAgingPage() {
     return Array.from(labels.entries()).sort((a, b) => a[1].localeCompare(b[1]));
   }, [projects]);
 
+  const writerDeliveryRanking = useMemo(() => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = now.getMonth();
+    const quarter = Math.floor(month / 3);
+    const half = month < 6 ? 0 : 1;
+    function weekInPeriod(isoWeek: string): boolean {
+      const monday = getMondayFromISOWeek(isoWeek);
+      const wy = monday.getUTCFullYear();
+      const wm = monday.getUTCMonth();
+      switch (deliveryPeriod) {
+        case "monthly": return wy === year && wm === month;
+        case "quarterly": return wy === year && Math.floor(wm / 3) === quarter;
+        case "biannual": return wy === year && (wm < 6 ? 0 : 1) === half;
+        case "annual": return wy === year;
+      }
+    }
+    const writerMap = new Map<string, number>();
+    for (const p of projects) {
+      if (!p.writerName) continue;
+      let periodCount = 0;
+      for (const [week, count] of Object.entries(p.weekDelivery)) {
+        if (count > 0 && weekInPeriod(week)) periodCount += count;
+      }
+      writerMap.set(p.writerName, (writerMap.get(p.writerName) || 0) + periodCount);
+    }
+    const entries = Array.from(writerMap.entries()).filter(([, c]) => c > 0);
+    if (entries.length === 0) return { maxWriter: null, minWriter: null };
+    entries.sort((a, b) => b[1] - a[1]);
+    return { maxWriter: entries[0][0], minWriter: entries[entries.length - 1][0] };
+  }, [projects, deliveryPeriod]);
+
   const filtered = useMemo(() => {
     return projects.filter((p) => {
       if (statusFilter !== "all" && p.status !== statusFilter) return false;
@@ -455,6 +488,8 @@ export default function ContentAgingPage() {
       if (writerFilter !== "all" && p.writerName !== writerFilter) return false;
       if (!matchesRatingBucket(getProjectAvgOneLiner(p.oneLinerGrades), oneLinerRatingFilter)) return false;
       if (!matchesRatingBucket(getProjectAvgEpisodic(p.allEvaluatorGrades), episodicRatingFilter)) return false;
+      if (deliveryRank === "max" && p.writerName !== writerDeliveryRanking.maxWriter) return false;
+      if (deliveryRank === "min" && p.writerName !== writerDeliveryRanking.minWriter) return false;
       if (search) {
         const q = search.toLowerCase();
         return (
@@ -465,7 +500,7 @@ export default function ContentAgingPage() {
       }
       return true;
     });
-  }, [projects, statusFilter, slotFilter, teamHeadFilter, scheduleFilter, writerFilter, oneLinerRatingFilter, episodicRatingFilter, search]);
+  }, [projects, statusFilter, slotFilter, teamHeadFilter, scheduleFilter, writerFilter, oneLinerRatingFilter, episodicRatingFilter, search, deliveryRank, writerDeliveryRanking]);
 
   const stats = useMemo(() => ({
     total: projects.length,
@@ -661,6 +696,8 @@ export default function ContentAgingPage() {
           </div>
         )}
 
+
+
         {/* Export button — always visible */}
         <div className="flex gap-2 justify-end mt-3">
           <Button variant="outline" size="sm" onClick={activeTab === "aging" ? exportToExcel : activeTab === "target" ? exportTargetAgingToExcel : exportTrackingToExcel} disabled={activeTab === "tracking" ? trackingLoading || trackingProjects.length === 0 : loading || filtered.length === 0} className="gap-1.5 h-9 text-xs">
@@ -698,7 +735,7 @@ export default function ContentAgingPage() {
               </Button>
             </div>
           </div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-9 gap-3">
             <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as StatusFilter)}>
               <SelectTrigger className="h-9 text-xs">
                 <SelectValue placeholder="All Statuses" />
@@ -782,6 +819,27 @@ export default function ContentAgingPage() {
                 </Select>
               </>
             )}
+            <Select value={deliveryPeriod} onValueChange={(v) => setDeliveryPeriod(v as typeof deliveryPeriod)}>
+              <SelectTrigger className="h-9 text-xs">
+                <SelectValue placeholder="Delivery Period" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="monthly">Monthly</SelectItem>
+                <SelectItem value="quarterly">Quarterly</SelectItem>
+                <SelectItem value="biannual">Bi-Annual</SelectItem>
+                <SelectItem value="annual">Annual</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={deliveryRank} onValueChange={(v) => setDeliveryRank(v as typeof deliveryRank)}>
+              <SelectTrigger className="h-9 text-xs">
+                <SelectValue placeholder="Delivery Filter" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Deliveries</SelectItem>
+                <SelectItem value="max">Max Delivery Writer</SelectItem>
+                <SelectItem value="min">Min Delivery Writer</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </div>
       </div>
