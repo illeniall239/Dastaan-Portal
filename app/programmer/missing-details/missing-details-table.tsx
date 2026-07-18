@@ -20,13 +20,9 @@ const CHECKED_FIELDS = [
   { key: "total_episodes", label: "Total Episodes", check: (idea: ActiveIdeaDetail) => !idea.total_episodes },
   { key: "logline", label: "Logline", check: (idea: ActiveIdeaDetail) => !idea.logline },
   { key: "idea_by", label: "Idea By", check: (idea: ActiveIdeaDetail) => !idea.idea_by },
-  { key: "developed_by", label: "Developed By", check: (idea: ActiveIdeaDetail) => !idea.developed_by },
-  { key: "management_member_name", label: "Management Member", check: (idea: ActiveIdeaDetail) => !idea.management_member_name },
-  { key: "has_theme_category", label: "Theme Category", check: (idea: ActiveIdeaDetail) => !idea.has_theme_category },
   { key: "has_audience_focus", label: "Character Centric", check: (idea: ActiveIdeaDetail) => !idea.has_audience_focus },
   { key: "has_no_of_tracks", label: "No. of Tracks", check: (idea: ActiveIdeaDetail) => !idea.has_no_of_tracks },
   { key: "has_closing_remarks", label: "Closing Remarks", check: (idea: ActiveIdeaDetail) => !idea.has_closing_remarks },
-  { key: "has_themes_of_drama", label: "Themes of Drama", check: (idea: ActiveIdeaDetail) => !idea.has_themes_of_drama },
 ] as const;
 
 function getMissingFields(idea: ActiveIdeaDetail): string[] {
