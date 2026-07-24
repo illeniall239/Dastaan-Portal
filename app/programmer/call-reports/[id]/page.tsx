@@ -9,7 +9,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import Link from "next/link";
-import { CalendarIcon, UserIcon, MapPinIcon, FileTextIcon, PaperclipIcon, Pencil, Users } from "lucide-react";
+import { CalendarIcon, UserIcon, MapPinIcon, PaperclipIcon, Pencil, Users } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { getAttachmentsForEntityServer } from "@/lib/attachments/server";
 import { BackButton } from "@/components/ui/back-button";
@@ -175,12 +175,6 @@ export default async function ProgrammerCallReportDetailPage({ params }: { param
               <Link href={`/programmer/call-reports/${resolvedParams.id}/team-feedback`}>
                 <Users className="h-4 w-4 mr-2" />
                 Team Feedback
-              </Link>
-            </Button>
-            <Button variant="outline" size="sm" asChild>
-              <Link href={`/programmer/call-reports/${resolvedParams.id}/detailed-one-liner`}>
-                <FileTextIcon className="h-4 w-4 mr-2" />
-                Detailed One-Liner
               </Link>
             </Button>
             {canEdit && (

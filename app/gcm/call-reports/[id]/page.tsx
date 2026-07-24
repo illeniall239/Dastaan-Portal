@@ -9,9 +9,8 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import Link from "next/link";
-import { CalendarIcon, UserIcon, MapPinIcon, FileTextIcon, PaperclipIcon, Pencil } from "lucide-react";
+import { CalendarIcon, UserIcon, MapPinIcon, PaperclipIcon, Pencil } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
-import { createAdminClient } from "@/lib/supabase/admin";
 import { getAttachmentsForEntityServer } from "@/lib/attachments/server";
 import { BackButton } from "@/components/ui/back-button";
 import { canViewPrivateFields } from "@/lib/call-reports/privacy";
@@ -20,7 +19,6 @@ import { formatDateTimeLong, formatDateLong } from "@/lib/utils/format-date";
 import { getSegregatedEvaluations } from "@/lib/evaluations/server";
 import { SegregatedEvaluationsDisplay } from "@/components/evaluations/segregated-evaluations-display";
 import { ContentRevisions } from "@/components/ui/content-revisions";
-import { StoryApprovalPanel } from "@/components/approvals/story-approval-panel";
 import { CallReportDiscussion } from "@/components/call-reports/call-report-discussion";
 
 
@@ -129,19 +127,6 @@ export default async function CallReportDetailPage({ params }: { params: Promise
     // Continue without attachments if there's an error
   }
 
-  // Check if evaluation is completed (for approval gate)
-  // Use evaluator_forms (not evaluation_logs) to avoid chicken-and-egg:
-  // evaluation_logs is only created after someone approves, but the approval
-  // panel only shows when evaluationCompleted=true. Using evaluator_forms breaks the deadlock.
-  const adminClient = createAdminClient();
-  const { data: submittedForms } = await adminClient
-    .from("evaluator_forms")
-    .select("id")
-    .eq("call_report_id", resolvedParams.id)
-    .not("submitted_at", "is", null)
-    .limit(1);
-  const evaluationCompleted = !!(submittedForms && submittedForms.length > 0);
-
   // Fetch segregated evaluations for this call report
   let segregatedEvaluations = null;
   try {
@@ -181,12 +166,6 @@ export default async function CallReportDetailPage({ params }: { params: Promise
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" asChild>
-            <Link href={`/gcm/call-reports/${resolvedParams.id}/detailed-one-liner`}>
-              <FileTextIcon className="h-4 w-4 mr-2" />
-              Detailed One-Liner
-            </Link>
-          </Button>
           {canEdit && (
             <Button variant="default" size="sm" asChild>
               <Link href={`/gcm/call-reports/${resolvedParams.id}/edit`}>
@@ -446,12 +425,6 @@ export default async function CallReportDetailPage({ params }: { params: Promise
         {segregatedEvaluations && segregatedEvaluations.total > 0 && (
           <SegregatedEvaluationsDisplay evaluations={segregatedEvaluations} />
         )}
-
-        {/* Story Approval Gate */}
-        <StoryApprovalPanel
-          callReportId={resolvedParams.id}
-          evaluationCompleted={evaluationCompleted}
-        />
 
         {/* Discussion Thread */}
         <CallReportDiscussion

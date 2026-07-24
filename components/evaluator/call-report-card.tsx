@@ -3,7 +3,7 @@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { EyeIcon, FilePenLine, TrendingUp, TrendingDown, Minus, History, CheckCircle2, XCircle } from "lucide-react";
+import { EyeIcon, TrendingUp, TrendingDown, Minus, History, CheckCircle2, XCircle } from "lucide-react";
 import Link from "next/link";
 import { EvaluationProgressBar } from "@/components/evaluations/evaluation-progress-bar";
 import { TeamBadge } from "@/components/shared/team-badge";
@@ -329,12 +329,6 @@ export function CallReportCard({ report, portalPrefix = "evaluator", isTeamHead 
               <Link href={`/${portalPrefix}/call-reports/${report.id}`}>
                 <EyeIcon className="h-4 w-4 mr-2" />
                 View Details
-              </Link>
-            </Button>
-            <Button variant="default" size="sm" asChild>
-              <Link href={`/${portalPrefix}/call-reports/${report.id}/detailed-one-liner`}>
-                <FilePenLine className="h-4 w-4 mr-2" />
-                Detailed One-Liner
               </Link>
             </Button>
           </div>
