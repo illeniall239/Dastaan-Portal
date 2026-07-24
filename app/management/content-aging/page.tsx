@@ -1485,8 +1485,8 @@ function DeliveryTrendChart({ projects }: { projects: TrackingProject[] }) {
     };
   }, [projects]);
 
-  const chartData = useMemo(() => {
-    const filtered = projects.filter((p) => {
+  const filteredProjects = useMemo(() => {
+    return projects.filter((p) => {
       if (chartProject !== "all" && p.id !== chartProject) return false;
       if (chartWriter !== "all" && p.writerName !== chartWriter) return false;
       if (chartSlot !== "all" && p.targetSlot !== chartSlot) return false;
@@ -1500,9 +1500,15 @@ function DeliveryTrendChart({ projects }: { projects: TrackingProject[] }) {
       }
       return true;
     });
+  }, [projects, chartProject, chartWriter, chartSlot, chartTeam, chartGrade]);
+
+  const chartData = useMemo(() => {
+    const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+    const toIdx = (key: string) => { const [m, y] = key.split(" "); return (2000 + parseInt(y)) * 12 + MONTHS.indexOf(m); };
+    const fromIdx = (idx: number) => { const y = Math.floor(idx / 12); const m = idx % 12; return `${MONTHS[m]} ${String(y).slice(2)}`; };
 
     const agg = new Map<string, { freshEps: number; revEps: number }>();
-    for (const p of filtered) {
+    for (const p of filteredProjects) {
       for (const entry of p.monthlySummary || []) {
         const existing = agg.get(entry.month) || { freshEps: 0, revEps: 0 };
         existing.freshEps += entry.freshEps;
@@ -1510,19 +1516,37 @@ function DeliveryTrendChart({ projects }: { projects: TrackingProject[] }) {
         agg.set(entry.month, existing);
       }
     }
-    const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-    return Array.from(agg.entries())
-      .sort((a, b) => {
-        const [am, ay] = a[0].split(" ");
-        const [bm, by] = b[0].split(" ");
-        return ((2000 + parseInt(ay)) * 100 + months.indexOf(am)) - ((2000 + parseInt(by)) * 100 + months.indexOf(bm));
-      })
-      .map(([month, counts]) => ({ month, "Fresh Episodes": counts.freshEps, "Revised Episodes": counts.revEps }));
-  }, [projects, chartProject, chartWriter, chartSlot, chartTeam, chartGrade]);
+    if (agg.size === 0) return [];
+
+    // Fill in all months between first and last data point
+    const indices = Array.from(agg.keys()).map(toIdx);
+    const minIdx = Math.min(...indices);
+    const maxIdx = Math.max(...indices);
+    const result: { month: string; "Fresh Eps": number; "Rev Eps": number }[] = [];
+    for (let i = minIdx; i <= maxIdx; i++) {
+      const key = fromIdx(i);
+      const d = agg.get(key);
+      result.push({ month: key, "Fresh Eps": d?.freshEps ?? 0, "Rev Eps": d?.revEps ?? 0 });
+    }
+    return result;
+  }, [filteredProjects]);
+
+  const chartTitle = useMemo(() => {
+    if (chartProject !== "all") {
+      const p = projects.find((p) => p.id === chartProject);
+      return p ? `${p.workingTitle} — Received Episodes Trend` : "Received Episodes Trend";
+    }
+    return "Monthly Delivery Trend";
+  }, [chartProject, projects]);
+
+  const renderLabel = (props: any) => {
+    const { x, y, value } = props;
+    return <text x={x} y={y - 10} textAnchor="middle" fontSize={11} fontWeight={600} fill={props.fill || "#374151"}>{value}</text>;
+  };
 
   return (
     <div className="bg-white border rounded-lg p-4">
-      <h3 className="text-sm font-semibold text-slate-700 mb-3">Monthly Delivery Trend</h3>
+      <h3 className="text-sm font-semibold text-slate-700 mb-3">{chartTitle}</h3>
       <div className="flex gap-2 mb-3 flex-wrap">
         <Select value={chartProject} onValueChange={setChartProject}>
           <SelectTrigger className="h-8 text-xs w-[160px]"><SelectValue placeholder="Project" /></SelectTrigger>
@@ -1566,15 +1590,15 @@ function DeliveryTrendChart({ projects }: { projects: TrackingProject[] }) {
       {chartData.length === 0 ? (
         <div className="flex items-center justify-center h-[200px] text-sm text-muted-foreground">No delivery data for selected filters</div>
       ) : (
-        <ResponsiveContainer width="100%" height={250}>
-          <LineChart data={chartData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
+        <ResponsiveContainer width="100%" height={280}>
+          <LineChart data={chartData} margin={{ top: 25, right: 20, left: 0, bottom: 5 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
             <XAxis dataKey="month" stroke="#6b7280" tick={{ fontSize: 11 }} />
             <YAxis stroke="#6b7280" tick={{ fontSize: 11 }} allowDecimals={false} />
             <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8 }} />
             <Legend wrapperStyle={{ fontSize: 12 }} />
-            <Line type="monotone" dataKey="Fresh Episodes" stroke="#3b82f6" strokeWidth={2} dot={{ fill: "#3b82f6", r: 4 }} activeDot={{ r: 6 }} />
-            <Line type="monotone" dataKey="Revised Episodes" stroke="#f59e0b" strokeWidth={2} dot={{ fill: "#f59e0b", r: 4 }} activeDot={{ r: 6 }} />
+            <Line type="monotone" dataKey="Fresh Eps" stroke="#3b82f6" strokeWidth={2} dot={{ fill: "#3b82f6", r: 5 }} activeDot={{ r: 7 }} label={(p: any) => renderLabel({ ...p, fill: "#2563eb" })} />
+            <Line type="monotone" dataKey="Rev Eps" stroke="#f59e0b" strokeWidth={2} dot={{ fill: "#f59e0b", r: 5 }} activeDot={{ r: 7 }} label={(p: any) => renderLabel({ ...p, fill: "#d97706" })} />
           </LineChart>
         </ResponsiveContainer>
       )}
