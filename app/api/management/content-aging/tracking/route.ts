@@ -17,6 +17,20 @@ function fmt(d: string | null): string | null {
   } catch { return d; }
 }
 
+function daysBetween(d1: string | null, d2: string | null): number | null {
+  if (!d1 || !d2) return null;
+  const ms = new Date(d2).getTime() - new Date(d1).getTime();
+  return Math.round(ms / 86400000);
+}
+
+function monthKey(d: string | null): string | null {
+  if (!d) return null;
+  try {
+    const date = new Date(d);
+    return date.toLocaleDateString("en-GB", { month: "short", year: "2-digit" });
+  } catch { return null; }
+}
+
 export async function GET(request: NextRequest) {
   try {
     const supabase = await createClient();
@@ -33,10 +47,11 @@ export async function GET(request: NextRequest) {
 
     const admin = createAdminClient();
 
-    // 1. Fetch active call reports
+    // 1. Fetch active call reports with team + slot info
     const { data: callReports, error: crErr } = await admin
       .from("call_reports")
-      .select("id, working_title, writer_name, tracking_notes")
+      .select(`id, working_title, writer_name, tracking_notes, target_slot, average_initial_assessment,
+        team:teams!call_reports_team_id_fkey(id, name)`)
       .eq("meeting_type", "call_report")
       .is("archived_at", null)
       .order("working_title", { ascending: true });
@@ -67,7 +82,10 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({
         projects: callReports.map((cr) => ({
           id: cr.id, workingTitle: cr.working_title, writerName: cr.writer_name,
-          trackingNotes: cr.tracking_notes, episodes: [], maxRevisions: 0,
+          trackingNotes: cr.tracking_notes, targetSlot: cr.target_slot || null,
+          teamName: (Array.isArray(cr.team) ? cr.team[0] : cr.team)?.name || null,
+          avgScore: cr.average_initial_assessment ?? null,
+          episodes: [], maxRevisions: 0, monthlySummary: [],
         })),
       });
     }
@@ -88,7 +106,10 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({
         projects: callReports.map((cr) => ({
           id: cr.id, workingTitle: cr.working_title, writerName: cr.writer_name,
-          trackingNotes: cr.tracking_notes, episodes: [], maxRevisions: 0,
+          trackingNotes: cr.tracking_notes, targetSlot: cr.target_slot || null,
+          teamName: (Array.isArray(cr.team) ? cr.team[0] : cr.team)?.name || null,
+          avgScore: cr.average_initial_assessment ?? null,
+          episodes: [], maxRevisions: 0, monthlySummary: [],
         })),
       });
     }
@@ -160,35 +181,81 @@ export async function GET(request: NextRequest) {
       const crEps = epsByReport.get(cr.id) || [];
       let maxRevisions = 0;
 
+      // Monthly summary buckets for this project
+      const monthBuckets = new Map<string, { freshEps: number; revEps: number }>();
+
       const mappedEpisodes = crEps.map((ep) => {
         const epRevs = revsByEpisode.get(ep.id) || [];
         if (epRevs.length > maxRevisions) maxRevisions = epRevs.length;
 
         const tr = trackingByEpisode.get(ep.id);
 
+        // Raw dates for feedback days calculation
+        const rawFirstCopy = ep.original_submission_date ?? ep.created_at;
+        const rawFirstFeedback = baseEvalByEpisode.get(ep.id) ?? null;
+
+        // Bucket fresh episode into month
+        const mk = monthKey(rawFirstCopy);
+        if (mk) {
+          if (!monthBuckets.has(mk)) monthBuckets.set(mk, { freshEps: 0, revEps: 0 });
+          monthBuckets.get(mk)!.freshEps++;
+        }
+
         return {
           id: ep.id,
           episodeNumber: ep.episode_number,
-          firstCopyDate: fmt(ep.original_submission_date ?? ep.created_at),
-          firstCopyFeedbackDate: fmt(baseEvalByEpisode.get(ep.id) ?? null),
-          revisions: epRevs.map((rev) => ({
-            revisionNumber: rev.revision_number,
-            receivedDate: fmt(rev.original_submission_date ?? rev.created_at),
-            feedbackDate: fmt(revEvalMap.get(rev.id) ?? null),
-          })),
+          firstCopyDate: fmt(rawFirstCopy),
+          firstCopyFeedbackDate: fmt(rawFirstFeedback),
+          firstCopyFeedbackDays: daysBetween(rawFirstCopy, rawFirstFeedback),
+          revisions: epRevs.map((rev) => {
+            const rawRevDate = rev.original_submission_date ?? rev.created_at;
+            const rawRevFeedback = revEvalMap.get(rev.id) ?? null;
+
+            // Bucket revision into month
+            const rmk = monthKey(rawRevDate);
+            if (rmk) {
+              if (!monthBuckets.has(rmk)) monthBuckets.set(rmk, { freshEps: 0, revEps: 0 });
+              monthBuckets.get(rmk)!.revEps++;
+            }
+
+            return {
+              revisionNumber: rev.revision_number,
+              receivedDate: fmt(rawRevDate),
+              feedbackDate: fmt(rawRevFeedback),
+              feedbackDays: daysBetween(rawRevDate, rawRevFeedback),
+            };
+          }),
           paymentRequestDate: tr?.payment_request_date ?? null,
           paymentDate: tr?.payment_date ?? null,
           trackingStatus: tr?.tracking_status ?? null,
         };
       });
 
+      // Sort monthly summary by date
+      const monthlySummary = Array.from(monthBuckets.entries())
+        .sort((a, b) => {
+          const parseMonthKey = (k: string) => {
+            const [mon, yr] = k.split(" ");
+            const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+            return (2000 + parseInt(yr)) * 100 + months.indexOf(mon);
+          };
+          return parseMonthKey(a[0]) - parseMonthKey(b[0]);
+        })
+        .map(([month, counts]) => ({ month, ...counts }));
+
+      const teamData = Array.isArray(cr.team) ? cr.team[0] : cr.team;
+
       return {
         id: cr.id,
         workingTitle: cr.working_title || "Untitled",
         writerName: cr.writer_name || null,
         trackingNotes: cr.tracking_notes || null,
+        targetSlot: cr.target_slot || null,
+        teamName: teamData?.name || null,
+        avgScore: cr.average_initial_assessment ?? null,
         episodes: mappedEpisodes,
         maxRevisions,
+        monthlySummary,
       };
     }).filter((p) => p.episodes.length > 0);
 

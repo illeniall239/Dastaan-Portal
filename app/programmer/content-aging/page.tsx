@@ -9,6 +9,7 @@ import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbP
 import { BackButton } from "@/components/ui/back-button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Download, Search, X, Clock, Pin, Loader2 } from "lucide-react";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import { toast } from "sonner";
 
 interface EvaluatorGrade {
@@ -93,6 +94,7 @@ interface TrackingRevision {
   revisionNumber: number;
   receivedDate: string | null;
   feedbackDate: string | null;
+  feedbackDays: number | null;
 }
 
 interface TrackingEpisode {
@@ -100,6 +102,7 @@ interface TrackingEpisode {
   episodeNumber: number;
   firstCopyDate: string | null;
   firstCopyFeedbackDate: string | null;
+  firstCopyFeedbackDays: number | null;
   revisions: TrackingRevision[];
   paymentRequestDate: string | null;
   paymentDate: string | null;
@@ -111,8 +114,12 @@ interface TrackingProject {
   workingTitle: string;
   writerName: string | null;
   trackingNotes: string | null;
+  targetSlot: string | null;
+  teamName: string | null;
+  avgScore: number | null;
   episodes: TrackingEpisode[];
   maxRevisions: number;
+  monthlySummary: { month: string; freshEps: number; revEps: number }[];
 }
 
 interface Week {
@@ -637,18 +644,18 @@ export default function ContentAgingPage() {
   // Total dynamic cols for minWidth calculation
   const exportTrackingToExcel = () => {
     if (trackingProjects.length === 0) { toast.error("No data to export"); return; }
-    const revHeaders = Array.from({ length: trackingMaxRevisions }, (_, i) => [`${i + 1}${i === 0 ? "st" : i === 1 ? "nd" : i === 2 ? "rd" : "th"} Revised`, "Feedback"]).flat();
-    const headers = ["Project", "Episode #", "1st Copy Received", "Feedback", ...revHeaders, "Payment Request Date", "Payment Date", "Writer's Commitment", "Status"];
+    const revHeaders = Array.from({ length: trackingMaxRevisions }, (_, i) => [`${i + 1}${i === 0 ? "st" : i === 1 ? "nd" : i === 2 ? "rd" : "th"} Revised`, "Feedback", "Days"]).flat();
+    const headers = ["Project", "Episode #", "1st Copy Received", "Feedback", "Days", ...revHeaders, "Payment Request Date", "Payment Date", "Writer's Commitment", "Status"];
     const rows: (string | number | null)[][] = [];
     for (const p of trackingProjects) {
       for (const ep of p.episodes) {
-        const revCells: (string | null)[] = [];
+        const revCells: (string | number | null)[] = [];
         for (let i = 0; i < trackingMaxRevisions; i++) {
           const rev = ep.revisions[i];
-          revCells.push(rev?.receivedDate ?? "", rev?.feedbackDate ?? "");
+          revCells.push(rev?.receivedDate ?? "", rev?.feedbackDate ?? "", rev?.feedbackDays ?? "");
         }
         rows.push([
-          p.workingTitle, ep.episodeNumber, ep.firstCopyDate, ep.firstCopyFeedbackDate,
+          p.workingTitle, ep.episodeNumber, ep.firstCopyDate, ep.firstCopyFeedbackDate, ep.firstCopyFeedbackDays ?? "",
           ...revCells, ep.paymentRequestDate ?? "", ep.paymentDate ?? "", p.trackingNotes ?? "", ep.trackingStatus ?? "",
         ]);
       }
@@ -875,7 +882,10 @@ export default function ContentAgingPage() {
               <div className="text-muted-foreground">No projects with episodes found.</div>
             </div>
           ) : (
-            <TrackingTable projects={trackingProjects} globalMaxRevisions={trackingMaxRevisions} onUpdate={(projects) => setTrackingProjects(projects)} />
+            <div className="space-y-4">
+              <DeliveryTrendChart projects={trackingProjects} />
+              <TrackingTable projects={trackingProjects} globalMaxRevisions={trackingMaxRevisions} onUpdate={(projects) => setTrackingProjects(projects)} />
+            </div>
           )
         ) : loading ? (
           <div className="flex items-center justify-center h-64">
@@ -1494,6 +1504,127 @@ function EditableCell({ value, onSave, placeholder = "—" }: { value: string | 
 // ============================================================
 // Tracking Table Component
 // ============================================================
+function DeliveryTrendChart({ projects }: { projects: TrackingProject[] }) {
+  const [chartProject, setChartProject] = useState<string>("all");
+  const [chartWriter, setChartWriter] = useState<string>("all");
+  const [chartSlot, setChartSlot] = useState<string>("all");
+  const [chartTeam, setChartTeam] = useState<string>("all");
+  const [chartGrade, setChartGrade] = useState<string>("all");
+
+  // Derive unique filter options
+  const filterOptions = useMemo(() => {
+    const writers = new Set<string>();
+    const slots = new Set<string>();
+    const teams = new Set<string>();
+    for (const p of projects) {
+      if (p.writerName) writers.add(p.writerName);
+      if (p.targetSlot) slots.add(p.targetSlot);
+      if (p.teamName) teams.add(p.teamName);
+    }
+    return {
+      writers: Array.from(writers).sort(),
+      slots: Array.from(slots).sort(),
+      teams: Array.from(teams).sort(),
+    };
+  }, [projects]);
+
+  const chartData = useMemo(() => {
+    const filtered = projects.filter((p) => {
+      if (chartProject !== "all" && p.id !== chartProject) return false;
+      if (chartWriter !== "all" && p.writerName !== chartWriter) return false;
+      if (chartSlot !== "all" && p.targetSlot !== chartSlot) return false;
+      if (chartTeam !== "all" && p.teamName !== chartTeam) return false;
+      if (chartGrade !== "all") {
+        const score = p.avgScore;
+        if (chartGrade === "high" && (score === null || score < 7)) return false;
+        if (chartGrade === "mid" && (score === null || score < 5 || score >= 7)) return false;
+        if (chartGrade === "low" && (score === null || score >= 5)) return false;
+        if (chartGrade === "ungraded" && score !== null) return false;
+      }
+      return true;
+    });
+
+    const agg = new Map<string, { freshEps: number; revEps: number }>();
+    for (const p of filtered) {
+      for (const entry of p.monthlySummary || []) {
+        const existing = agg.get(entry.month) || { freshEps: 0, revEps: 0 };
+        existing.freshEps += entry.freshEps;
+        existing.revEps += entry.revEps;
+        agg.set(entry.month, existing);
+      }
+    }
+    const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+    return Array.from(agg.entries())
+      .sort((a, b) => {
+        const [am, ay] = a[0].split(" ");
+        const [bm, by] = b[0].split(" ");
+        return ((2000 + parseInt(ay)) * 100 + months.indexOf(am)) - ((2000 + parseInt(by)) * 100 + months.indexOf(bm));
+      })
+      .map(([month, counts]) => ({ month, "Fresh Episodes": counts.freshEps, "Revised Episodes": counts.revEps }));
+  }, [projects, chartProject, chartWriter, chartSlot, chartTeam, chartGrade]);
+
+  return (
+    <div className="bg-white border rounded-lg p-4">
+      <h3 className="text-sm font-semibold text-slate-700 mb-3">Monthly Delivery Trend</h3>
+      <div className="flex gap-2 mb-3 flex-wrap">
+        <Select value={chartProject} onValueChange={setChartProject}>
+          <SelectTrigger className="h-8 text-xs w-[160px]"><SelectValue placeholder="Project" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Projects</SelectItem>
+            {projects.map((p) => <SelectItem key={p.id} value={p.id}>{p.workingTitle}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <Select value={chartWriter} onValueChange={setChartWriter}>
+          <SelectTrigger className="h-8 text-xs w-[140px]"><SelectValue placeholder="Writer" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Writers</SelectItem>
+            {filterOptions.writers.map((w) => <SelectItem key={w} value={w}>{w}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <Select value={chartSlot} onValueChange={setChartSlot}>
+          <SelectTrigger className="h-8 text-xs w-[130px]"><SelectValue placeholder="Slot" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Slots</SelectItem>
+            {filterOptions.slots.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <Select value={chartTeam} onValueChange={setChartTeam}>
+          <SelectTrigger className="h-8 text-xs w-[130px]"><SelectValue placeholder="Team" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Teams</SelectItem>
+            {filterOptions.teams.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <Select value={chartGrade} onValueChange={setChartGrade}>
+          <SelectTrigger className="h-8 text-xs w-[130px]"><SelectValue placeholder="Grade" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Grades</SelectItem>
+            <SelectItem value="high">High (7+)</SelectItem>
+            <SelectItem value="mid">Mid (5-6.9)</SelectItem>
+            <SelectItem value="low">Low (&lt;5)</SelectItem>
+            <SelectItem value="ungraded">Ungraded</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+      {chartData.length === 0 ? (
+        <div className="flex items-center justify-center h-[200px] text-sm text-muted-foreground">No delivery data for selected filters</div>
+      ) : (
+        <ResponsiveContainer width="100%" height={250}>
+          <LineChart data={chartData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+            <XAxis dataKey="month" stroke="#6b7280" tick={{ fontSize: 11 }} />
+            <YAxis stroke="#6b7280" tick={{ fontSize: 11 }} allowDecimals={false} />
+            <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8 }} />
+            <Legend wrapperStyle={{ fontSize: 12 }} />
+            <Line type="monotone" dataKey="Fresh Episodes" stroke="#3b82f6" strokeWidth={2} dot={{ fill: "#3b82f6", r: 4 }} activeDot={{ r: 6 }} />
+            <Line type="monotone" dataKey="Revised Episodes" stroke="#f59e0b" strokeWidth={2} dot={{ fill: "#f59e0b", r: 4 }} activeDot={{ r: 6 }} />
+          </LineChart>
+        </ResponsiveContainer>
+      )}
+    </div>
+  );
+}
+
 function TrackingTable({
   projects,
   globalMaxRevisions,
@@ -1503,9 +1634,18 @@ function TrackingTable({
   globalMaxRevisions: number;
   onUpdate: (projects: TrackingProject[]) => void;
 }) {
-  const revColCount = globalMaxRevisions * 2;
+  // Each revision group = received + feedback + days = 3 cols
+  const revColCount = globalMaxRevisions * 3;
+  // Ep# + 1st Copy + Feedback + Days + revCols + PayReq + PayDate + Commitment + Status
   const totalCols = 4 + revColCount + 4;
-  const minWidth = 50 + 110 * 2 + revColCount * 110 + 120 * 2 + 180 + 140;
+  const minWidth = 50 + 110 * 2 + 55 + globalMaxRevisions * (110 + 110 + 55) + 120 * 2 + 180 + 140;
+
+  const daysColor = (d: number | null) => {
+    if (d === null) return "";
+    if (d <= 7) return "text-green-700 bg-green-50";
+    if (d <= 14) return "text-amber-700 bg-amber-50";
+    return "text-red-700 bg-red-50";
+  };
 
   const saveEpisodeField = async (episodeId: string, field: string, value: string) => {
     const res = await fetch("/api/management/content-aging/tracking", {
@@ -1535,12 +1675,16 @@ function TrackingTable({
           <th className="px-2 py-2 text-left text-xs font-semibold border-b border-r border-border whitespace-nowrap" style={{ width: 50 }}>Ep #</th>
           <th className="px-2 py-2 text-center text-xs font-semibold border-b border-r border-border whitespace-nowrap bg-blue-50 text-blue-700" style={{ width: 110 }}>1st Copy Received</th>
           <th className="px-2 py-2 text-center text-xs font-semibold border-b border-r border-border whitespace-nowrap bg-amber-50 text-amber-700" style={{ width: 110 }}>Feedback</th>
+          <th className="px-2 py-2 text-center text-xs font-semibold border-b border-r border-border whitespace-nowrap bg-slate-100 text-slate-600" style={{ width: 55 }}>Days</th>
           {Array.from({ length: globalMaxRevisions }, (_, i) => [
             <th key={`rev-${i}`} className="px-2 py-2 text-center text-xs font-semibold border-b border-r border-border whitespace-nowrap bg-blue-50 text-blue-700" style={{ width: 110 }}>
               {ordinal(i + 1)} Revised
             </th>,
             <th key={`fb-${i}`} className="px-2 py-2 text-center text-xs font-semibold border-b border-r border-border whitespace-nowrap bg-amber-50 text-amber-700" style={{ width: 110 }}>
               Feedback
+            </th>,
+            <th key={`days-${i}`} className="px-2 py-2 text-center text-xs font-semibold border-b border-r border-border whitespace-nowrap bg-slate-100 text-slate-600" style={{ width: 55 }}>
+              Days
             </th>,
           ]).flat()}
           <th className="px-2 py-2 text-center text-xs font-semibold border-b border-r border-border whitespace-nowrap bg-green-50 text-green-700" style={{ width: 120 }}>Payment Request</th>
@@ -1565,11 +1709,17 @@ function TrackingTable({
                 <td className="px-2 py-1.5 border-r border-border/60 text-center font-medium">{ep.episodeNumber}</td>
                 <td className="px-2 py-1.5 border-r border-border/60 text-center text-blue-700">{ep.firstCopyDate ?? ""}</td>
                 <td className="px-2 py-1.5 border-r border-border/60 text-center text-amber-700">{ep.firstCopyFeedbackDate ?? ""}</td>
+                <td className={`px-2 py-1.5 border-r border-border/60 text-center font-medium ${daysColor(ep.firstCopyFeedbackDays)}`}>
+                  {ep.firstCopyFeedbackDays != null ? `${ep.firstCopyFeedbackDays}d` : ""}
+                </td>
                 {Array.from({ length: globalMaxRevisions }, (_, i) => {
                   const rev = ep.revisions[i];
                   return [
                     <td key={`rev-${i}`} className="px-2 py-1.5 border-r border-border/60 text-center text-blue-700">{rev?.receivedDate ?? ""}</td>,
                     <td key={`fb-${i}`} className="px-2 py-1.5 border-r border-border/60 text-center text-amber-700">{rev?.feedbackDate ?? ""}</td>,
+                    <td key={`days-${i}`} className={`px-2 py-1.5 border-r border-border/60 text-center font-medium ${daysColor(rev?.feedbackDays ?? null)}`}>
+                      {rev?.feedbackDays != null ? `${rev.feedbackDays}d` : ""}
+                    </td>,
                   ];
                 }).flat()}
                 <td className="px-1 py-0.5 border-r border-border/60">
@@ -1588,6 +1738,24 @@ function TrackingTable({
                 </td>
               </tr>
             ))}
+            {/* Monthly delivery summary row */}
+            {project.monthlySummary && project.monthlySummary.length > 0 && (
+              <tr className="bg-indigo-50/50 border-b border-border">
+                <td colSpan={totalCols} className="px-3 py-1.5 border-b border-r border-border">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="text-[10px] font-semibold text-slate-500 uppercase mr-1">Monthly:</span>
+                    {project.monthlySummary.map((ms) => (
+                      <span key={ms.month} className="inline-flex items-center gap-0.5 text-[10px]">
+                        <span className="font-medium text-slate-600">{ms.month}:</span>
+                        {ms.freshEps > 0 && <span className="bg-blue-100 text-blue-700 px-1 rounded font-medium">{ms.freshEps}F</span>}
+                        {ms.revEps > 0 && <span className="bg-amber-100 text-amber-700 px-1 rounded font-medium">{ms.revEps}R</span>}
+                        {ms.freshEps === 0 && ms.revEps === 0 && <span className="text-slate-400">0</span>}
+                      </span>
+                    ))}
+                  </div>
+                </td>
+              </tr>
+            )}
           </Fragment>
         ))}
       </tbody>
