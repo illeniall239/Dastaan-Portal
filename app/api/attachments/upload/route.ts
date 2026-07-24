@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { v4 as uuidv4 } from "uuid";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { logger } from "@/lib/logger";
 import { applyRateLimit } from '@/lib/api-middleware';
 import { RateLimitPresets } from '@/lib/rate-limit-redis';
@@ -12,7 +13,6 @@ export async function POST(request: NextRequest) {
   try {
     const supabase = await createClient();
 
-    // Ensure user is authenticated
     const {
       data: { user },
       error: userError,
@@ -28,170 +28,122 @@ export async function POST(request: NextRequest) {
     const rate = await applyRateLimit(request, RateLimitPresets.standard, user.id);
     if (!rate.success) return rate.response!;
 
-    // Clone the request to avoid "body already used" errors
-    const formData = await request.formData();
-    const file = formData.get("file");
-    const entityType = formData.get("entityType");
-    const entityId = formData.get("entityId");
+    const body = await request.json();
+    const { action } = body;
 
-    if (!(file instanceof File)) {
-      return NextResponse.json({
-        error: "No file provided",
-        message: "Please select a file to upload. The 'file' field is required in the form data."
-      }, { status: 400 });
-    }
+    // ──────────────────────────────────────────────
+    // Action A: Generate signed upload URL
+    // ──────────────────────────────────────────────
+    if (action === "presign") {
+      const { entityType, entityId, fileName, fileType } = body;
 
-    if (
-      typeof entityType !== "string" ||
-      typeof entityId !== "string" ||
-      !entityType ||
-      !entityId
-    ) {
-      return NextResponse.json({
-        error: "Missing required information",
-        message: "Both 'entityType' and 'entityId' are required to attach the file to a record. Please ensure these fields are provided."
-      }, { status: 400 });
-    }
+      if (!entityType || !entityId || !fileName) {
+        return NextResponse.json({
+          error: "Missing required fields",
+          message: "entityType, entityId, and fileName are required."
+        }, { status: 400 });
+      }
 
-    // Validate UUID format
-    const uuidSchema = z.string().uuid();
-    const entityIdValidation = uuidSchema.safeParse(entityId);
+      const uuidSchema = z.string().uuid();
+      if (!uuidSchema.safeParse(entityId).success) {
+        return NextResponse.json({
+          error: "Invalid entity ID",
+          message: "The entity ID must be a valid UUID."
+        }, { status: 400 });
+      }
 
-    if (!entityIdValidation.success) {
-      logger.error("Invalid entity ID format:", entityId);
-      return NextResponse.json({
-        error: "Invalid record identifier",
-        message: "The entity ID must be a valid UUID format. Please check the ID and try again."
-      }, { status: 400 });
-    }
+      const fileExtension = fileName.includes(".") ? fileName.split(".").pop() : "";
+      const safeExtension = fileExtension ? `.${fileExtension}` : "";
+      const filePath = `${entityType}/${entityId}/${uuidv4()}${safeExtension}`;
 
-    const fileExtension = file.name.includes(".")
-      ? file.name.split(".").pop()
-      : "";
-    const safeExtension = fileExtension ? `.${fileExtension}` : "";
-    const filePath = `${entityType}/${entityId}/${uuidv4()}${safeExtension}`;
+      const admin = createAdminClient();
+      const { data, error } = await admin.storage
+        .from("attachments")
+        .createSignedUploadUrl(filePath);
 
-    const arrayBuffer = await file.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
-
-    const { error: uploadError } = await supabase.storage
-      .from("attachments")
-      .upload(filePath, buffer, {
-        cacheControl: "3600",
-        upsert: false,
-        contentType: file.type || undefined,
-      });
-
-    if (uploadError) {
-      logger.error("Storage upload error:", uploadError);
-
-      // Provide more specific error messages based on common issues
-      let userMessage = "The file could not be uploaded to storage. ";
-      if (uploadError.message?.includes("size")) {
-        userMessage += "The file may be too large. Please try a smaller file.";
-      } else if (uploadError.message?.includes("type") || uploadError.message?.includes("format")) {
-        userMessage += "The file format may not be supported.";
-      } else {
-        userMessage += "Please try again or contact support if the problem persists.";
+      if (error) {
+        logger.error("Failed to create signed upload URL:", error);
+        return NextResponse.json({
+          error: "Failed to generate upload URL",
+          message: "Could not prepare the upload. Please try again."
+        }, { status: 500 });
       }
 
       return NextResponse.json({
-        error: "Upload failed",
-        message: userMessage,
-        details: process.env.NODE_ENV === 'development' ? uploadError.message : undefined
-      }, { status: 500 });
+        signedUrl: data.signedUrl,
+        path: filePath,
+        token: data.token,
+      });
     }
 
-    const { data: publicUrlData } = supabase.storage
-      .from("attachments")
-      .getPublicUrl(filePath);
+    // ──────────────────────────────────────────────
+    // Action B: Register attachment after upload
+    // ──────────────────────────────────────────────
+    if (action === "register") {
+      const { entityType, entityId, fileName, fileSize, fileType, filePath } = body;
 
-    // Insert record into database
-    const insertData = {
-      entity_type: entityType,
-      entity_id: entityId, // Already validated as UUID
-      file_name: file.name,
-      file_path: filePath,
-      file_size: file.size,
-      file_type: file.type || safeExtension || "application/octet-stream",
-      uploaded_by: user.id,
-    };
-
-    logger.info("Attempting database insert:", {
-      entity_type: insertData.entity_type,
-      entity_id: insertData.entity_id,
-      file_name: insertData.file_name
-    });
-
-    const { data: attachmentData, error: insertError } = await supabase
-      .from("attachments")
-      .insert(insertData)
-      .select()
-      .single();
-
-    if (insertError) {
-      logger.error("Database insert error:", {
-        code: insertError.code,
-        message: insertError.message,
-        details: insertError.details,
-        hint: insertError.hint
-      });
-
-      // Clean up uploaded file
-      await supabase.storage.from("attachments").remove([filePath]);
-
-      // Provide more specific error messages based on error codes
-      let userMessage = "The file was uploaded but could not be linked to the record. ";
-      if (insertError.code === "23503") {
-        // Foreign key violation
-        userMessage += "The record you're trying to attach the file to may no longer exist.";
-      } else if (insertError.code === "23505") {
-        // Unique violation
-        userMessage += "This file may already be attached to this record.";
-      } else {
-        userMessage += "Please try again or contact support if the problem persists.";
+      if (!entityType || !entityId || !fileName || !filePath) {
+        return NextResponse.json({
+          error: "Missing required fields",
+          message: "entityType, entityId, fileName, and filePath are required."
+        }, { status: 400 });
       }
 
-      return NextResponse.json({
-        error: "Failed to save attachment",
-        message: userMessage,
-        details: process.env.NODE_ENV === 'development' ? insertError.message : undefined
-      }, { status: 500 });
+      const uuidSchema = z.string().uuid();
+      if (!uuidSchema.safeParse(entityId).success) {
+        return NextResponse.json({
+          error: "Invalid entity ID",
+          message: "The entity ID must be a valid UUID."
+        }, { status: 400 });
+      }
+
+      const insertData = {
+        entity_type: entityType,
+        entity_id: entityId,
+        file_name: fileName,
+        file_path: filePath,
+        file_size: fileSize || 0,
+        file_type: fileType || "application/octet-stream",
+        uploaded_by: user.id,
+      };
+
+      const { data: attachmentData, error: insertError } = await supabase
+        .from("attachments")
+        .insert(insertData)
+        .select()
+        .single();
+
+      if (insertError) {
+        logger.error("Database insert error:", insertError);
+
+        let userMessage = "The file was uploaded but could not be linked to the record. ";
+        if (insertError.code === "23503") {
+          userMessage += "The record you're trying to attach the file to may no longer exist.";
+        } else if (insertError.code === "23505") {
+          userMessage += "This file may already be attached to this record.";
+        } else {
+          userMessage += "Please try again or contact support.";
+        }
+
+        return NextResponse.json({
+          error: "Failed to save attachment",
+          message: userMessage,
+        }, { status: 500 });
+      }
+
+      return NextResponse.json({ attachment: attachmentData });
     }
 
     return NextResponse.json({
-      attachment: {
-        ...attachmentData,
-        publicUrl: publicUrlData.publicUrl,
-      },
-    });
+      error: "Invalid action",
+      message: "The 'action' field must be 'presign' or 'register'."
+    }, { status: 400 });
+
   } catch (error) {
-    logger.error("==========================================");
-    logger.error("ATTACHMENT UPLOAD ERROR");
-    logger.error("==========================================");
-    logger.error("Error type:", error?.constructor?.name);
-    logger.error("Error message:", error instanceof Error ? error.message : String(error));
-    logger.error("Error stack:", error instanceof Error ? error.stack : "No stack trace");
-
-    // Try to get form data for debugging (may fail if already consumed)
-    try {
-      const debugFormData = await request.clone().formData();
-      logger.error("Entity Type:", debugFormData.get("entityType"));
-      logger.error("Entity ID:", debugFormData.get("entityId"));
-      const debugFile = debugFormData.get("file");
-      logger.error("File name:", debugFile instanceof File ? debugFile.name : "N/A");
-    } catch (formError) {
-      logger.error("Could not read form data for debugging (already consumed)");
-    }
-
-    logger.error("==========================================");
+    logger.error("Attachment upload error:", error instanceof Error ? error.message : String(error));
     return NextResponse.json({
       error: "Upload failed",
-      message: "An unexpected error occurred while uploading the file. Please try again or contact support if the problem persists.",
-      details: process.env.NODE_ENV === 'development'
-        ? (error instanceof Error ? error.message : String(error))
-        : undefined
+      message: "An unexpected error occurred. Please try again.",
     }, { status: 500 });
   }
 }
-

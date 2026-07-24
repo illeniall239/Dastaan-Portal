@@ -1,77 +1,86 @@
 import { createClient } from '@/lib/supabase/client';
 import { logger } from '@/lib/logger';
 
-// Function to upload files via server API route to avoid client-side Supabase storage issues
+// Upload files directly to Supabase Storage via signed URL (bypasses server body size limits)
 export async function uploadFile(
   file: File,
   entityType: string,
   entityId: string,
   onProgress?: (progress: number) => void
 ) {
-  const formData = new FormData();
-  formData.append('file', file);
-  formData.append('entityType', entityType);
-  formData.append('entityId', entityId);
+  // Step 1: Get signed upload URL from server
+  const presignRes = await fetch('/api/attachments/upload', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      action: 'presign',
+      entityType,
+      entityId,
+      fileName: file.name,
+      fileType: file.type,
+    }),
+  });
 
-  return new Promise((resolve, reject) => {
+  if (!presignRes.ok) {
+    const err = await presignRes.json().catch(() => ({ message: 'Failed to prepare upload' }));
+    throw new Error(err.message || 'Failed to prepare upload');
+  }
+
+  const { signedUrl, path, token } = await presignRes.json();
+
+  // Step 2: Upload file directly to Supabase Storage via signed URL (no server proxy)
+  await new Promise<void>((resolve, reject) => {
     const xhr = new XMLHttpRequest();
 
-    // Track upload progress
     xhr.upload.addEventListener('progress', (event) => {
       if (event.lengthComputable && onProgress) {
-        const progress = Math.round((event.loaded / event.total) * 100);
+        const progress = Math.round((event.loaded / event.total) * 90);
         onProgress(progress);
       }
     });
 
-    // Handle completion
     xhr.addEventListener('load', () => {
-      // Check content type before parsing
-      const contentType = xhr.getResponseHeader('content-type');
-      if (!contentType || !contentType.includes('application/json')) {
-        logger.error('Server returned non-JSON response:', {
-          status: xhr.status,
-          contentType,
-        });
-        logger.error('Response body:', xhr.responseText.substring(0, 500));
-        reject(new Error(`Upload failed with status ${xhr.status}: Server returned HTML instead of JSON`));
-        return;
-      }
-
-      try {
-        const result = JSON.parse(xhr.responseText);
-
-        if (xhr.status >= 200 && xhr.status < 300) {
-          resolve(result.attachment);
-        } else {
-          logger.error('Upload failed:', {
-            status: xhr.status,
-            error: result.error,
-            details: result.details,
-            message: result.message
-          });
-          reject(new Error(result.message || result.error || 'Failed to upload file'));
-        }
-      } catch (parseError) {
-        logger.error('Failed to parse response:', parseError);
-        reject(new Error('Failed to parse server response'));
+      if (xhr.status >= 200 && xhr.status < 300) {
+        resolve();
+      } else {
+        logger.error('Direct upload failed:', { status: xhr.status, response: xhr.responseText.substring(0, 500) });
+        reject(new Error(`Upload to storage failed (status ${xhr.status})`));
       }
     });
 
-    // Handle network errors
-    xhr.addEventListener('error', () => {
-      reject(new Error('Network error during file upload'));
-    });
+    xhr.addEventListener('error', () => reject(new Error('Network error during file upload')));
+    xhr.addEventListener('abort', () => reject(new Error('File upload was cancelled')));
 
-    // Handle aborts
-    xhr.addEventListener('abort', () => {
-      reject(new Error('File upload was cancelled'));
-    });
-
-    // Send the request
-    xhr.open('POST', '/api/attachments/upload');
-    xhr.send(formData);
+    xhr.open('PUT', signedUrl);
+    xhr.setRequestHeader('Content-Type', file.type || 'application/octet-stream');
+    xhr.send(file);
   });
+
+  // Step 3: Register the attachment in the database
+  onProgress?.(95);
+
+  const registerRes = await fetch('/api/attachments/upload', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      action: 'register',
+      entityType,
+      entityId,
+      fileName: file.name,
+      fileSize: file.size,
+      fileType: file.type || 'application/octet-stream',
+      filePath: path,
+    }),
+  });
+
+  if (!registerRes.ok) {
+    const err = await registerRes.json().catch(() => ({ message: 'Failed to save attachment record' }));
+    throw new Error(err.message || 'Failed to save attachment record');
+  }
+
+  const result = await registerRes.json();
+  onProgress?.(100);
+  return result.attachment;
 }
 
 // Function to delete a file (still uses client-side Supabase for now)
