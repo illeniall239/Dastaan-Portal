@@ -1559,12 +1559,11 @@ function DeliveryTrendChart({ projects }: { projects: TrackingProject[] }) {
         agg.set(entry.month, existing);
       }
     }
-    if (agg.size === 0) return [];
-
-    // Fill in all months between first and last data point
+    // Fill in all months from Jan 2026 to last data point
     const indices = Array.from(agg.keys()).map(toIdx);
-    const minIdx = Math.min(...indices);
-    const maxIdx = Math.max(...indices);
+    const jan26Idx = 2026 * 12 + 0; // Jan 2026
+    const minIdx = indices.length > 0 ? Math.min(jan26Idx, ...indices) : jan26Idx;
+    const maxIdx = indices.length > 0 ? Math.max(...indices) : jan26Idx;
     const result: { month: string; "Fresh Eps": number; "Rev Eps": number }[] = [];
     for (let i = minIdx; i <= maxIdx; i++) {
       const key = fromIdx(i);
