@@ -68,7 +68,7 @@ export const TopBar = memo(function TopBar({
   const router = useRouter();
   const pathname = usePathname();
   const { notifications, unreadCount, handleMarkAsRead, handleMarkAllAsRead } = useNotificationContext();
-  const { toggleMobile } = useSidebar();
+  const { isCollapsed, toggleMobile } = useSidebar();
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
@@ -94,7 +94,7 @@ export const TopBar = memo(function TopBar({
       {isLoggingOut && <LoadingSpinner text="Logging out..." />}
 
       {/* Fixed top bar spanning the full width on mobile, starting after sidebar on desktop */}
-      <div className="fixed top-0 right-0 left-0 lg:left-70 h-14 bg-white border-b border-gray-200 z-[60] flex items-center justify-between px-4 lg:px-8">
+      <div className={cn("fixed top-0 right-0 left-0 h-14 bg-white border-b border-gray-200 z-[60] flex items-center justify-between px-4 lg:px-8 transition-all duration-300", isCollapsed ? "lg:left-16" : "lg:left-70")}>
         {/* Left side: Hamburger menu (mobile only) */}
         <Button
           variant="ghost"

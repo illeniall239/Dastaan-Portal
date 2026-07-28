@@ -13,6 +13,8 @@ import {
   Settings,
   ChefHat,
   X,
+  PanelLeftClose,
+  PanelLeftOpen,
   Users,
   DollarSign,
   AlertTriangle,
@@ -80,7 +82,7 @@ export const Sidebar = memo(function Sidebar({
   navItems = []
 }: SidebarProps) {
   const pathname = usePathname();
-  const { isMobileOpen, closeMobile } = useSidebar();
+  const { isCollapsed, isMobileOpen, toggleCollapse, closeMobile } = useSidebar();
 
   const handleNavClick = () => {
     if (isMobileOpen) {
@@ -102,66 +104,88 @@ export const Sidebar = memo(function Sidebar({
       {/* Sidebar */}
       <aside
         className={cn(
-          "fixed top-0 left-0 h-full bg-white z-50 flex flex-col transition-transform duration-300 ease-in-out",
-          // Desktop - always visible
-          "lg:w-70 lg:translate-x-0",
-          // Mobile - slide in/out
+          "fixed top-0 left-0 h-full bg-white z-50 flex flex-col transition-all duration-300 ease-in-out border-r border-gray-200",
+          // Desktop - always visible, width depends on collapse state
+          isCollapsed ? "lg:w-16" : "lg:w-70",
+          "lg:translate-x-0",
+          // Mobile - always expanded, slide in/out
           "w-[calc(100vw-3rem)] max-w-[280px]",
           isMobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
         )}
       >
         {/* Header Section */}
-        <div className="h-14 flex items-center justify-center px-4 border-b border-gray-200 bg-white flex-shrink-0 relative">
-          {/* Logo - Centered */}
-          <Link
-            href={navItems[0]?.href || "/content-department"}
-            className="transition-all duration-150"
-            onClick={handleNavClick}
-          >
-            <span
-              dir="rtl"
-              lang="ur"
-              className="font-urdu font-bold text-orange-500 text-xl"
+        <div className="h-14 flex items-center justify-between px-3 border-b border-gray-200 bg-white flex-shrink-0">
+          {/* Desktop: Logo + toggle */}
+          {!isCollapsed && (
+            <Link
+              href={navItems[0]?.href || "/content-department"}
+              className="hidden lg:block font-heading font-bold text-[#224794] text-base"
+              onClick={handleNavClick}
             >
-              داستان
-            </span>
-          </Link>
-
-          {/* Mobile close button - Absolute positioned */}
+              Dastaan
+            </Link>
+          )}
           <Button
             variant="ghost"
             size="icon"
-            onClick={closeMobile}
-            className="lg:hidden h-8 w-8 absolute right-4 text-gray-700 hover:bg-gray-100"
-            aria-label="Close sidebar"
+            onClick={toggleCollapse}
+            className="hidden lg:flex h-9 w-9 text-gray-700 hover:bg-gray-100 flex-shrink-0"
+            aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
           >
-            <X className="h-5 w-5" />
+            {isCollapsed ? <PanelLeftOpen className="h-5 w-5" /> : <PanelLeftClose className="h-5 w-5" />}
           </Button>
+
+          {/* Mobile: Logo + close button */}
+          <div className="lg:hidden flex items-center justify-between w-full px-2">
+            <Link
+              href={navItems[0]?.href || "/content-department"}
+              className="font-heading font-bold text-[#224794] text-base"
+              onClick={handleNavClick}
+            >
+              Dastaan
+            </Link>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={closeMobile}
+              className="h-8 w-8 text-gray-700 hover:bg-gray-100"
+              aria-label="Close sidebar"
+            >
+              <X className="h-5 w-5" />
+            </Button>
+          </div>
         </div>
 
         {/* Navigation Section (scrollable) */}
-        <nav className="flex-1 overflow-y-auto py-4 px-2 border-r border-gray-200">
+        <nav className="flex-1 overflow-y-auto py-4 px-2">
           <ul className="space-y-1">
             {navItems.map((item) => {
               const Icon = getIconComponent(item.icon);
               const isActive = pathname === item.href;
 
               return (
-                <li key={item.href}>
+                <li key={item.href} className="relative group">
                   <Link
                     href={item.href}
                     prefetch
                     onClick={handleNavClick}
                     className={cn(
-                      "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150 group",
+                      "flex items-center gap-3 rounded-lg text-sm font-medium transition-all duration-150",
+                      isCollapsed ? "justify-center px-2 py-2.5" : "px-3 py-2.5",
                       isActive
                         ? "bg-blue-50 text-[#224794] border-l-4 border-[#224794]"
                         : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
                     )}
                   >
                     <Icon className="h-5 w-5 flex-shrink-0" />
-                    <span className="truncate">{item.title}</span>
+                    {!isCollapsed && <span className="truncate">{item.title}</span>}
                   </Link>
+                  {/* Tooltip on hover when collapsed */}
+                  {isCollapsed && (
+                    <div className="hidden lg:group-hover:flex absolute left-full top-1/2 -translate-y-1/2 ml-2 px-2.5 py-1.5 bg-gray-900 text-white text-xs rounded-md whitespace-nowrap z-[100] shadow-lg">
+                      {item.title}
+                    </div>
+                  )}
                 </li>
               );
             })}

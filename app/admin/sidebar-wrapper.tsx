@@ -27,7 +27,7 @@ export function SidebarWrapper({
   navItems,
   children,
 }: SidebarWrapperProps) {
-  const { toggleMobile } = useSidebar();
+  const { isCollapsed, toggleMobile } = useSidebar();
   const [mounted, setMounted] = useState(false);
 
   // Only render interactive components after mounting to avoid hydration mismatch
@@ -48,7 +48,7 @@ export function SidebarWrapper({
           userPosition={userPosition}
         />
       )}
-      <div className="flex flex-col flex-1 transition-all duration-150 lg:ml-70 pt-16">
+      <div className={`flex flex-col flex-1 transition-all duration-300 ${isCollapsed ? 'lg:ml-16' : 'lg:ml-70'} pt-16`}>
         <main className="flex-1">{children}</main>
       </div>
     </div>
