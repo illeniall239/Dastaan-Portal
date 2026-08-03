@@ -334,6 +334,7 @@ export default function LogEpisodesPage() {
             attachment_type,
             additional_info: episode.additional_info || null,
             initial_assessment: episode.initial_assessment || null,
+            original_submission_date: episode.original_submission_date || null,
           };
         })
       );

@@ -332,6 +332,7 @@ export default function LogEpisodesPage() {
             attachment_name,
             attachment_type,
             additional_info: episode.additional_info || null,
+            original_submission_date: episode.original_submission_date || null,
           };
         })
       );

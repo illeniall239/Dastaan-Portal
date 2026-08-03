@@ -107,6 +107,7 @@ export const createMultipleEpisodesSchema = z.object({
           .nullable()
           .transform((val) => (val ? val.trim() : null)),
         initial_assessment: z.number().min(1).max(10).optional().nullable(),
+        original_submission_date: z.string().optional().nullable(),
       })
     )
     .min(1, "At least one episode must be provided")
