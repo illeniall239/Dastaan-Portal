@@ -88,6 +88,7 @@ interface Project {
     revised_commitment_date?: string | null;
     delay_notes?: string | null;
   } | null;
+  maxFeedbackDays: number | null;
 }
 
 interface TrackingRevision {
@@ -214,6 +215,27 @@ function matchesRatingBucket(avg: number | null, bucket: string): boolean {
   return true;
 }
 
+function getTeamAvgScores(
+  grades: Record<string, { epRange: string; avgScore: number | null }>,
+  evaluatorList: Evaluator[]
+): Record<string, number | null> {
+  const teamScores: Record<string, number[]> = {};
+  for (const ev of evaluatorList) {
+    const g = grades[ev.id];
+    if (!g || g.avgScore === null) continue;
+    if (!teamScores[ev.group]) teamScores[ev.group] = [];
+    teamScores[ev.group].push(g.avgScore);
+  }
+  const result: Record<string, number | null> = {};
+  for (const group of ["Management", "Content Development", "Programming"]) {
+    const scores = teamScores[group];
+    result[group] = scores?.length
+      ? Math.round((scores.reduce((a, b) => a + b, 0) / scores.length) * 10) / 10
+      : null;
+  }
+  return result;
+}
+
 function groupWeeksByMonth(weeks: Week[]): MonthGroup[] {
   const groups = new Map<string, MonthGroup>();
   for (const w of weeks) {
@@ -288,6 +310,8 @@ export default function ContentAgingPage() {
   const [writerFilter, setWriterFilter] = useState<string>("all");
   const [oneLinerRatingFilter, setOneLinerRatingFilter] = useState<string>("all");
   const [episodicRatingFilter, setEpisodicRatingFilter] = useState<string>("all");
+  const [feedbackDelayFilter, setFeedbackDelayFilter] = useState<string>("all");
+  const [crossTeamFilter, setCrossTeamFilter] = useState<string>("all");
   const [freezePanes, setFreezePanes] = useState(false);
   const freezeRef = useFreezeColumns(freezePanes, 3);
   const [deliveryPeriod, setDeliveryPeriod] = useState<"monthly" | "quarterly" | "biannual" | "annual">("monthly");
@@ -518,6 +542,24 @@ export default function ContentAgingPage() {
       if (writerFilter !== "all" && p.writerName !== writerFilter) return false;
       if (!matchesRatingBucket(getProjectAvgOneLiner(p.oneLinerGrades), oneLinerRatingFilter)) return false;
       if (!matchesRatingBucket(getProjectAvgEpisodic(p.allEvaluatorGrades), episodicRatingFilter)) return false;
+      if (feedbackDelayFilter !== "all") {
+        const d = p.maxFeedbackDays;
+        if (feedbackDelayFilter === "7plus" && (d === null || d < 7)) return false;
+        if (feedbackDelayFilter === "14plus" && (d === null || d < 14)) return false;
+        if (feedbackDelayFilter === "ontime" && (d === null || d > 7)) return false;
+        if (feedbackDelayFilter === "pending" && d !== null) return false;
+      }
+      if (crossTeamFilter !== "all") {
+        const teamAvgs = getTeamAvgScores(p.allEvaluatorGrades, evaluators);
+        const teams = ["Management", "Content Development", "Programming"];
+        if (crossTeamFilter === "all_7") {
+          if (!teams.every(t => teamAvgs[t] !== null && teamAvgs[t]! >= 7)) return false;
+        } else if (crossTeamFilter === "all_8") {
+          if (!teams.every(t => teamAvgs[t] !== null && teamAvgs[t]! >= 8)) return false;
+        } else if (crossTeamFilter === "any_below_7") {
+          if (!teams.some(t => teamAvgs[t] !== null && teamAvgs[t]! < 7)) return false;
+        }
+      }
       if (deliveryRank === "max" && p.writerName !== writerDeliveryRanking.maxWriter) return false;
       if (deliveryRank === "min" && p.writerName !== writerDeliveryRanking.minWriter) return false;
       if (search) {
@@ -530,7 +572,7 @@ export default function ContentAgingPage() {
       }
       return true;
     });
-  }, [projects, statusFilter, slotFilter, teamHeadFilter, scheduleFilter, writerFilter, oneLinerRatingFilter, episodicRatingFilter, search, deliveryRank, writerDeliveryRanking]);
+  }, [projects, statusFilter, slotFilter, teamHeadFilter, scheduleFilter, writerFilter, oneLinerRatingFilter, episodicRatingFilter, feedbackDelayFilter, crossTeamFilter, evaluators, search, deliveryRank, writerDeliveryRanking]);
 
   const stats = useMemo(() => ({
     total: projects.length,
@@ -841,6 +883,29 @@ export default function ContentAgingPage() {
                 <SelectItem value="mid">Medium (6–8)</SelectItem>
                 <SelectItem value="low">Low (&lt;6)</SelectItem>
                 <SelectItem value="unrated">Unrated</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={feedbackDelayFilter} onValueChange={setFeedbackDelayFilter}>
+              <SelectTrigger className="h-9 text-xs">
+                <SelectValue placeholder="Eval Delay" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Eval Delays</SelectItem>
+                <SelectItem value="ontime">On Time (≤7d)</SelectItem>
+                <SelectItem value="7plus">Delayed (7+ days)</SelectItem>
+                <SelectItem value="14plus">Very Delayed (14+ days)</SelectItem>
+                <SelectItem value="pending">Pending Feedback</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={crossTeamFilter} onValueChange={setCrossTeamFilter}>
+              <SelectTrigger className="h-9 text-xs">
+                <SelectValue placeholder="Cross-Team Grade" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Cross-Team</SelectItem>
+                <SelectItem value="all_7">All 3 Teams ≥ 7</SelectItem>
+                <SelectItem value="all_8">All 3 Teams ≥ 8</SelectItem>
+                <SelectItem value="any_below_7">Any Team &lt; 7</SelectItem>
               </SelectContent>
             </Select>
             <Select value={deliveryPeriod} onValueChange={(v) => setDeliveryPeriod(v as typeof deliveryPeriod)}>

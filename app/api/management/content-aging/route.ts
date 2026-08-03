@@ -49,6 +49,12 @@ function getExpectedPerMonth(schedule: string): number | null {
   return schedule.endsWith("_per_month") ? parseInt(schedule) : null;
 }
 
+function daysBetween(d1: string | null, d2: string | null): number | null {
+  if (!d1 || !d2) return null;
+  const ms = new Date(d2).getTime() - new Date(d1).getTime();
+  return Math.round(ms / 86400000);
+}
+
 function buildEvaluatorGrade(data: { epNums: number[]; scores: number[] }) {
   const sorted = [...data.epNums].sort((a, b) => a - b);
   const epRange = sorted.length === 0 ? "" : sorted.length === 1 ? `EP ${sorted[0]}` : `EP ${sorted[0]}–${sorted[sorted.length - 1]}`;
@@ -155,7 +161,7 @@ export async function GET(request: NextRequest) {
       ? await admin
           .from("episodic_evaluations")
           .select(`
-            episode_id, evaluator_id, overall_average,
+            episode_id, evaluator_id, overall_average, submitted_at,
             evaluator:users!evaluator_id(id, name, email, role)
           `)
           .in("episode_id", episodeIds)
@@ -358,6 +364,23 @@ export async function GET(request: NextRequest) {
         })
         .sort((a, b) => a.name.localeCompare(b.name));
 
+      // Compute max feedback days across all episodes
+      let maxFeedbackDays: number | null = null;
+      for (const ep of crEpisodes) {
+        const evals = evalsByEpisode.get(ep.id) || [];
+        const submittedDates = evals
+          .map((ev: any) => ev.submitted_at)
+          .filter((d: string | null): d is string => !!d);
+        if (submittedDates.length > 0) {
+          const earliest = submittedDates.sort()[0];
+          const epDate = ep.original_submission_date ?? ep.created_at;
+          const days = daysBetween(epDate, earliest);
+          if (days !== null && (maxFeedbackDays === null || days > maxFeedbackDays)) {
+            maxFeedbackDays = days;
+          }
+        }
+      }
+
       const team = Array.isArray((cr as any).team) ? (cr as any).team[0] : (cr as any).team;
       const teamHead = team ? (Array.isArray(team.head) ? team.head[0] : team.head) : null;
 
@@ -389,6 +412,7 @@ export async function GET(request: NextRequest) {
         teamHeadName: teamHead?.name || null,
         teamHeadEmail: teamHead?.email || null,
         commitment: commitmentMap[cr.id] ?? null,
+        maxFeedbackDays,
       };
     });
 
