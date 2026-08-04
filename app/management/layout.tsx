@@ -16,7 +16,6 @@ const baseNavItems = [
   { title: "Content Aging",             href: "/management/content-aging",      icon: "clock" },
   { title: "Cross-Team Shares Tracking", href: "/management/cross-team-shares",  icon: "share2" },
   { title: "Teams",               href: "/management/teams",              icon: "users" },
-  { title: "AI Assistant",        href: "/management/ai-assistant",       icon: "sparkles" },
 ];
 
 const pendingEvaluationsItem = {
@@ -41,6 +40,11 @@ export default async function ManagementLayout({
   // Approval Tracking is visible to all management members
   let navItems = [...baseNavItems.slice(0, 7), pendingEvaluationsItem, ...baseNavItems.slice(7)];
 
+  // AI Assistant only for mir
+  if (user.email === "mir@geo.tv") {
+    navItems = [navItems[0], { title: "AI Assistant", href: "/management/ai-assistant", icon: "sparkles" }, ...navItems.slice(1)];
+  }
+
   // management_viewer: data/quantity reports only — no scripts, evaluations, or one-liners
   if (user.role === "management_viewer") {
     const blockedHrefs = [
@@ -64,6 +68,7 @@ export default async function ManagementLayout({
       userEmail={user.email}
       userPosition={user.position}
       navItems={navItems}
+      showAIButton={user.email === "mir@geo.tv"}
     >
       {children}
     </SidebarWrapper>

@@ -8,6 +8,7 @@ import {
   CheckCircle2,
   LogOut,
   Menu,
+  Sparkles,
 } from "lucide-react";
 import { logger } from "@/lib/logger";
 import { Button } from "@/components/ui/button";
@@ -31,6 +32,7 @@ interface TopBarProps {
   userPosition?: string;
   teamName?: string | null;
   isDemoMode?: boolean;
+  showAIButton?: boolean;
 }
 
 function getNotificationIcon(type: string) {
@@ -64,6 +66,7 @@ export const TopBar = memo(function TopBar({
   userPosition,
   teamName,
   isDemoMode = false,
+  showAIButton = false,
 }: TopBarProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -116,6 +119,23 @@ export const TopBar = memo(function TopBar({
             <span className="hidden sm:inline-flex items-center rounded-full bg-blue-50 border border-blue-200 px-3 py-1 text-xs font-medium text-blue-700">
               {teamName}
             </span>
+          )}
+
+          {/* AI Assistant Button */}
+          {showAIButton && (
+            <Button
+              variant="ghost"
+              onClick={() => router.push("/management/ai-assistant")}
+              className={cn(
+                "h-9 gap-1.5 rounded-full px-3 transition-colors",
+                pathname === "/management/ai-assistant"
+                  ? "bg-primary/10 text-primary hover:bg-primary/15"
+                  : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+              )}
+            >
+              <Sparkles className="h-4 w-4" />
+              <span className="hidden sm:inline text-sm font-medium">AI Assistant</span>
+            </Button>
           )}
 
           {/* Notifications Dropdown */}

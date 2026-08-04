@@ -47,6 +47,14 @@ function fmtDate(d: string): string {
   return new Date(d).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
 }
 
+// Fuzzy ILIKE pattern: "jang e ishq" → "%jang%ishq%" (each word becomes a wildcard segment)
+// This matches "Jang-e-Ishq", "Jang E Ishq", "jang_e_ishq", etc.
+function fuzzy(term: string): string {
+  const words = term.replace(/[^a-zA-Z0-9\s]/g, " ").split(/\s+/).filter(w => w.length > 1);
+  if (words.length === 0) return `%${term}%`;
+  return `%${words.join("%")}%`;
+}
+
 // ─── Tool definitions — ALL params "type": "string", no enum, no number ────────
 // Groq validates types strictly. Using only strings avoids all schema errors.
 const DATA_TOOLS = [
@@ -144,7 +152,7 @@ const DATA_TOOLS = [
           },
           status: {
             type: "string",
-            description: "Filter by status: behind or received.",
+            description: "OPTIONAL filter: 'behind' (not all eps delivered) or 'complete' (all eps delivered). Omit to get all projects.",
           },
         },
       },
@@ -276,7 +284,7 @@ async function toolQueryEvaluations(
   let userIds: string[] | null = null;
   let userNames: Record<string, string> = {};
   if (args.evaluator_name) {
-    const { data } = await admin.from("users").select("id, name").ilike("name", `%${args.evaluator_name}%`);
+    const { data } = await admin.from("users").select("id, name").ilike("name", fuzzy(args.evaluator_name));
     const found = data as any[] || [];
     if (found.length === 0) return { message: `No person found matching "${args.evaluator_name}"`, total: 0 };
     userIds = found.map((u: any) => u.id);
@@ -286,7 +294,7 @@ async function toolQueryEvaluations(
   // Resolve project(s) for title filter
   let crIds: string[] | null = null;
   if (args.project_title) {
-    const { data } = await admin.from("call_reports").select("id, working_title").ilike("working_title", `%${args.project_title}%`);
+    const { data } = await admin.from("call_reports").select("id, working_title").ilike("working_title", fuzzy(args.project_title));
     const found = data as any[] || [];
     if (found.length === 0) return { message: `No project found matching "${args.project_title}"`, total: 0 };
     crIds = found.map((r: any) => r.id);
@@ -438,7 +446,7 @@ async function toolQueryContent(
 
   let teamIds: string[] | null = null;
   if (args.team_name) {
-    const { data } = await admin.from("teams").select("id, name").ilike("name", `%${args.team_name}%`);
+    const { data } = await admin.from("teams").select("id, name").ilike("name", fuzzy(args.team_name));
     const found = data as any[] || [];
     if (found.length === 0) return { message: `No team found matching "${args.team_name}"`, count: 0 };
     teamIds = found.map((t: any) => t.id);
@@ -447,7 +455,7 @@ async function toolQueryContent(
   // Accurate count
   let cq: any = admin.from("call_reports").select("id", { count: "exact", head: true })
     .eq("meeting_type", "call_report").is("archived_at", null);
-  if (args.search) cq = cq.or(`working_title.ilike.%${args.search}%,writer_name.ilike.%${args.search}%`);
+  if (args.search) cq = cq.or(`working_title.ilike.${fuzzy(args.search)},writer_name.ilike.${fuzzy(args.search)}`);
   if (teamIds)     cq = cq.in("team_id", teamIds);
   if (range)       cq = cq.gte("created_at", range.start.toISOString()).lte("created_at", range.end.toISOString());
 
@@ -458,7 +466,7 @@ async function toolQueryContent(
     .order("created_at", { ascending: false })
     .limit(50);
 
-  if (args.search) q = q.or(`working_title.ilike.%${args.search}%,writer_name.ilike.%${args.search}%`);
+  if (args.search) q = q.or(`working_title.ilike.${fuzzy(args.search)},writer_name.ilike.${fuzzy(args.search)}`);
   if (teamIds)     q = q.in("team_id", teamIds);
   if (range)       q = q.gte("created_at", range.start.toISOString()).lte("created_at", range.end.toISOString());
 
@@ -488,7 +496,7 @@ async function toolQueryPersonActivity(
   args: { person_name: string; period?: string },
   admin: AdminClient
 ) {
-  const { data: found } = await admin.from("users").select("id, name, role, email").ilike("name", `%${args.person_name}%`).limit(5);
+  const { data: found } = await admin.from("users").select("id, name, role, email").ilike("name", fuzzy(args.person_name)).limit(5);
   const people = found as any[] || [];
   if (people.length === 0) return { message: `No person found matching "${args.person_name}"` };
 
@@ -532,52 +540,51 @@ async function toolQueryEpisodeDelivery(
   args: { project_title?: string; writer_name?: string; status?: string },
   admin: AdminClient
 ) {
-  let q: any = admin.from("call_reports")
-    .select("id, working_title, writer_name, total_episodes")
-    .eq("meeting_type", "call_report")
-    .is("archived_at", null)
-    .limit(100);
+  // Use consolidated_cms_view — the same source every working portal page uses.
+  // It already has actual_received_episodes computed from the episodes table.
+  let q: any = admin.from("consolidated_cms_view")
+    .select("id, working_title, writer_name, total_episodes, received_episodes, actual_received_episodes, completion_percentage, first_episode_received_at, last_episode_received_at, status");
 
-  if (args.project_title) q = q.ilike("working_title", `%${args.project_title}%`);
-  if (args.writer_name)   q = q.ilike("writer_name",   `%${args.writer_name}%`);
+  if (args.project_title) q = q.ilike("working_title", fuzzy(args.project_title));
+  if (args.writer_name)   q = q.ilike("writer_name",   fuzzy(args.writer_name));
 
-  const { data: projects } = await q;
-  const list = projects as any[] || [];
-  if (list.length === 0) return { count: 0, items: [] };
+  const { data, error } = await q;
+  if (error) return { count: 0, message: `Query error: ${error.message}`, items: [] };
 
-  const ids = list.map((p: any) => p.id);
-  const [{ data: eps }, { data: negs }] = await Promise.all([
-    admin.from("episodes").select("call_report_id").in("call_report_id", ids).eq("is_current", true),
-    admin.from("negotiations").select("call_report_id, estimated_episodes, expected_completion_date").in("call_report_id", ids),
-  ]);
-
-  const epCounts = new Map<string, number>();
-  for (const ep of (eps as any[] || [])) epCounts.set(ep.call_report_id, (epCounts.get(ep.call_report_id) || 0) + 1);
-  const negMap = new Map((negs as any[] || []).map((n: any) => [n.call_report_id, n]));
+  const list = (data as any[]) || [];
+  if (list.length === 0) {
+    return { count: 0, message: `No project found matching "${args.project_title || args.writer_name || "all"}"`, items: [] };
+  }
 
   const enriched = list.map((p: any) => {
-    const neg = negMap.get(p.id);
-    const required = p.total_episodes || neg?.estimated_episodes || null;
-    const received = epCounts.get(p.id) || 0;
-    const deliveryStatus = !required ? "no_target" : received >= required ? "received" : "behind";
+    const required = p.total_episodes || null;
+    // actual_received_episodes = counted from episodes table (is_current=true)
+    // received_episodes = manually entered field on call_reports
+    const received = p.actual_received_episodes || p.received_episodes || 0;
+    const deliveryStatus = !required ? "no_target" : received >= required ? "complete" : "behind";
     return {
       title: p.working_title || "Untitled",
       writer: p.writer_name || "Unknown",
       required,
       received,
+      completion: p.completion_percentage ? `${p.completion_percentage}%` : null,
+      first_episode: p.first_episode_received_at ? fmtDate(p.first_episode_received_at) : null,
+      last_episode: p.last_episode_received_at ? fmtDate(p.last_episode_received_at) : null,
+      project_status: p.status || "unknown",
       status: deliveryStatus,
-      deadline: neg?.expected_completion_date || null,
     };
   });
 
-  const filtered = args.status
-    ? enriched.filter((r) => r.status === args.status!.toLowerCase())
+  // Only filter if status is a known filter value; ignore vague terms like "received"
+  const statusArg = (args.status || "").toLowerCase();
+  const filtered = (statusArg === "behind" || statusArg === "complete")
+    ? enriched.filter((r) => r.status === statusArg)
     : enriched;
 
   const behind   = filtered.filter((r) => r.status === "behind").length;
-  const received = filtered.filter((r) => r.status === "received").length;
+  const complete = filtered.filter((r) => r.status === "complete").length;
 
-  return { count: filtered.length, behind, received, items: filtered };
+  return { count: filtered.length, behind, complete, items: filtered };
 }
 
 async function toolQueryPending(args: { type?: string }, admin: AdminClient) {
@@ -631,7 +638,7 @@ async function toolQueryTeamStats(args: { team_name?: string; period?: string },
   const range = parsePeriod(args.period);
 
   let q: any = admin.from("teams").select("id, name, team_head_id");
-  if (args.team_name) q = q.ilike("name", `%${args.team_name}%`);
+  if (args.team_name) q = q.ilike("name", fuzzy(args.team_name));
   const { data: teams } = await q;
   const teamList = teams as any[] || [];
   if (teamList.length === 0) return { message: `No team found matching "${args.team_name}"` };
@@ -824,33 +831,24 @@ async function toolQueryWriters(
   const range = parsePeriod(args.period);
 
   let wq: any = admin.from("writers").select("id, name, phone, email, created_at").order("name");
-  if (args.writer_name) wq = wq.ilike("name", `%${args.writer_name}%`);
+  if (args.writer_name) wq = wq.ilike("name", fuzzy(args.writer_name));
   const { data: writerRows } = await wq;
   const writers = writerRows as any[] || [];
   if (writers.length === 0) return { message: args.writer_name ? `No writer found matching "${args.writer_name}"` : "No writers in the system", count: 0 };
 
-  // Get project counts per writer from call_reports
-  let cq: any = admin.from("call_reports")
-    .select("id, working_title, writer_name, created_at")
-    .eq("meeting_type", "call_report")
-    .is("archived_at", null);
+  // Get project and episode data from consolidated_cms_view (same source as all portal pages)
+  let cq: any = admin.from("consolidated_cms_view")
+    .select("id, working_title, writer_name, created_at, actual_received_episodes, received_episodes");
   if (range) cq = cq.gte("created_at", range.start.toISOString()).lte("created_at", range.end.toISOString());
   const { data: allCRs } = await cq;
   const crList = allCRs as any[] || [];
-
-  // Episode counts per writer
-  let eq: any = admin.from("episodes").select("id, call_report_id").eq("is_current", true);
-  const { data: allEps } = await eq;
-  const epList = allEps as any[] || [];
-  const epByCR = new Map<string, number>();
-  for (const e of epList) epByCR.set(e.call_report_id, (epByCR.get(e.call_report_id) || 0) + 1);
 
   // Build writer stats
   const writerStats = writers.map((w: any) => {
     const writerProjects = crList.filter((cr: any) =>
       cr.writer_name?.toLowerCase().includes(w.name.toLowerCase())
     );
-    const totalEps = writerProjects.reduce((s, cr) => s + (epByCR.get(cr.id) || 0), 0);
+    const totalEps = writerProjects.reduce((s, cr) => s + (cr.actual_received_episodes || cr.received_episodes || 0), 0);
     return {
       name: w.name,
       phone: w.phone || null,
@@ -1280,7 +1278,17 @@ export async function POST(request: NextRequest) {
     }
 
     // ── Data-access agent (management/admin) — native function calling ─────────
-    const DATA_SYSTEM = `You are a data assistant for Dastaan Portal at GEO TV. You MUST call at least one tool for every question — never guess or make up data.
+    const DATA_SYSTEM = `You are a data assistant for Dastaan Portal at GEO TV.
+
+WHEN TO CALL TOOLS:
+- Call tools when the user asks a NEW question that requires fresh data from the database.
+- Call MULTIPLE tools for broad or ambiguous questions.
+- NEVER guess or make up numbers — if you need data you don't have, call the tool.
+
+WHEN TO SKIP TOOLS (respond with text instead):
+- If the conversation history already contains the answer (e.g., previous responses listed specific projects, scores, or counts), respond directly instead of re-querying.
+- Follow-up questions like "list those projects", "which one scored highest?", "tell me more about the third one" should be answered from the prior conversation.
+- Previous assistant messages may contain <!-- data-digest ... --> blocks with raw data from that turn — use these to answer follow-ups accurately.
 
 TOOL ROUTING GUIDE:
 - Overall summary / big picture / how are we doing → query_overview
@@ -1295,26 +1303,59 @@ TOOL ROUTING GUIDE:
 - Meetings, calendar → query_meetings
 - Story approvals, approved/rejected → query_approvals
 
-IMPORTANT: If the question is ambiguous or broad, call MULTIPLE tools to get a complete answer. For example:
+IMPORTANT: If the question is ambiguous or broad AND requires new data, call MULTIPLE tools. For example:
 - "How are things going?" → query_overview + query_pending + query_episode_delivery
 - "Tell me about project X" → query_evaluations(project_title=X) + query_episode_delivery(project_title=X) + query_contracts_payments(project_title=X)
-- "How is the team performing?" → query_team_stats + query_evaluations
+- "How is the team performing?" → query_team_stats + query_evaluations`;
 
-Always prefer calling more tools over fewer when the question is broad.`;
+    const memoryContext = memory.length > 0
+      ? `\n\nRELEVANT MEMORY FROM PAST CONVERSATIONS:\n${memory.slice(-20).map((m, i) => `${i + 1}. ${m}`).join("\n")}`
+      : "";
 
-    // Step 1: Ask LLM to pick and call tools (native function calling)
+    const NARRATION_SYSTEM = `You are a senior analyst briefing the CEO of GEO TV on data from the Dastaan content portal. Present data in a clear, structured, professional format using markdown.
+
+FORMATTING RULES:
+- Start with a one-line summary sentence answering the question directly.
+- When there are 3+ items, ALWAYS use a markdown table. Example:
+  | Project | Score | Evaluator | Date |
+  |---------|-------|-----------|------|
+  | Kabhi kabhi | 8.6 | Parisa | May 6, 2026 |
+- Use **bold** for key numbers, names, and statuses.
+- Use ### headings to separate sections (e.g. "### One-Liner Evaluations" and "### Episodic Evaluations").
+- For 1-2 items, a short paragraph is fine — no table needed.
+- When showing per-person summaries, use a table with columns like Name, One-Liner Count, Episodic Count, Total, Avg Score.
+- When showing delivery status, use a table with Project, Writer, Required, Received, Status.
+- Mark statuses with labels: "Behind", "On Track", "Complete".
+
+CONTENT RULES:
+- Lead with the direct answer in the first sentence.
+- Break down totals by category when relevant.
+- Use actual names — never UUIDs or IDs.
+- Format episodes as "Episode [number] of [Project Title]".
+- If results are empty, say so plainly and suggest why.
+- If multiple people matched a name, list each separately.
+- Keep it concise — this is an executive briefing.
+- Use the conversation history to connect follow-up answers to prior context.
+- Use memory from past conversations for richer context when relevant.
+
+MEMORY EXTRACTION:
+After your main answer, on a new line output a memory block:
+<memory>["fact 1", "fact 2"]</memory>
+Extract 1-3 key facts (scores, statuses, trends). If nothing noteworthy: <memory>[]</memory>.`;
+
+    // Step 1: Ask LLM to pick and call tools (native function calling, tool_choice=auto)
     let firstPass: any;
     try {
       firstPass = await callLLM(apiKey, {
         model: MODEL,
         messages: [
           { role: "system", content: DATA_SYSTEM },
-          ...history.slice(-4),
+          ...history.slice(-16),
           { role: "user", content: message.trim() },
         ],
         tools: DATA_TOOLS,
-        tool_choice: "required",
-        max_tokens: 1024,
+        tool_choice: "auto",
+        max_tokens: 4096,
         temperature: 0.1,
       });
     } catch (err: any) {
@@ -1324,10 +1365,44 @@ Always prefer calling more tools over fewer when the question is broad.`;
 
     const assistantMsg = firstPass.choices?.[0]?.message;
     const toolCalls = assistantMsg?.tool_calls;
+    const historyForNarration = history.slice(-10).map(
+      (m: { role: string; content: string }) => ({ role: m.role, content: m.content })
+    );
 
+    // If no tools called — LLM answered from conversation context
     if (!toolCalls || toolCalls.length === 0) {
-      console.log("[AI Agent] No tools called — returning direct response");
-      return NextResponse.json({ reply: assistantMsg?.content?.trim() || "I couldn't determine what data to look up. Please try rephrasing your question." });
+      console.log("[AI Agent] No tools called — answering from conversation context");
+      const directContent = assistantMsg?.content?.trim() || "";
+
+      if (directContent.length > 0) {
+        // Route through narration for consistent formatting
+        let secondData: any;
+        try {
+          secondData = await callLLM(apiKey, {
+            model: MODEL,
+            messages: [
+              { role: "system", content: NARRATION_SYSTEM },
+              ...historyForNarration,
+              { role: "user", content: `User's question: ${message.trim()}${memoryContext}\n\nContext from prior conversation (no new data fetched):\n\n${directContent}` },
+            ],
+            max_tokens: 4096,
+            temperature: 0.3,
+          });
+        } catch {
+          return NextResponse.json({ reply: directContent });
+        }
+
+        let fullReply = secondData.choices?.[0]?.message?.content?.trim() ?? directContent;
+        let memoryExtract: string[] = [];
+        const memoryMatch = fullReply.match(/<memory>([\s\S]*?)<\/memory>/);
+        if (memoryMatch) {
+          try { memoryExtract = JSON.parse(memoryMatch[1]); } catch {}
+          fullReply = fullReply.replace(/<memory>[\s\S]*?<\/memory>/, "").trim();
+        }
+        return NextResponse.json({ reply: fullReply, memoryExtract });
+      }
+
+      return NextResponse.json({ reply: "I couldn't determine what data to look up. Could you rephrase your question?" });
     }
 
     console.log("[AI Agent] Tools called:", toolCalls.map((tc: any) => tc.function.name).join(", "));
@@ -1349,44 +1424,10 @@ Always prefer calling more tools over fewer when the question is broad.`;
 
     console.log("[AI Agent] Tool results size:", toolResults.reduce((s, r) => s + r.data.length, 0), "chars");
 
-    // Step 3: Narrate the results (plain text, no tool message format)
+    // Step 3: Narrate the results with conversation history for continuity
     const dataContext = toolResults
       .map((tr) => `[${tr.name}]\n${tr.data}`)
       .join("\n\n");
-
-    const memoryContext = memory.length > 0
-      ? `\n\nRELEVANT MEMORY FROM PAST CONVERSATIONS:\n${memory.slice(-20).map((m, i) => `${i + 1}. ${m}`).join("\n")}`
-      : "";
-
-    const NARRATION_SYSTEM = `You are a senior analyst briefing the CEO of GEO TV on data from the Dastaan content portal. Present data in a clear, structured, professional format using markdown.
-
-FORMATTING RULES:
-- Start with a one-line summary sentence answering the question directly.
-- When there are 3+ items, ALWAYS use a markdown table. Example:
-  | Project | Score | Evaluator | Date |
-  |---------|-------|-----------|------|
-  | Kabhi kabhi | 8.6 | Parisa | May 6, 2026 |
-- Use **bold** for key numbers, names, and statuses.
-- Use ### headings to separate sections (e.g. "### One-Liner Evaluations" and "### Episodic Evaluations").
-- For 1-2 items, a short paragraph is fine — no table needed.
-- When showing per-person summaries, use a table with columns like Name, One-Liner Count, Episodic Count, Total, Avg Score.
-- When showing delivery status, use a table with Project, Writer, Required, Received, Status.
-- Mark statuses with labels: "Behind", "On Track", "Received".
-
-CONTENT RULES:
-- Lead with the direct answer in the first sentence.
-- Break down totals by category when relevant.
-- Use actual names — never UUIDs or IDs.
-- Format episodes as "Episode [number] of [Project Title]".
-- If results are empty, say so plainly and suggest why.
-- If multiple people matched a name, list each separately.
-- Keep it concise — this is an executive briefing.
-- Use memory from past conversations for richer context when relevant.
-
-MEMORY EXTRACTION:
-After your main answer, on a new line output a memory block:
-<memory>["fact 1", "fact 2"]</memory>
-Extract 1-3 key facts (scores, statuses, trends). If nothing noteworthy: <memory>[]</memory>.`;
 
     let secondData: any;
     try {
@@ -1394,6 +1435,7 @@ Extract 1-3 key facts (scores, statuses, trends). If nothing noteworthy: <memory
         model: MODEL,
         messages: [
           { role: "system", content: NARRATION_SYSTEM },
+          ...historyForNarration,
           { role: "user", content: `User's question: ${message.trim()}${memoryContext}\n\nData retrieved from the database:\n\n${dataContext}` },
         ],
         max_tokens: 4096,
@@ -1416,6 +1458,32 @@ Extract 1-3 key facts (scores, statuses, trends). If nothing noteworthy: <memory
       // Strip the memory tag from the visible reply
       fullReply = fullReply.replace(/<memory>[\s\S]*?<\/memory>/, "").trim();
     }
+
+    // Embed a compact data digest as an HTML comment so follow-up turns can access raw data.
+    // ReactMarkdown strips HTML comments — invisible to the user but persists in history.
+    const compactResults = toolResults.map((tr) => {
+      try {
+        const parsed = JSON.parse(tr.data);
+        if (parsed.items && Array.isArray(parsed.items) && parsed.items.length > 20) {
+          parsed.items = parsed.items.slice(0, 20);
+          parsed._truncated = true;
+        }
+        if (parsed.recent_one_liner_items && parsed.recent_one_liner_items.length > 10) {
+          parsed.recent_one_liner_items = parsed.recent_one_liner_items.slice(0, 10);
+        }
+        if (parsed.recent_episodic_items && parsed.recent_episodic_items.length > 10) {
+          parsed.recent_episodic_items = parsed.recent_episodic_items.slice(0, 10);
+        }
+        if (parsed.writers && Array.isArray(parsed.writers) && parsed.writers.length > 20) {
+          parsed.writers = parsed.writers.slice(0, 20);
+          parsed._truncated = true;
+        }
+        return `[${tr.name}] ${JSON.stringify(parsed)}`;
+      } catch {
+        return `[${tr.name}] ${tr.data.slice(0, 2000)}`;
+      }
+    }).join("\n");
+    fullReply += `\n\n<!-- data-digest\n${compactResults}\n-->`;
 
     return NextResponse.json({ reply: fullReply, memoryExtract });
   } catch (error) {

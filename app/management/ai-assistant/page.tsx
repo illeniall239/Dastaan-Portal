@@ -54,12 +54,30 @@ const mdComponents = {
 const MAX_MEMORY_ITEMS = 50;
 
 const SUGGESTIONS = [
+  // Overview
+  "Give me a full portal summary",
+  // Evaluations
   "What are the highest rated projects?",
   "How many evaluations were done this month?",
-  "Which projects are behind on delivery?",
-  "Show me pending evaluations",
-  "What has the content team been working on?",
-  "Who are the most active evaluators?",
+  // Episodes
+  "How many episodes received for Double Wala Love?",
+  "Which projects are behind on episode delivery?",
+  // People
+  "What has Ammar Usmani been working on?",
+  // Writers
+  "List all writers and their project counts",
+  // Contracts & Payments
+  "Show me active contracts and payment status",
+  // Teams
+  "How are the teams performing?",
+  // Pending
+  "What evaluations and approvals are pending?",
+  // Approvals
+  "Which stories were approved this year?",
+  // Meetings
+  "How many meetings happened this month?",
+  // Content
+  "What ideas were logged last month?",
 ];
 
 export default function AIAssistantPage() {
@@ -173,20 +191,9 @@ export default function AIAssistantPage() {
 
   return (
     <div className="flex flex-col h-[calc(100vh-4rem)]">
-      {/* Header */}
-      <div className="flex items-center justify-between px-6 py-4 border-b border-border bg-background">
-        <div className="flex items-center gap-3">
-          <div className="flex items-center justify-center w-9 h-9 rounded-xl bg-primary/10">
-            <Sparkles className="w-5 h-5 text-primary" />
-          </div>
-          <div>
-            <h1 className="text-lg font-semibold">AI Assistant</h1>
-            <p className="text-xs text-muted-foreground">
-              Ask anything about portal data — evaluations, deliveries, teams, and more
-            </p>
-          </div>
-        </div>
-        {messages.length > 0 && (
+      {/* Clear chat button — only when there are messages */}
+      {messages.length > 0 && (
+        <div className="flex justify-end px-6 py-2">
           <button
             onClick={clearChat}
             className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors px-3 py-1.5 rounded-lg hover:bg-muted"
@@ -194,8 +201,8 @@ export default function AIAssistantPage() {
             <Trash2 className="w-3.5 h-3.5" />
             Clear chat
           </button>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Messages area */}
       <div className="flex-1 overflow-y-auto">
@@ -208,7 +215,7 @@ export default function AIAssistantPage() {
             <p className="text-sm text-muted-foreground mb-8 text-center max-w-md">
               I can look up evaluations, track deliveries, check team performance, and answer any question about your portal data.
             </p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-w-xl w-full">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 max-w-3xl w-full">
               {SUGGESTIONS.map((s) => (
                 <button
                   key={s}
