@@ -2,7 +2,6 @@ import { getCurrentUser } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import "./print.css";
 import { SidebarWrapper } from "./sidebar-wrapper";
-import { AssistantChat } from "@/components/ui/assistant-chat";
 
 const baseNavItems = [
   { title: "Dashboard",           href: "/management",                    icon: "home" },
@@ -17,6 +16,7 @@ const baseNavItems = [
   { title: "Content Aging",             href: "/management/content-aging",      icon: "clock" },
   { title: "Cross-Team Shares Tracking", href: "/management/cross-team-shares",  icon: "share2" },
   { title: "Teams",               href: "/management/teams",              icon: "users" },
+  { title: "AI Assistant",        href: "/management/ai-assistant",       icon: "sparkles" },
 ];
 
 const pendingEvaluationsItem = {
@@ -59,16 +59,13 @@ export default async function ManagementLayout({
   }
 
   return (
-    <>
-      <SidebarWrapper
-        userName={user.name || "Management"}
-        userEmail={user.email}
-        userPosition={user.position}
-        navItems={navItems}
-      >
-        {children}
-      </SidebarWrapper>
-      {user.role !== "management_viewer" && <AssistantChat portalKey="management" />}
-    </>
+    <SidebarWrapper
+      userName={user.name || "Management"}
+      userEmail={user.email}
+      userPosition={user.position}
+      navItems={navItems}
+    >
+      {children}
+    </SidebarWrapper>
   );
 }

@@ -6,9 +6,8 @@ import { RateLimitPresets } from "@/lib/rate-limit-redis";
 
 export const dynamic = "force-dynamic";
 
-const GROQ_URL  = "https://api.groq.com/openai/v1/chat/completions";
-const MODEL      = "llama-3.3-70b-versatile"; // first pass — smart tool selection
-const MODEL_FAST = "llama-3.1-8b-instant";    // second pass — narrates tool results
+const GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions";
+const MODEL      = "gemini-2.5-flash";
 
 type AdminClient = ReturnType<typeof createAdminClient>;
 
@@ -191,6 +190,78 @@ const DATA_TOOLS = [
       },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "query_overview",
+      description:
+        "High-level dashboard overview of the entire portal: total projects, episodes, evaluations, writers, teams, contracts, meetings. Includes this-month breakdown. Use for: give me a summary, how are we doing, what's the overall status, show me the big picture, how much work has been done.",
+      parameters: { type: "object", properties: {} },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "query_contracts_payments",
+      description:
+        "Contract terms and payment data. Use for: how much did we pay [writer], total payments this month, which contracts are active, per-episode rates, payment status (paid/pending), financial summaries, money questions.",
+      parameters: {
+        type: "object",
+        properties: {
+          writer_name: { type: "string", description: "Filter by writer name." },
+          project_title: { type: "string", description: "Filter by project title." },
+          period: { type: "string", description: "Time period: this_month, last_month, this_year, etc." },
+          status: { type: "string", description: "Payment status filter: paid or pending." },
+        },
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "query_writers",
+      description:
+        "Writer information: list of all writers, how many projects each has, episodes delivered. Use for: list all writers, who are our writers, which writer has the most projects, writer engagement.",
+      parameters: {
+        type: "object",
+        properties: {
+          writer_name: { type: "string", description: "Search by writer name." },
+          period: { type: "string", description: "Time period for project counts." },
+        },
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "query_meetings",
+      description:
+        "Meeting/calendar data. Use for: how many meetings this week, who scheduled meetings, meeting history, calendar activity.",
+      parameters: {
+        type: "object",
+        properties: {
+          person_name: { type: "string", description: "Filter by person who created the meeting." },
+          period: { type: "string", description: "Time period: this_week, this_month, last_month, etc." },
+        },
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "query_approvals",
+      description:
+        "Story approval decisions. Use for: which stories were approved, rejected stories, approval history, who approved what.",
+      parameters: {
+        type: "object",
+        properties: {
+          project_title: { type: "string", description: "Filter by project title." },
+          status: { type: "string", description: "Filter: approved or rejected." },
+          period: { type: "string", description: "Time period: this_month, last_month, this_year, etc." },
+        },
+      },
+    },
+  },
 ];
 
 // ─── Tool execution ────────────────────────────────────────────────────────────
@@ -221,16 +292,26 @@ async function toolQueryEvaluations(
     crIds = found.map((r: any) => r.id);
   }
 
-  // Query both evaluation tables in parallel
+  // Get accurate total counts first (no limit)
+  let cq1: any = admin.from("evaluator_forms").select("id", { count: "exact", head: true }).not("submitted_at", "is", null);
+  let cq2: any = admin.from("episodic_evaluations").select("id", { count: "exact", head: true });
+  if (userIds) { cq1 = cq1.in("evaluator_id", userIds); cq2 = cq2.in("evaluator_id", userIds); }
+  if (crIds)   { cq1 = cq1.in("call_report_id", crIds); }
+  if (range) {
+    cq1 = cq1.gte("submitted_at", range.start.toISOString()).lte("submitted_at", range.end.toISOString());
+    cq2 = cq2.gte("created_at",   range.start.toISOString()).lte("created_at",   range.end.toISOString());
+  }
+
+  // Query all rows (for aggregation) — fetch evaluator_id + score + date
   let q1: any = admin.from("evaluator_forms")
     .select("id, average_score, submitted_at, evaluator_id, call_report_id")
     .not("submitted_at", "is", null)
     .order("submitted_at", { ascending: false })
-    .limit(100);
+    .limit(2000);
   let q2: any = admin.from("episodic_evaluations")
     .select("id, overall_average, created_at, evaluator_id, episode_id")
     .order("created_at", { ascending: false })
-    .limit(100);
+    .limit(2000);
 
   if (userIds) { q1 = q1.in("evaluator_id", userIds); q2 = q2.in("evaluator_id", userIds); }
   if (crIds)   { q1 = q1.in("call_report_id", crIds); }
@@ -239,19 +320,22 @@ async function toolQueryEvaluations(
     q2 = q2.gte("created_at",   range.start.toISOString()).lte("created_at",   range.end.toISOString());
   }
 
-  const [{ data: oneLinerEvals }, { data: episodicEvals }] = await Promise.all([q1, q2]);
+  const [{ count: olCount }, { count: epCount }, { data: oneLinerEvals }, { data: episodicEvals }] =
+    await Promise.all([cq1, cq2, q1, q2]);
   const ol = oneLinerEvals as any[] || [];
   const ep = episodicEvals as any[] || [];
+  const totalOl = olCount ?? ol.length;
+  const totalEp = epCount ?? ep.length;
 
   // Collect all IDs needed for enrichment
   const olCrIds = [...new Set(ol.map((e: any) => e.call_report_id))];
   const epEpisodeIds = [...new Set(ep.map((e: any) => e.episode_id))];
-  const olEvIds = [...new Set([...ol.map((e: any) => e.evaluator_id), ...ep.map((e: any) => e.evaluator_id)])];
+  const allEvIds = [...new Set([...ol.map((e: any) => e.evaluator_id), ...ep.map((e: any) => e.evaluator_id)])];
 
-  // Fetch episode details + call report titles in parallel
+  // Fetch enrichment data in parallel
   const [{ data: crs }, { data: evalUsers }, { data: episodeRows }] = await Promise.all([
     olCrIds.length ? admin.from("call_reports").select("id, working_title").in("id", olCrIds) : { data: [] },
-    olEvIds.length && !args.evaluator_name ? admin.from("users").select("id, name").in("id", olEvIds) : { data: [] },
+    allEvIds.length ? admin.from("users").select("id, name").in("id", allEvIds) : { data: [] },
     epEpisodeIds.length ? admin.from("episodes").select("id, episode_number, call_report_id").in("id", epEpisodeIds) : { data: [] },
   ]);
 
@@ -266,33 +350,83 @@ async function toolQueryEvaluations(
   const episodeMap = new Map((episodeRows as any[] || []).map((e: any) => [e.id, e]));
   for (const u of (evalUsers as any[] || [])) userNames[u.id] = u.name;
 
+  // Build per-evaluator summary (accurate counts + avg scores)
+  const evaluatorStats: Record<string, { olCount: number; epCount: number; olScores: number[]; epScores: number[] }> = {};
+  for (const e of ol) {
+    const id = e.evaluator_id;
+    if (!evaluatorStats[id]) evaluatorStats[id] = { olCount: 0, epCount: 0, olScores: [], epScores: [] };
+    evaluatorStats[id].olCount++;
+    if (e.average_score != null) evaluatorStats[id].olScores.push(parseFloat(e.average_score));
+  }
+  for (const e of ep) {
+    const id = e.evaluator_id;
+    if (!evaluatorStats[id]) evaluatorStats[id] = { olCount: 0, epCount: 0, olScores: [], epScores: [] };
+    evaluatorStats[id].epCount++;
+    if (e.overall_average != null) evaluatorStats[id].epScores.push(parseFloat(e.overall_average));
+  }
+
+  const avg = (arr: number[]) => arr.length ? (arr.reduce((a, b) => a + b, 0) / arr.length) : null;
+  const evaluatorSummary = Object.entries(evaluatorStats)
+    .map(([id, s]) => ({
+      name: userNames[id] || id,
+      one_liner_count: s.olCount,
+      episodic_count: s.epCount,
+      total: s.olCount + s.epCount,
+      avg_one_liner_score: avg(s.olScores) != null ? parseFloat(avg(s.olScores)!.toFixed(1)) : null,
+      avg_episodic_score: avg(s.epScores) != null ? parseFloat(avg(s.epScores)!.toFixed(1)) : null,
+    }))
+    .sort((a, b) => b.total - a.total);
+
+  // Build per-project summary
+  const projectStats: Record<string, { olScores: number[]; epScores: number[]; olCount: number; epCount: number }> = {};
+  for (const e of ol) {
+    const title = crMap.get(e.call_report_id) || "Unknown";
+    if (!projectStats[title]) projectStats[title] = { olScores: [], epScores: [], olCount: 0, epCount: 0 };
+    projectStats[title].olCount++;
+    if (e.average_score != null) projectStats[title].olScores.push(parseFloat(e.average_score));
+  }
+  for (const e of ep) {
+    const epRow = episodeMap.get(e.episode_id);
+    const title = epRow ? (epCrMap.get(epRow.call_report_id) || "Unknown") : "Unknown";
+    if (!projectStats[title]) projectStats[title] = { olScores: [], epScores: [], olCount: 0, epCount: 0 };
+    projectStats[title].epCount++;
+    if (e.overall_average != null) projectStats[title].epScores.push(parseFloat(e.overall_average));
+  }
+
+  const projectSummary = Object.entries(projectStats)
+    .map(([title, s]) => ({
+      project: title,
+      one_liner_avg: avg(s.olScores) != null ? parseFloat(avg(s.olScores)!.toFixed(1)) : null,
+      episodic_avg: avg(s.epScores) != null ? parseFloat(avg(s.epScores)!.toFixed(1)) : null,
+      total_evaluations: s.olCount + s.epCount,
+    }))
+    .sort((a, b) => b.total_evaluations - a.total_evaluations);
+
   return {
     period: args.period || "all time",
-    one_liner_evaluations: {
-      count: ol.length,
-      items: ol.slice(0, 20).map((e: any) => ({
+    total_one_liner_evaluations: totalOl,
+    total_episodic_evaluations: totalEp,
+    total: totalOl + totalEp,
+    evaluator_summary: evaluatorSummary,
+    project_summary: projectSummary.slice(0, 30),
+    recent_one_liner_items: ol.slice(0, 15).map((e: any) => ({
+      evaluator: userNames[e.evaluator_id] || e.evaluator_id,
+      project: crMap.get(e.call_report_id) || "Unknown",
+      score: e.average_score != null ? parseFloat(e.average_score).toFixed(1) : "N/A",
+      date: e.submitted_at ? fmtDate(e.submitted_at) : "",
+    })),
+    recent_episodic_items: ep.slice(0, 15).map((e: any) => {
+      const epRow = episodeMap.get(e.episode_id);
+      const project = epRow ? (epCrMap.get(epRow.call_report_id) || "Unknown Project") : "Unknown Project";
+      const epNum = epRow?.episode_number ?? "?";
+      return {
         evaluator: userNames[e.evaluator_id] || e.evaluator_id,
-        project: crMap.get(e.call_report_id) || "Unknown",
-        score: e.average_score != null ? parseFloat(e.average_score).toFixed(1) : "N/A",
-        date: e.submitted_at ? fmtDate(e.submitted_at) : "",
-      })),
-    },
-    episodic_evaluations: {
-      count: ep.length,
-      items: ep.slice(0, 20).map((e: any) => {
-        const epRow = episodeMap.get(e.episode_id);
-        const project = epRow ? (epCrMap.get(epRow.call_report_id) || "Unknown Project") : "Unknown Project";
-        const epNum = epRow?.episode_number ?? "?";
-        return {
-          evaluator: userNames[e.evaluator_id] || e.evaluator_id,
-          project,
-          episode: `Episode ${epNum}`,
-          score: e.overall_average != null ? parseFloat(e.overall_average).toFixed(1) : "N/A",
-          date: e.created_at ? fmtDate(e.created_at) : "",
-        };
-      }),
-    },
-    total: ol.length + ep.length,
+        project,
+        episode: `Episode ${epNum}`,
+        score: e.overall_average != null ? parseFloat(e.overall_average).toFixed(1) : "N/A",
+        date: e.created_at ? fmtDate(e.created_at) : "",
+      };
+    }),
   };
 }
 
@@ -310,6 +444,13 @@ async function toolQueryContent(
     teamIds = found.map((t: any) => t.id);
   }
 
+  // Accurate count
+  let cq: any = admin.from("call_reports").select("id", { count: "exact", head: true })
+    .eq("meeting_type", "call_report").is("archived_at", null);
+  if (args.search) cq = cq.or(`working_title.ilike.%${args.search}%,writer_name.ilike.%${args.search}%`);
+  if (teamIds)     cq = cq.in("team_id", teamIds);
+  if (range)       cq = cq.gte("created_at", range.start.toISOString()).lte("created_at", range.end.toISOString());
+
   let q: any = admin.from("call_reports")
     .select("id, working_title, writer_name, created_at, team_id")
     .eq("meeting_type", "call_report")
@@ -321,7 +462,7 @@ async function toolQueryContent(
   if (teamIds)     q = q.in("team_id", teamIds);
   if (range)       q = q.gte("created_at", range.start.toISOString()).lte("created_at", range.end.toISOString());
 
-  const { data: reports } = await q;
+  const [{ count: totalCount }, { data: reports }] = await Promise.all([cq, q]);
   const list = reports as any[] || [];
 
   const tidSet = [...new Set(list.map((r: any) => r.team_id).filter(Boolean))];
@@ -332,7 +473,7 @@ async function toolQueryContent(
   }
 
   return {
-    count: list.length,
+    count: totalCount ?? list.length,
     period: args.period || "all time",
     items: list.map((r: any) => ({
       title: r.working_title || "Untitled",
@@ -535,42 +676,342 @@ async function toolQueryTeamStats(args: { team_name?: string; period?: string },
   return teamList.length === 1 ? results[0] : results;
 }
 
+async function toolQueryOverview(_args: Record<string, never>, admin: AdminClient) {
+  const [
+    { count: totalProjects },
+    { count: totalEpisodes },
+    { count: totalOneLinerEvals },
+    { count: totalEpisodicEvals },
+    { count: totalWriters },
+    { count: totalTeams },
+    { count: totalContracts },
+    { count: totalMeetings },
+  ] = await Promise.all([
+    admin.from("call_reports").select("id", { count: "exact", head: true }).eq("meeting_type", "call_report").is("archived_at", null),
+    admin.from("episodes").select("id", { count: "exact", head: true }).eq("is_current", true),
+    admin.from("evaluator_forms").select("id", { count: "exact", head: true }).not("submitted_at", "is", null),
+    admin.from("episodic_evaluations").select("id", { count: "exact", head: true }),
+    admin.from("writers").select("id", { count: "exact", head: true }),
+    admin.from("teams").select("id", { count: "exact", head: true }),
+    admin.from("negotiations").select("id", { count: "exact", head: true }),
+    admin.from("meetings").select("id", { count: "exact", head: true }),
+  ]);
+
+  // This month counts
+  const now = new Date();
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+  const [
+    { count: ideasThisMonth },
+    { count: olEvalsThisMonth },
+    { count: epEvalsThisMonth },
+    { count: meetingsThisMonth },
+  ] = await Promise.all([
+    admin.from("call_reports").select("id", { count: "exact", head: true }).eq("meeting_type", "call_report").is("archived_at", null).gte("created_at", monthStart),
+    admin.from("evaluator_forms").select("id", { count: "exact", head: true }).not("submitted_at", "is", null).gte("submitted_at", monthStart),
+    admin.from("episodic_evaluations").select("id", { count: "exact", head: true }).gte("created_at", monthStart),
+    admin.from("meetings").select("id", { count: "exact", head: true }).gte("start_time", monthStart),
+  ]);
+
+  return {
+    all_time: {
+      total_projects: totalProjects ?? 0,
+      total_episodes_received: totalEpisodes ?? 0,
+      total_one_liner_evaluations: totalOneLinerEvals ?? 0,
+      total_episodic_evaluations: totalEpisodicEvals ?? 0,
+      total_writers: totalWriters ?? 0,
+      total_teams: totalTeams ?? 0,
+      total_contracts: totalContracts ?? 0,
+      total_meetings: totalMeetings ?? 0,
+    },
+    this_month: {
+      ideas_logged: ideasThisMonth ?? 0,
+      one_liner_evaluations: olEvalsThisMonth ?? 0,
+      episodic_evaluations: epEvalsThisMonth ?? 0,
+      meetings_scheduled: meetingsThisMonth ?? 0,
+    },
+  };
+}
+
+async function toolQueryContractsPayments(
+  args: { writer_name?: string; project_title?: string; period?: string; status?: string },
+  admin: AdminClient
+) {
+  const range = parsePeriod(args.period);
+
+  // Query negotiations (contract terms)
+  let nq: any = admin.from("negotiations")
+    .select("id, call_report_id, per_episode_rate, estimated_episodes, total_cost, expected_completion_date, created_at")
+    .order("created_at", { ascending: false })
+    .limit(200);
+  if (range) nq = nq.gte("created_at", range.start.toISOString()).lte("created_at", range.end.toISOString());
+
+  const { data: negotiations } = await nq;
+  const negList = negotiations as any[] || [];
+
+  // Enrich with project titles and writer names
+  const crIds = [...new Set(negList.map((n: any) => n.call_report_id))];
+  const { data: crs } = crIds.length
+    ? await admin.from("call_reports").select("id, working_title, writer_name").in("id", crIds)
+    : { data: [] };
+  const crMap = new Map((crs as any[] || []).map((c: any) => [c.id, c]));
+
+  let items = negList.map((n: any) => {
+    const cr = crMap.get(n.call_report_id) || {} as any;
+    return {
+      project: cr.working_title || "Unknown",
+      writer: cr.writer_name || "Unknown",
+      per_episode_rate: n.per_episode_rate,
+      estimated_episodes: n.estimated_episodes,
+      total_cost: n.total_cost,
+      deadline: n.expected_completion_date || null,
+      date: n.created_at ? fmtDate(n.created_at) : "",
+    };
+  });
+
+  if (args.writer_name) items = items.filter(i => i.writer.toLowerCase().includes(args.writer_name!.toLowerCase()));
+  if (args.project_title) items = items.filter(i => i.project.toLowerCase().includes(args.project_title!.toLowerCase()));
+
+  // Payment summary
+  let pq: any = admin.from("payments")
+    .select("id, amount, status, payment_date, call_report_id")
+    .order("payment_date", { ascending: false })
+    .limit(500);
+  if (range) pq = pq.gte("payment_date", range.start.toISOString()).lte("payment_date", range.end.toISOString());
+  const { data: payments } = await pq;
+  const payList = payments as any[] || [];
+
+  // Enrich payments with project names
+  const payCrIds = [...new Set(payList.map((p: any) => p.call_report_id).filter(Boolean))];
+  const { data: payCrs } = payCrIds.length
+    ? await admin.from("call_reports").select("id, working_title, writer_name").in("id", payCrIds)
+    : { data: [] };
+  const payCrMap = new Map((payCrs as any[] || []).map((c: any) => [c.id, c]));
+
+  let payItems = payList.map((p: any) => {
+    const cr = payCrMap.get(p.call_report_id) || {} as any;
+    return {
+      project: cr.working_title || "Unknown",
+      writer: cr.writer_name || "Unknown",
+      amount: p.amount,
+      status: p.status,
+      date: p.payment_date ? fmtDate(p.payment_date) : "",
+    };
+  });
+
+  if (args.writer_name) payItems = payItems.filter(i => i.writer.toLowerCase().includes(args.writer_name!.toLowerCase()));
+  if (args.project_title) payItems = payItems.filter(i => i.project.toLowerCase().includes(args.project_title!.toLowerCase()));
+  if (args.status) payItems = payItems.filter(i => i.status?.toLowerCase() === args.status!.toLowerCase());
+
+  const totalPaid = payItems.filter(p => p.status === "paid").reduce((s, p) => s + (p.amount || 0), 0);
+  const totalPending = payItems.filter(p => p.status !== "paid").reduce((s, p) => s + (p.amount || 0), 0);
+
+  return {
+    period: args.period || "all time",
+    contracts: { count: items.length, items: items.slice(0, 30) },
+    payments: {
+      count: payItems.length,
+      total_paid: totalPaid,
+      total_pending: totalPending,
+      items: payItems.slice(0, 30),
+    },
+  };
+}
+
+async function toolQueryWriters(
+  args: { writer_name?: string; period?: string },
+  admin: AdminClient
+) {
+  const range = parsePeriod(args.period);
+
+  let wq: any = admin.from("writers").select("id, name, phone, email, created_at").order("name");
+  if (args.writer_name) wq = wq.ilike("name", `%${args.writer_name}%`);
+  const { data: writerRows } = await wq;
+  const writers = writerRows as any[] || [];
+  if (writers.length === 0) return { message: args.writer_name ? `No writer found matching "${args.writer_name}"` : "No writers in the system", count: 0 };
+
+  // Get project counts per writer from call_reports
+  let cq: any = admin.from("call_reports")
+    .select("id, working_title, writer_name, created_at")
+    .eq("meeting_type", "call_report")
+    .is("archived_at", null);
+  if (range) cq = cq.gte("created_at", range.start.toISOString()).lte("created_at", range.end.toISOString());
+  const { data: allCRs } = await cq;
+  const crList = allCRs as any[] || [];
+
+  // Episode counts per writer
+  let eq: any = admin.from("episodes").select("id, call_report_id").eq("is_current", true);
+  const { data: allEps } = await eq;
+  const epList = allEps as any[] || [];
+  const epByCR = new Map<string, number>();
+  for (const e of epList) epByCR.set(e.call_report_id, (epByCR.get(e.call_report_id) || 0) + 1);
+
+  // Build writer stats
+  const writerStats = writers.map((w: any) => {
+    const writerProjects = crList.filter((cr: any) =>
+      cr.writer_name?.toLowerCase().includes(w.name.toLowerCase())
+    );
+    const totalEps = writerProjects.reduce((s, cr) => s + (epByCR.get(cr.id) || 0), 0);
+    return {
+      name: w.name,
+      phone: w.phone || null,
+      email: w.email || null,
+      projects: writerProjects.length,
+      project_titles: writerProjects.slice(0, 10).map((cr: any) => cr.working_title),
+      episodes_delivered: totalEps,
+    };
+  }).sort((a, b) => b.projects - a.projects);
+
+  return {
+    count: writerStats.length,
+    period: args.period || "all time",
+    writers: writerStats.slice(0, 40),
+  };
+}
+
+async function toolQueryMeetings(
+  args: { person_name?: string; period?: string },
+  admin: AdminClient
+) {
+  const range = parsePeriod(args.period);
+
+  let q: any = admin.from("meetings")
+    .select("id, title, start_time, end_time, created_by, attendees")
+    .order("start_time", { ascending: false })
+    .limit(200);
+  if (range) {
+    q = q.gte("start_time", range.start.toISOString()).lte("start_time", range.end.toISOString());
+  }
+
+  const { data: meetings } = await q;
+  const meetList = meetings as any[] || [];
+
+  // Get user names for created_by
+  const userIds = [...new Set(meetList.map((m: any) => m.created_by).filter(Boolean))];
+  const { data: userRows } = userIds.length
+    ? await admin.from("users").select("id, name").in("id", userIds)
+    : { data: [] };
+  const userMap = new Map((userRows as any[] || []).map((u: any) => [u.id, u.name]));
+
+  let items = meetList.map((m: any) => ({
+    title: m.title || "Untitled Meeting",
+    date: m.start_time ? fmtDate(m.start_time) : "",
+    time: m.start_time ? new Date(m.start_time).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }) : "",
+    created_by: userMap.get(m.created_by) || "Unknown",
+    attendees: Array.isArray(m.attendees) ? m.attendees.length : 0,
+  }));
+
+  if (args.person_name) {
+    const search = args.person_name.toLowerCase();
+    items = items.filter(m => m.created_by.toLowerCase().includes(search));
+  }
+
+  return {
+    count: items.length,
+    period: args.period || "all time",
+    items: items.slice(0, 30),
+  };
+}
+
+async function toolQueryApprovals(
+  args: { project_title?: string; status?: string; period?: string },
+  admin: AdminClient
+) {
+  const range = parsePeriod(args.period);
+
+  let q: any = admin.from("story_approvals")
+    .select("id, call_report_id, status, approved_by, comments, created_at")
+    .order("created_at", { ascending: false })
+    .limit(200);
+  if (args.status) q = q.eq("status", args.status.toLowerCase());
+  if (range) q = q.gte("created_at", range.start.toISOString()).lte("created_at", range.end.toISOString());
+
+  const { data: approvals } = await q;
+  const appList = approvals as any[] || [];
+
+  // Enrich with project titles and approver names
+  const crIds = [...new Set(appList.map((a: any) => a.call_report_id))];
+  const approverIds = [...new Set(appList.map((a: any) => a.approved_by).filter(Boolean))];
+
+  const [{ data: crs }, { data: approvers }] = await Promise.all([
+    crIds.length ? admin.from("call_reports").select("id, working_title, writer_name").in("id", crIds) : { data: [] },
+    approverIds.length ? admin.from("users").select("id, name").in("id", approverIds) : { data: [] },
+  ]);
+
+  const crMap = new Map((crs as any[] || []).map((c: any) => [c.id, c]));
+  const approverMap = new Map((approvers as any[] || []).map((u: any) => [u.id, u.name]));
+
+  let items = appList.map((a: any) => {
+    const cr = crMap.get(a.call_report_id) || {} as any;
+    return {
+      project: cr.working_title || "Unknown",
+      writer: cr.writer_name || "Unknown",
+      status: a.status,
+      approved_by: approverMap.get(a.approved_by) || "Unknown",
+      comments: a.comments || null,
+      date: a.created_at ? fmtDate(a.created_at) : "",
+    };
+  });
+
+  if (args.project_title) items = items.filter(i => i.project.toLowerCase().includes(args.project_title!.toLowerCase()));
+
+  const approved = items.filter(i => i.status === "approved").length;
+  const rejected = items.filter(i => i.status === "rejected").length;
+
+  return {
+    count: items.length,
+    approved,
+    rejected,
+    period: args.period || "all time",
+    items: items.slice(0, 30),
+  };
+}
+
 async function executeTool(name: string, args: any, admin: AdminClient): Promise<any> {
   switch (name) {
-    case "query_evaluations":    return toolQueryEvaluations(args, admin);
-    case "query_content":        return toolQueryContent(args, admin);
-    case "query_person_activity": return toolQueryPersonActivity(args, admin);
-    case "query_episode_delivery": return toolQueryEpisodeDelivery(args, admin);
-    case "query_pending":        return toolQueryPending(args, admin);
-    case "query_team_stats":     return toolQueryTeamStats(args, admin);
-    default:                     return { error: `Unknown tool: ${name}` };
+    case "query_evaluations":        return toolQueryEvaluations(args, admin);
+    case "query_content":            return toolQueryContent(args, admin);
+    case "query_person_activity":    return toolQueryPersonActivity(args, admin);
+    case "query_episode_delivery":   return toolQueryEpisodeDelivery(args, admin);
+    case "query_pending":            return toolQueryPending(args, admin);
+    case "query_team_stats":         return toolQueryTeamStats(args, admin);
+    case "query_overview":           return toolQueryOverview(args, admin);
+    case "query_contracts_payments": return toolQueryContractsPayments(args, admin);
+    case "query_writers":            return toolQueryWriters(args, admin);
+    case "query_meetings":           return toolQueryMeetings(args, admin);
+    case "query_approvals":          return toolQueryApprovals(args, admin);
+    default:                         return { error: `Unknown tool: ${name}` };
   }
 }
 
 // ─── System prompts ────────────────────────────────────────────────────────────
-const DATA_SYSTEM_PROMPT = `You are a live data assistant for Dastaan Portal at GEO TV, a Pakistani TV drama development system. You are speaking with a senior executive (CEO level). Always be professional, direct, and factual.
+const TOOL_SELECTION_PROMPT = `You are a data routing assistant for Dastaan Portal at GEO TV. Your ONLY job is to pick the right tool and arguments for the user's question, then output valid JSON.
 
-SYSTEM KNOWLEDGE:
-- call_reports = story pitches / writer engagement reports logged after meetings with writers
-- evaluator_forms = one-liner evaluations: scored assessments (5 criteria, 1–10) of call reports
-- episodic_evaluations = episodic evaluations: scored assessments of episode scripts submitted by writers
-- episodes = individual episode scripts submitted by writers; tracked per project
-- teams = content/evaluation teams; each has a head and multiple members
+AVAILABLE TOOLS:
+1. query_evaluations — Search evaluations. Args: evaluator_name?, project_title?, period?
+2. query_content — Search call reports/ideas. Args: search?, team_name?, period?
+3. query_person_activity — Full activity summary for a person. Args: person_name (required), period?
+4. query_episode_delivery — Episode delivery status. Args: project_title?, writer_name?, status?
+5. query_pending — Pending evaluations/approvals. Args: type? ("evaluations"|"approvals"|"all")
+6. query_team_stats — Team membership & performance. Args: team_name?, period?
 
-TOOL SELECTION RULES:
-- "how many evaluations did X do" → query_evaluations (covers both one-liner + episodic)
+ROUTING RULES:
+- "how many evaluations did X do / what did X score" → query_evaluations
 - "what has X been doing / X's activity / X's work" → query_person_activity
-- "which projects are behind / delivery status" → query_episode_delivery
+- "which projects are behind / delivery status / episodes" → query_episode_delivery
 - "how many ideas / stories logged / call reports" → query_content
 - "pending evaluations / unapproved ideas" → query_pending
-- "who is on team X / team performance" → query_team_stats
-- Follow-up questions ("what did he evaluate", "show me those") → use context from conversation history to infer the subject, then call the appropriate tool with that context
+- "who is on team X / team performance / list teams" → query_team_stats
 
-CRITICAL RULES:
-- ALWAYS use a tool for any data question. Never guess counts or names.
-- If the user's question refers to a person, project, or period mentioned earlier in the conversation, extract it from history and pass it to the tool.
-- If a question is genuinely about portal navigation (how do I log X, where is Y), answer directly without a tool call.
-- Never refuse a data question or say you cannot check.`;
+PERIOD VALUES: this_month, last_month, this_year, last_7_days, last_30_days, last_2_weeks, last_3_months, last_1_year
+
+You MUST respond with ONLY a JSON object, no explanation, no markdown, no thinking tags:
+{"tool": "tool_name", "args": {"param": "value"}}
+
+If the question needs multiple tools, return an array:
+[{"tool": "tool_name", "args": {...}}, {"tool": "tool_name", "args": {...}}]
+
+If it is purely a navigation question (how do I, where is), respond with:
+{"tool": "none", "answer": "your answer here"}`;
 
 const SHARED_CONTEXT = `
 ABOUT DASTAAN PORTAL:
@@ -779,16 +1220,16 @@ HOW TO RESPOND:
 - For technical issues, direct to Rao Muhammad at rao.muhammad@geo.tv or +92 313 2909993.`;
 }
 
-// ─── Groq helper ───────────────────────────────────────────────────────────────
-async function callGroq(apiKey: string, body: object): Promise<any> {
-  const res = await fetch(GROQ_URL, {
+// ─── LLM helper (Gemini OpenAI-compatible API) ────────────────────────────────
+async function callLLM(apiKey: string, body: object): Promise<any> {
+  const res = await fetch(GEMINI_URL, {
     method: "POST",
     headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
   if (!res.ok) {
     const err = await res.text();
-    throw new Error(`Groq error: ${err}`);
+    throw new Error(`Gemini error: ${err}`);
   }
   return res.json();
 }
@@ -811,16 +1252,17 @@ export async function POST(request: NextRequest) {
       profile?.email === "mir@geo.tv";
 
     const body = await request.json();
-    const { message, portalKey, history = [] } = body as {
+    const { message, portalKey, history = [], memory = [] } = body as {
       message: string;
       portalKey: string;
       history: { role: "user" | "assistant"; content: string }[];
+      memory: string[];
     };
 
     if (!message?.trim()) return NextResponse.json({ error: "Message is required" }, { status: 400 });
 
-    const apiKey = process.env.GROQ_API_KEY;
-    if (!apiKey) return NextResponse.json({ reply: "The AI assistant isn't configured yet. Please add a GROQ_API_KEY." });
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) return NextResponse.json({ reply: "The AI assistant isn't configured yet. Please add a GEMINI_API_KEY." });
 
     // ── Standard navigation assistant (non-management users) ─────────────────
     if (!hasDataAccess) {
@@ -830,96 +1272,152 @@ export async function POST(request: NextRequest) {
         { role: "user", content: message.trim() },
       ];
       try {
-        const data = await callGroq(apiKey, { model: MODEL, messages, max_tokens: 400, temperature: 0.4 });
+        const data = await callLLM(apiKey, { model: MODEL, messages, max_tokens: 400, temperature: 0.4 });
         return NextResponse.json({ reply: data.choices?.[0]?.message?.content?.trim() ?? "Sorry, I couldn't generate a response." });
       } catch {
         return NextResponse.json({ reply: "Sorry, I ran into an issue. Please try again." });
       }
     }
 
-    // ── Data-access agent (management/admin) — two-pass tool calling ──────────
-    const messages = [
-      { role: "system", content: DATA_SYSTEM_PROMPT },
-      ...history.slice(-4),
-      { role: "user", content: message.trim() },
-    ];
+    // ── Data-access agent (management/admin) — native function calling ─────────
+    const DATA_SYSTEM = `You are a data assistant for Dastaan Portal at GEO TV. You MUST call at least one tool for every question — never guess or make up data.
 
-    let firstData: any;
+TOOL ROUTING GUIDE:
+- Overall summary / big picture / how are we doing → query_overview
+- Evaluation scores, counts, highest rated → query_evaluations
+- Person's work / activity / what has X done → query_person_activity
+- Episode delivery / behind / received → query_episode_delivery
+- Pending evaluations or approvals → query_pending
+- Team info, members, performance → query_team_stats
+- Call reports, ideas logged → query_content
+- Contracts, payments, money, rates → query_contracts_payments
+- Writers list, writer engagement → query_writers
+- Meetings, calendar → query_meetings
+- Story approvals, approved/rejected → query_approvals
+
+IMPORTANT: If the question is ambiguous or broad, call MULTIPLE tools to get a complete answer. For example:
+- "How are things going?" → query_overview + query_pending + query_episode_delivery
+- "Tell me about project X" → query_evaluations(project_title=X) + query_episode_delivery(project_title=X) + query_contracts_payments(project_title=X)
+- "How is the team performing?" → query_team_stats + query_evaluations
+
+Always prefer calling more tools over fewer when the question is broad.`;
+
+    // Step 1: Ask LLM to pick and call tools (native function calling)
+    let firstPass: any;
     try {
-      firstData = await callGroq(apiKey, {
+      firstPass = await callLLM(apiKey, {
         model: MODEL,
-        messages,
+        messages: [
+          { role: "system", content: DATA_SYSTEM },
+          ...history.slice(-4),
+          { role: "user", content: message.trim() },
+        ],
         tools: DATA_TOOLS,
-        tool_choice: "auto",
-        max_tokens: 500,
-        temperature: 0.2,
+        tool_choice: "required",
+        max_tokens: 1024,
+        temperature: 0.1,
       });
     } catch (err: any) {
-      console.error("Groq first-pass error:", err.message);
+      console.error("[AI Agent] First-pass error:", err.message);
       return NextResponse.json({ reply: "Sorry, I ran into an issue. Please try again." });
     }
 
-    const assistantMsg = firstData.choices?.[0]?.message;
-    if (!assistantMsg) return NextResponse.json({ reply: "Sorry, I couldn't generate a response." });
+    const assistantMsg = firstPass.choices?.[0]?.message;
+    const toolCalls = assistantMsg?.tool_calls;
 
-    // No tool call — direct answer (navigation question or simple response)
-    if (!assistantMsg.tool_calls?.length) {
-      return NextResponse.json({ reply: assistantMsg.content?.trim() ?? "Sorry, I couldn't generate a response." });
+    if (!toolCalls || toolCalls.length === 0) {
+      console.log("[AI Agent] No tools called — returning direct response");
+      return NextResponse.json({ reply: assistantMsg?.content?.trim() || "I couldn't determine what data to look up. Please try rephrasing your question." });
     }
 
-    // Execute tool calls
+    console.log("[AI Agent] Tools called:", toolCalls.map((tc: any) => tc.function.name).join(", "));
+
+    // Step 2: Execute the selected tools
     const admin = createAdminClient();
-    let toolResults: any[];
+    const toolResults: { name: string; data: string }[] = [];
     try {
-      toolResults = await Promise.all(
-        (assistantMsg.tool_calls as any[]).map(async (tc: any) => {
-          const args = JSON.parse(tc.function.arguments || "{}") ?? {};
-          const result = await executeTool(tc.function.name, args, admin);
-          return { role: "tool" as const, tool_call_id: tc.id, content: JSON.stringify(result) };
-        })
-      );
+      for (const tc of toolCalls) {
+        const fnName = tc.function.name;
+        const fnArgs = JSON.parse(tc.function.arguments || "{}");
+        const result = await executeTool(fnName, fnArgs, admin);
+        toolResults.push({ name: fnName, data: JSON.stringify(result) });
+      }
     } catch (err: any) {
-      console.error("Tool execution error:", err.message);
+      console.error("[AI Agent] Tool execution error:", err.message);
       return NextResponse.json({ reply: "I had trouble fetching that data. Please try again." });
     }
 
-    // Second pass — fast model narrates tool results
-    const NARRATION_SYSTEM = `You are a senior analyst briefing the CEO of GEO TV on data from the Dastaan content portal. Translate raw database results into a clear, professional spoken summary.
+    console.log("[AI Agent] Tool results size:", toolResults.reduce((s, r) => s + r.data.length, 0), "chars");
 
-RESPONSE RULES:
-- Lead with the direct answer (the number, name, or status) in the first sentence.
-- Break down totals by category when relevant (e.g. "X one-liner evaluations and Y episodic evaluations").
-- When listing items (episodes, projects, people), use their actual names — never UUIDs or IDs.
-- Format episodes as "Episode [number] of [Project Title]", not raw IDs.
-- If the result set is 10 or fewer items, name every one with its score and date.
-- If there are more than 10 items, summarise by pattern (e.g. "mostly scoring between 7–8, across 3 projects") and mention the total count.
-- If results are empty, say so plainly and suggest why (e.g. "No evaluations found for this period — they may fall outside the selected date range").
+    // Step 3: Narrate the results (plain text, no tool message format)
+    const dataContext = toolResults
+      .map((tr) => `[${tr.name}]\n${tr.data}`)
+      .join("\n\n");
+
+    const memoryContext = memory.length > 0
+      ? `\n\nRELEVANT MEMORY FROM PAST CONVERSATIONS:\n${memory.slice(-20).map((m, i) => `${i + 1}. ${m}`).join("\n")}`
+      : "";
+
+    const NARRATION_SYSTEM = `You are a senior analyst briefing the CEO of GEO TV on data from the Dastaan content portal. Present data in a clear, structured, professional format using markdown.
+
+FORMATTING RULES:
+- Start with a one-line summary sentence answering the question directly.
+- When there are 3+ items, ALWAYS use a markdown table. Example:
+  | Project | Score | Evaluator | Date |
+  |---------|-------|-----------|------|
+  | Kabhi kabhi | 8.6 | Parisa | May 6, 2026 |
+- Use **bold** for key numbers, names, and statuses.
+- Use ### headings to separate sections (e.g. "### One-Liner Evaluations" and "### Episodic Evaluations").
+- For 1-2 items, a short paragraph is fine — no table needed.
+- When showing per-person summaries, use a table with columns like Name, One-Liner Count, Episodic Count, Total, Avg Score.
+- When showing delivery status, use a table with Project, Writer, Required, Received, Status.
+- Mark statuses with labels: "Behind", "On Track", "Received".
+
+CONTENT RULES:
+- Lead with the direct answer in the first sentence.
+- Break down totals by category when relevant.
+- Use actual names — never UUIDs or IDs.
+- Format episodes as "Episode [number] of [Project Title]".
+- If results are empty, say so plainly and suggest why.
 - If multiple people matched a name, list each separately.
-- Keep the tone professional and concise — this is an executive briefing, not a data dump.
-- Do not use markdown, bullet points, or headers. Write in flowing prose.
-- Never mention UUIDs, internal IDs, or technical field names.`;
+- Keep it concise — this is an executive briefing.
+- Use memory from past conversations for richer context when relevant.
+
+MEMORY EXTRACTION:
+After your main answer, on a new line output a memory block:
+<memory>["fact 1", "fact 2"]</memory>
+Extract 1-3 key facts (scores, statuses, trends). If nothing noteworthy: <memory>[]</memory>.`;
 
     let secondData: any;
     try {
-      secondData = await callGroq(apiKey, {
-        model: MODEL_FAST,
+      secondData = await callLLM(apiKey, {
+        model: MODEL,
         messages: [
           { role: "system", content: NARRATION_SYSTEM },
-          ...history.slice(-4),
-          { role: "user", content: message.trim() },
-          assistantMsg,
-          ...toolResults,
+          { role: "user", content: `User's question: ${message.trim()}${memoryContext}\n\nData retrieved from the database:\n\n${dataContext}` },
         ],
-        max_tokens: 800,
+        max_tokens: 4096,
         temperature: 0.3,
       });
     } catch (err: any) {
-      console.error("Groq second-pass error:", err.message);
+      console.error("[AI Agent] Narration error:", err.message);
       return NextResponse.json({ reply: "I got the data but had trouble formatting the response. Please try again." });
     }
 
-    const reply = secondData.choices?.[0]?.message?.content?.trim() ?? "Sorry, I couldn't generate a response.";
-    return NextResponse.json({ reply });
+    let fullReply = secondData.choices?.[0]?.message?.content?.trim() ?? "Sorry, I couldn't generate a response.";
+
+    // Extract memory items from the response
+    let memoryExtract: string[] = [];
+    const memoryMatch = fullReply.match(/<memory>([\s\S]*?)<\/memory>/);
+    if (memoryMatch) {
+      try {
+        memoryExtract = JSON.parse(memoryMatch[1]);
+      } catch {}
+      // Strip the memory tag from the visible reply
+      fullReply = fullReply.replace(/<memory>[\s\S]*?<\/memory>/, "").trim();
+    }
+
+    return NextResponse.json({ reply: fullReply, memoryExtract });
   } catch (error) {
     console.error("Assistant chat error:", error);
     return NextResponse.json({ reply: "Something went wrong. Please try again." });
