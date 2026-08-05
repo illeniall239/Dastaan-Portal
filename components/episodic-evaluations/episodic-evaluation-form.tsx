@@ -133,6 +133,11 @@ export function EpisodicEvaluationForm({
     (existingEvaluation as any)?.is_feedback_only || false
   );
 
+  // Original submission date (optional override)
+  const [originalSubmissionDate, setOriginalSubmissionDate] = useState(
+    (existingEvaluation as any)?.original_submission_date || ""
+  );
+
   // Final decision state
   const [decision, setDecision] = useState<"approve" | "reject" | "needs_revision" | "">(
     (existingEvaluation?.decision as "approve" | "reject" | "needs_revision") || ""
@@ -243,6 +248,7 @@ export function EpisodicEvaluationForm({
         feedbackText,
         feedbackAttachments,
         isFeedbackOnly,
+        originalSubmissionDate,
         accumulatedTimeMinutes: timeSpentMinutes,
       };
 
@@ -299,6 +305,7 @@ export function EpisodicEvaluationForm({
       setFeedbackText(pendingDraftData.feedbackText || "");
       setFeedbackAttachments(pendingDraftData.feedbackAttachments || []);
       setIsFeedbackOnly(pendingDraftData.isFeedbackOnly || false);
+      setOriginalSubmissionDate(pendingDraftData.originalSubmissionDate || "");
 
       // Load accumulated time from draft
       setInitialTimeFromDraft(pendingDraftData.accumulatedTimeMinutes || 0);
@@ -389,6 +396,7 @@ export function EpisodicEvaluationForm({
       overall_assessment_comment: overallAssessmentComment || undefined,
       time_spent_minutes: timeSpentMinutes,
       started_at: new Date().toISOString(),
+      original_submission_date: originalSubmissionDate || undefined,
       decision: decision as "approve" | "reject" | "needs_revision",
       decision_notes: (decision === "reject" || decision === "needs_revision")
         ? decisionNotes
@@ -813,6 +821,24 @@ export function EpisodicEvaluationForm({
             onChange={(e) => setRemarks(e.target.value)}
             disabled={isReadOnly}
           />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="originalSubmissionDate">
+            Original Submission Date{" "}
+            <span className="text-slate-400 font-normal text-xs">(optional)</span>
+          </Label>
+          <Input
+            id="originalSubmissionDate"
+            type="date"
+            value={originalSubmissionDate}
+            onChange={(e) => setOriginalSubmissionDate(e.target.value)}
+            max={new Date().toISOString().split("T")[0]}
+            disabled={isReadOnly}
+          />
+          <p className="text-xs text-muted-foreground">
+            Set this if the evaluation was done on a different date than today. All time-based calculations will use this date.
+          </p>
         </div>
       </div>
 

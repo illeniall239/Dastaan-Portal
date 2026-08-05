@@ -44,6 +44,7 @@ export interface Evaluation {
   decision_notes?: string;
   is_late?: boolean;
   delay_reason?: string;
+  original_submission_date?: string;
   created_at: string;
   submitted_at?: string;
 }
@@ -86,6 +87,7 @@ export interface CreateEvaluationInput {
   started_at?: string;
   is_late?: boolean;
   delay_reason?: string;
+  original_submission_date?: string;
   feedback_text?: string;
   feedback_attachment_url?: string;
   feedback_attachment_name?: string;
@@ -127,6 +129,7 @@ export interface UpdateEvaluationInput {
   started_at?: string;
   is_late?: boolean;
   delay_reason?: string | null;
+  original_submission_date?: string | null;
   feedback_text?: string | null;
   feedback_attachment_url?: string | null;
   feedback_attachment_name?: string | null;
@@ -190,6 +193,7 @@ export async function createEvaluationClient(evaluationData: CreateEvaluationInp
       submitted_at: new Date().toISOString(),
       is_late: evaluationData.is_late || false,
       delay_reason: evaluationData.delay_reason || null,
+      original_submission_date: evaluationData.original_submission_date || null,
       feedback_text: evaluationData.feedback_text || null,
       feedback_attachment_url: evaluationData.feedback_attachment_url || null,
       feedback_attachment_name: evaluationData.feedback_attachment_name || null,
@@ -288,6 +292,7 @@ export async function updateEvaluationClient(evaluationData: UpdateEvaluationInp
     started_at: started_at ?? null,
     is_late: is_late ?? false,
     delay_reason: delay_reason ?? null,
+    original_submission_date: evaluationData.original_submission_date ?? null,
     feedback_text: evaluationData.feedback_text ?? null,
     feedback_attachment_url: evaluationData.feedback_attachment_url ?? null,
     feedback_attachment_name: evaluationData.feedback_attachment_name ?? null,

@@ -1,9 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { ChevronRight, ChevronDown, FileText, Film, CheckCircle, XCircle, AlertCircle } from "lucide-react";
+import { ChevronRight, ChevronDown, Film, CheckCircle, XCircle, AlertCircle, Pencil } from "lucide-react";
 import { format } from "date-fns";
 import { CallReportDetailDialog } from "@/components/management/call-report-detail-dialog";
 import type { TeamProjectGroup, TeamProjectReport } from "@/lib/management/team-projects";
@@ -12,19 +11,7 @@ interface TeamWiseProjectsProps {
   teams: TeamProjectGroup[];
 }
 
-const TEAM_TYPE_COLORS: Record<string, { bg: string; border: string; badge: string; header: string }> = {
-  content:    { bg: "bg-blue-50",   border: "border-blue-200",   badge: "bg-blue-100 text-blue-800 border-blue-300",    header: "bg-gradient-to-r from-blue-50 to-blue-100" },
-  evaluator:  { bg: "bg-yellow-50", border: "border-yellow-200", badge: "bg-yellow-100 text-yellow-800 border-yellow-300",header: "bg-gradient-to-r from-yellow-50 to-yellow-100" },
-  programmer: { bg: "bg-indigo-50", border: "border-indigo-200", badge: "bg-indigo-100 text-indigo-800 border-indigo-300",header: "bg-gradient-to-r from-indigo-50 to-indigo-100" },
-  gcm:        { bg: "bg-teal-50",   border: "border-teal-200",   badge: "bg-teal-100 text-teal-800 border-teal-300",     header: "bg-gradient-to-r from-teal-50 to-teal-100" },
-  management: { bg: "bg-slate-50",  border: "border-slate-200",  badge: "bg-slate-100 text-slate-800 border-slate-300",  header: "bg-gradient-to-r from-slate-50 to-slate-100" },
-  other:      { bg: "bg-gray-50",   border: "border-gray-200",   badge: "bg-gray-100 text-gray-700 border-gray-300",     header: "bg-gradient-to-r from-gray-50 to-gray-100" },
-};
-
-const TEAM_TYPE_LABELS: Record<string, string> = {
-  content: "Content", evaluator: "Evaluator", programmer: "Programmer",
-  gcm: "GCM", management: "Management", other: "Other",
-};
+const TEAM_COLORS = { bg: "bg-gray-50", border: "border-gray-200", header: "bg-gradient-to-r from-gray-50 to-gray-100" };
 
 
 const APPROVAL_STATUS_CONFIG: Record<string, { icon: React.ReactNode; cls: string; label: string }> = {
@@ -42,6 +29,23 @@ function EpisodeApprovalBadge({ status }: { status: string | null }) {
     <span className={`inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded border ${cls}`}>
       {icon}
       {label}
+    </span>
+  );
+}
+
+const SCRIPT_STATUS_CONFIG: Record<string, { cls: string; dot: string }> = {
+  on_schedule:     { cls: "text-green-700 bg-green-50 border-green-200", dot: "bg-green-500" },
+  on_hold:         { cls: "text-amber-700 bg-amber-50 border-amber-200", dot: "bg-amber-500" },
+  behind_schedule: { cls: "text-red-700 bg-red-50 border-red-200",      dot: "bg-red-500" },
+};
+
+function ScriptBadge({ report }: { report: TeamProjectReport }) {
+  if (report.scriptProgress === null || !report.scriptStatus) return null;
+  const cfg = SCRIPT_STATUS_CONFIG[report.scriptStatus];
+  return (
+    <span className={`inline-flex items-center gap-1.5 text-[10px] px-2 py-0.5 rounded-full border font-medium ${cfg.cls}`}>
+      <Pencil className="h-2.5 w-2.5" />
+      {report.scriptCurrentPhase}
     </span>
   );
 }
@@ -87,8 +91,10 @@ export function TeamWiseProjects({ teams }: TeamWiseProjectsProps) {
   return (
     <div className="space-y-3">
       {teams.map((team) => {
-        const colors = TEAM_TYPE_COLORS[team.team_type] ?? TEAM_TYPE_COLORS.other;
+        const colors = TEAM_COLORS;
         const isExpanded = expandedTeams.has(team.team_id);
+
+        const scriptingCount = team.call_reports.filter((r) => r.scriptProgress !== null).length;
 
         return (
           <Card key={team.team_id} className={`${colors.border} overflow-hidden`}>
@@ -107,12 +113,12 @@ export function TeamWiseProjects({ teams }: TeamWiseProjectsProps) {
                 {team.display_label && (
                   <span className="text-xs text-gray-500 font-normal flex-shrink-0">{team.display_label}</span>
                 )}
-                <Badge variant="outline" className={`text-[10px] flex-shrink-0 ${colors.badge}`}>
-                  {TEAM_TYPE_LABELS[team.team_type] ?? team.team_type}
-                </Badge>
               </div>
               <span className="text-xs text-gray-500 flex-shrink-0">
                 {team.call_reports.length} project{team.call_reports.length !== 1 ? "s" : ""}
+                {scriptingCount > 0 && (
+                  <span className="text-green-600 font-medium"> · {scriptingCount} in scripting</span>
+                )}
               </span>
             </button>
 
@@ -124,53 +130,68 @@ export function TeamWiseProjects({ teams }: TeamWiseProjectsProps) {
                 ) : (
                   <div className="divide-y divide-gray-100">
                     {team.call_reports.map((report) => {
+                      const received = report.episodes.length;
+                      const total = report.total_episodes || 0;
+                      const pct = total > 0 ? Math.round((received / total) * 100) : 0;
+                      const barColor = total === 0
+                        ? "bg-gray-300"
+                        : pct >= 70
+                          ? "bg-emerald-500"
+                          : pct >= 40
+                            ? "bg-amber-500"
+                            : "bg-red-500";
                       const episodesExpanded = expandedReports.has(report.id);
+
                       return (
                         <div key={report.id} className="bg-white">
                           {/* Call Report Row */}
                           <div
-                            className="flex items-start gap-3 px-4 py-3 hover:bg-gray-50 cursor-pointer transition-colors"
+                            className="px-4 py-3 hover:bg-gray-50 cursor-pointer transition-colors"
                             onClick={() => openReport(report)}
                           >
-                            <FileText className="h-4 w-4 text-gray-400 mt-0.5 flex-shrink-0" />
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-start gap-2 flex-wrap">
-                                <span className="text-[11px] font-mono text-gray-400 flex-shrink-0">
-                                  {report.call_report_id}
-                                </span>
+                            {/* Title + meta */}
+                            <div className="flex items-center justify-between gap-3 mb-1.5">
+                              <div className="flex items-center gap-2 min-w-0">
                                 <span className="text-sm font-medium text-gray-900 truncate">
                                   {report.working_title || "Untitled"}
                                 </span>
+                                <ScriptBadge report={report} />
                               </div>
-                              <div className="flex items-center gap-2 mt-1 flex-wrap">
-                                <span className="text-[11px] text-gray-400">
-                                  {report.meeting_date
-                                    ? format(new Date(report.meeting_date), "MMM d, yyyy")
-                                    : "No date"}
+                              <div className="flex items-center gap-2 flex-shrink-0">
+                                {received > 0 && (
+                                  <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${
+                                    report.evaluatedEpisodes >= received
+                                      ? "text-green-700 bg-green-50"
+                                      : report.evaluatedEpisodes > 0
+                                        ? "text-amber-700 bg-amber-50"
+                                        : "text-gray-500 bg-gray-100"
+                                  }`}>
+                                    {report.evaluatedEpisodes}/{received} evaluated
+                                  </span>
+                                )}
+                                <span className="text-xs font-semibold text-gray-700">
+                                  {total > 0 ? `${received}/${total}` : `${received} eps`}
                                 </span>
-                                {report.genre && report.genre.length > 0 && (
-                                  <span className="text-[11px] text-gray-400">· {report.genre.join(", ")}</span>
+                                {report.episodes.length > 0 && (
+                                  <button
+                                    className="text-gray-400 hover:text-gray-700 p-0.5"
+                                    onClick={(e) => toggleReportEpisodes(e, report.id)}
+                                  >
+                                    {episodesExpanded
+                                      ? <ChevronDown className="h-3.5 w-3.5" />
+                                      : <ChevronRight className="h-3.5 w-3.5" />}
+                                  </button>
                                 )}
                               </div>
                             </div>
-                            {/* Episodes toggle */}
-                            {report.episodes.length > 0 && (
-                              <button
-                                className="flex items-center gap-1 text-[11px] text-gray-500 hover:text-gray-800 flex-shrink-0 mt-0.5 px-2 py-1 rounded hover:bg-gray-100 transition-colors"
-                                onClick={(e) => toggleReportEpisodes(e, report.id)}
-                              >
-                                <Film className="h-3 w-3" />
-                                {report.episodes.length} ep{report.episodes.length !== 1 ? "s" : ""}
-                                {episodesExpanded ? (
-                                  <ChevronDown className="h-3 w-3" />
-                                ) : (
-                                  <ChevronRight className="h-3 w-3" />
-                                )}
-                              </button>
-                            )}
-                            {report.episodes.length === 0 && (
-                              <span className="text-[11px] text-gray-300 flex-shrink-0 mt-0.5">No eps</span>
-                            )}
+
+                            {/* Progress bar */}
+                            <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                              <div
+                                className={`h-full rounded-full transition-all duration-500 ${barColor}`}
+                                style={{ width: `${total > 0 ? Math.max(pct, 2) : 0}%` }}
+                              />
+                            </div>
                           </div>
 
                           {/* Episodes Inline List */}
@@ -187,6 +208,14 @@ export function TeamWiseProjects({ teams }: TeamWiseProjectsProps) {
                                     {ep.title || <span className="text-gray-400 italic">Untitled</span>}
                                   </span>
                                   <EpisodeApprovalBadge status={ep.approval_status} />
+                                  {ep.evalCompleted > 0 ? (
+                                    <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded border text-green-700 bg-green-50 border-green-200">
+                                      <CheckCircle className="h-3 w-3" />
+                                      {ep.evalCompleted} eval{ep.evalCompleted > 1 ? "s" : ""}
+                                    </span>
+                                  ) : (
+                                    <span className="text-[10px] text-gray-400">No evals</span>
+                                  )}
                                 </div>
                               ))}
                             </div>

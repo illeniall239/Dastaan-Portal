@@ -210,6 +210,7 @@ export async function POST(request: Request) {
         feedback_attachment_url: evaluationData.feedback_attachment_url || null,
         feedback_attachment_name: evaluationData.feedback_attachment_name || null,
         feedback_attachments: evaluationData.feedback_attachments || [],
+        original_submission_date: evaluationData.original_submission_date || null,
       })
       .select(`
         *,

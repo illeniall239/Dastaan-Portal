@@ -182,9 +182,10 @@ function ScoreBox({ label, score, comment }: { label: string; score: number | nu
 interface PendingEvaluationsListProps {
   userRole?: string;
   userId?: string;
+  embedded?: boolean;
 }
 
-export function PendingEvaluationsList({ userRole, userId }: PendingEvaluationsListProps) {
+export function PendingEvaluationsList({ userRole, userId, embedded }: PendingEvaluationsListProps) {
   const [callReports, setCallReports] = useState<PendingCallReport[]>([]);
   const [reviewedCallReports, setReviewedCallReports] = useState<ReviewedCallReport[]>([]);
   const [loading, setLoading] = useState(true);
@@ -266,20 +267,22 @@ export function PendingEvaluationsList({ userRole, userId }: PendingEvaluationsL
   };
 
   return (
-    <div className="p-6 space-y-6">
+    <div className={embedded ? "space-y-6" : "p-6 space-y-6"}>
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">Pending Evaluations</h1>
-          <p className="text-sm text-slate-500 mt-0.5">
-            Stories evaluated by the team that are awaiting your approval
-          </p>
+      {!embedded && (
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-slate-900">Pending Evaluations</h1>
+            <p className="text-sm text-slate-500 mt-0.5">
+              Stories evaluated by the team that are awaiting your approval
+            </p>
+          </div>
+          <Button variant="outline" size="sm" onClick={fetchQueue} disabled={loading}>
+            <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
+            Refresh
+          </Button>
         </div>
-        <Button variant="outline" size="sm" onClick={fetchQueue} disabled={loading}>
-          <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
-          Refresh
-        </Button>
-      </div>
+      )}
 
       {/* Search + Filter */}
       <div className="flex flex-col sm:flex-row gap-3">

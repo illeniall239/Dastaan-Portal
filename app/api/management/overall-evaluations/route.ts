@@ -37,7 +37,7 @@ export async function GET(request: NextRequest) {
           )
         ),
         evaluator_id,
-        users (
+        users!evaluator_forms_evaluator_id_fkey (
           name
         )
       `)

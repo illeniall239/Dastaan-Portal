@@ -5,24 +5,12 @@ import { SidebarWrapper } from "./sidebar-wrapper";
 
 const baseNavItems = [
   { title: "Dashboard",           href: "/management",                    icon: "home" },
-  { title: "Calendar",            href: "/management/calendar",           icon: "calendar" },
-  { title: "Writer Engagement",   href: "/management/writers",            icon: "userPen" },
-  { title: "Active Projects",      href: "/management/whats-cooking",      icon: "chefHat" },
   { title: "Script Bank",         href: "/management/story-bank",         icon: "fileText" },
-  { title: "Idea Roadmap",        href: "/management/roadmap",            icon: "map" },
   { title: "Project Status",      href: "/management/status-updater",     icon: "listChecks" },
   { title: "Evaluations",         href: "/management/evaluations",        icon: "clipboardCheck" },
-  { title: "Evaluations by Story",  href: "/management/evaluator-bias",     icon: "chartNoAxesCombined" },
-  { title: "Content Aging",             href: "/management/content-aging",      icon: "clock" },
-  { title: "Cross-Team Shares Tracking", href: "/management/cross-team-shares",  icon: "share2" },
+  { title: "Content Aging",       href: "/management/content-aging",      icon: "clock" },
   { title: "Teams",               href: "/management/teams",              icon: "users" },
 ];
-
-const pendingEvaluationsItem = {
-  title: "Pending Evaluations",
-  href: "/management/pending-evaluations",
-  icon: "inbox",
-};
 
 export default async function ManagementLayout({
   children,
@@ -37,8 +25,7 @@ export default async function ManagementLayout({
     redirect("/dashboard");
   }
 
-  // Approval Tracking is visible to all management members
-  let navItems = [...baseNavItems.slice(0, 7), pendingEvaluationsItem, ...baseNavItems.slice(7)];
+  let navItems = [...baseNavItems];
 
   // AI Assistant only for mir
   if (user.email === "mir@geo.tv") {
@@ -48,15 +35,8 @@ export default async function ManagementLayout({
   // management_viewer: data/quantity reports only — no scripts, evaluations, or one-liners
   if (user.role === "management_viewer") {
     const blockedHrefs = [
-      "/management/whats-cooking",
-      "/management/roadmap",
       "/management/evaluations",
-      "/management/evaluator-bias",
-      "/management/pending-evaluations",
       "/management/teams",
-      "/management/cross-team-shares",
-      "/management/writers",
-      "/management/calendar",
     ];
     navItems = navItems.filter((item) => !blockedHrefs.includes(item.href));
     navItems.push({ title: "Contract Terms", href: "/management/contract-terms", icon: "fileText" });

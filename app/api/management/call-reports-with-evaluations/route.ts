@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Apply rate limiting
-    const rateLimitResult = await applyRateLimit(request, RateLimitPresets.standard, user.id);
+    const rateLimitResult = await applyRateLimit(request, RateLimitPresets.relaxed, user.id);
     if (!rateLimitResult.success) {
       return rateLimitResult.response;
     }

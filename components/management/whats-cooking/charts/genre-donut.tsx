@@ -8,6 +8,7 @@ import type { ActiveIdeaDetail } from "@/lib/management/active-ideas-details";
 
 interface GenreDonutProps {
   ideas: ActiveIdeaDetail[];
+  teams?: { id: string; name: string }[];
 }
 
 // Genre colors
@@ -21,23 +22,31 @@ const GENRE_COLORS: Record<string, string> = {
   "Mystery": "#6366f1",
   "Social": "#14b8a6",
   "Historical": "#a855f7",
-  "Other": "#6b7280",
+  "Unassigned": "#6b7280",
 };
 
-export function GenreDonut({ ideas }: GenreDonutProps) {
+export function GenreDonut({ ideas, teams }: GenreDonutProps) {
   const [modalOpen, setModalOpen] = useState(false);
   const [modalData, setModalData] = useState<DrillDownData | null>(null);
+  const [selectedTeam, setSelectedTeam] = useState<string>("all");
+  const [showAllGenres, setShowAllGenres] = useState(false);
+
+  const filteredIdeas = useMemo(() => {
+    if (selectedTeam === "all") return ideas;
+    return ideas.filter((idea) => (idea as any).team_id === selectedTeam);
+  }, [ideas, selectedTeam]);
 
   const data = useMemo(() => {
     const genreCounts: Record<string, number> = {};
 
-    ideas.forEach(idea => {
+    filteredIdeas.forEach(idea => {
       if (idea.genre && idea.genre.length > 0) {
         idea.genre.forEach(g => {
-          genreCounts[g] = (genreCounts[g] || 0) + 1;
+          const label = (g === "Other" || !g) ? "Unassigned" : g;
+          genreCounts[label] = (genreCounts[label] || 0) + 1;
         });
       } else {
-        genreCounts["Other"] = (genreCounts["Other"] || 0) + 1;
+        genreCounts["Unassigned"] = (genreCounts["Unassigned"] || 0) + 1;
       }
     });
 
@@ -45,32 +54,30 @@ export function GenreDonut({ ideas }: GenreDonutProps) {
       .map(([name, value]) => ({
         name,
         value,
-        color: GENRE_COLORS[name] || GENRE_COLORS["Other"]
+        color: GENRE_COLORS[name] || GENRE_COLORS["Unassigned"]
       }))
       .sort((a, b) => b.value - a.value);
-  }, [ideas]);
+  }, [filteredIdeas]);
 
-  const total = ideas.length;
+  const total = filteredIdeas.length;
 
   const handleSegmentClick = (data: any) => {
     const genreName = data.name;
 
     if (!genreName) return;
 
-    // Filter ideas for this specific genre
-    const filteredIdeas = ideas.filter(idea => {
-      if (genreName === "Other") {
-        return !idea.genre || idea.genre.length === 0;
+    const genreIdeas = filteredIdeas.filter(idea => {
+      if (genreName === "Unassigned") {
+        return !idea.genre || idea.genre.length === 0 || idea.genre.includes("Other");
       }
       return idea.genre && idea.genre.includes(genreName);
     });
 
-    // Prepare modal data
     setModalData({
       title: `${genreName} - Genre Details`,
-      subtitle: `${filteredIdeas.length} active ${filteredIdeas.length === 1 ? 'idea' : 'ideas'}`,
+      subtitle: `${genreIdeas.length} active ${genreIdeas.length === 1 ? 'idea' : 'ideas'}`,
       type: "table",
-      data: filteredIdeas,
+      data: genreIdeas,
       columns: [
         { key: "working_title", label: "Title" },
         {
@@ -78,27 +85,26 @@ export function GenreDonut({ ideas }: GenreDonutProps) {
           label: "Genres",
           format: (value: string[]) => value ? value.join(", ") : "N/A"
         },
-        { key: "category", label: "Category" },
+        {
+          key: "category",
+          label: "Category",
+          format: (value: string) => {
+            const labels: Record<string, string> = {
+              external_producer: "External Producer",
+              writer_pitch: "Writer Pitch",
+              inhouse_content: "In-house Content",
+              content_head_initiative: "Content Head Initiative",
+              given_by_management: "Given by Management",
+            };
+            return labels[value] || value?.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase()) || "N/A";
+          }
+        },
         {
           key: "average_score",
           label: "Score",
           format: (value: number) => value ? value.toFixed(2) : "N/A"
         },
-        {
-          key: "evaluator_scores",
-          label: "Evaluators",
-          format: (value: any) => {
-            if (!value) return '0';
-            const count = Object.values(value).filter(score => score !== null).length;
-            return `${count}`;
-          }
-        },
-        { key: "slot", label: "Slot" },
-        {
-          key: "status",
-          label: "Status",
-          format: (value: string) => value?.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) || 'N/A'
-        }
+        { key: "slot", label: "Slot" }
       ]
     });
     setModalOpen(true);
@@ -106,8 +112,22 @@ export function GenreDonut({ ideas }: GenreDonutProps) {
 
   return (
     <Card className="p-4 border border-gray-200 shadow-sm">
-      <h3 className="text-sm font-semibold text-gray-900 mb-3">By Genre</h3>
-      
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="text-sm font-semibold text-gray-900">By Genre</h3>
+        {teams && teams.length > 0 && (
+          <select
+            value={selectedTeam}
+            onChange={(e) => setSelectedTeam(e.target.value)}
+            className="text-xs border border-gray-200 rounded-md px-2 py-1 text-gray-700 bg-white focus:outline-none focus:ring-1 focus:ring-blue-500"
+          >
+            <option value="all">All Teams</option>
+            {teams.map((t) => (
+              <option key={t.id} value={t.id}>{t.name}</option>
+            ))}
+          </select>
+        )}
+      </div>
+
       <div className="flex items-center gap-4">
         {/* Donut Chart */}
         <div className="relative w-32 h-32 flex-shrink-0">
@@ -149,11 +169,15 @@ export function GenreDonut({ ideas }: GenreDonutProps) {
         </div>
 
         {/* Legend */}
-        <div className="flex-1 space-y-1.5 overflow-hidden">
-          {data.slice(0, 5).map((item) => (
-            <div key={item.name} className="flex items-center justify-between text-xs">
+        <div className={`flex-1 space-y-1.5 ${showAllGenres ? "max-h-32 overflow-y-auto" : "overflow-hidden"}`}>
+          {(showAllGenres ? data : data.slice(0, 5)).map((item) => (
+            <div
+              key={item.name}
+              className="flex items-center justify-between text-xs cursor-pointer hover:bg-gray-50 rounded px-1 -mx-1 transition-colors"
+              onClick={() => handleSegmentClick(item)}
+            >
               <div className="flex items-center gap-1.5 truncate">
-                <span 
+                <span
                   className="w-2 h-2 rounded-full flex-shrink-0"
                   style={{ backgroundColor: item.color }}
                 />
@@ -163,7 +187,12 @@ export function GenreDonut({ ideas }: GenreDonutProps) {
             </div>
           ))}
           {data.length > 5 && (
-            <div className="text-[10px] text-gray-400">+{data.length - 5} more</div>
+            <button
+              onClick={() => setShowAllGenres(!showAllGenres)}
+              className="text-[10px] text-blue-600 hover:text-blue-800 font-medium cursor-pointer"
+            >
+              {showAllGenres ? "Show less" : `+${data.length - 5} more`}
+            </button>
           )}
         </div>
       </div>
@@ -176,4 +205,3 @@ export function GenreDonut({ ideas }: GenreDonutProps) {
     </Card>
   );
 }
-

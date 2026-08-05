@@ -109,6 +109,7 @@ interface ReviewData {
 interface PendingEpisodeApprovalsListProps {
   userId: string;
   userRole: string;
+  embedded?: boolean;
 }
 
 interface ProjectGroup {
@@ -229,6 +230,7 @@ function ScoreBox({
 export function PendingEpisodeApprovalsList({
   userId,
   userRole,
+  embedded,
 }: PendingEpisodeApprovalsListProps) {
   const [pending, setPending] = useState<EpisodeQueueItem[]>([]);
   const [reviewed, setReviewed] = useState<EpisodeQueueItem[]>([]);
@@ -315,27 +317,29 @@ export function PendingEpisodeApprovalsList({
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className={embedded ? "space-y-6" : "p-6 space-y-6"}>
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">Pending Evaluations</h1>
-          <p className="text-sm text-slate-500 mt-0.5">
-            Episodes evaluated by the team, grouped by drama
-          </p>
+      {!embedded && (
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-slate-900">Pending Evaluations</h1>
+            <p className="text-sm text-slate-500 mt-0.5">
+              Episodes evaluated by the team, grouped by drama
+            </p>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={fetchQueue}
+            disabled={loading}
+          >
+            <RefreshCw
+              className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`}
+            />
+            Refresh
+          </Button>
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={fetchQueue}
-          disabled={loading}
-        >
-          <RefreshCw
-            className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`}
-          />
-          Refresh
-        </Button>
-      </div>
+      )}
 
       {/* Search + filter */}
       <div className="flex flex-col sm:flex-row gap-3">

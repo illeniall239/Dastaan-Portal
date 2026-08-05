@@ -160,24 +160,30 @@ export function EvaluatorEvaluationForm({
     decision: "" as "approve" | "reject" | "needs_improvement" | "",
     decisionNotes: "",
     delayReason: "",
+    originalSubmissionDate: "",
   });
 
   // Check if evaluation is late (> 3 days since call report was created)
+  // If originalSubmissionDate is set, compare that date instead of now
   const isEvaluationLate = useMemo(() => {
     if (!callReport?.created_at) return false;
     const createdDate = new Date(callReport.created_at);
-    const now = new Date();
-    const diffDays = Math.floor((now.getTime() - createdDate.getTime()) / (1000 * 60 * 60 * 24));
+    const compareDate = formData.originalSubmissionDate
+      ? new Date(formData.originalSubmissionDate)
+      : new Date();
+    const diffDays = Math.floor((compareDate.getTime() - createdDate.getTime()) / (1000 * 60 * 60 * 24));
     return diffDays > 3;
-  }, [callReport?.created_at]);
+  }, [callReport?.created_at, formData.originalSubmissionDate]);
 
   // Calculate days since call report was created
   const daysSinceCreation = useMemo(() => {
     if (!callReport?.created_at) return 0;
     const createdDate = new Date(callReport.created_at);
-    const now = new Date();
-    return Math.floor((now.getTime() - createdDate.getTime()) / (1000 * 60 * 60 * 24));
-  }, [callReport?.created_at]);
+    const compareDate = formData.originalSubmissionDate
+      ? new Date(formData.originalSubmissionDate)
+      : new Date();
+    return Math.floor((compareDate.getTime() - createdDate.getTime()) / (1000 * 60 * 60 * 24));
+  }, [callReport?.created_at, formData.originalSubmissionDate]);
 
   // Calculate average score from new 5 criteria
   const [averageScore, setAverageScore] = useState(5);
@@ -315,6 +321,7 @@ export function EvaluatorEvaluationForm({
           started_at: new Date().toISOString(),
           is_late: isEvaluationLate,
           delay_reason: isEvaluationLate ? formData.delayReason : null,
+          original_submission_date: formData.originalSubmissionDate || null,
           feedback_text: feedbackText || null,
           feedback_attachments: feedbackAttachments,
         });
@@ -350,6 +357,7 @@ export function EvaluatorEvaluationForm({
           started_at: new Date().toISOString(),
           is_late: isEvaluationLate,
           delay_reason: isEvaluationLate ? formData.delayReason : undefined,
+          original_submission_date: formData.originalSubmissionDate || undefined,
           feedback_text: feedbackText || undefined,
           feedback_attachments: feedbackAttachments,
         });
@@ -470,6 +478,7 @@ export function EvaluatorEvaluationForm({
         decision: "",
         decisionNotes: "",
         delayReason: "",
+        originalSubmissionDate: pendingDraftData.originalSubmissionDate || "",
       });
 
       setFeedbackAttachments(pendingDraftData.feedbackAttachments || []);
@@ -512,6 +521,7 @@ export function EvaluatorEvaluationForm({
         first2EpsRequired: !!propExistingEvaluation.first_2_eps_required,
         decision: propExistingEvaluation.decision || "",
         decisionNotes: propExistingEvaluation.decision_notes || "",
+        originalSubmissionDate: propExistingEvaluation.original_submission_date || "",
       }));
       return;
     }
@@ -549,6 +559,7 @@ export function EvaluatorEvaluationForm({
               first2EpsRequired: !!json.evaluation.first_2_eps_required,
               decision: json.evaluation.decision || "",
               decisionNotes: json.evaluation.decision_notes || "",
+              originalSubmissionDate: json.evaluation.original_submission_date || "",
             }));
           }
         }
@@ -1117,6 +1128,24 @@ export function EvaluatorEvaluationForm({
                   <option value="9:00 PM">9:00 PM</option>
                   <option value="10:00 PM">10:00 PM</option>
                 </select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="originalSubmissionDate">
+                  Original Submission Date{" "}
+                  <span className="text-slate-400 font-normal text-xs">(optional)</span>
+                </Label>
+                <Input
+                  id="originalSubmissionDate"
+                  type="date"
+                  value={formData.originalSubmissionDate}
+                  onChange={handleInputChange}
+                  max={new Date().toISOString().split("T")[0]}
+                  disabled={isLoading}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Set this if the evaluation was done on a different date than today. All time-based calculations will use this date.
+                </p>
               </div>
             </div>
           </Card>

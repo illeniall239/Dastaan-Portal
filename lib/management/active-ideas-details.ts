@@ -93,6 +93,8 @@ export interface ActiveIdeaDetail {
   has_no_of_tracks?: boolean;
   has_closing_remarks?: boolean;
   has_themes_of_drama?: boolean;
+  // Team
+  team_id?: string | null;
 }
 
 /**

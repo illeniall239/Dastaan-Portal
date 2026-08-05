@@ -2,7 +2,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getActiveIdeasByGenre } from "./active-ideas-details";
 import { cachedQuery, CacheTags } from "@/lib/cache/request-cache";
 import { handleError } from "@/lib/errors";
-import type { CriticalAlert } from "./critical-alerts";
+import type { CriticalAlert, DashboardInsight } from "./critical-alerts";
 
 /**
  * Management Dashboard Server Functions
@@ -510,15 +510,16 @@ export async function getCriticalAlerts(): Promise<CriticalAlert[]> {
           const daysSinceUpdate = Math.floor((Date.now() - new Date(story.updated_at).getTime()) / (1000 * 60 * 60 * 24));
           if (daysSinceUpdate > 30) {
             alerts.push({
-              id: `stuck - ${story.id} `,
+              id: `stuck-${story.id}`,
               type: "stuck_story",
-              title: `Story stuck in ${story.status} `,
+              title: `Story stuck in ${story.status}`,
               description: `"${story.title}" has been in ${story.status} for ${daysSinceUpdate} days`,
               severity: daysSinceUpdate > 60 ? "critical" : "warning",
               affectedEntity: story.title,
               entityId: story.id,
               daysDelayed: daysSinceUpdate - 30,
               createdAt: story.updated_at,
+              link: `/content-department/call-reports/${story.id}`,
             });
           }
         });
@@ -532,7 +533,7 @@ export async function getCriticalAlerts(): Promise<CriticalAlert[]> {
         (payments || []).forEach((payment: any) => {
           if (payment.overdue_days && payment.overdue_days > 7) {
             alerts.push({
-              id: `payment - ${payment.id} `,
+              id: `payment-${payment.id}`,
               type: "payment_overdue",
               title: "Payment Overdue",
               description: `Payment "${payment.milestone_name}" is ${payment.overdue_days} days overdue`,
@@ -541,6 +542,7 @@ export async function getCriticalAlerts(): Promise<CriticalAlert[]> {
               entityId: payment.id,
               daysDelayed: payment.overdue_days,
               createdAt: new Date().toISOString(),
+              link: "/management/payments/overdue",
             });
           }
         });
@@ -554,7 +556,7 @@ export async function getCriticalAlerts(): Promise<CriticalAlert[]> {
         (legalReviews || []).forEach((review: any) => {
           if (review.days_in_review && review.days_in_review > 14) {
             alerts.push({
-              id: `legal - ${review.id} `,
+              id: `legal-${review.id}`,
               type: "evaluation_delay",
               title: "Legal Review Delayed",
               description: `Review ${review.legal_review_id} has been pending for ${review.days_in_review} days`,
@@ -563,6 +565,7 @@ export async function getCriticalAlerts(): Promise<CriticalAlert[]> {
               entityId: review.id,
               daysDelayed: review.days_in_review - 14,
               createdAt: new Date().toISOString(),
+              link: "/management/evaluations",
             });
           }
         });
@@ -578,7 +581,7 @@ export async function getCriticalAlerts(): Promise<CriticalAlert[]> {
             const daysUntilExpiry = Math.floor((new Date(contract.contract_end_date).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
             if (daysUntilExpiry < 30 && daysUntilExpiry > 0) {
               alerts.push({
-                id: `contract - ${contract.id} `,
+                id: `contract-${contract.id}`,
                 type: "long_negotiation",
                 title: "Contract Expiring Soon",
                 description: `Contract ${contract.contract_id} for "${contract.project_title}" expires in ${daysUntilExpiry} days`,
@@ -587,18 +590,73 @@ export async function getCriticalAlerts(): Promise<CriticalAlert[]> {
                 entityId: contract.id,
                 daysDelayed: 30 - daysUntilExpiry,
                 createdAt: contract.contract_end_date,
+                link: "/management/contracts",
               });
             }
           }
         });
 
-        // Sort by severity and limit to top 10
-        return alerts
-          .sort((a, b) => {
-            const severityOrder = { critical: 0, warning: 1, info: 2 };
-            return severityOrder[a.severity] - severityOrder[b.severity];
-          })
-          .slice(0, 10);
+        // Late evaluations — evaluators with pending late forms
+        const { data: lateForms } = await supabase
+          .from("evaluator_forms")
+          .select("id, evaluator_id, call_report_id, evaluator:users!evaluator_id(name), call_report:call_reports!call_report_id(working_title)")
+          .eq("is_late", true)
+          .is("submitted_at", null);
+
+        // Group by evaluator
+        const lateByEvaluator: Record<string, { name: string; count: number; userId: string }> = {};
+        (lateForms || []).forEach((f: any) => {
+          const uid = f.evaluator_id;
+          if (!lateByEvaluator[uid]) {
+            lateByEvaluator[uid] = { name: f.evaluator?.name || "Unknown", count: 0, userId: uid };
+          }
+          lateByEvaluator[uid].count++;
+        });
+
+        Object.values(lateByEvaluator).forEach((ev) => {
+          alerts.push({
+            id: `late-eval-${ev.userId}`,
+            type: "late_evaluation",
+            title: "Late Evaluation",
+            description: `${ev.name} has ${ev.count} overdue evaluation${ev.count > 1 ? "s" : ""}`,
+            severity: ev.count >= 3 ? "critical" : "warning",
+            affectedEntity: ev.name,
+            entityId: ev.userId,
+            daysDelayed: ev.count,
+            createdAt: new Date().toISOString(),
+            link: "/management/evaluations",
+          });
+        });
+
+        // Writer delivery gaps — projects with no episode received in 30+ days
+        const { data: stalledProjects } = await supabase
+          .from("consolidated_cms_view")
+          .select("id, working_title, last_episode_received_at, completion_percentage")
+          .lt("completion_percentage", 100)
+          .not("last_episode_received_at", "is", null);
+
+        (stalledProjects || []).forEach((p: any) => {
+          const daysSince = Math.floor((Date.now() - new Date(p.last_episode_received_at).getTime()) / (1000 * 60 * 60 * 24));
+          if (daysSince > 30) {
+            alerts.push({
+              id: `delivery-gap-${p.id}`,
+              type: "delivery_gap",
+              title: "Delivery Gap",
+              description: `"${p.working_title}" — no episode received in ${daysSince} days`,
+              severity: daysSince > 60 ? "critical" : "warning",
+              affectedEntity: p.working_title,
+              entityId: p.id,
+              daysDelayed: daysSince,
+              createdAt: p.last_episode_received_at,
+            });
+          }
+        });
+
+        // Sort by severity
+        return alerts.sort((a, b) => {
+          const severityOrder = { critical: 0, warning: 1, info: 2 };
+          return severityOrder[a.severity] - severityOrder[b.severity];
+        });
       } catch (error) {
         return [];
       }
@@ -612,6 +670,177 @@ export async function getCriticalAlerts(): Promise<CriticalAlert[]> {
 
   // Wrap with instrumentation if available
   return instrumentFn ? instrumentFn('getCriticalAlerts', wrappedQuery) : wrappedQuery();
+}
+
+const STATUS_LABELS: Record<string, string> = {
+  submitted: "Submission",
+  in_evaluation: "Evaluation",
+  approved: "Approved",
+  in_negotiation: "Negotiation",
+  in_legal_review: "Legal Review",
+  contracted: "Contracted",
+  in_payment: "Payment",
+};
+
+function formatStage(status: string): string {
+  return STATUS_LABELS[status] || status.replace(/_/g, " ");
+}
+
+/**
+ * Get aggregated dashboard insights for CEO view
+ * Returns one row per issue category, not per individual item
+ */
+export async function getDashboardInsights(): Promise<DashboardInsight[]> {
+  const instrumentFn = process.env.NODE_ENV === 'production'
+    ? (await import('@/lib/telemetry/spans').catch(() => ({ instrumentServerFunction: null }))).instrumentServerFunction
+    : null;
+
+  const wrappedQuery = async () => cachedQuery(
+    async () => {
+      const supabase = createAdminClient();
+      const insights: DashboardInsight[] = [];
+      const now = Date.now();
+
+      try {
+        // Run all queries in parallel
+        const [
+          { data: stories },
+          { data: lateForms },
+          { data: stalledProjects },
+          { data: overduePayments },
+        ] = await Promise.all([
+          supabase
+            .from("stories")
+            .select("id, title, status, updated_at")
+            .not("status", "in", "(completed,rejected,archived)"),
+          supabase
+            .from("evaluator_forms")
+            .select("id, evaluator_id, evaluator:users!evaluator_id(name)")
+            .eq("is_late", true)
+            .is("submitted_at", null),
+          supabase
+            .from("consolidated_cms_view")
+            .select("id, working_title, last_episode_received_at, completion_percentage")
+            .lt("completion_percentage", 100)
+            .not("last_episode_received_at", "is", null),
+          supabase
+            .from("payments")
+            .select("id, overdue_days")
+            .eq("status", "overdue"),
+        ]);
+
+        // 1. Pipeline Bottleneck — stories stuck 30+ days, grouped by stage
+        if (stories?.length) {
+          const stuckByStage: Record<string, number> = {};
+          let totalStuck = 0;
+          let worstDays = 0;
+
+          for (const s of stories) {
+            const days = Math.floor((now - new Date(s.updated_at).getTime()) / 86400000);
+            if (days > 30) {
+              totalStuck++;
+              stuckByStage[s.status] = (stuckByStage[s.status] || 0) + 1;
+              if (days > worstDays) worstDays = days;
+            }
+          }
+
+          if (totalStuck > 0) {
+            const breakdown = Object.entries(stuckByStage)
+              .sort((a, b) => b[1] - a[1])
+              .map(([status, count]) => `${count} in ${formatStage(status)}`)
+              .join(" · ");
+
+            insights.push({
+              id: "pipeline-bottleneck",
+              type: "pipeline_bottleneck",
+              severity: worstDays > 60 || totalStuck >= 10 ? "critical" : "warning",
+              headline: `${totalStuck} ${totalStuck === 1 ? "story" : "stories"} stuck in pipeline (30+ days)`,
+              detail: breakdown,
+              count: totalStuck,
+            });
+          }
+        }
+
+        // 2. Late Evaluators — overdue evaluation forms grouped by evaluator
+        if (lateForms?.length) {
+          const byEvaluator: Record<string, { name: string; count: number }> = {};
+          for (const f of lateForms as any[]) {
+            const uid = f.evaluator_id;
+            if (!byEvaluator[uid]) byEvaluator[uid] = { name: f.evaluator?.name || "Unknown", count: 0 };
+            byEvaluator[uid].count++;
+          }
+
+          const evaluators = Object.values(byEvaluator).sort((a, b) => b.count - a.count);
+          const totalLate = lateForms.length;
+          const names = evaluators.slice(0, 3).map(e => `${e.name} (${e.count})`).join(", ");
+
+          insights.push({
+            id: "late-evaluators",
+            type: "late_evaluators",
+            severity: totalLate >= 5 || evaluators.length >= 3 ? "critical" : "warning",
+            headline: `${totalLate} overdue ${totalLate === 1 ? "evaluation" : "evaluations"}`,
+            detail: `${evaluators.length} evaluator${evaluators.length > 1 ? "s" : ""}: ${names}`,
+            count: totalLate,
+          });
+        }
+
+        // 3. Delivery Stalls — projects with no new episodes in 30+ days
+        if (stalledProjects?.length) {
+          let stalledCount = 0;
+          let worstDays = 0;
+
+          for (const p of stalledProjects as any[]) {
+            const days = Math.floor((now - new Date(p.last_episode_received_at).getTime()) / 86400000);
+            if (days > 30) {
+              stalledCount++;
+              if (days > worstDays) worstDays = days;
+            }
+          }
+
+          if (stalledCount > 0) {
+            insights.push({
+              id: "delivery-stalls",
+              type: "delivery_stalls",
+              severity: stalledCount >= 5 || worstDays > 60 ? "critical" : "warning",
+              headline: `${stalledCount} ${stalledCount === 1 ? "project" : "projects"} with stalled deliveries`,
+              detail: `No new episodes in 30+ days${worstDays > 60 ? ` · worst gap: ${worstDays} days` : ""}`,
+              count: stalledCount,
+            });
+          }
+        }
+
+        // 4. Payment Risk — overdue payments
+        const overdueList = (overduePayments || []).filter((p: any) => p.overdue_days > 7);
+        if (overdueList.length > 0) {
+          const worstOverdue = Math.max(...overdueList.map((p: any) => p.overdue_days || 0));
+          insights.push({
+            id: "payment-risk",
+            type: "payment_risk",
+            severity: overdueList.length >= 3 || worstOverdue > 30 ? "critical" : "warning",
+            headline: `${overdueList.length} ${overdueList.length === 1 ? "payment" : "payments"} overdue`,
+            detail: `Longest overdue: ${worstOverdue} days`,
+            count: overdueList.length,
+          });
+        }
+
+        // Sort: critical first, then by count
+        return insights.sort((a, b) => {
+          if (a.severity !== b.severity) return a.severity === "critical" ? -1 : 1;
+          return b.count - a.count;
+        });
+
+      } catch (error) {
+        return [];
+      }
+    },
+    ['dashboard-insights'],
+    {
+      revalidate: 300,
+      tags: [CacheTags.CRITICAL_ALERTS]
+    }
+  )();
+
+  return instrumentFn ? instrumentFn('getDashboardInsights', wrappedQuery) : wrappedQuery();
 }
 
 // Obsolete function removed in favor of getActiveIdeasByGenre

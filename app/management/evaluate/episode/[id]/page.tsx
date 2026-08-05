@@ -152,7 +152,7 @@ export default function ManagementEvaluateEpisodePage({ params }: EpisodePagePro
       toast.success("Management evaluation submitted successfully!");
 
       setTimeout(() => {
-        router.push("/management/pending-evaluations?tab=episodes");
+        router.push("/management/evaluations");
       }, 1500);
     } catch (error: any) {
       console.error("Error submitting evaluation:", error);

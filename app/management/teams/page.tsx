@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getAllTeamPerformanceServer } from "@/lib/management/team-performance";
+import { formatTeamDisplayName, getTeamDisplayLabel } from "@/lib/management/team-display";
 import { TeamStatsCards } from "@/components/management/team-performance/team-stats-cards";
 import { TeamComparisonBarChart } from "@/components/management/charts/team-comparison-bar-chart";
 import { ExportButton } from "@/components/management/export-button";
@@ -46,17 +47,11 @@ export default async function TeamAnalyticsPage() {
       t.team_type !== "management" || t.team_head_email === "humera.safder@geo.tv"
     );
 
-    // Apply friendly display names for Humera and Salman's teams
+    // Apply proper display names from team head's actual name
     teams = teams.map((t: any) => ({
       ...t,
-      team_name:
-        t.team_head_email === "humera.safder@geo.tv" ? "Humera's Team (Content Evaluation)" :
-        t.team_head_email === "salman.ahmed@geo.tv" ? "Salman's Team (Programming)" :
-        t.team_name,
-      display_label:
-        t.team_head_email === "humera.safder@geo.tv" ? "(Content Evaluation)" :
-        t.team_head_email === "salman.ahmed@geo.tv" ? "(Programming)" :
-        "",
+      team_name: formatTeamDisplayName(t.team_name, t.team_head_name),
+      display_label: getTeamDisplayLabel(t.team_head_email),
     }));
 
     // Compute summary from the teams data (avoids using the browser/anon client)

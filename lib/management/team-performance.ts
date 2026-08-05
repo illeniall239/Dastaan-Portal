@@ -245,6 +245,69 @@ export async function getTopPerformingTeams(limit: number = 5): Promise<TeamPerf
 }
 
 /**
+ * Get all team performance data (cached, for dashboard)
+ */
+export type TeamPerformanceExtended = TeamPerformance & {
+  episodes_received: number;
+  episodic_evaluations: number;
+};
+
+export async function getAllTeamPerformanceCached(): Promise<TeamPerformanceExtended[]> {
+  return cachedQuery(
+    async () => {
+      const supabase = createAdminClient();
+
+      // Fetch team_performance view + episode counts + episodic evaluation counts in parallel
+      const [{ data, error }, { data: epCounts }, { data: episodicEvals }] = await Promise.all([
+        supabase
+          .from("team_performance")
+          .select("*")
+          .order("call_reports_created", { ascending: false }),
+        supabase
+          .from("episodes")
+          .select("id, call_report:call_reports!call_report_id(team_id)"),
+        supabase
+          .from("episodic_evaluations")
+          .select("id, evaluator:users!evaluator_id(team_id)"),
+      ]);
+
+      if (error) {
+        return handleError(error, {
+          context: "getAllTeamPerformanceCached",
+          fallbackValue: [],
+          notifyUser: false,
+        });
+      }
+
+      // Count episodes per team
+      const epsByTeam: Record<string, number> = {};
+      for (const ep of (epCounts || []) as any[]) {
+        const teamId = ep.call_report?.team_id;
+        if (teamId) epsByTeam[teamId] = (epsByTeam[teamId] || 0) + 1;
+      }
+
+      // Count episodic evaluations per team
+      const episodicByTeam: Record<string, number> = {};
+      for (const ev of (episodicEvals || []) as any[]) {
+        const teamId = ev.evaluator?.team_id;
+        if (teamId) episodicByTeam[teamId] = (episodicByTeam[teamId] || 0) + 1;
+      }
+
+      return (data || []).map((t) => ({
+        ...t,
+        episodes_received: epsByTeam[t.team_id] || 0,
+        episodic_evaluations: episodicByTeam[t.team_id] || 0,
+      }));
+    },
+    ['all-team-performance'],
+    {
+      revalidate: 300,
+      tags: [CacheTags.TOP_TEAMS]
+    }
+  )();
+}
+
+/**
  * Get team performance summary statistics
  */
 export async function getTeamPerformanceSummary() {
@@ -312,12 +375,11 @@ export async function getTeamPerformanceTrends(
 ): Promise<TeamTrend[]> {
   const supabase = createAdminClient();
 
-  // Calculate date range
-  const endDate = new Date();
   const startDate = new Date();
   startDate.setMonth(startDate.getMonth() - months);
+  const startISO = new Date(startDate.getFullYear(), startDate.getMonth(), 1).toISOString();
 
-  // Fetch team members
+  // 1. Get team members
   const { data: members, error: membersError } = await supabase
     .from("users")
     .select("id")
@@ -333,67 +395,59 @@ export async function getTeamPerformanceTrends(
   }
 
   const memberIds = members?.map(m => m.id) || [];
+  if (memberIds.length === 0) return [];
 
-  if (memberIds.length === 0) {
-    return [];
-  }
-
-  // Generate monthly buckets
-  const trends: TeamTrend[] = [];
-  const currentDate = new Date(startDate);
-
-  while (currentDate <= endDate) {
-    const monthStart = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
-    const monthEnd = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0, 23, 59, 59);
-
-    // Fetch call reports for this month
-    const { count: callReportsCount } = await supabase
+  // 2. Fetch all data in 3 parallel queries (instead of 24 sequential)
+  const [{ data: callReports }, { data: evals }, { data: stories }] = await Promise.all([
+    supabase
       .from("call_reports")
-      .select("*", { count: "exact", head: true })
+      .select("created_at")
       .in("created_by", memberIds)
-      .gte("created_at", monthStart.toISOString())
-      .lte("created_at", monthEnd.toISOString());
-
-    // Fetch evaluations for this month
-    const { count: evaluationsCount } = await supabase
+      .gte("created_at", startISO),
+    supabase
       .from("evaluator_forms")
-      .select("*", { count: "exact", head: true })
+      .select("created_at")
       .in("evaluator_id", memberIds)
-      .gte("created_at", monthStart.toISOString())
-      .lte("created_at", monthEnd.toISOString());
-
-    // Fetch one-liners for this month
-    const { count: oneLinersCount } = await supabase
-      .from("one_liners")
-      .select("*", { count: "exact", head: true })
-      .in("created_by", memberIds)
-      .gte("created_at", monthStart.toISOString())
-      .lte("created_at", monthEnd.toISOString());
-
-    // Fetch stories approved/rejected for this month
-    const { data: stories } = await supabase
+      .gte("created_at", startISO),
+    supabase
       .from("stories")
-      .select("status")
+      .select("status, updated_at")
       .in("submitted_by", memberIds)
-      .gte("updated_at", monthStart.toISOString())
-      .lte("updated_at", monthEnd.toISOString());
+      .gte("updated_at", startISO),
+  ]);
 
-    const storiesApproved = stories?.filter(s => s.status === "approved").length || 0;
-    const storiesRejected = stories?.filter(s => s.status === "rejected").length || 0;
-
-    trends.push({
-      period: monthStart.toLocaleDateString("en-US", { year: "numeric", month: "short" }),
-      call_reports: callReportsCount || 0,
-      evaluations: evaluationsCount || 0,
-      one_liners: oneLinersCount || 0,
-      stories_approved: storiesApproved,
-      stories_rejected: storiesRejected,
-    });
-
-    currentDate.setMonth(currentDate.getMonth() + 1);
+  // 3. Bucket by month
+  function monthKey(dateStr: string): string {
+    const d = new Date(dateStr);
+    return d.toLocaleDateString("en-US", { year: "numeric", month: "short" });
   }
 
-  return trends;
+  // Build empty month buckets
+  const buckets: Record<string, TeamTrend> = {};
+  const cursor = new Date(startDate.getFullYear(), startDate.getMonth(), 1);
+  const now = new Date();
+  while (cursor <= now) {
+    const key = cursor.toLocaleDateString("en-US", { year: "numeric", month: "short" });
+    buckets[key] = { period: key, call_reports: 0, evaluations: 0, one_liners: 0, stories_approved: 0, stories_rejected: 0 };
+    cursor.setMonth(cursor.getMonth() + 1);
+  }
+
+  for (const cr of callReports || []) {
+    const key = monthKey(cr.created_at);
+    if (buckets[key]) buckets[key].call_reports++;
+  }
+  for (const ev of evals || []) {
+    const key = monthKey(ev.created_at);
+    if (buckets[key]) buckets[key].evaluations++;
+  }
+  for (const s of (stories || []) as any[]) {
+    const key = monthKey(s.updated_at);
+    if (!buckets[key]) continue;
+    if (s.status === "approved") buckets[key].stories_approved++;
+    if (s.status === "rejected") buckets[key].stories_rejected++;
+  }
+
+  return Object.values(buckets);
 }
 
 /**

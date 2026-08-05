@@ -9,16 +9,23 @@ import { getCategoryLabel } from "@/lib/management/color-palettes";
 
 interface SlotBarsProps {
   ideas: ActiveIdeaDetail[];
+  teams?: { id: string; name: string }[];
 }
 
-export function SlotBars({ ideas }: SlotBarsProps) {
+export function SlotBars({ ideas, teams }: SlotBarsProps) {
   const [modalOpen, setModalOpen] = useState(false);
   const [modalData, setModalData] = useState<DrillDownData | null>(null);
+  const [selectedTeam, setSelectedTeam] = useState<string>("all");
+
+  const filteredIdeas = useMemo(() => {
+    if (selectedTeam === "all") return ideas;
+    return ideas.filter((idea) => (idea as any).team_id === selectedTeam);
+  }, [ideas, selectedTeam]);
 
   const data = useMemo(() => {
     const slotCounts: Record<string, number> = {};
 
-    ideas.forEach(idea => {
+    filteredIdeas.forEach(idea => {
       const slot = idea.slot || "Unassigned";
       slotCounts[slot] = (slotCounts[slot] || 0) + 1;
     });
@@ -33,22 +40,22 @@ export function SlotBars({ ideas }: SlotBarsProps) {
       .map(([name, value]) => ({ name, value }));
 
     return sortedSlots;
-  }, [ideas]);
+  }, [filteredIdeas]);
 
   const handleBarClick = (barData: any) => {
     const slotName = barData.name;
 
     // Filter ideas for this specific slot
-    const filteredIdeas = ideas.filter(idea =>
+    const slotIdeas = filteredIdeas.filter(idea =>
       (idea.slot || "Unassigned") === slotName
     );
 
     // Prepare modal data
     setModalData({
       title: `${slotName} - Slot Details`,
-      subtitle: `${filteredIdeas.length} active ${filteredIdeas.length === 1 ? 'idea' : 'ideas'}`,
+      subtitle: `${slotIdeas.length} active ${slotIdeas.length === 1 ? 'idea' : 'ideas'}`,
       type: "table",
-      data: filteredIdeas,
+      data: slotIdeas,
       columns: [
         { key: "working_title", label: "Title" },
         {
@@ -71,21 +78,7 @@ export function SlotBars({ ideas }: SlotBarsProps) {
           label: "Score",
           format: (value: number) => value ? value.toFixed(2) : "N/A"
         },
-        {
-          key: "evaluator_scores",
-          label: "Evaluators",
-          format: (value: any) => {
-            if (!value) return '0';
-            const count = Object.values(value).filter(score => score !== null).length;
-            return `${count}`;
-          }
-        },
-        { key: "slot", label: "Slot" },
-        {
-          key: "status",
-          label: "Status",
-          format: (value: string) => value?.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) || 'N/A'
-        }
+        { key: "slot", label: "Slot" }
       ]
     });
     setModalOpen(true);
@@ -93,49 +86,69 @@ export function SlotBars({ ideas }: SlotBarsProps) {
 
   return (
     <Card className="p-4 border border-gray-200 shadow-sm">
-      <h3 className="text-sm font-semibold text-gray-900 mb-3">By Time Slot</h3>
-      
-      <div className="h-36">
-        <ResponsiveContainer width="100%" height="100%">
-          <BarChart
-            data={data}
-            layout="vertical"
-            margin={{ top: 0, right: 30, left: 60, bottom: 0 }}
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="text-sm font-semibold text-gray-900">By Time Slot</h3>
+        {teams && teams.length > 0 && (
+          <select
+            value={selectedTeam}
+            onChange={(e) => setSelectedTeam(e.target.value)}
+            className="text-xs border border-gray-200 rounded-md px-2 py-1 text-gray-700 bg-white focus:outline-none focus:ring-1 focus:ring-blue-500"
           >
-            <XAxis type="number" hide />
-            <YAxis 
-              type="category" 
-              dataKey="name" 
-              tick={{ fontSize: 11, fill: "#6b7280" }}
-              axisLine={false}
-              tickLine={false}
-              width={55}
-            />
-            <Tooltip
-              formatter={(value: number) => [`${value} projects`, "Count"]}
-              contentStyle={{
-                backgroundColor: "white",
-                border: "1px solid #e5e7eb",
-                borderRadius: "8px",
-                fontSize: "12px"
-              }}
-            />
-            <Bar
-              dataKey="value"
-              radius={[0, 4, 4, 0]}
-              maxBarSize={20}
-              onClick={handleBarClick}
-              cursor="pointer"
+            <option value="all">All Teams</option>
+            {teams.map((t) => (
+              <option key={t.id} value={t.id}>{t.name}</option>
+            ))}
+          </select>
+        )}
+      </div>
+
+      <div className="h-36">
+        {data.length === 0 ? (
+          <div className="flex items-center justify-center h-full text-xs text-gray-400">
+            No projects in this filter
+          </div>
+        ) : (
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart
+              data={data}
+              layout="vertical"
+              margin={{ top: 0, right: 30, left: 60, bottom: 0 }}
             >
-              {data.map((entry, index) => (
-                <Cell
-                  key={`cell-${index}`}
-                  fill={entry.name === "Unassigned" ? "#9ca3af" : "#224794"}
-                />
-              ))}
-            </Bar>
-          </BarChart>
-        </ResponsiveContainer>
+              <XAxis type="number" hide />
+              <YAxis
+                type="category"
+                dataKey="name"
+                tick={{ fontSize: 11, fill: "#6b7280" }}
+                axisLine={false}
+                tickLine={false}
+                width={55}
+              />
+              <Tooltip
+                formatter={(value: number) => [`${value} projects`, "Count"]}
+                contentStyle={{
+                  backgroundColor: "white",
+                  border: "1px solid #e5e7eb",
+                  borderRadius: "8px",
+                  fontSize: "12px"
+                }}
+              />
+              <Bar
+                dataKey="value"
+                radius={[0, 4, 4, 0]}
+                maxBarSize={20}
+                onClick={handleBarClick}
+                cursor="pointer"
+              >
+                {data.map((entry, index) => (
+                  <Cell
+                    key={`cell-${index}`}
+                    fill={entry.name === "Unassigned" ? "#9ca3af" : "#224794"}
+                  />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        )}
       </div>
 
       {/* Summary */}
@@ -152,4 +165,3 @@ export function SlotBars({ ideas }: SlotBarsProps) {
     </Card>
   );
 }
-

@@ -82,6 +82,9 @@ export const episodicEvaluationSchema = z.object({
   time_spent_minutes: z.number().min(0).optional(),
   started_at: z.string().datetime().optional(),
 
+  // Original submission date (optional override for submitted_at in analytics)
+  original_submission_date: z.string().optional(),
+
   // Final decision
   decision: z.enum(["approve", "reject", "needs_revision"], {
     required_error: "Please select a decision",
@@ -171,6 +174,9 @@ export const updateEpisodicEvaluationSchema = z.object({
 
   // Rating description (computed field, can be updated manually)
   rating_description: z.string().max(200).optional(),
+
+  // Original submission date (optional override for submitted_at in analytics)
+  original_submission_date: z.string().optional().nullable(),
 
   // Final decision
   decision: z.enum(["approve", "reject", "needs_revision"]).optional(),

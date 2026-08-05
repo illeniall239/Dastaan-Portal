@@ -4,235 +4,189 @@
  * Wrapped in Suspense boundaries for progressive loading
  */
 
-import { getCriticalAlerts } from "@/lib/management/server";
-import { getTopPerformingTeams } from "@/lib/management/team-performance";
+import { getAllTeamPerformanceCached } from "@/lib/management/team-performance";
+import { formatTeamDisplayName } from "@/lib/management/team-display";
 import { getTeamProjects } from "@/lib/management/team-projects";
-import { getScriptingPhaseData, ScriptingPhaseData } from "@/lib/management/scripting-analytics";
-import { getDramasWithEpisodesAndDetails } from "@/lib/management/episode-pipeline";
-import { getArchiveByGenre } from "@/lib/management/archive-analytics";
-import { getPipelineOverview } from "@/lib/management/pipeline-analytics";
-import { getAllEvaluatorStats } from "@/lib/management/evaluator-performance";
-import { getRecentActivity } from "@/lib/management/activity-analytics";
-import { createClient } from "@/lib/supabase/server";
+import { getActiveIdeasDetails } from "@/lib/management/active-ideas-details";
+import { getPendingBacklogByTeam } from "@/lib/management/pending-backlog";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { ExportButton } from "@/components/management/export-button";
 
 // Dynamic imports for heavy client components (reduces initial bundle size)
 import {
-  DynamicCriticalAlertsCard,
   DynamicTopTeamsWidget,
-  DynamicScriptingPhase,
-  DynamicEvaluatorPipelineEpisodes,
-  DynamicArchiveGenreChart,
-  DynamicPipelineOverviewCards,
-  DynamicRecentActivityCard,
-  DynamicEvaluatorLeaderboard,
   DynamicContractTermsOverview,
   DynamicWriterFinancialSummaryWidget,
-  DynamicTeamWiseProjects,
+  DynamicGenreDonut,
+  DynamicSlotBars,
+  DynamicRatingBars,
 } from "@/components/management/dynamic-components";
 
-/**
- * Critical Alerts Section - Async Component
- */
-export async function CriticalAlertsSection() {
-  const alerts = await getCriticalAlerts();
-
-  return (
-    <div id="critical-alerts-section" className="mb-6 sm:mb-8">
-      <div className="flex items-center justify-between mb-3 sm:mb-4">
-        <h2 className="text-base sm:text-lg lg:text-xl font-bold text-gray-900">Critical Alerts</h2>
-        <div className="no-print">
-          <ExportButton
-            elementId="critical-alerts-section"
-            filename="critical-alerts"
-            formats={["png", "pdf"]}
-            compact
-          />
-        </div>
-      </div>
-      <DynamicCriticalAlertsCard alerts={alerts} />
-    </div>
-  );
-}
+import type { TeamOverviewData } from "@/components/management/team-performance/top-teams-widget";
 
 /**
- * Team Performance Section - Async Component
+ * Combined Teams Section - Async Component
+ * Merges Team Performance + Team-wise Projects into one unified view
  */
-export async function TeamPerformanceSection() {
-  const allTopTeams = await getTopPerformingTeams(5);
-  const topTeams = allTopTeams.filter((t: any) =>
-    t.team_type !== "management" || t.team_head_email === "humera.safder@geo.tv"
+export async function TeamsOverviewSection() {
+  const [allPerformance, projectGroups, pendingBacklogResult] = await Promise.all([
+    getAllTeamPerformanceCached(),
+    getTeamProjects(),
+    getPendingBacklogByTeam(),
+  ]);
+
+  const { byTeam: pendingByTeam, global: globalPending, teamEvalCounts } = pendingBacklogResult;
+
+  // Identify evaluator teams (Humera & Salman) — they see global pending
+  const EVALUATOR_EMAILS = new Set(["humera.safder@geo.tv", "salman.ahmed@geo.tv"]);
+  const evaluatorTeamIds = new Set(
+    allPerformance
+      .filter((t: any) => EVALUATOR_EMAILS.has(t.team_head_email))
+      .map((t: any) => t.team_id)
   );
+
+  // Filter out management teams (except Humera's)
+  const filteredPerf = allPerformance.filter(
+    (t: any) => t.team_type !== "management" || t.team_head_email === "humera.safder@geo.tv"
+  );
+
+  // Build a map of team_id → performance data
+  const perfMap = new Map(
+    filteredPerf.map((t: any) => [
+      t.team_id,
+      { ...t, team_name: formatTeamDisplayName(t.team_name, t.team_head_name) },
+    ])
+  );
+
+  // Build a map of team_id → projects
+  const projectsMap = new Map(
+    projectGroups.map((g) => [g.team_id, g])
+  );
+
+  // Merge: union of all team_ids from both sources
+  const allTeamIds = new Set([...perfMap.keys(), ...projectsMap.keys()]);
+
+  const defaultBacklog = {
+    pendingOneLiners: 0, pendingEpisodes: 0,
+    totalOneLiners: 0, totalEpisodes: 0,
+    evaluatedOneLiners: 0, evaluatedEpisodes: 0,
+    oldestOneLinerDays: null, oldestEpisodeDays: null,
+  };
+
+  const teams: TeamOverviewData[] = Array.from(allTeamIds).map((teamId) => {
+    const perf = perfMap.get(teamId);
+    const proj = projectsMap.get(teamId);
+
+    let pendingBacklog;
+    if (evaluatorTeamIds.has(teamId)) {
+      // Evaluator team: pending = total minus what their team evaluated
+      const evaledOL = teamEvalCounts.get(teamId)?.oneLiners || 0;
+      const evaledEp = teamEvalCounts.get(teamId)?.episodes || 0;
+      pendingBacklog = {
+        totalOneLiners: globalPending.totalOneLiners,
+        totalEpisodes: globalPending.totalEpisodes,
+        evaluatedOneLiners: evaledOL,
+        evaluatedEpisodes: evaledEp,
+        pendingOneLiners: globalPending.totalOneLiners - evaledOL,
+        pendingEpisodes: globalPending.totalEpisodes - evaledEp,
+        oldestOneLinerDays: globalPending.oldestOneLinerDays,
+        oldestEpisodeDays: globalPending.oldestEpisodeDays,
+      };
+    } else {
+      // Logging team: their own counts (evaluated = by their own team)
+      pendingBacklog = pendingByTeam.get(teamId) || defaultBacklog;
+    }
+
+    return {
+      team_id: teamId,
+      team_name: perf?.team_name || proj?.team_name || "Unknown Team",
+      team_type: perf?.team_type || proj?.team_type || "other",
+      display_label: proj?.display_label || "",
+      performance: perf || null,
+      projects: proj?.call_reports || [],
+      pendingBacklog,
+    };
+  });
+
+  // Sort: teams with projects first, then alphabetically
+  teams.sort((a, b) => {
+    const aHas = a.projects.length > 0 ? 0 : 1;
+    const bHas = b.projects.length > 0 ? 0 : 1;
+    if (aHas !== bHas) return aHas - bHas;
+    return a.team_name.localeCompare(b.team_name);
+  });
 
   return (
     <div id="teams-section" className="mb-6 sm:mb-8">
       <div className="flex items-center justify-between mb-3 sm:mb-4">
-        <h2 className="text-base sm:text-lg lg:text-xl font-bold text-gray-900">Team Performance</h2>
-        <div className="no-print">
-          <ExportButton
-            elementId="teams-section"
-            filename="teams"
-            formats={["png", "pdf"]}
-            compact
-          />
-        </div>
-      </div>
-      <DynamicTopTeamsWidget teams={topTeams} />
-    </div>
-  );
-}
-
-/**
- * Scripting Phase & Episode Evaluation Section - Async Component
- */
-export async function ScriptingEpisodeSection() {
-  const { dramas: dramasWithEpisodes, episodesByDrama, evaluatorsByEpisode } =
-    await getDramasWithEpisodesAndDetails();
-  const archiveByGenre = await getArchiveByGenre();
-
-  // Transform episode data into ScriptingPhaseData format
-  const episodeBasedScriptingData: ScriptingPhaseData[] = dramasWithEpisodes.map((drama) => {
-    const progressPercentage =
-      drama.totalEpisodes > 0
-        ? Math.round((drama.receivedEpisodes / drama.totalEpisodes) * 100)
-        : 0;
-
-    let status: "on_schedule" | "on_hold" | "behind_schedule";
-    if (progressPercentage >= 70) {
-      status = "on_schedule";
-    } else if (progressPercentage >= 40) {
-      status = "on_hold";
-    } else {
-      status = "behind_schedule";
-    }
-
-    const nextEpisode = drama.receivedEpisodes + 1;
-    const currentPhase =
-      nextEpisode <= drama.totalEpisodes
-        ? `Episode ${nextEpisode} of ${drama.totalEpisodes}`
-        : "All Episodes Received";
-
-    return {
-      id: drama.callReportId,
-      workingTitle: drama.workingTitle,
-      callReportId: drama.callReportId,
-      scriptProgress: progressPercentage,
-      status,
-      currentPhase,
-      lastUpdated: new Date().toISOString(),
-      totalEpisodes: drama.totalEpisodes,
-      evaluatedEpisodes: drama.receivedEpisodes,
-    };
-  });
-
-  return (
-    <div id="scripting-episode-section" className="mb-6 sm:mb-8">
-      <div className="flex items-center justify-between mb-4 sm:mb-6">
         <div>
           <h2 className="text-base sm:text-lg lg:text-xl font-bold text-gray-900">
-            Scripting Phase & Episode Evaluation Pipeline
+            Teams Overview
           </h2>
-          <p className="text-muted-foreground mt-1">Track episodic evaluation progress by drama</p>
-        </div>
-        <div className="no-print">
-          <ExportButton
-            elementId="scripting-episode-section"
-            filename="scripting-episode-pipeline"
-            formats={["png", "pdf"]}
-            compact
-          />
-        </div>
-      </div>
-
-      <div className="space-y-6">
-        <DynamicScriptingPhase data={episodeBasedScriptingData} />
-        <DynamicEvaluatorPipelineEpisodes
-          dramas={dramasWithEpisodes}
-          episodesByDrama={episodesByDrama}
-          evaluatorsByEpisode={evaluatorsByEpisode}
-        />
-        <DynamicArchiveGenreChart data={archiveByGenre} />
-      </div>
-    </div>
-  );
-}
-
-/**
- * Pipeline Overview Section - Async Component
- */
-export async function PipelineOverviewSection() {
-  const supabase = await createClient();
-  const { data: { user: authUser } } = await supabase.auth.getUser();
-  const { data: profile } = authUser ? await supabase.from("users").select("role").eq("id", authUser.id).single() : { data: null };
-  const isViewer = profile?.role === "management_viewer";
-
-  const [pipelineData, recentActivities] = await Promise.all([
-    getPipelineOverview(),
-    isViewer ? Promise.resolve([]) : getRecentActivity(10),
-  ]);
-
-  return (
-    <div id="pipeline-section" className="mb-6 sm:mb-8">
-      <div className="flex items-center justify-between mb-4 sm:mb-6">
-        <div>
-          <h2 className="text-base sm:text-lg lg:text-xl font-bold text-gray-900">
-            Content Pipeline Flow
-          </h2>
-          <p className="text-muted-foreground mt-1">Story workflow from submission to completion</p>
-        </div>
-        <div className="no-print">
-          <ExportButton
-            elementId="pipeline-section"
-            filename="content-pipeline-flow"
-            formats={["png", "pdf"]}
-            compact
-          />
-        </div>
-      </div>
-
-      <div className="mb-6">
-        <DynamicPipelineOverviewCards
-          totalStories={pipelineData.totalStories}
-          activePipeline={pipelineData.activePipeline}
-          avgTimeToCompletion={pipelineData.avgTimeToCompletion}
-        />
-      </div>
-
-      {!isViewer && <DynamicRecentActivityCard activities={recentActivities} />}
-    </div>
-  );
-}
-
-/**
- * Evaluator Performance Section - Async Component
- */
-export async function EvaluatorPerformanceSection() {
-  const evaluatorStats = await getAllEvaluatorStats();
-
-  return (
-    <div id="evaluator-performance" className="mb-6 sm:mb-8">
-      <div className="flex items-center justify-between mb-4 sm:mb-6">
-        <div>
-          <h2 className="text-base sm:text-lg lg:text-xl font-bold text-gray-900">
-            Evaluator Activity Tracking
-          </h2>
-          <p className="text-muted-foreground mt-1">
-            Monitor evaluator workload and activity across all evaluation tasks
+          <p className="text-muted-foreground mt-1 text-xs sm:text-sm">
+            Performance, projects, and member activity by team
           </p>
         </div>
         <div className="no-print">
           <ExportButton
-            elementId="evaluator-performance"
-            filename="evaluator-performance"
+            elementId="teams-section"
+            filename="teams-overview"
+            formats={["png", "pdf"]}
+            compact
+          />
+        </div>
+      </div>
+      <DynamicTopTeamsWidget teams={teams} />
+    </div>
+  );
+}
+
+/**
+ * Active Projects Charts Section - Async Component
+ */
+export async function ActiveProjectsChartsSection() {
+  const adminClient = createAdminClient();
+  const [{ details }, { data: allTeams }] = await Promise.all([
+    getActiveIdeasDetails(),
+    adminClient.from("teams").select("id, name, team_head:users!teams_team_head_id_fkey(name)").order("name"),
+  ]);
+
+  // Only include teams that have active projects, with friendly display names
+  const teamIdsInUse = new Set(
+    details.map((d: any) => d.team_id).filter(Boolean)
+  );
+  const teams = (allTeams || [])
+    .filter((t) => teamIdsInUse.has(t.id))
+    .map((t) => ({
+      id: t.id,
+      name: formatTeamDisplayName(t.name, (t as any).team_head?.name),
+    }));
+
+  return (
+    <div id="active-projects-charts" className="mb-6 sm:mb-8">
+      <div className="flex items-center justify-between mb-3 sm:mb-4">
+        <div>
+          <h2 className="text-base sm:text-lg lg:text-xl font-bold text-gray-900">
+            Active Projects
+          </h2>
+          <p className="text-muted-foreground mt-1 text-xs sm:text-sm">
+            Genre, slot, and rating distribution
+          </p>
+        </div>
+        <div className="no-print">
+          <ExportButton
+            elementId="active-projects-charts"
+            filename="active-projects"
             formats={["png", "pdf"]}
             compact
           />
         </div>
       </div>
 
-      <div className="grid gap-6">
-        <DynamicEvaluatorLeaderboard key="evaluator-real-mode" evaluators={evaluatorStats} />
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+        <DynamicGenreDonut ideas={details} teams={teams} />
+        <DynamicSlotBars ideas={details} teams={teams} />
+        <DynamicRatingBars ideas={details} teams={teams} />
       </div>
     </div>
   );
@@ -287,37 +241,6 @@ export async function WriterFinancialSection() {
         </div>
       </div>
       <DynamicWriterFinancialSummaryWidget />
-    </div>
-  );
-}
-
-/**
- * Team-wise Projects Section - Async Component
- */
-export async function TeamProjectsSection() {
-  const teams = await getTeamProjects();
-
-  return (
-    <div id="team-projects-section" className="mb-6 sm:mb-8">
-      <div className="flex items-center justify-between mb-3 sm:mb-4">
-        <div>
-          <h2 className="text-base sm:text-lg lg:text-xl font-bold text-gray-900">
-            Team-wise Projects
-          </h2>
-          <p className="text-muted-foreground mt-1 text-xs sm:text-sm">
-            Browse all one-liners and episodes grouped by team
-          </p>
-        </div>
-        <div className="no-print">
-          <ExportButton
-            elementId="team-projects-section"
-            filename="team-projects"
-            formats={["png", "pdf"]}
-            compact
-          />
-        </div>
-      </div>
-      <DynamicTeamWiseProjects teams={teams} />
     </div>
   );
 }

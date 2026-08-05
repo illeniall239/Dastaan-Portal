@@ -63,24 +63,23 @@ export function TeamPerformanceSkeleton() {
         <Skeleton className="h-6 sm:h-7 lg:h-8 w-48" />
         <Skeleton className="h-9 w-24" />
       </div>
-      <Card className="animate-pulse">
-        <CardContent className="p-4">
-          <div className="space-y-4">
-            {Array.from({ length: 5 }).map((_, i) => (
-              <div key={i} className="flex items-center justify-between p-3 border-b last:border-0">
-                <div className="flex items-center gap-3">
-                  <Skeleton className="h-10 w-10 rounded-full" />
-                  <div className="space-y-2">
-                    <Skeleton className="h-4 w-32" />
-                    <Skeleton className="h-3 w-24" />
-                  </div>
-                </div>
-                <Skeleton className="h-6 w-16" />
+      <div className="space-y-2">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <Card key={i} className="animate-pulse">
+            <div className="px-4 py-3 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Skeleton className="h-4 w-4" />
+                <Skeleton className="h-4 w-36" />
               </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+              <div className="hidden sm:flex items-center gap-4">
+                <Skeleton className="h-3 w-16" />
+                <Skeleton className="h-3 w-16" />
+                <Skeleton className="h-3 w-16" />
+              </div>
+            </div>
+          </Card>
+        ))}
+      </div>
     </div>
   );
 }

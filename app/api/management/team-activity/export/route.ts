@@ -101,7 +101,7 @@ export async function GET(request: NextRequest) {
         .is("archived_at", null),
       supabase
         .from("evaluator_forms")
-        .select("evaluator_id, submitted_at, average_score")
+        .select("evaluator_id, submitted_at, average_score, original_submission_date")
         .gte("submitted_at", rangeStart)
         .lt("submitted_at", rangeEnd)
         .not("submitted_at", "is", null),
@@ -110,7 +110,7 @@ export async function GET(request: NextRequest) {
         .select("id, logged_by, created_at, original_submission_date"),
       supabase
         .from("episodic_evaluations")
-        .select(`evaluator_id, submitted_at, episode_id,
+        .select(`evaluator_id, submitted_at, original_submission_date, episode_id,
           conflict_of_content_score, characterization_score, story_progression_score,
           main_event_score, small_event_score, dragness_score,
           freezes_score, whats_next_element_score, overall_assessment_score`)
@@ -163,7 +163,7 @@ export async function GET(request: NextRequest) {
 
     const efIndex = new Map<string, Map<string, { count: number; scores: number[] }>>();
     (evalFormsRes.data ?? []).forEach((r: any) => {
-      const ml = getMonthLabel(r.submitted_at);
+      const ml = getMonthLabel(r.original_submission_date ?? r.submitted_at);
       if (!ml || !r.evaluator_id) return;
       if (!efIndex.has(r.evaluator_id)) efIndex.set(r.evaluator_id, new Map());
       const m = efIndex.get(r.evaluator_id)!;
@@ -183,7 +183,7 @@ export async function GET(request: NextRequest) {
 
     const eeIndex = new Map<string, Map<string, { count: number; scores: number[]; epNums: number[] }>>();
     (epicEvalRes.data ?? []).forEach((r: any) => {
-      const ml = getMonthLabel(r.submitted_at);
+      const ml = getMonthLabel(r.original_submission_date ?? r.submitted_at);
       if (!ml || !r.evaluator_id) return;
       if (!eeIndex.has(r.evaluator_id)) eeIndex.set(r.evaluator_id, new Map());
       const m = eeIndex.get(r.evaluator_id)!;
@@ -275,7 +275,7 @@ export async function GET(request: NextRequest) {
       const { data: efTurnaround } = await supabase
         .from("evaluator_forms")
         .select(`
-          evaluator_id, submitted_at, average_score,
+          evaluator_id, submitted_at, average_score, original_submission_date,
           call_report:call_reports!call_report_id(id, working_title, created_by, created_at, original_submission_date)
         `)
         .in("evaluator_id", targetIds)
@@ -285,14 +285,15 @@ export async function GET(request: NextRequest) {
       for (const row of efTurnaround ?? []) {
         const cr = Array.isArray(row.call_report) ? row.call_report[0] : row.call_report;
         if (!cr) continue;
+        const evalDate = (row as any).original_submission_date ?? row.submitted_at;
         turnaround.push({
           Evaluator:                  targetNameMap.get(row.evaluator_id) ?? row.evaluator_id,
           Type:                       "One-Liner",
           Title:                      cr.working_title ?? "—",
           "Idea Uploaded By":         userNameMap.get(cr.created_by) ?? "—",
           "Idea/Episode Upload Date": formatDate(effectiveDate(cr)),
-          "Evaluated On":             formatDate(row.submitted_at),
-          "Days Taken to Evaluate":   daysTaken(effectiveDate(cr), row.submitted_at),
+          "Evaluated On":             formatDate(evalDate),
+          "Days Taken to Evaluate":   daysTaken(effectiveDate(cr), evalDate),
           Score:                      row.average_score != null ? Number(row.average_score) : "—",
         });
       }
@@ -301,7 +302,7 @@ export async function GET(request: NextRequest) {
       const { data: eeTurnaround } = await supabase
         .from("episodic_evaluations")
         .select(`
-          evaluator_id, submitted_at,
+          evaluator_id, submitted_at, original_submission_date,
           conflict_of_content_score, characterization_score, story_progression_score,
           main_event_score, small_event_score, dragness_score,
           freezes_score, whats_next_element_score, overall_assessment_score,
@@ -336,14 +337,15 @@ export async function GET(request: NextRequest) {
         const dramaTitle = crTitleMap.get(ep.call_report_id) ?? "—";
         const epLabel = ep.episode_number ? `EP${ep.episode_number} — ${dramaTitle}` : dramaTitle;
         const score = avgEpScore(row);
+        const eeEvalDate = (row as any).original_submission_date ?? row.submitted_at;
         turnaround.push({
           Evaluator:                  targetNameMap.get(row.evaluator_id) ?? row.evaluator_id,
           Type:                       "Episode",
           Title:                      epLabel,
           "Idea Uploaded By":         userNameMap.get(ep.logged_by) ?? "—",
           "Idea/Episode Upload Date": ep.created_at ? formatDate(effectiveDate(ep)) : "—",
-          "Evaluated On":             formatDate(row.submitted_at),
-          "Days Taken to Evaluate":   ep.created_at ? daysTaken(effectiveDate(ep), row.submitted_at) : "—",
+          "Evaluated On":             formatDate(eeEvalDate),
+          "Days Taken to Evaluate":   ep.created_at ? daysTaken(effectiveDate(ep), eeEvalDate) : "—",
           Score:                      score || "—",
         });
       }

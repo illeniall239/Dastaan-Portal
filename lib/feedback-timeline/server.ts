@@ -31,8 +31,9 @@ function transformToTimelineItem(row: any): FeedbackTimelineItem {
   const team = callReport?.team;
   const evaluator = row.evaluator;
 
-  // Calculate days to review
-  const daysToReview = daysBetween(callReport?.created_at, row.submitted_at);
+  // Calculate days to review — use original_submission_date if available
+  const effectiveSubmittedAt = row.original_submission_date ?? row.submitted_at;
+  const daysToReview = daysBetween(callReport?.created_at, effectiveSubmittedAt);
 
   return {
     id: row.id,
@@ -82,6 +83,7 @@ export async function getFeedbackTimeline(): Promise<FeedbackTimelineItem[]> {
       call_report_id,
       cross_team_share_id,
       submitted_at,
+      original_submission_date,
       is_late,
       delay_reason,
       average_score,
@@ -135,6 +137,7 @@ export async function getFeedbackTimelineStats(): Promise<FeedbackTimelineStats>
       .select(`
         id,
         submitted_at,
+        original_submission_date,
         is_late,
         call_report_id,
         call_report:call_reports!call_report_id (
@@ -188,8 +191,9 @@ export async function getFeedbackTimelineStats(): Promise<FeedbackTimelineStats>
 
   for (const form of data) {
     const callReport = form.call_report as any;
-    if (form.submitted_at && callReport?.created_at) {
-      const days = daysBetween(callReport.created_at, form.submitted_at);
+    const effectiveDate = (form as any).original_submission_date ?? form.submitted_at;
+    if (effectiveDate && callReport?.created_at) {
+      const days = daysBetween(callReport.created_at, effectiveDate);
       if (days !== null && days >= 0) {
         totalReviewDays += days;
         reviewedWithDates++;

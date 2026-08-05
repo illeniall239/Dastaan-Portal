@@ -2,7 +2,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { handleError } from '@/lib/errors';
 
 export type AlertSeverity = 'critical' | 'warning' | 'info';
-export type AlertType = 'bottleneck' | 'stuck_story' | 'evaluation_delay' | 'payment_overdue' | 'long_negotiation';
+export type AlertType = 'bottleneck' | 'stuck_story' | 'evaluation_delay' | 'payment_overdue' | 'long_negotiation' | 'late_evaluation' | 'delivery_gap';
 
 export interface CriticalAlert {
   id: string;
@@ -14,6 +14,20 @@ export interface CriticalAlert {
   entityId: string;
   daysDelayed?: number;
   createdAt: string;
+  link?: string;
+}
+
+/** Aggregated insight for CEO dashboard — one row per category, not per item */
+export type InsightType = 'pipeline_bottleneck' | 'evaluation_backlog' | 'late_evaluators' | 'delivery_stalls' | 'payment_risk';
+
+export interface DashboardInsight {
+  id: string;
+  type: InsightType;
+  severity: 'critical' | 'warning';
+  headline: string;
+  detail: string;
+  count: number;
+  link?: string;
 }
 
 /**

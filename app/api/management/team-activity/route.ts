@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { formatTeamDisplayName, getTeamDisplayLabel } from "@/lib/management/team-display";
 
 export const dynamic = "force-dynamic";
 
@@ -45,7 +46,7 @@ export async function GET(request: NextRequest) {
         .is("archived_at", null),
       admin
         .from("evaluator_forms")
-        .select("id, evaluator_id, call_report_id, submitted_at")
+        .select("id, evaluator_id, call_report_id, submitted_at, original_submission_date")
         .not("submitted_at", "is", null),
       admin
         .from("detailed_one_liners")
@@ -59,7 +60,7 @@ export async function GET(request: NextRequest) {
         .select("id, logged_by, created_at, original_submission_date"),
       admin
         .from("episodic_evaluations")
-        .select("id, evaluator_id, episode_id, submitted_at"),
+        .select("id, evaluator_id, episode_id, submitted_at, original_submission_date"),
     ]);
 
     const NOW = new Date();
@@ -158,9 +159,10 @@ export async function GET(request: NextRequest) {
       }
     }
     for (const ef of evalForms || []) {
-      if (!ef.evaluator_id || !inPeriod(ef.submitted_at)) continue;
+      const efDate = (ef as any).original_submission_date ?? ef.submitted_at;
+      if (!ef.evaluator_id || !inPeriod(efDate)) continue;
       evalByUser[ef.evaluator_id] = (evalByUser[ef.evaluator_id] || 0) + 1;
-      updateLast(ef.evaluator_id, ef.submitted_at!);
+      updateLast(ef.evaluator_id, efDate!);
     }
     for (const ol of oneLiners || []) {
       if (!ol.created_by || !inPeriod(ol.created_at)) continue;
@@ -173,9 +175,10 @@ export async function GET(request: NextRequest) {
       updateLast(ep.logged_by, effectiveDate(ep));
     }
     for (const ee of episodicEvals || []) {
-      if (!ee.evaluator_id || !inPeriod(ee.submitted_at)) continue;
+      const eeDate = (ee as any).original_submission_date ?? ee.submitted_at;
+      if (!ee.evaluator_id || !inPeriod(eeDate)) continue;
       epsEvalByUser[ee.evaluator_id] = (epsEvalByUser[ee.evaluator_id] || 0) + 1;
-      updateLast(ee.evaluator_id, ee.submitted_at!);
+      updateLast(ee.evaluator_id, eeDate!);
     }
 
     // Build pending eps evals per user: episodes logged in period with no evaluation yet
@@ -196,11 +199,15 @@ export async function GET(request: NextRequest) {
     }
 
     // ── Filter out management-type teams except humera's ──────────────────────
-    const humeraUser = (users || []).find((u: any) => u.email === "humera.safder@geo.tv");
-    const salmanUser = (users || []).find((u: any) => u.email === "salman.ahmed@geo.tv");
-    const filteredTeams = (teams || []).filter((t: any) =>
-      t.team_type !== "management" || (humeraUser && t.team_head_id === humeraUser.id)
-    );
+    // Build team_head_id → user lookup for display names
+    const userById: Record<string, any> = {};
+    for (const u of users || []) userById[u.id] = u;
+
+    const filteredTeams = (teams || []).filter((t: any) => {
+      if (t.team_type !== "management") return true;
+      const headEmail = userById[t.team_head_id]?.email;
+      return headEmail === "humera.safder@geo.tv";
+    });
 
     // ── Ensure each team head appears in their team's member list ─────────────
     for (const team of filteredTeams) {
@@ -246,14 +253,9 @@ export async function GET(request: NextRequest) {
         return m.last_activity > best ? m.last_activity : best;
       }, null);
 
-      const isHumera = humeraUser && team.team_head_id === humeraUser.id;
-      const isSalman = salmanUser && team.team_head_id === salmanUser.id;
-      const displayName = isHumera ? "Humera's Team"
-        : isSalman ? "Salman's Team"
-        : team.name;
-      const displayLabel = isHumera ? "(Content Evaluation)"
-        : isSalman ? "(Programming)"
-        : "";
+      const headUser = userById[team.team_head_id];
+      const displayName = formatTeamDisplayName(team.name, headUser?.name);
+      const displayLabel = getTeamDisplayLabel(headUser?.email);
 
       return {
         team_id: team.id,

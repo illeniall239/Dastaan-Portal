@@ -173,3 +173,46 @@ export const DynamicTeamWiseProjects = dynamic(
     ssr: false,
   }
 );
+
+/**
+ * Active Projects Charts (from whats-cooking)
+ */
+export const DynamicGenreDonut = dynamic(
+  () => import("@/components/management/whats-cooking/charts/genre-donut").then((mod) => mod.GenreDonut),
+  {
+    loading: () => <ChartLoader />,
+    ssr: false,
+  }
+);
+
+export const DynamicSlotBars = dynamic(
+  () => import("@/components/management/whats-cooking/charts/slot-bars").then((mod) => mod.SlotBars),
+  {
+    loading: () => <ChartLoader />,
+    ssr: false,
+  }
+);
+
+export const DynamicRatingBars = dynamic(
+  () => import("@/components/management/whats-cooking/charts/rating-bars").then((mod) => mod.RatingBars),
+  {
+    loading: () => <ChartLoader />,
+    ssr: false,
+  }
+);
+
+export const DynamicEpisodeProgress = dynamic(
+  () => import("@/components/management/whats-cooking/charts/episode-progress").then((mod) => mod.EpisodeProgress),
+  {
+    loading: () => <ChartLoader />,
+    ssr: false,
+  }
+);
+
+export const DynamicTimelineChart = dynamic(
+  () => import("@/components/management/whats-cooking/charts/timeline-chart").then((mod) => mod.TimelineChart),
+  {
+    loading: () => <ChartLoader />,
+    ssr: false,
+  }
+);

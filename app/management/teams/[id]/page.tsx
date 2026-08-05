@@ -2,6 +2,7 @@ import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { formatTeamDisplayName } from "@/lib/management/team-display";
 import {
   getTeamPerformanceServer,
   getTeamPerformanceTrends,
@@ -66,6 +67,12 @@ export default async function TeamDetailPage({ params }: { params: Promise<{ id:
     if (!teamPerformance) {
       notFound();
     }
+
+    // Apply proper display name from team head
+    teamPerformance = {
+      ...teamPerformance,
+      team_name: formatTeamDisplayName(teamPerformance.team_name, teamPerformance.team_head_name),
+    };
 
     // Fetch trends and comparison in parallel
     [trends, comparison] = await Promise.all([

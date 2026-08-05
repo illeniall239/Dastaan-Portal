@@ -59,7 +59,7 @@ export async function GET(request: NextRequest) {
     let efQuery = supabase
       .from("evaluator_forms")
       .select(`
-        evaluator_id, submitted_at, average_score,
+        evaluator_id, submitted_at, average_score, original_submission_date,
         call_report:call_reports!call_report_id(id, working_title, created_by, created_at, original_submission_date)
       `)
       .in("evaluator_id", targetIds)
@@ -72,7 +72,7 @@ export async function GET(request: NextRequest) {
     let eeQuery = supabase
       .from("episodic_evaluations")
       .select(`
-        evaluator_id, submitted_at,
+        evaluator_id, submitted_at, original_submission_date,
         conflict_of_content_score, characterization_score, story_progression_score,
         main_event_score, small_event_score, dragness_score,
         freezes_score, whats_next_element_score, overall_assessment_score,
@@ -109,13 +109,14 @@ export async function GET(request: NextRequest) {
     for (const row of efRows ?? []) {
       const cr = Array.isArray(row.call_report) ? row.call_report[0] : row.call_report;
       if (!cr || !rowsByPerson.has(row.evaluator_id)) continue;
+      const evalDate = (row as any).original_submission_date ?? row.submitted_at;
       rowsByPerson.get(row.evaluator_id)!.push({
         Type:                       "One-Liner",
         Title:                      cr.working_title ?? "—",
         "Idea Uploaded By":         userNameMap.get(cr.created_by) ?? "—",
         "Idea/Episode Upload Date": formatDate(effectiveDate(cr)),
-        "Evaluated On":             formatDate(row.submitted_at),
-        "Days Taken to Evaluate":   daysTaken(effectiveDate(cr), row.submitted_at),
+        "Evaluated On":             formatDate(evalDate),
+        "Days Taken to Evaluate":   daysTaken(effectiveDate(cr), evalDate),
         Score:                      row.average_score != null ? Number(row.average_score) : "—",
       });
     }
@@ -126,13 +127,14 @@ export async function GET(request: NextRequest) {
       const dramaTitle = crTitleMap.get(ep.call_report_id) ?? "—";
       const epLabel = ep.episode_number ? `EP${ep.episode_number} — ${dramaTitle}` : dramaTitle;
       const score = avgEpScore(row);
+      const eeEvalDate = (row as any).original_submission_date ?? row.submitted_at;
       rowsByPerson.get(row.evaluator_id)!.push({
         Type:                       "Episode",
         Title:                      epLabel,
         "Idea Uploaded By":         userNameMap.get(ep.logged_by) ?? "—",
         "Idea/Episode Upload Date": ep.created_at ? formatDate(effectiveDate(ep)) : "—",
-        "Evaluated On":             formatDate(row.submitted_at),
-        "Days Taken to Evaluate":   ep.created_at ? daysTaken(effectiveDate(ep), row.submitted_at) : "—",
+        "Evaluated On":             formatDate(eeEvalDate),
+        "Days Taken to Evaluate":   ep.created_at ? daysTaken(effectiveDate(ep), eeEvalDate) : "—",
         Score:                      score || "—",
       });
     }

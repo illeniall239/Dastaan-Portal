@@ -8,17 +8,24 @@ import type { ActiveIdeaDetail } from "@/lib/management/active-ideas-details";
 
 interface RatingBarsProps {
   ideas: ActiveIdeaDetail[];
+  teams?: { id: string; name: string }[];
 }
 
-export function RatingBars({ ideas }: RatingBarsProps) {
+export function RatingBars({ ideas, teams }: RatingBarsProps) {
   const [modalOpen, setModalOpen] = useState(false);
   const [modalData, setModalData] = useState<DrillDownData | null>(null);
+  const [selectedTeam, setSelectedTeam] = useState<string>("all");
+
+  const filteredIdeas = useMemo(() => {
+    if (selectedTeam === "all") return ideas;
+    return ideas.filter((idea) => (idea as any).team_id === selectedTeam);
+  }, [ideas, selectedTeam]);
 
   const data = useMemo(() => {
-    const high = ideas.filter(i => i.overall_rating !== null && i.overall_rating >= 8).length;
-    const medium = ideas.filter(i => i.overall_rating !== null && i.overall_rating >= 5 && i.overall_rating < 8).length;
-    const low = ideas.filter(i => i.overall_rating !== null && i.overall_rating < 5).length;
-    const unrated = ideas.filter(i => i.overall_rating === null).length;
+    const high = filteredIdeas.filter(i => i.overall_rating !== null && i.overall_rating >= 8).length;
+    const medium = filteredIdeas.filter(i => i.overall_rating !== null && i.overall_rating >= 5 && i.overall_rating < 8).length;
+    const low = filteredIdeas.filter(i => i.overall_rating !== null && i.overall_rating < 5).length;
+    const unrated = filteredIdeas.filter(i => i.overall_rating === null).length;
 
     return [
       { name: "High", label: "8-10", value: high, color: "#22c55e" },
@@ -26,38 +33,36 @@ export function RatingBars({ ideas }: RatingBarsProps) {
       { name: "Low", label: "1-4", value: low, color: "#ef4444" },
       { name: "Unrated", label: "N/A", value: unrated, color: "#9ca3af" },
     ];
-  }, [ideas]);
+  }, [filteredIdeas]);
 
   const maxValue = Math.max(...data.map(d => d.value), 1);
 
   const handleBarClick = (barData: any) => {
     const ratingCategory = barData.name;
 
-    // Filter ideas based on rating category
-    let filteredIdeas: ActiveIdeaDetail[];
+    let ratingIdeas: ActiveIdeaDetail[];
     switch (ratingCategory) {
       case "High":
-        filteredIdeas = ideas.filter(i => i.overall_rating !== null && i.overall_rating >= 8);
+        ratingIdeas = filteredIdeas.filter(i => i.overall_rating !== null && i.overall_rating >= 8);
         break;
       case "Medium":
-        filteredIdeas = ideas.filter(i => i.overall_rating !== null && i.overall_rating >= 5 && i.overall_rating < 8);
+        ratingIdeas = filteredIdeas.filter(i => i.overall_rating !== null && i.overall_rating >= 5 && i.overall_rating < 8);
         break;
       case "Low":
-        filteredIdeas = ideas.filter(i => i.overall_rating !== null && i.overall_rating < 5);
+        ratingIdeas = filteredIdeas.filter(i => i.overall_rating !== null && i.overall_rating < 5);
         break;
       case "Unrated":
-        filteredIdeas = ideas.filter(i => i.overall_rating === null);
+        ratingIdeas = filteredIdeas.filter(i => i.overall_rating === null);
         break;
       default:
-        filteredIdeas = [];
+        ratingIdeas = [];
     }
 
-    // Prepare modal data
     setModalData({
       title: `${ratingCategory} Rating - ${barData.label}`,
-      subtitle: `${filteredIdeas.length} active ${filteredIdeas.length === 1 ? 'idea' : 'ideas'}`,
+      subtitle: `${ratingIdeas.length} active ${ratingIdeas.length === 1 ? 'idea' : 'ideas'}`,
       type: "table",
-      data: filteredIdeas,
+      data: ratingIdeas,
       columns: [
         { key: "working_title", label: "Title" },
         {
@@ -65,28 +70,26 @@ export function RatingBars({ ideas }: RatingBarsProps) {
           label: "Genre",
           format: (value: string[]) => value ? value.join(", ") : "N/A"
         },
-        { key: "category", label: "Category" },
+        {
+          key: "category",
+          label: "Category",
+          format: (value: string) => {
+            const labels: Record<string, string> = {
+              external_producer: "External Producer",
+              writer_pitch: "Writer Pitch",
+              inhouse_content: "In-house Content",
+              content_head_initiative: "Content Head Initiative",
+              given_by_management: "Given by Management",
+            };
+            return labels[value] || value?.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase()) || "N/A";
+          }
+        },
         {
           key: "overall_rating",
           label: "Rating",
           format: (value: number | null) => value !== null ? value.toFixed(1) : "Unrated"
         },
-        {
-          key: "average_score",
-          label: "Avg Score",
-          format: (value: number) => value ? value.toFixed(2) : "N/A"
-        },
-        {
-          key: "evaluator_count",
-          label: "Evaluators",
-          format: (value: number) => `${value || 0}`
-        },
-        { key: "slot", label: "Slot" },
-        {
-          key: "status",
-          label: "Status",
-          format: (value: string) => value?.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) || 'N/A'
-        }
+        { key: "slot", label: "Slot" }
       ]
     });
     setModalOpen(true);
@@ -94,16 +97,30 @@ export function RatingBars({ ideas }: RatingBarsProps) {
 
   return (
     <Card className="p-4 border border-gray-200 shadow-sm">
-      <h3 className="text-sm font-semibold text-gray-900 mb-3">Rating Distribution</h3>
-      
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="text-sm font-semibold text-gray-900">Rating Distribution</h3>
+        {teams && teams.length > 0 && (
+          <select
+            value={selectedTeam}
+            onChange={(e) => setSelectedTeam(e.target.value)}
+            className="text-xs border border-gray-200 rounded-md px-2 py-1 text-gray-700 bg-white focus:outline-none focus:ring-1 focus:ring-blue-500"
+          >
+            <option value="all">All Teams</option>
+            {teams.map((t) => (
+              <option key={t.id} value={t.id}>{t.name}</option>
+            ))}
+          </select>
+        )}
+      </div>
+
       <div className="h-36">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart
             data={data}
             margin={{ top: 10, right: 10, left: 10, bottom: 20 }}
           >
-            <XAxis 
-              dataKey="name" 
+            <XAxis
+              dataKey="name"
               tick={{ fontSize: 11, fill: "#6b7280" }}
               axisLine={false}
               tickLine={false}
@@ -143,7 +160,7 @@ export function RatingBars({ ideas }: RatingBarsProps) {
       <div className="flex justify-center gap-4 text-[10px] text-gray-500 mt-1">
         {data.map(item => (
           <div key={item.name} className="flex items-center gap-1">
-            <span 
+            <span
               className="w-2 h-2 rounded-sm"
               style={{ backgroundColor: item.color }}
             />
@@ -160,4 +177,3 @@ export function RatingBars({ ideas }: RatingBarsProps) {
     </Card>
   );
 }
-
