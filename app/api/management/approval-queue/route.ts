@@ -72,6 +72,20 @@ export async function GET(_request: NextRequest) {
       }
     }
 
+    // Batch-fetch attachments for all evaluated call reports
+    const { data: attachmentRows } = await adminClient
+      .from("attachments")
+      .select("id, entity_id, file_name, file_path")
+      .eq("entity_type", "call_report")
+      .in("entity_id", evaluatedIds);
+
+    const attachmentsByCallReport = new Map<string, { id: string; fileName: string; filePath: string }[]>();
+    for (const att of attachmentRows || []) {
+      const list = attachmentsByCallReport.get(att.entity_id) || [];
+      list.push({ id: att.id, fileName: att.file_name, filePath: att.file_path });
+      attachmentsByCallReport.set(att.entity_id, list);
+    }
+
     // Step 2: IDs the current user has already acted on in story_approvals
     const { data: myApprovals } = await adminClient
       .from("story_approvals")
@@ -125,6 +139,7 @@ export async function GET(_request: NextRequest) {
           discussionCount: discussionCountMap[cr.id] || 0,
           revisionCount: revisionCountMap[cr.id] || 0,
           originalSubmissionDate: cr.original_submission_date || cr.created_at || null,
+          attachments: attachmentsByCallReport.get(cr.id) || [],
         };
       });
     }
@@ -172,6 +187,7 @@ export async function GET(_request: NextRequest) {
         discussionCount: discussionCountMap[cr.id] || 0,
         revisionCount: revisionCountMap[cr.id] || 0,
         originalSubmissionDate: cr.original_submission_date || cr.created_at || null,
+        attachments: attachmentsByCallReport.get(cr.id) || [],
       };
     });
 

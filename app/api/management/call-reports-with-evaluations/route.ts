@@ -99,19 +99,74 @@ export async function GET(request: NextRequest) {
       evaluationsByCallReport.get(evaluation.call_report_id).push(evaluation);
     });
 
-    // Map call reports with their evaluations (no async/await needed now!)
+    // Batch-fetch attachments for all call reports
+    const { data: attachmentRows } = await adminClient
+      .from("attachments")
+      .select("id, entity_id, file_name, file_path")
+      .eq("entity_type", "call_report")
+      .in("entity_id", uniqueCallReportIds);
+
+    const attachmentsByCallReport = new Map<string, { id: string; fileName: string; filePath: string }[]>();
+    for (const att of attachmentRows || []) {
+      const list = attachmentsByCallReport.get(att.entity_id) || [];
+      list.push({ id: att.id, fileName: att.file_name, filePath: att.file_path });
+      attachmentsByCallReport.set(att.entity_id, list);
+    }
+
+    // Identify Content Development team members (Humera's management-type team only)
+    const contentDevUserIds = new Set<string>();
+    const { data: mgmtTeams } = await adminClient
+      .from("teams")
+      .select("id, team_head:users!team_head_id(email)")
+      .eq("team_type", "management");
+
+    const contentDevTeamIds = (mgmtTeams || [])
+      .filter((t: any) => t.team_head?.email === "humera.safder@geo.tv")
+      .map((t: any) => t.id);
+
+    if (contentDevTeamIds.length > 0) {
+      const { data: cdUsers } = await adminClient
+        .from("users")
+        .select("id")
+        .in("team_id", contentDevTeamIds);
+      for (const u of cdUsers || []) contentDevUserIds.add(u.id);
+    }
+
+    // Map call reports with their evaluations
     const callReportsWithEvaluations = (callReportsData || []).map((callReport) => {
       const evaluations = evaluationsByCallReport.get(callReport.id) || [];
 
-      // Segregate evaluations by type
-      const evaluatorEvaluations = evaluations.filter((e: any) => e.evaluation_type === 'evaluator');
-      const managementEvaluations = evaluations.filter((e: any) => e.evaluation_type === 'management');
-      const programmerEvaluations = evaluations.filter((e: any) => e.evaluation_type === 'programmer');
+      // Segregate evaluations by type, reclassifying management-type team members
+      const evaluatorEvaluations: any[] = [];
+      const managementEvaluations: any[] = [];
+      const programmerEvaluations: any[] = [];
+      const contentTeamMap = new Map<string, any[]>();
+
+      for (const e of evaluations) {
+        if (contentDevUserIds.has(e.evaluator_id)) {
+          const list = contentTeamMap.get("Content Development") || [];
+          list.push(e);
+          contentTeamMap.set("Content Development", list);
+        } else if (e.evaluation_type === 'evaluator') {
+          evaluatorEvaluations.push(e);
+        } else if (e.evaluation_type === 'programmer') {
+          programmerEvaluations.push(e);
+        } else {
+          managementEvaluations.push(e);
+        }
+      }
+
+      const contentTeamEvaluations = Array.from(contentTeamMap.entries()).map(([teamName, evals]) => ({
+        teamName,
+        evaluations: evals,
+        count: evals.length,
+      }));
 
       const segregatedEvaluations = {
         evaluatorEvaluations,
         managementEvaluations,
         programmerEvaluations,
+        contentTeamEvaluations,
         total: evaluations.length,
         evaluatorCount: evaluatorEvaluations.length,
         managementCount: managementEvaluations.length,
@@ -128,6 +183,7 @@ export async function GET(request: NextRequest) {
         updatedAt: callReport.updated_at,
         evaluationCount: segregatedEvaluations.total,
         segregatedEvaluations,
+        attachments: attachmentsByCallReport.get(callReport.id) || [],
       };
     });
 

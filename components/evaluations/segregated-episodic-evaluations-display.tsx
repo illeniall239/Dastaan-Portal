@@ -42,15 +42,21 @@ export function SegregatedEpisodicEvaluationsDisplay({
               )}
             </div>
             <div className="text-right">
-              <div className="flex items-center gap-1 text-lg font-bold">
-                <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />
-                <span>{evaluation.overall_average?.toFixed(1) || "N/A"}</span>
-              </div>
-              <p className="text-xs text-muted-foreground">Overall Average</p>
-              {evaluation.overall_grade && (
-                <Badge variant="outline" className="text-xs mt-1">
-                  {evaluation.overall_grade}
-                </Badge>
+              {evaluation.overall_average != null ? (
+                <>
+                  <div className="flex items-center gap-1 text-lg font-bold">
+                    <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />
+                    <span>{evaluation.overall_average.toFixed(1)}</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">Overall Average</p>
+                  {evaluation.overall_grade && (
+                    <Badge variant="outline" className="text-xs mt-1">
+                      {evaluation.overall_grade}
+                    </Badge>
+                  )}
+                </>
+              ) : (
+                <Badge variant="secondary" className="text-xs">Feedback Only</Badge>
               )}
             </div>
           </div>

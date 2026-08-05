@@ -300,21 +300,37 @@ export async function hasUserEvaluatedCallReport(userId: string, callReportId: s
 /**
  * Batch-fetch team info for a list of evaluator IDs.
  * Returns a map of evaluator_id → { teamName, isManagementTeam }.
+ * Uses two-step query (teams then users) for reliable FK resolution.
  */
 async function getEvaluatorTeamMap(evaluatorIds: string[]) {
   const map = new Map<string, { teamName: string; isManagementTeam: boolean }>();
   if (evaluatorIds.length === 0) return map;
 
-  const { data: evaluatorTeams } = await createAdminClient()
+  const admin = createAdminClient();
+
+  // Step 1: Find Humera's content dev team only (not all management-type teams)
+  const { data: mgmtTeams } = await admin
+    .from("teams")
+    .select("id, team_head:users!team_head_id(email)")
+    .eq("team_type", "management");
+
+  const contentDevTeamIds = new Set(
+    (mgmtTeams || [])
+      .filter((t: any) => (t.team_head as any)?.email === "humera.safder@geo.tv")
+      .map((t: any) => t.id)
+  );
+
+  // Step 2: Get team_id for each evaluator
+  const { data: evaluatorUsers } = await admin
     .from("users")
-    .select("id, team_id, teams(name, team_type)")
+    .select("id, team_id")
     .in("id", evaluatorIds);
 
-  for (const u of evaluatorTeams || []) {
-    const team = u.teams as any;
+  for (const u of evaluatorUsers || []) {
+    const isContentDev = u.team_id ? contentDevTeamIds.has(u.team_id) : false;
     map.set(u.id, {
-      teamName: team?.name || "Unknown Team",
-      isManagementTeam: team?.team_type === "management",
+      teamName: isContentDev ? "Content Development" : "",
+      isManagementTeam: isContentDev,
     });
   }
   return map;

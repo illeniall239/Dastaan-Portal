@@ -80,9 +80,10 @@ export async function GET(request: NextRequest) {
         episode_number,
         title,
         call_report_id,
+        attachment_name,
         created_at,
         updated_at,
-        call_reports!inner(
+        call_reports(
           working_title
         )
       `)
@@ -114,21 +115,23 @@ export async function GET(request: NextRequest) {
       evaluationsByEpisode.get(evaluation.episode_id).push(evaluation);
     });
 
-    // Batch-fetch team info for all evaluators to identify management-type teams
-    const allEvaluatorIds = [...new Set((allEvaluations || []).map((e: any) => e.evaluator_id))];
-    const evaluatorTeamMap = new Map<string, { teamName: string; isManagementTeam: boolean }>();
-    if (allEvaluatorIds.length > 0) {
-      const { data: evaluatorTeams } = await adminClient
+    // Identify Content Development team members (Humera's management-type team only)
+    const contentDevUserIds = new Set<string>();
+    const { data: mgmtTeams } = await adminClient
+      .from("teams")
+      .select("id, team_head:users!team_head_id(email)")
+      .eq("team_type", "management");
+
+    const contentDevTeamIds = (mgmtTeams || [])
+      .filter((t: any) => t.team_head?.email === "humera.safder@geo.tv")
+      .map((t: any) => t.id);
+
+    if (contentDevTeamIds.length > 0) {
+      const { data: cdUsers } = await adminClient
         .from("users")
-        .select("id, team_id, teams(name, team_type)")
-        .in("id", allEvaluatorIds);
-      for (const u of evaluatorTeams || []) {
-        const team = (u as any).teams;
-        evaluatorTeamMap.set(u.id, {
-          teamName: team?.name || "Unknown Team",
-          isManagementTeam: team?.team_type === "management",
-        });
-      }
+        .select("id")
+        .in("team_id", contentDevTeamIds);
+      for (const u of cdUsers || []) contentDevUserIds.add(u.id);
     }
 
     // Map episodes with their evaluations (no async/await needed now!)
@@ -137,11 +140,10 @@ export async function GET(request: NextRequest) {
       episode_number: number;
       title: string | null;
       call_report_id: string | null;
+      attachment_name: string | null;
       created_at: string;
       updated_at: string;
-      call_reports: Array<{
-        working_title: string;
-      }>;
+      call_reports: { working_title: string } | { working_title: string }[] | null;
     }
 
     const episodesWithEvaluations = (episodesData || []).map((episode: EpisodeData) => {
@@ -154,11 +156,10 @@ export async function GET(request: NextRequest) {
       const contentTeamMap = new Map<string, any[]>();
 
       for (const e of evaluations) {
-        const teamInfo = evaluatorTeamMap.get(e.evaluator_id);
-        if (teamInfo?.isManagementTeam) {
-          const list = contentTeamMap.get(teamInfo.teamName) || [];
+        if (contentDevUserIds.has(e.evaluator_id)) {
+          const list = contentTeamMap.get("Content Development") || [];
           list.push(e);
-          contentTeamMap.set(teamInfo.teamName, list);
+          contentTeamMap.set("Content Development", list);
         } else if (e.evaluation_type === 'evaluator') {
           evaluatorEvaluations.push(e);
         } else if (e.evaluation_type === 'programmer') {
@@ -190,9 +191,12 @@ export async function GET(request: NextRequest) {
         episodeNumber: episode.episode_number,
         title: episode.title || `Episode ${episode.episode_number}`,
         callReportId: episode.call_report_id,
-        dramaTitle: episode.call_reports?.[0]?.working_title || "Unknown Drama",
+        dramaTitle: (Array.isArray(episode.call_reports)
+          ? episode.call_reports[0]?.working_title
+          : (episode.call_reports as any)?.working_title) || "Unknown Drama",
         createdAt: episode.created_at,
         updatedAt: episode.updated_at,
+        attachmentName: episode.attachment_name || null,
         evaluationCount: segregatedEvaluations.total,
         segregatedEvaluations,
       };
