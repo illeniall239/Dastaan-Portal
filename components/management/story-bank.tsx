@@ -21,7 +21,7 @@ export function StoryBank({ callReports, episodes, userRole }: StoryBankProps) {
     <Tabs defaultValue="call-reports" className="w-full">
       <TabsList className="grid w-full grid-cols-2 max-w-md">
         <TabsTrigger value="call-reports">
-          Writer Engagement Reports ({callReports.length})
+          One-Liner Reports ({callReports.length})
         </TabsTrigger>
         <TabsTrigger value="episodes">
           Episodes ({episodes.length})

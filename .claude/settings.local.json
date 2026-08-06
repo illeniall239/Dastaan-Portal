@@ -79,7 +79,16 @@
       "Bash(node:*)",
       "Bash(fi)",
       "Bash(done)",
-      "Bash(cd:*)"
+      "Bash(cd:*)",
+      "Bash(pip show:*)",
+      "Bash(python -c \":*)",
+      "Bash(\"C:/Users/Hamza/Downloads/Content-Portal/Content-Portal/.env.local\")",
+      "Bash(rm -rf components/management/ceo/)",
+      "Bash(rm -f lib/management/ceo-dashboard.ts components/management/ceo-dashboard-sections.tsx components/management/ceo-dynamic-components.tsx components/management/ceo-skeletons.tsx)",
+      "Bash(find C:UsersHamzaDownloadsContent-PortalContent-Portal -type f \\\\\\(-name *pending* -o -name *evaluation* \\\\\\))",
+      "Bash(find /c/Users/Hamza/Downloads/Content-Portal/Content-Portal -type f \\\\\\(-name *.sql -o -name *migration* \\\\\\) -not -path *node_modules* -not -path *.next*)",
+      "WebFetch(domain:github.com)",
+      "mcp__supabase__execute_sql"
     ],
     "deny": [],
     "ask": []

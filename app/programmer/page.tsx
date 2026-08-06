@@ -297,7 +297,7 @@ async function DashboardContent({ userId, userRole }: { userId: string; userRole
   const quickActions = [
     {
       icon: FileTextIcon,
-      label: "Log Writer Engagement Report",
+      label: "Log One-Liner Report",
       description: "Document writer meetings",
       href: "/programmer/log-call-report",
     },

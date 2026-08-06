@@ -80,8 +80,8 @@ export function ManagementCallReportsCards({ callReports, userRole }: Management
         <CardContent className="flex flex-col items-center justify-center py-12 gap-4 text-center text-muted-foreground">
           <FileText className="h-12 w-12" />
           <div>
-            <p className="font-medium">No writer engagement reports found</p>
-            <p className="text-sm">Writer engagement reports logged by the content team will appear here.</p>
+            <p className="font-medium">No one-liner reports found</p>
+            <p className="text-sm">One-liner reports logged by the content team will appear here.</p>
           </div>
         </CardContent>
       </Card>

@@ -183,7 +183,7 @@ export default async function DashboardPage() {
                 <Button asChild variant="outline" className="h-auto py-4">
                   <Link href="/call-reports/new">
                     <div className="text-left">
-                      <div className="font-semibold">New Writer Engagement Report</div>
+                      <div className="font-semibold">New One-Liner Report</div>
                       <div className="text-sm text-muted-foreground">
                         Create meeting report
                       </div>

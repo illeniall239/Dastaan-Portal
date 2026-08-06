@@ -100,7 +100,7 @@ export default async function GcmCallReportDetailedOneLinerPage({
                 No Detailed One-Liner Logged
               </h3>
               <p className="text-sm text-amber-800 mb-6 text-center max-w-md">
-                No detailed one-liner analysis has been created for this writer engagement report yet.
+                No detailed one-liner analysis has been created for this one-liner report yet.
                 You can log one now to provide comprehensive story analysis.
               </p>
             </CardContent>

@@ -33,7 +33,7 @@ const TEAM_TYPE_COLORS: Record<string, string> = {
 };
 
 const METRIC_LABELS: Record<string, string> = {
-  call_reports: 'Writer Engagement Reports',
+  call_reports: 'One-Liner Reports',
   evaluations: 'Evaluations',
   one_liners: 'One-Liners',
   stories_approved: 'Stories Approved',

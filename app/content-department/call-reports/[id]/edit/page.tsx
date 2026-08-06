@@ -147,7 +147,7 @@ export default function ContentDepartmentCallReportEditPage({ params }: CallRepo
       <div className="flex flex-col gap-4 sm:gap-6 mb-8">
         <BackButton fallbackHref={`/content-department/call-reports/${callReportId}`} variant="outline" size="sm" className="w-fit" />
         <div className="space-y-1">
-          <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Edit Writer Engagement Report</h1>
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Edit One-Liner Report</h1>
           <p className="text-muted-foreground text-sm sm:text-base">
             Update report details and meeting information
           </p>

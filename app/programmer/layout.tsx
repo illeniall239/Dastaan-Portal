@@ -2,7 +2,6 @@ import { getCurrentUser } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { SidebarWrapper } from "./sidebar-wrapper";
-import { AssistantChat } from "@/components/ui/assistant-chat";
 
 // Tabs hidden from management-type teams (e.g., Humera's team)
 const managementTeamHiddenPaths = new Set([
@@ -22,6 +21,11 @@ const programmerNavItems = [
     icon: "home",
   },
   {
+    title: "AI Assistant",
+    href: "/programmer/ai-assistant",
+    icon: "sparkles",
+  },
+  {
     title: "Calendar",
     href: "/programmer/calendar",
     icon: "calendar",
@@ -37,7 +41,7 @@ const programmerNavItems = [
     icon: "listChecks",
   },
   {
-    title: "Writer Engagement Reports",
+    title: "One-Liner Reports",
     href: "/programmer/call-reports",
     icon: "fileText",
   },
@@ -134,16 +138,14 @@ export default async function ProgrammerLayout({
   }
 
   return (
-    <>
-      <SidebarWrapper
-        userName={user.name || "Programmer"}
-        userEmail={user.email}
-        userPosition={user.position}
-        navItems={filteredNavItems}
-      >
-        {children}
-      </SidebarWrapper>
-      <AssistantChat portalKey="programmer" />
-    </>
+    <SidebarWrapper
+      userName={user.name || "Programmer"}
+      userEmail={user.email}
+      userPosition={user.position}
+      navItems={filteredNavItems}
+      showAIButton
+    >
+      {children}
+    </SidebarWrapper>
   );
 }

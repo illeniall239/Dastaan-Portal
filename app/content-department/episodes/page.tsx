@@ -656,7 +656,7 @@ export default function ContentDepartmentEpisodesPage() {
 
   const handleContinueEpisodes = (project: ProjectGroup) => {
     if (project.projectType !== "call_report" || !project.sourceId) {
-      toast.error("Episodes can only be logged for writer engagement reports.");
+      toast.error("Episodes can only be logged for one-liner reports.");
       return;
     }
 

@@ -439,9 +439,9 @@ export function CallReportForm({
               });
             }
           }
-          toast.success(`Writer Engagement Report updated successfully with ${filesToUpload.length} new attachment(s)!`);
+          toast.success(`One-Liner Report updated successfully with ${filesToUpload.length} new attachment(s)!`);
         } else {
-          toast.success("Writer Engagement Report updated successfully!");
+          toast.success("One-Liner Report updated successfully!");
         }
 
         setAttachmentsMarkedForDeletion([]);
@@ -556,9 +556,9 @@ export function CallReportForm({
 
         const totalAttachments = filesToUpload.length + draftAttachments.length;
         if (totalAttachments > 0) {
-          toast.success(`Writer Engagement Report logged successfully with ${totalAttachments} attachment(s)!`);
+          toast.success(`One-Liner Report logged successfully with ${totalAttachments} attachment(s)!`);
         } else {
-          toast.success("Writer Engagement Report logged successfully!");
+          toast.success("One-Liner Report logged successfully!");
         }
 
         // Clear autosave draft on success
@@ -600,7 +600,7 @@ export function CallReportForm({
       }
     } catch (error: any) {
       console.error(`Error ${mode === "edit" ? "updating" : "logging"} call report:`, error);
-      toast.error(`Failed to ${mode === "edit" ? "update" : "log"} Writer Engagement Report: ${error.message || "Please try again."}`);
+      toast.error(`Failed to ${mode === "edit" ? "update" : "log"} One-Liner Report: ${error.message || "Please try again."}`);
     } finally {
       setIsLoading(false);
     }
@@ -1093,7 +1093,7 @@ export function CallReportForm({
             <Link href="/content-department">Cancel</Link>
           </Button>
           <Button type="submit" disabled={isLoading} className="touch-target">
-            <span className="hidden sm:inline">{isLoading ? "Saving..." : mode === "edit" ? "Update Writer Engagement Report" : "Log Writer Engagement Report"}</span>
+            <span className="hidden sm:inline">{isLoading ? "Saving..." : mode === "edit" ? "Update One-Liner Report" : "Log One-Liner Report"}</span>
             <span className="sm:hidden">{isLoading ? "Saving..." : mode === "edit" ? "Update Report" : "Log Report"}</span>
           </Button>
         </div>

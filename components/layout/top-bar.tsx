@@ -125,10 +125,10 @@ export const TopBar = memo(function TopBar({
           {showAIButton && (
             <Button
               variant="ghost"
-              onClick={() => router.push("/management/ai-assistant")}
+              onClick={() => router.push(`${portalPrefix}/ai-assistant`)}
               className={cn(
                 "h-9 gap-1.5 rounded-full px-3 transition-colors",
-                pathname === "/management/ai-assistant"
+                pathname === `${portalPrefix}/ai-assistant`
                   ? "bg-primary/10 text-primary hover:bg-primary/15"
                   : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
               )}

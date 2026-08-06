@@ -47,6 +47,8 @@ interface EvaluationSearchableListProps {
   currentTeamId?: string;
   currentUserId?: string;
   currentUserRole?: string;
+  readOnly?: boolean;
+  initialAssessmentMap?: Record<string, number>;
 }
 
 interface Filters {
@@ -65,6 +67,8 @@ export function EvaluationSearchableList({
   currentTeamId,
   currentUserId,
   currentUserRole,
+  readOnly = false,
+  initialAssessmentMap,
 }: EvaluationSearchableListProps) {
   const [filters, setFilters] = useState<Filters>({
     search: "",
@@ -256,6 +260,8 @@ export function EvaluationSearchableList({
                 currentUserId={currentUserId}
                 currentUserRole={currentUserRole}
                 teamEvaluations={teamEvaluations}
+                readOnly={readOnly}
+                initialAssessment={initialAssessmentMap?.[report.id] ?? null}
               />
             )
           )

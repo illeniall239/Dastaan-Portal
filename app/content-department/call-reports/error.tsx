@@ -45,10 +45,10 @@ export default function ContentDepartmentCallReportsError({
             </div>
           </div>
           <CardTitle className="text-2xl font-bold text-slate-900">
-            Error Loading Writer Engagement Reports
+            Error Loading One-Liner Reports
           </CardTitle>
           <CardDescription className="text-slate-600 mt-2">
-            We couldn't load the writer engagement reports. Your data is safe.
+            We couldn't load the one-liner reports. Your data is safe.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">

@@ -21,10 +21,11 @@ export default async function GcmLayout({
 
   const navItems = [
     { title: "Dashboard", href: "/gcm", icon: "home" },
+    { title: "AI Assistant", href: "/gcm/ai-assistant", icon: "sparkles" },
     { title: "Calendar", href: "/gcm/calendar", icon: "calendar" },
     { title: "Writers", href: "/gcm/writers", icon: "userPen" },
     { title: "Team", href: "/gcm/team", icon: "users" },
-    { title: "Writer Engagement Reports", href: "/gcm/call-reports", icon: "fileText" },
+    { title: "One-Liner Reports", href: "/gcm/call-reports", icon: "fileText" },
     { title: "Team Feedback", href: "/gcm/team-feedback", icon: "messageSquare" },
     { title: "One-Liner Evaluations", href: "/gcm/evaluations-list", icon: "clipboardList" },
     { title: "Incoming Evaluations", href: "/gcm/cross-team-shares", icon: "inbox" },
@@ -41,6 +42,7 @@ export default async function GcmLayout({
       userEmail={user.email}
       userPosition={user.position}
       navItems={navItems}
+      showAIButton
     >
       {children}
     </SidebarWrapper>

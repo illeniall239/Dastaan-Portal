@@ -74,7 +74,7 @@ export default async function MeetingDetailPage({ params }: { params: Promise<{ 
           <Button asChild className="bg-[#10b981] hover:bg-[#059669]">
             <Link href="/gcm/log-call-report">
               <FileTextIcon className="h-4 w-4 mr-2" />
-              Log Writer Engagement Report
+              Log One-Liner Report
             </Link>
           </Button>
         </div>

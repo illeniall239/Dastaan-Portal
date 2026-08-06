@@ -638,13 +638,13 @@ export function EvaluatorEvaluationForm({
         {/* Call Report Information (Read-only) */}
         <Card className="p-6 bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-200">
           <div className="flex items-center gap-3 mb-4">
-            <h2 className="text-xl font-bold">Writer Engagement Report Information</h2>
+            <h2 className="text-xl font-bold">One-Liner Report Information</h2>
           </div>
           <div className="space-y-4">
             <div className="bg-slate-50 p-4 rounded-lg space-y-3">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <span className="text-sm font-medium">Writer Engagement Report ID:</span>
+                  <span className="text-sm font-medium">One-Liner Report ID:</span>
                   <p className="text-sm text-muted-foreground">{callReport.call_report_id}</p>
                 </div>
                 <div>

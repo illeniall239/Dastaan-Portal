@@ -162,7 +162,7 @@ export default async function CallReportDetailPage({ params }: { params: Promise
         <div className="flex-1">
           <h1 className="text-2xl font-semibold text-slate-900">{report.working_title}</h1>
           <p className="text-sm text-slate-500 mt-0.5">
-            Writer Engagement Report ID: {report.call_report_id}
+            One-Liner Report ID: {report.call_report_id}
           </p>
         </div>
         <div className="flex items-center gap-2">

@@ -352,7 +352,7 @@ export function ContractTermForm({ stories, redirectPath, mode = "create", initi
               )}
               {selectedProject.call_report_display_id && (
                 <p className="text-xs text-muted-foreground border-t pt-2">
-                  From Writer Engagement Report: <span className="font-mono">{selectedProject.call_report_display_id}</span>
+                  From One-Liner Report: <span className="font-mono">{selectedProject.call_report_display_id}</span>
                 </p>
               )}
             </div>

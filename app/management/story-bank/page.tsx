@@ -30,7 +30,7 @@ export default async function ManagementStoryBankPage() {
     redirect("/dashboard");
   }
 
-  // Fetch writer engagement reports (call reports)
+  // Fetch one-liner reports (call reports)
   const { data: callReports, error: callReportsError } = await adminClient
     .from("call_reports")
     .select(`
@@ -199,7 +199,7 @@ export default async function ManagementStoryBankPage() {
         <div className="space-y-1">
           <h1 className="text-xl sm:text-2xl font-bold whitespace-nowrap">Script Bank</h1>
           <p className="text-muted-foreground text-sm sm:text-base">
-            Manage writer engagement reports and their linked episodes
+            Manage one-liner reports and their linked episodes
           </p>
         </div>
       </div>

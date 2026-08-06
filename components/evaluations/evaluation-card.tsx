@@ -85,6 +85,8 @@ interface EvaluationCardProps {
     decision: string | null;
     teamName?: string;
   }> | null;
+  readOnly?: boolean;
+  initialAssessment?: number | null;
 }
 
 export function EvaluationCard({
@@ -99,6 +101,8 @@ export function EvaluationCard({
   currentUserId,
   currentUserRole,
   teamEvaluations,
+  readOnly = false,
+  initialAssessment,
 }: EvaluationCardProps) {
   const hasDraft = draftProgress && draftProgress.percentage > 0;
 
@@ -211,13 +215,13 @@ export function EvaluationCard({
                   </span>
                 )
               )}
-              {!hasEvaluated && hasDraft && (
+              {!readOnly && !hasEvaluated && hasDraft && (
                 <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs bg-blue-100 text-blue-800 border border-blue-300">
                   Draft ({draftProgress.percentage}%)
                 </span>
               )}
             </div>
-            {!hasEvaluated && hasDraft && (
+            {!readOnly && !hasEvaluated && hasDraft && (
               <div className="mt-3 mb-2">
                 <IndividualEvaluationProgress
                   progressPercentage={draftProgress.percentage}
@@ -267,12 +271,20 @@ export function EvaluationCard({
           </div>
           {hasEvaluated && myScore !== undefined && (
             <div className="text-right">
+              {readOnly && initialAssessment != null && (
+                <div className="mb-2">
+                  <div className="inline-flex items-center px-3 py-2 rounded-lg text-sm font-bold border-2 bg-amber-100 text-amber-800 border-amber-300">
+                    {initialAssessment.toFixed(1)}/10
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">Your Assessment</p>
+                </div>
+              )}
               <div
                 className={`inline-flex items-center px-3 py-2 rounded-lg text-sm font-bold border-2 ${getMyScoreBadgeColor(myScore)}`}
               >
                 {myScore.toFixed(1)}/10
               </div>
-              <p className="text-xs text-muted-foreground mt-1">Your Score</p>
+              <p className="text-xs text-muted-foreground mt-1">{readOnly ? "Evaluation Score" : "Your Score"}</p>
               {myEvaluation?.decision && (
                 <div className="mt-2">
                   <Badge
@@ -428,36 +440,49 @@ export function EvaluationCard({
         </div>
 
         {/* Revision Evaluate List */}
-        <div className="pt-4 border-t space-y-3">
-          <RevisionEvaluateList
-            entityId={report.id}
-            entityType="call-report"
-            revisionCount={report.revision_count || 0}
-            portalPrefix={portalPrefix}
-            originalFileName={report.working_title}
-            originalDate={report.original_submission_date || report.logged_at || report.created_at}
-          />
-          {isTeamHead && (
-            <div className="flex justify-end">
-              <ShareCrossTeamButton
-                callReportId={report.id}
-                currentTeamId={currentTeamId}
-              />
-            </div>
-          )}
-        </div>
-
-        {/* Discussion thread — visible on completed evaluations for logged-in users */}
-        {hasEvaluated && currentUserId && (
-          <div className="mt-4">
-            <CallReportDiscussion
-              callReportId={report.id}
-              currentUserId={currentUserId}
-              currentUserRole={currentUserRole}
-              compact={true}
-              defaultExpanded={true}
-            />
+        {readOnly ? (
+          <div className="pt-4 border-t">
+            <Link
+              href={`/${portalPrefix}/call-reports/${report.id}`}
+              className="text-sm text-[#224794] hover:underline font-medium"
+            >
+              View Full Report →
+            </Link>
           </div>
+        ) : (
+          <>
+            <div className="pt-4 border-t space-y-3">
+              <RevisionEvaluateList
+                entityId={report.id}
+                entityType="call-report"
+                revisionCount={report.revision_count || 0}
+                portalPrefix={portalPrefix}
+                originalFileName={report.working_title}
+                originalDate={report.original_submission_date || report.logged_at || report.created_at}
+              />
+              {isTeamHead && (
+                <div className="flex justify-end">
+                  <ShareCrossTeamButton
+                    callReportId={report.id}
+                    currentTeamId={currentTeamId}
+                  />
+                </div>
+              )}
+            </div>
+
+            {/* Discussion thread — visible on completed evaluations for logged-in users */}
+            {hasEvaluated && currentUserId && (
+              <div className="mt-4">
+                <CallReportDiscussion
+                  callReportId={report.id}
+                  currentUserId={currentUserId}
+                  currentUserRole={currentUserRole}
+                  compact={true}
+                  defaultExpanded={true}
+                />
+              </div>
+            )}
+          </>
         )}
       </CardContent>
 

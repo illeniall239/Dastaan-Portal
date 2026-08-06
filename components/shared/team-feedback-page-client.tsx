@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { ChevronDown, ChevronRight, Users, Search, Eye, Paperclip, FileText, Image as ImageIcon, File } from "lucide-react";
 
-type Team = "programming" | "management";
+type Team = "programming" | "content_development";
 
 interface CriterionEntry {
   label: string;
@@ -90,13 +90,13 @@ interface TeamFeedbackPageClientProps {
 }
 
 const TEAM_BADGE: Record<Team, string> = {
-  programming: "bg-purple-100 text-purple-700 border-purple-200",
-  management:  "bg-amber-100 text-amber-700 border-amber-200",
+  programming:         "bg-purple-100 text-purple-700 border-purple-200",
+  content_development: "bg-teal-100 text-teal-700 border-teal-200",
 };
 
 const TEAM_LABEL: Record<Team, string> = {
-  programming: "Programming",
-  management:  "Management",
+  programming:         "Programming",
+  content_development: "Content Development",
 };
 
 function scoreColor(score: number | null): string {
@@ -667,9 +667,14 @@ function ProgrammerFeedbackSection({ entries }: { entries: ProgrammerFeedbackEnt
 function StoryRow({ story }: { story: StoryEntry }) {
   const [open, setOpen] = useState(false);
 
-  const programming = story.evaluations.filter(e => e.team === "programming");
-  const management  = story.evaluations.filter(e => e.team === "management");
-  const ratedCount  = story.evaluations.filter(e => e.averageScore !== null).length;
+  const programming      = story.evaluations.filter(e => e.team === "programming");
+  const contentDev       = story.evaluations.filter(e => e.team === "content_development");
+
+  const olRated = story.evaluations.some(e => e.averageScore !== null);
+  const totalEps = story.episodes.length;
+  const epsRated = story.episodes.filter(ep =>
+    ep.evaluations.some(e => e.overallAverage !== null)
+  ).length;
 
   return (
     <div className="border rounded-lg">
@@ -688,12 +693,16 @@ function StoryRow({ story }: { story: StoryEntry }) {
             </p>
           </div>
         </div>
-        <Badge
-          variant="outline"
-          className={`shrink-0 ml-3 text-xs ${ratedCount > 0 ? "bg-green-50 text-green-700 border-green-200" : "bg-slate-50 text-slate-500 border-slate-200"}`}
-        >
-          {ratedCount}/{story.evaluations.length} rated
-        </Badge>
+        <div className="flex items-center gap-1.5 shrink-0 ml-3">
+          <Badge variant="outline" className={`text-[11px] ${olRated ? "bg-green-50 text-green-700 border-green-200" : "bg-slate-50 text-slate-400 border-slate-200"}`}>
+            One-Liner {olRated ? "Rated" : "Not Rated"}
+          </Badge>
+          {totalEps > 0 && (
+            <Badge variant="outline" className={`text-[11px] ${epsRated > 0 ? "bg-blue-50 text-blue-700 border-blue-200" : "bg-slate-50 text-slate-400 border-slate-200"}`}>
+              {epsRated}/{totalEps} Episodes Rated
+            </Badge>
+          )}
+        </div>
       </div>
 
       {open && (
@@ -701,7 +710,7 @@ function StoryRow({ story }: { story: StoryEntry }) {
           {/* One-liner evaluations */}
           <div>
             <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide pt-3 pb-2">One-Liner Evaluations</p>
-            {([["programming", programming], ["management", management]] as [Team, EvalEntry[]][]).map(([team, evals]) => (
+            {([["programming", programming], ["content_development", contentDev]] as [Team, EvalEntry[]][]).map(([team, evals]) => (
               <div key={team} className="mb-3">
                 <div className="flex items-center gap-2 pb-1.5">
                   <span className={`text-[11px] px-2 py-0.5 rounded border font-semibold ${TEAM_BADGE[team]}`}>
@@ -766,7 +775,7 @@ export function TeamFeedbackPageClient({ stories }: TeamFeedbackPageClientProps)
         <div className="flex items-center justify-between">
           <div>
             <CardTitle className="text-xl">Team Feedback</CardTitle>
-            <CardDescription>Scores and remarks from the programming and management teams on your one-liners and episodes</CardDescription>
+            <CardDescription>Scores and remarks from the Programming and Content Development teams on your one-liners and episodes</CardDescription>
           </div>
           <Users className="h-6 w-6 text-muted-foreground" />
         </div>

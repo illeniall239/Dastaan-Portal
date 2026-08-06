@@ -2,7 +2,6 @@ import { getCurrentUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { SidebarWrapper } from "./sidebar-wrapper";
-import { AssistantChat } from "@/components/ui/assistant-chat";
 
 export default async function ContentDepartmentLayout({
   children,
@@ -58,17 +57,17 @@ export default async function ContentDepartmentLayout({
       icon: "home",
     },
     {
+      title: "AI Assistant",
+      href: "/content-department/ai-assistant",
+      icon: "sparkles",
+    },
+    {
       title: "Calendar",
       href: "/content-department/calendar",
       icon: "calendar",
     },
     {
-      title: "Writers",
-      href: "/content-department/writers",
-      icon: "userPen",
-    },
-    {
-      title: "Writer Engagement Reports",
+      title: "One-Liner Reports",
       href: "/content-department/call-reports",
       icon: "fileText",
     },
@@ -78,6 +77,11 @@ export default async function ContentDepartmentLayout({
       icon: "film",
     },
     {
+      title: "Evaluations",
+      href: "/content-department/evaluations",
+      icon: "clipboardList",
+    },
+    {
       title: "Notifications",
       href: "/content-department/notifications",
       icon: "bell",
@@ -85,17 +89,15 @@ export default async function ContentDepartmentLayout({
   ];
 
   return (
-    <>
-      <SidebarWrapper
-        userName={user.name || "User"}
-        userEmail={user.email}
-        userPosition={user.position}
-        teamName={teamName}
-        navItems={navItems}
-      >
-        {children}
-      </SidebarWrapper>
-      <AssistantChat portalKey="content_department" />
-    </>
+    <SidebarWrapper
+      userName={user.name || "User"}
+      userEmail={user.email}
+      userPosition={user.position}
+      teamName={teamName}
+      navItems={navItems}
+      showAIButton
+    >
+      {children}
+    </SidebarWrapper>
   );
 }

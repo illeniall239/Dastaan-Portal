@@ -20,7 +20,7 @@ export default async function CallReportsPage() {
   }
 
   if (user.role !== "gcm") {
-    redirect("/permission-denied?message=Only GCM users can access writer engagement reports.&returnUrl=/gcm");
+    redirect("/permission-denied?message=Only GCM users can access one-liner reports.&returnUrl=/gcm");
   }
 
   return (
@@ -30,9 +30,9 @@ export default async function CallReportsPage() {
         <div className="flex flex-col gap-4 sm:gap-6 w-full sm:w-auto">
           <BackButton fallbackHref="/gcm" variant="outline" size="sm" className="w-fit" />
           <div className="space-y-1">
-            <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Writer Engagement Reports</h1>
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight">One-Liner Reports</h1>
             <p className="text-muted-foreground text-sm sm:text-base">
-              View all logged writer engagement reports
+              View all logged one-liner reports
             </p>
           </div>
         </div>
@@ -59,7 +59,7 @@ async function CallReportsList() {
   try {
     callReports = await getAllCallReports();
   } catch (error) {
-    console.error("Error fetching writer engagement reports:", error);
+    console.error("Error fetching one-liner reports:", error);
   }
 
   return (

@@ -96,7 +96,7 @@ export function EvaluatorLeaderboard({ evaluators }: EvaluatorLeaderboardProps) 
                 <TableHeader>
                   <TableRow>
                     <TableHead className="text-xs sm:text-sm bg-background">Evaluator</TableHead>
-                    <TableHead className="text-center text-xs sm:text-sm bg-background">Writer Engagement Reports</TableHead>
+                    <TableHead className="text-center text-xs sm:text-sm bg-background">One-Liner Reports</TableHead>
                     <TableHead className="text-center text-xs sm:text-sm bg-background">Episodic Evaluations</TableHead>
                     <TableHead className="text-center text-xs sm:text-sm bg-background">One-liner Evaluations</TableHead>
                     <TableHead className="text-center text-xs sm:text-sm bg-background">Total Activities</TableHead>

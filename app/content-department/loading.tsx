@@ -22,7 +22,7 @@ export default function ContentDepartmentLoading() {
           </Button>
           <Button disabled variant="outline">
             <FileTextIcon className="h-4 w-4 mr-2" />
-            Log Writer Engagement Report
+            Log One-Liner Report
           </Button>
         </div>
       </div>

@@ -9,15 +9,15 @@ export default function CallReportsLoading() {
       {/* Page Header - Static, shows immediately */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Writer Engagement Reports</h1>
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight">One-Liner Reports</h1>
           <p className="text-muted-foreground mt-1">
-            View all logged writer engagement reports
+            View all logged one-liner reports
           </p>
         </div>
         <Button asChild className="bg-[#224794] hover:bg-[#1a3670]">
           <Link href="/content-department/log-call-report">
             <PlusIcon className="h-4 w-4 mr-2" />
-            Log New Writer Engagement Report
+            Log New One-Liner Report
           </Link>
         </Button>
       </div>

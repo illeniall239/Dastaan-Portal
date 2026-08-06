@@ -17,6 +17,7 @@ interface SidebarWrapperProps {
   userEmail?: string;
   userPosition?: string;
   navItems: NavItem[];
+  showAIButton?: boolean;
   children: React.ReactNode;
 }
 
@@ -25,6 +26,7 @@ export function SidebarWrapper({
   userEmail,
   userPosition,
   navItems,
+  showAIButton,
   children,
 }: SidebarWrapperProps) {
   const { isCollapsed, toggleMobile } = useSidebar();
@@ -46,6 +48,7 @@ export function SidebarWrapper({
           userName={userName}
           userEmail={userEmail}
           userPosition={userPosition}
+          showAIButton={showAIButton}
         />
       )}
       <div className={`flex flex-col flex-1 transition-all duration-300 ${isCollapsed ? 'lg:ml-16' : 'lg:ml-70'} pt-14`}>

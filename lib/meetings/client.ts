@@ -23,7 +23,7 @@ export interface CreateSimpleMeetingInput {
 }
 
 /**
- * Input for creating a call report (Writer Engagement Report — enters story pipeline)
+ * Input for creating a call report (One-Liner Report — enters story pipeline)
  */
 export interface CreateMeetingInput {
   logged_by: string;
@@ -86,7 +86,7 @@ export async function createSimpleMeetingClient(
 }
 
 /**
- * Create a new call report (Writer Engagement Report) from client components.
+ * Create a new call report (One-Liner Report) from client components.
  * This creates a Story + Call Report in the `call_reports` table.
  */
 export async function createMeetingClient(meetingData: CreateMeetingInput) {

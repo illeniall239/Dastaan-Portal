@@ -41,7 +41,7 @@ export default async function GcmDashboard() {
           <Button asChild variant="outline" className="touch-target">
             <Link href="/gcm/log-call-report" prefetch>
               <FileTextIcon className="h-4 w-4 mr-2" />
-              <span className="hidden sm:inline">Log Writer Engagement Report</span>
+              <span className="hidden sm:inline">Log One-Liner Report</span>
               <span className="sm:hidden">Log Report</span>
             </Link>
           </Button>
@@ -132,13 +132,13 @@ async function DashboardContent() {
     },
     {
       icon: FileText,
-      label: "Log Writer Engagement Report",
+      label: "Log One-Liner Report",
       description: "Document writer meetings",
       href: "/gcm/log-call-report",
     },
     {
       icon: FileText,
-      label: "View Writer Engagement Reports",
+      label: "View One-Liner Reports",
       description: "All engagement reports",
       href: "/gcm/call-reports",
     },
@@ -163,7 +163,7 @@ async function DashboardContent() {
         />
 
         <ModernStatCard
-          title="Writer Engagement Reports"
+          title="One-Liner Reports"
           value={callReportsCount}
           icon={FileText}
           href="/gcm/call-reports"
@@ -213,13 +213,13 @@ async function DashboardContent() {
           </div>
         </ModernContentCard>
 
-        {/* Recent Writer Engagement Reports */}
+        {/* Recent One-Liner Reports */}
         <ModernContentCard
-          title="Recent Writer Engagement Reports"
-          subtitle="Last 5 writer engagement reports"
+          title="Recent One-Liner Reports"
+          subtitle="Last 5 one-liner reports"
         >
           <p className="text-sm text-gray-500 text-center py-8">
-            View all writer engagement reports to see recent activity
+            View all one-liner reports to see recent activity
           </p>
           <div className="pt-2 text-center">
             <Link

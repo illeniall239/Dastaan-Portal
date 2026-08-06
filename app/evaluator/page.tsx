@@ -23,6 +23,8 @@ import { formatDateTime, formatDate } from "@/lib/utils/format-date";
 import { ProductionMetricsCards } from "@/components/dashboard/production-metrics-cards";
 import { getProductionMetrics } from "@/lib/production-metrics/server";
 import { TeamBadge } from "@/components/shared/team-badge";
+import { SlotDistributionChart, GenreDistributionChart, ContentTypeChart } from "@/components/evaluator/score-distribution-chart";
+import { ScoreTrendChart } from "@/components/evaluator/score-trend-chart";
 
 // Add Next.js caching - revalidate every 5 minutes (300 seconds)
 // This significantly improves navigation speed by caching dashboard data
@@ -84,7 +86,7 @@ async function DashboardContent({ userId }: { userId: string }) {
   const hasGlobalAccess = ["admin", "management"].includes(currentUser.role);
 
   // Fetch ALL data in parallel for maximum performance
-  const [statsData, pendingData, completedData, productionMetrics, crossTeamSharesData] = await Promise.all([
+  const [statsData, pendingData, completedData, productionMetrics, crossTeamSharesData, scoreDistData, scoreTrendData] = await Promise.all([
     // Stats data - WITH TEAM FILTERS
     Promise.all([
       // Total call reports count
@@ -251,6 +253,148 @@ async function DashboardContent({ userId }: { userId: string }) {
 
       return shares.filter((s) => !evaluatedShareIds.has(s.id));
     })(),
+
+    // Charts data — full project records for drill-down + slot from evaluator_forms
+    (async () => {
+      let crQuery = adminClient
+        .from("call_reports")
+        .select("id, working_title, writer_name, genre, content_type, target_slot")
+        .eq("meeting_type", "call_report")
+        .is("archived_at", null);
+
+      if (!hasGlobalAccess && currentUser.team_id) {
+        crQuery = crQuery.eq("team_id", currentUser.team_id);
+      }
+
+      const { data: crs } = await crQuery;
+      if (!crs || crs.length === 0) return { projects: [], slotMap: {} as Record<string, string> };
+
+      const ids = crs.map((r: any) => r.id);
+
+      // Get slot from evaluator_forms (one per call_report, pick latest)
+      const { data: forms } = await adminClient
+        .from("evaluator_forms")
+        .select("call_report_id, slot")
+        .in("call_report_id", ids)
+        .not("submitted_at", "is", null)
+        .not("slot", "is", null);
+
+      const slotMap: Record<string, string> = {};
+      for (const f of (forms || []) as any[]) {
+        if (f.slot && !slotMap[f.call_report_id]) slotMap[f.call_report_id] = f.slot;
+      }
+
+      const projects = (crs as any[]).map((cr) => ({
+        id: cr.id,
+        title: cr.working_title || "Untitled",
+        writer: cr.writer_name || "—",
+        genre: Array.isArray(cr.genre) ? cr.genre : [],
+        contentType: cr.content_type || null,
+        slot: slotMap[cr.id] || cr.target_slot || null,
+      }));
+
+      return { projects, slotMap };
+    })(),
+
+    // Project scores — one-liner + episodic scores per project, split by team
+    (async () => {
+      let crQuery = adminClient
+        .from("call_reports")
+        .select("id, working_title")
+        .eq("meeting_type", "call_report")
+        .is("archived_at", null);
+
+      if (!hasGlobalAccess && currentUser.team_id) {
+        crQuery = crQuery.eq("team_id", currentUser.team_id);
+      }
+
+      const { data: crs } = await crQuery;
+      if (!crs || crs.length === 0) return { projects: [], scores: [] };
+
+      const ids = crs.map((r: any) => r.id);
+      const titleMap = new Map<string, string>();
+      for (const cr of crs as any[]) titleMap.set(cr.id, cr.working_title || "Untitled");
+
+      // Get teams to classify evaluators
+      const { data: allTeams } = await adminClient
+        .from("teams")
+        .select("id, team_type, team_head:users!team_head_id(email)");
+
+      const progTeamIds = new Set(
+        (allTeams || []).filter((t: any) => t.team_type === "programmer").map((t: any) => t.id)
+      );
+      const cdTeamIds = new Set(
+        (allTeams || []).filter((t: any) => t.team_head?.email === "humera.safder@geo.tv").map((t: any) => t.id)
+      );
+
+      function classifyTeam(evTeamId: string | null) {
+        if (!evTeamId) return "other";
+        if (progTeamIds.has(evTeamId)) return "programming";
+        if (cdTeamIds.has(evTeamId)) return "content_development";
+        return "other";
+      }
+
+      // Fetch one-liner evals
+      const { data: forms } = await adminClient
+        .from("evaluator_forms")
+        .select("call_report_id, average_score, evaluator:users!evaluator_id(team_id)")
+        .in("call_report_id", ids)
+        .not("submitted_at", "is", null)
+        .not("average_score", "is", null);
+
+      // Fetch episodes for these call reports
+      const { data: episodes } = await adminClient
+        .from("episodes")
+        .select("id, call_report_id, episode_number")
+        .in("call_report_id", ids)
+        .eq("is_current", true);
+
+      const epIds = (episodes || []).map((e: any) => e.id);
+      const epToCr = new Map<string, string>();
+      const epToNum = new Map<string, number>();
+      for (const ep of (episodes || []) as any[]) {
+        epToCr.set(ep.id, ep.call_report_id);
+        epToNum.set(ep.id, ep.episode_number);
+      }
+
+      // Fetch episodic evals
+      const { data: epEvals } = epIds.length
+        ? await adminClient
+            .from("episodic_evaluations")
+            .select("episode_id, overall_average, evaluator:users!evaluator_id(team_id)")
+            .in("episode_id", epIds)
+            .not("submitted_at", "is", null)
+            .not("overall_average", "is", null)
+        : { data: [] };
+
+      const scores: { projectId: string; score: number; team: string; type: string; episodeNumber?: number }[] = [];
+
+      for (const f of (forms || []) as any[]) {
+        const evTeamId = Array.isArray(f.evaluator) ? f.evaluator[0]?.team_id : f.evaluator?.team_id;
+        scores.push({
+          projectId: f.call_report_id,
+          score: f.average_score,
+          team: classifyTeam(evTeamId),
+          type: "oneliner",
+        });
+      }
+
+      for (const e of (epEvals || []) as any[]) {
+        const evTeamId = Array.isArray(e.evaluator) ? e.evaluator[0]?.team_id : e.evaluator?.team_id;
+        const crId = epToCr.get(e.episode_id);
+        if (!crId) continue;
+        scores.push({
+          projectId: crId,
+          score: e.overall_average,
+          team: classifyTeam(evTeamId),
+          type: "episodic",
+          episodeNumber: epToNum.get(e.episode_id),
+        });
+      }
+
+      const projects = Array.from(titleMap.entries()).map(([id, title]) => ({ id, title }));
+      return { projects, scores };
+    })(),
   ]);
 
   // Extract counts from stats data
@@ -266,7 +410,7 @@ async function DashboardContent({ userId }: { userId: string }) {
   const quickActions = [
     {
       icon: FileTextIcon,
-      label: "Log Writer Engagement Report",
+      label: "Log One-Liner Report",
       description: "Document writer meetings",
       href: "/evaluator/log-call-report",
     },
@@ -317,7 +461,7 @@ async function DashboardContent({ userId }: { userId: string }) {
         />
 
         <ModernStatCard
-          title="Total Writer Engagement Reports"
+          title="Total One-Liner Reports"
           value={callReportsCount}
           icon={FileText}
           href="/evaluator/call-reports"
@@ -333,6 +477,16 @@ async function DashboardContent({ userId }: { userId: string }) {
           />
         )}
       </div>
+
+      {/* Charts Row */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <SlotDistributionChart projects={scoreDistData.projects || []} />
+        <GenreDistributionChart projects={scoreDistData.projects || []} />
+        <ContentTypeChart projects={scoreDistData.projects || []} />
+      </div>
+
+      {/* Project Score by Team */}
+      <ScoreTrendChart projects={scoreTrendData.projects || []} scores={scoreTrendData.scores || []} />
 
       {/* Production Pipeline Metrics */}
       <div className="space-y-2">

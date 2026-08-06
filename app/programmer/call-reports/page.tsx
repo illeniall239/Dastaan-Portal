@@ -30,9 +30,9 @@ export default async function ProgrammerCallReportsPage() {
         <div className="flex flex-col gap-4 sm:gap-6 w-full sm:w-auto">
           <BackButton fallbackHref="/programmer" variant="outline" size="sm" className="w-fit" />
           <div className="space-y-1">
-            <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Writer Engagement Reports</h1>
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight">One-Liner Reports</h1>
             <p className="text-muted-foreground text-sm sm:text-base">
-              View all logged writer engagement reports across all teams
+              View all logged one-liner reports across all teams
             </p>
           </div>
         </div>
@@ -40,7 +40,7 @@ export default async function ProgrammerCallReportsPage() {
           <Button asChild size="sm" className="bg-[#224794] hover:bg-[#1a3670] touch-target w-full sm:w-auto">
             <Link href="/programmer/log-call-report">
               <PlusIcon className="h-4 w-4 mr-1.5" />
-              <span className="hidden md:inline">Log New Writer Engagement Report</span>
+              <span className="hidden md:inline">Log New One-Liner Report</span>
               <span className="md:hidden">Log Report</span>
             </Link>
           </Button>

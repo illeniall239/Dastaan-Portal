@@ -19,6 +19,10 @@ const PORTAL_GREETING: Record<string, string> = {
   management: "Hi! I'm your Dastaan Portal Assistant. I can help you navigate the Management Portal — ask me anything like \"Where do I track content aging?\" or \"How do I review pending approvals?\"",
 };
 
+function stripDigest(text: string): string {
+  return text.replace(/\n*<!--\s*data-digest[\s\S]*?-->/g, "").trimEnd();
+}
+
 function TypingIndicator() {
   return (
     <div className="flex items-end gap-2">
@@ -130,7 +134,7 @@ export function AssistantChat({ portalKey }: AssistantChatProps) {
                     <Bot className="w-3.5 h-3.5 text-primary" />
                   </div>
                   <div className="bg-muted rounded-2xl rounded-bl-sm px-3 py-2 text-sm leading-relaxed max-w-[85%]">
-                    {msg.content}
+                    {stripDigest(msg.content)}
                   </div>
                 </div>
               ) : (

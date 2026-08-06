@@ -127,7 +127,7 @@ export function RequestedEvaluationsView() {
           <Share2 className="h-12 w-12 text-muted-foreground mb-4" />
           <h3 className="text-lg font-semibold mb-2">No cross-team shares yet</h3>
           <p className="text-sm text-muted-foreground max-w-sm">
-            Use the &ldquo;Request Evaluation&rdquo; button on a writer engagement report or episode to ask another team for their evaluation.
+            Use the &ldquo;Request Evaluation&rdquo; button on a one-liner report or episode to ask another team for their evaluation.
           </p>
         </CardContent>
       </Card>

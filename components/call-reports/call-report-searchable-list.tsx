@@ -96,14 +96,14 @@ export function CallReportSearchableList({
       <Card>
         <CardContent className="flex flex-col items-center justify-center py-8 sm:py-12 px-4">
           <FileTextIcon className="h-12 w-12 text-muted-foreground mb-4" />
-          <h3 className="text-lg font-semibold mb-2">No writer engagement reports yet</h3>
+          <h3 className="text-lg font-semibold mb-2">No one-liner reports yet</h3>
           <p className="text-sm text-muted-foreground mb-4 text-center max-w-md">
-            Start by logging your first writer engagement report.
+            Start by logging your first one-liner report.
           </p>
           <Button asChild>
             <Link href={emptyStateHref}>
               <PlusIcon className="h-4 w-4 mr-2" />
-              Log Your First Writer Engagement Report
+              Log Your First One-Liner Report
             </Link>
           </Button>
         </CardContent>

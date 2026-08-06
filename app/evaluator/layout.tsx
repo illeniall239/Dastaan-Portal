@@ -1,7 +1,6 @@
 import { getCurrentUser } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { SidebarWrapper } from "./sidebar-wrapper";
-import { AssistantChat } from "@/components/ui/assistant-chat";
 
 // Evaluator-specific navigation items
 const evaluatorNavItems = [
@@ -11,45 +10,39 @@ const evaluatorNavItems = [
     icon: "home",
   },
   {
+    title: "AI Assistant",
+    href: "/evaluator/ai-assistant",
+    icon: "sparkles",
+  },
+  {
     title: "Calendar",
     href: "/evaluator/calendar",
     icon: "calendar",
   },
   {
-    title: "Writers",
-    href: "/evaluator/writers",
-    icon: "userPen",
-  },
-  {
-    title: "Team",
-    href: "/evaluator/team",
-    icon: "users",
-  },
-  // Temporarily hidden - will be enabled later
-  // {
-  //   title: "One-Liner",
-  //   href: "/evaluator/one-liner",
-  //   icon: "penLine",
-  // },
-  // {
-  //   title: "Characters",
-  //   href: "/evaluator/characters",
-  //   icon: "users",
-  // },
-  {
-    title: "Writer Engagement Reports",
+    title: "One-Liner Reports",
     href: "/evaluator/call-reports",
     icon: "fileText",
   },
   {
-    title: "Team Feedback",
-    href: "/evaluator/team-feedback",
-    icon: "users",
+    title: "Episodes",
+    href: "/evaluator/episodes",
+    icon: "film",
   },
   {
     title: "One-Liner Evaluations",
     href: "/evaluator/evaluations-list",
     icon: "clipboardList",
+  },
+  {
+    title: "Status Report",
+    href: "/evaluator/status-updater",
+    icon: "clipboardCheck",
+  },
+  {
+    title: "Team Feedback",
+    href: "/evaluator/team-feedback",
+    icon: "users",
   },
   {
     title: "Incoming Evaluations",
@@ -62,14 +55,9 @@ const evaluatorNavItems = [
     icon: "share2",
   },
   {
-    title: "Episodes",
-    href: "/evaluator/episodes",
-    icon: "film",
-  },
-  {
-    title: "Status Report",
-    href: "/evaluator/status-updater",
-    icon: "clipboardCheck",
+    title: "Team",
+    href: "/evaluator/team",
+    icon: "users",
   },
   {
     title: "Contract Terms",
@@ -101,16 +89,14 @@ export default async function EvaluatorLayout({
   }
 
   return (
-    <>
-      <SidebarWrapper
-        userName={user.name || "Evaluator"}
-        userEmail={user.email}
-        userPosition={user.position}
-        navItems={evaluatorNavItems}
-      >
-        {children}
-      </SidebarWrapper>
-      <AssistantChat portalKey="evaluator" />
-    </>
+    <SidebarWrapper
+      userName={user.name || "Evaluator"}
+      userEmail={user.email}
+      userPosition={user.position}
+      navItems={evaluatorNavItems}
+      showAIButton
+    >
+      {children}
+    </SidebarWrapper>
   );
 }

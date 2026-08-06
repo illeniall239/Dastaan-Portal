@@ -25,12 +25,11 @@ export default async function ManagementLayout({
     redirect("/dashboard");
   }
 
-  let navItems = [...baseNavItems];
-
-  // AI Assistant only for mir
-  if (user.email === "mir@geo.tv") {
-    navItems = [navItems[0], { title: "AI Assistant", href: "/management/ai-assistant", icon: "sparkles" }, ...navItems.slice(1)];
-  }
+  let navItems = [
+    baseNavItems[0],
+    { title: "AI Assistant", href: "/management/ai-assistant", icon: "sparkles" },
+    ...baseNavItems.slice(1),
+  ];
 
   // management_viewer: data/quantity reports only — no scripts, evaluations, or one-liners
   if (user.role === "management_viewer") {
@@ -48,7 +47,7 @@ export default async function ManagementLayout({
       userEmail={user.email}
       userPosition={user.position}
       navItems={navItems}
-      showAIButton={user.email === "mir@geo.tv"}
+      showAIButton
     >
       {children}
     </SidebarWrapper>

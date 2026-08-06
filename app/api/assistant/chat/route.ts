@@ -11,6 +11,12 @@ const MODEL      = "gemini-2.5-flash";
 
 type AdminClient = ReturnType<typeof createAdminClient>;
 
+type TeamScope = {
+  teamId: string;
+  memberIds: string[];
+  crIds?: string[];
+} | null;
+
 // ─── Period helper ─────────────────────────────────────────────────────────────
 function parsePeriod(period?: string | null): { start: Date; end: Date } | null {
   if (!period) return null;
@@ -89,13 +95,17 @@ const DATA_TOOLS = [
     function: {
       name: "query_content",
       description:
-        "Search call reports and ideas logged in the system. Use for: how many ideas were logged, find ideas by writer or team, what was submitted in a period.",
+        "Search call reports and ideas logged in the system. Use for: how many ideas were logged, find ideas by writer or team, ideas logged BY a person, what was submitted in a period.",
       parameters: {
         type: "object",
         properties: {
           search: {
             type: "string",
             description: "Search term to match against project title or writer name.",
+          },
+          logged_by: {
+            type: "string",
+            description: "Name of the person who logged/created the idea. Use this when the question is about who LOGGED the idea (not the writer of the story).",
           },
           team_name: {
             type: "string",
@@ -276,9 +286,17 @@ const DATA_TOOLS = [
 
 async function toolQueryEvaluations(
   args: { evaluator_name?: string; project_title?: string; period?: string },
-  admin: AdminClient
+  admin: AdminClient,
+  scope: TeamScope = null
 ) {
   const range = parsePeriod(args.period);
+
+  // Team-scope: restrict to evaluations of the team's projects
+  let scopedEpIds: string[] | null = null;
+  if (scope?.crIds) {
+    const { data: teamEps } = await admin.from("episodes").select("id").in("call_report_id", scope.crIds);
+    scopedEpIds = (teamEps as any[] || []).map((e: any) => e.id);
+  }
 
   // Resolve evaluator(s)
   let userIds: string[] | null = null;
@@ -305,6 +323,8 @@ async function toolQueryEvaluations(
   let cq2: any = admin.from("episodic_evaluations").select("id", { count: "exact", head: true });
   if (userIds) { cq1 = cq1.in("evaluator_id", userIds); cq2 = cq2.in("evaluator_id", userIds); }
   if (crIds)   { cq1 = cq1.in("call_report_id", crIds); }
+  if (scope?.crIds) { cq1 = cq1.in("call_report_id", scope.crIds); }
+  if (scopedEpIds)  { cq2 = cq2.in("episode_id", scopedEpIds); }
   if (range) {
     cq1 = cq1.gte("submitted_at", range.start.toISOString()).lte("submitted_at", range.end.toISOString());
     cq2 = cq2.gte("created_at",   range.start.toISOString()).lte("created_at",   range.end.toISOString());
@@ -323,6 +343,8 @@ async function toolQueryEvaluations(
 
   if (userIds) { q1 = q1.in("evaluator_id", userIds); q2 = q2.in("evaluator_id", userIds); }
   if (crIds)   { q1 = q1.in("call_report_id", crIds); }
+  if (scope?.crIds) { q1 = q1.in("call_report_id", scope.crIds); }
+  if (scopedEpIds)  { q2 = q2.in("episode_id", scopedEpIds); }
   if (range) {
     q1 = q1.gte("submitted_at", range.start.toISOString()).lte("submitted_at", range.end.toISOString());
     q2 = q2.gte("created_at",   range.start.toISOString()).lte("created_at",   range.end.toISOString());
@@ -439,45 +461,88 @@ async function toolQueryEvaluations(
 }
 
 async function toolQueryContent(
-  args: { search?: string; team_name?: string; period?: string },
-  admin: AdminClient
+  args: { search?: string; logged_by?: string; team_name?: string; period?: string },
+  admin: AdminClient,
+  scope: TeamScope = null
 ) {
   const range = parsePeriod(args.period);
 
   let teamIds: string[] | null = null;
-  if (args.team_name) {
+  if (scope) {
+    teamIds = [scope.teamId];
+  } else if (args.team_name) {
     const { data } = await admin.from("teams").select("id, name").ilike("name", fuzzy(args.team_name));
     const found = data as any[] || [];
     if (found.length === 0) return { message: `No team found matching "${args.team_name}"`, count: 0 };
     teamIds = found.map((t: any) => t.id);
   }
 
+  // Resolve logged_by person name to user ID(s)
+  let loggedByIds: string[] | null = null;
+  let loggedByNames: Record<string, string> = {};
+  if (args.logged_by) {
+    const { data } = await admin.from("users").select("id, name").ilike("name", fuzzy(args.logged_by));
+    const found = data as any[] || [];
+    if (found.length === 0) return { message: `No person found matching "${args.logged_by}"`, count: 0 };
+    loggedByIds = found.map((u: any) => u.id);
+    for (const u of found) loggedByNames[u.id] = u.name;
+  }
+
+  // When search is provided, also check if it matches a person who logged ideas
+  // This handles "ideas logged by Parisa" even if LLM puts it in search instead of logged_by
+  let searchOrFilter: string | null = null;
+  if (args.search) {
+    const pattern = fuzzy(args.search);
+    const orParts = [`working_title.ilike.${pattern}`, `writer_name.ilike.${pattern}`];
+    if (!loggedByIds) {
+      const { data: matchedUsers } = await admin.from("users").select("id, name").ilike("name", pattern);
+      const matchedIds = (matchedUsers as any[] || []).map((u: any) => u.id);
+      if (matchedIds.length > 0) {
+        orParts.push(`created_by.in.(${matchedIds.join(",")})`);
+        for (const u of (matchedUsers as any[] || [])) loggedByNames[u.id] = u.name;
+      }
+    }
+    searchOrFilter = orParts.join(",");
+  }
+
   // Accurate count
   let cq: any = admin.from("call_reports").select("id", { count: "exact", head: true })
     .eq("meeting_type", "call_report").is("archived_at", null);
-  if (args.search) cq = cq.or(`working_title.ilike.${fuzzy(args.search)},writer_name.ilike.${fuzzy(args.search)}`);
-  if (teamIds)     cq = cq.in("team_id", teamIds);
-  if (range)       cq = cq.gte("created_at", range.start.toISOString()).lte("created_at", range.end.toISOString());
+  if (searchOrFilter) cq = cq.or(searchOrFilter);
+  if (loggedByIds)    cq = cq.in("created_by", loggedByIds);
+  if (teamIds)        cq = cq.in("team_id", teamIds);
+  if (range)          cq = cq.gte("created_at", range.start.toISOString()).lte("created_at", range.end.toISOString());
 
   let q: any = admin.from("call_reports")
-    .select("id, working_title, writer_name, created_at, team_id")
+    .select("id, working_title, writer_name, created_at, team_id, created_by")
     .eq("meeting_type", "call_report")
     .is("archived_at", null)
     .order("created_at", { ascending: false })
     .limit(50);
 
-  if (args.search) q = q.or(`working_title.ilike.${fuzzy(args.search)},writer_name.ilike.${fuzzy(args.search)}`);
-  if (teamIds)     q = q.in("team_id", teamIds);
-  if (range)       q = q.gte("created_at", range.start.toISOString()).lte("created_at", range.end.toISOString());
+  if (searchOrFilter) q = q.or(searchOrFilter);
+  if (loggedByIds)    q = q.in("created_by", loggedByIds);
+  if (teamIds)        q = q.in("team_id", teamIds);
+  if (range)          q = q.gte("created_at", range.start.toISOString()).lte("created_at", range.end.toISOString());
 
   const [{ count: totalCount }, { data: reports }] = await Promise.all([cq, q]);
   const list = reports as any[] || [];
 
+  // Enrich with team names and logger names
   const tidSet = [...new Set(list.map((r: any) => r.team_id).filter(Boolean))];
+  const creatorIds = [...new Set(list.map((r: any) => r.created_by).filter(Boolean))];
   const teamMap = new Map<string, string>();
   if (tidSet.length) {
     const { data: teams } = await admin.from("teams").select("id, name").in("id", tidSet);
     for (const t of (teams as any[] || [])) teamMap.set(t.id, t.name);
+  }
+  // Resolve creator names (merge with any already resolved from logged_by)
+  if (creatorIds.length) {
+    const unknownIds = creatorIds.filter(id => !loggedByNames[id]);
+    if (unknownIds.length) {
+      const { data: users } = await admin.from("users").select("id, name").in("id", unknownIds);
+      for (const u of (users as any[] || [])) loggedByNames[u.id] = u.name;
+    }
   }
 
   return {
@@ -486,6 +551,7 @@ async function toolQueryContent(
     items: list.map((r: any) => ({
       title: r.working_title || "Untitled",
       writer: r.writer_name || "Unknown",
+      logged_by: loggedByNames[r.created_by] || "Unknown",
       team: teamMap.get(r.team_id) || "Unknown",
       logged_at: r.created_at ? fmtDate(r.created_at) : "",
     })),
@@ -494,11 +560,13 @@ async function toolQueryContent(
 
 async function toolQueryPersonActivity(
   args: { person_name: string; period?: string },
-  admin: AdminClient
+  admin: AdminClient,
+  scope: TeamScope = null
 ) {
   const { data: found } = await admin.from("users").select("id, name, role, email").ilike("name", fuzzy(args.person_name)).limit(5);
-  const people = found as any[] || [];
-  if (people.length === 0) return { message: `No person found matching "${args.person_name}"` };
+  let people = found as any[] || [];
+  if (scope) people = people.filter((p: any) => scope.memberIds.includes(p.id));
+  if (people.length === 0) return { message: scope ? `No team member found matching "${args.person_name}"` : `No person found matching "${args.person_name}"` };
 
   const range = parsePeriod(args.period);
 
@@ -538,12 +606,14 @@ async function toolQueryPersonActivity(
 
 async function toolQueryEpisodeDelivery(
   args: { project_title?: string; writer_name?: string; status?: string },
-  admin: AdminClient
+  admin: AdminClient,
+  scope: TeamScope = null
 ) {
   // Use consolidated_cms_view — the same source every working portal page uses.
   // It already has actual_received_episodes computed from the episodes table.
   let q: any = admin.from("consolidated_cms_view")
-    .select("id, working_title, writer_name, total_episodes, received_episodes, actual_received_episodes, completion_percentage, first_episode_received_at, last_episode_received_at, status");
+    .select("id, working_title, writer_name, total_episodes, received_episodes, actual_received_episodes, completion_percentage, first_episode_received_at, last_episode_received_at, status, team_id");
+  if (scope) q = q.eq("team_id", scope.teamId);
 
   if (args.project_title) q = q.ilike("working_title", fuzzy(args.project_title));
   if (args.writer_name)   q = q.ilike("writer_name",   fuzzy(args.writer_name));
@@ -587,13 +657,15 @@ async function toolQueryEpisodeDelivery(
   return { count: filtered.length, behind, complete, items: filtered };
 }
 
-async function toolQueryPending(args: { type?: string }, admin: AdminClient) {
+async function toolQueryPending(args: { type?: string }, admin: AdminClient, scope: TeamScope = null) {
   const type = (args.type || "all").toLowerCase();
   const out: Record<string, any> = {};
 
   if (type === "evaluations" || type === "all") {
+    let crQuery = admin.from("call_reports").select("id, working_title, writer_name").eq("meeting_type", "call_report").is("archived_at", null);
+    if (scope) crQuery = crQuery.eq("team_id", scope.teamId);
     const [{ data: allCRs }, { data: evaled }] = await Promise.all([
-      admin.from("call_reports").select("id, working_title, writer_name").eq("meeting_type", "call_report").is("archived_at", null),
+      crQuery,
       admin.from("evaluator_forms").select("call_report_id").not("submitted_at", "is", null),
     ]);
     const evaledSet = new Set((evaled as any[] || []).map((e: any) => e.call_report_id));
@@ -608,10 +680,12 @@ async function toolQueryPending(args: { type?: string }, admin: AdminClient) {
     const { data: mgmtUsers } = await admin.from("users").select("id").in("role", ["management", "executive", "admin"]);
     const mgmtIds = (mgmtUsers as any[] || []).map((u: any) => u.id);
 
+    let evalQuery = admin.from("evaluator_forms").select("call_report_id").not("submitted_at", "is", null);
+    if (scope?.crIds) evalQuery = evalQuery.in("call_report_id", scope.crIds);
     const [{ data: allEvaled }, { data: mgmtEvaled }] = await Promise.all([
-      admin.from("evaluator_forms").select("call_report_id").not("submitted_at", "is", null),
+      evalQuery,
       mgmtIds.length
-        ? admin.from("evaluator_forms").select("call_report_id").in("evaluator_id", mgmtIds).not("submitted_at", "is", null)
+        ? (() => { let mq = admin.from("evaluator_forms").select("call_report_id").in("evaluator_id", mgmtIds).not("submitted_at", "is", null); if (scope?.crIds) mq = mq.in("call_report_id", scope.crIds); return mq; })()
         : { data: [] },
     ]);
 
@@ -620,8 +694,10 @@ async function toolQueryPending(args: { type?: string }, admin: AdminClient) {
     const needsApproval   = allEvaledIds.filter((id) => !mgmtApprovedSet.has(id));
 
     if (needsApproval.length > 0) {
-      const { data: crDetails } = await admin.from("call_reports")
+      let crDetailQuery = admin.from("call_reports")
         .select("id, working_title, writer_name").in("id", needsApproval).is("archived_at", null).limit(25);
+      if (scope) crDetailQuery = crDetailQuery.eq("team_id", scope.teamId);
+      const { data: crDetails } = await crDetailQuery;
       out.pending_approvals = {
         count: needsApproval.length,
         items: (crDetails as any[] || []).map((p: any) => ({ title: p.working_title || "Untitled", writer: p.writer_name || "Unknown" })),
@@ -634,11 +710,12 @@ async function toolQueryPending(args: { type?: string }, admin: AdminClient) {
   return out;
 }
 
-async function toolQueryTeamStats(args: { team_name?: string; period?: string }, admin: AdminClient) {
+async function toolQueryTeamStats(args: { team_name?: string; period?: string }, admin: AdminClient, scope: TeamScope = null) {
   const range = parsePeriod(args.period);
 
   let q: any = admin.from("teams").select("id, name, team_head_id");
-  if (args.team_name) q = q.ilike("name", fuzzy(args.team_name));
+  if (scope) q = q.eq("id", scope.teamId);
+  else if (args.team_name) q = q.ilike("name", fuzzy(args.team_name));
   const { data: teams } = await q;
   const teamList = teams as any[] || [];
   if (teamList.length === 0) return { message: `No team found matching "${args.team_name}"` };
@@ -683,7 +760,33 @@ async function toolQueryTeamStats(args: { team_name?: string; period?: string },
   return teamList.length === 1 ? results[0] : results;
 }
 
-async function toolQueryOverview(_args: Record<string, never>, admin: AdminClient) {
+async function toolQueryOverview(_args: Record<string, never>, admin: AdminClient, scope: TeamScope = null) {
+  // Build queries with optional team scoping
+  let qProjects = admin.from("call_reports").select("id", { count: "exact", head: true }).eq("meeting_type", "call_report").is("archived_at", null);
+  let qEpisodes = admin.from("episodes").select("id", { count: "exact", head: true }).eq("is_current", true);
+  let qOlEvals  = admin.from("evaluator_forms").select("id", { count: "exact", head: true }).not("submitted_at", "is", null);
+  let qEpEvals: any  = admin.from("episodic_evaluations").select("id", { count: "exact", head: true });
+  let qWriters  = admin.from("writers").select("id", { count: "exact", head: true });
+  let qTeams    = admin.from("teams").select("id", { count: "exact", head: true });
+  let qContracts = admin.from("negotiations").select("id", { count: "exact", head: true });
+  let qMeetings = admin.from("meetings").select("id", { count: "exact", head: true });
+
+  if (scope) {
+    qProjects = qProjects.eq("team_id", scope.teamId);
+    if (scope.crIds) {
+      qEpisodes = qEpisodes.in("call_report_id", scope.crIds);
+      qOlEvals  = qOlEvals.in("call_report_id", scope.crIds);
+      qContracts = qContracts.in("call_report_id", scope.crIds);
+      // Get episode IDs for episodic evals
+      const { data: teamEps } = await admin.from("episodes").select("id").in("call_report_id", scope.crIds);
+      const epIds = (teamEps as any[] || []).map((e: any) => e.id);
+      if (epIds.length > 0) qEpEvals = qEpEvals.in("episode_id", epIds);
+      else qEpEvals = qEpEvals.eq("id", "00000000-0000-0000-0000-000000000000"); // no results
+    }
+    qTeams = qTeams.eq("id", scope.teamId);
+    qMeetings = qMeetings.in("created_by", scope.memberIds);
+  }
+
   const [
     { count: totalProjects },
     { count: totalEpisodes },
@@ -693,31 +796,35 @@ async function toolQueryOverview(_args: Record<string, never>, admin: AdminClien
     { count: totalTeams },
     { count: totalContracts },
     { count: totalMeetings },
-  ] = await Promise.all([
-    admin.from("call_reports").select("id", { count: "exact", head: true }).eq("meeting_type", "call_report").is("archived_at", null),
-    admin.from("episodes").select("id", { count: "exact", head: true }).eq("is_current", true),
-    admin.from("evaluator_forms").select("id", { count: "exact", head: true }).not("submitted_at", "is", null),
-    admin.from("episodic_evaluations").select("id", { count: "exact", head: true }),
-    admin.from("writers").select("id", { count: "exact", head: true }),
-    admin.from("teams").select("id", { count: "exact", head: true }),
-    admin.from("negotiations").select("id", { count: "exact", head: true }),
-    admin.from("meetings").select("id", { count: "exact", head: true }),
-  ]);
+  ] = await Promise.all([qProjects, qEpisodes, qOlEvals, qEpEvals, qWriters, qTeams, qContracts, qMeetings]);
 
   // This month counts
   const now = new Date();
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+
+  let qIdeasMonth = admin.from("call_reports").select("id", { count: "exact", head: true }).eq("meeting_type", "call_report").is("archived_at", null).gte("created_at", monthStart);
+  let qOlMonth    = admin.from("evaluator_forms").select("id", { count: "exact", head: true }).not("submitted_at", "is", null).gte("submitted_at", monthStart);
+  let qEpMonth: any    = admin.from("episodic_evaluations").select("id", { count: "exact", head: true }).gte("created_at", monthStart);
+  let qMeetMonth  = admin.from("meetings").select("id", { count: "exact", head: true }).gte("start_time", monthStart);
+
+  if (scope) {
+    qIdeasMonth = qIdeasMonth.eq("team_id", scope.teamId);
+    if (scope.crIds) {
+      qOlMonth = qOlMonth.in("call_report_id", scope.crIds);
+      const { data: teamEps } = await admin.from("episodes").select("id").in("call_report_id", scope.crIds);
+      const epIds = (teamEps as any[] || []).map((e: any) => e.id);
+      if (epIds.length > 0) qEpMonth = qEpMonth.in("episode_id", epIds);
+      else qEpMonth = qEpMonth.eq("id", "00000000-0000-0000-0000-000000000000");
+    }
+    qMeetMonth = qMeetMonth.in("created_by", scope.memberIds);
+  }
+
   const [
     { count: ideasThisMonth },
     { count: olEvalsThisMonth },
     { count: epEvalsThisMonth },
     { count: meetingsThisMonth },
-  ] = await Promise.all([
-    admin.from("call_reports").select("id", { count: "exact", head: true }).eq("meeting_type", "call_report").is("archived_at", null).gte("created_at", monthStart),
-    admin.from("evaluator_forms").select("id", { count: "exact", head: true }).not("submitted_at", "is", null).gte("submitted_at", monthStart),
-    admin.from("episodic_evaluations").select("id", { count: "exact", head: true }).gte("created_at", monthStart),
-    admin.from("meetings").select("id", { count: "exact", head: true }).gte("start_time", monthStart),
-  ]);
+  ] = await Promise.all([qIdeasMonth, qOlMonth, qEpMonth, qMeetMonth]);
 
   return {
     all_time: {
@@ -725,7 +832,7 @@ async function toolQueryOverview(_args: Record<string, never>, admin: AdminClien
       total_episodes_received: totalEpisodes ?? 0,
       total_one_liner_evaluations: totalOneLinerEvals ?? 0,
       total_episodic_evaluations: totalEpisodicEvals ?? 0,
-      total_writers: totalWriters ?? 0,
+      total_writers: scope ? "N/A (team view)" : (totalWriters ?? 0),
       total_teams: totalTeams ?? 0,
       total_contracts: totalContracts ?? 0,
       total_meetings: totalMeetings ?? 0,
@@ -741,7 +848,8 @@ async function toolQueryOverview(_args: Record<string, never>, admin: AdminClien
 
 async function toolQueryContractsPayments(
   args: { writer_name?: string; project_title?: string; period?: string; status?: string },
-  admin: AdminClient
+  admin: AdminClient,
+  scope: TeamScope = null
 ) {
   const range = parsePeriod(args.period);
 
@@ -750,6 +858,7 @@ async function toolQueryContractsPayments(
     .select("id, call_report_id, per_episode_rate, estimated_episodes, total_cost, expected_completion_date, created_at")
     .order("created_at", { ascending: false })
     .limit(200);
+  if (scope?.crIds) nq = nq.in("call_report_id", scope.crIds);
   if (range) nq = nq.gte("created_at", range.start.toISOString()).lte("created_at", range.end.toISOString());
 
   const { data: negotiations } = await nq;
@@ -783,6 +892,7 @@ async function toolQueryContractsPayments(
     .select("id, amount, status, payment_date, call_report_id")
     .order("payment_date", { ascending: false })
     .limit(500);
+  if (scope?.crIds) pq = pq.in("call_report_id", scope.crIds);
   if (range) pq = pq.gte("payment_date", range.start.toISOString()).lte("payment_date", range.end.toISOString());
   const { data: payments } = await pq;
   const payList = payments as any[] || [];
@@ -826,7 +936,8 @@ async function toolQueryContractsPayments(
 
 async function toolQueryWriters(
   args: { writer_name?: string; period?: string },
-  admin: AdminClient
+  admin: AdminClient,
+  scope: TeamScope = null
 ) {
   const range = parsePeriod(args.period);
 
@@ -838,7 +949,8 @@ async function toolQueryWriters(
 
   // Get project and episode data from consolidated_cms_view (same source as all portal pages)
   let cq: any = admin.from("consolidated_cms_view")
-    .select("id, working_title, writer_name, created_at, actual_received_episodes, received_episodes");
+    .select("id, working_title, writer_name, created_at, actual_received_episodes, received_episodes, team_id");
+  if (scope) cq = cq.eq("team_id", scope.teamId);
   if (range) cq = cq.gte("created_at", range.start.toISOString()).lte("created_at", range.end.toISOString());
   const { data: allCRs } = await cq;
   const crList = allCRs as any[] || [];
@@ -868,7 +980,8 @@ async function toolQueryWriters(
 
 async function toolQueryMeetings(
   args: { person_name?: string; period?: string },
-  admin: AdminClient
+  admin: AdminClient,
+  scope: TeamScope = null
 ) {
   const range = parsePeriod(args.period);
 
@@ -876,6 +989,7 @@ async function toolQueryMeetings(
     .select("id, title, start_time, end_time, created_by, attendees")
     .order("start_time", { ascending: false })
     .limit(200);
+  if (scope) q = q.in("created_by", scope.memberIds);
   if (range) {
     q = q.gte("start_time", range.start.toISOString()).lte("start_time", range.end.toISOString());
   }
@@ -912,7 +1026,8 @@ async function toolQueryMeetings(
 
 async function toolQueryApprovals(
   args: { project_title?: string; status?: string; period?: string },
-  admin: AdminClient
+  admin: AdminClient,
+  scope: TeamScope = null
 ) {
   const range = parsePeriod(args.period);
 
@@ -964,19 +1079,25 @@ async function toolQueryApprovals(
   };
 }
 
-async function executeTool(name: string, args: any, admin: AdminClient): Promise<any> {
+async function executeTool(name: string, args: any, admin: AdminClient, scope: TeamScope = null): Promise<any> {
+  // Pre-populate team CR IDs once for scoped access (cached across multiple tool calls)
+  if (scope && !scope.crIds) {
+    const { data } = await admin.from("call_reports").select("id").eq("team_id", scope.teamId);
+    scope.crIds = (data as any[] || []).map((r: any) => r.id);
+  }
+
   switch (name) {
-    case "query_evaluations":        return toolQueryEvaluations(args, admin);
-    case "query_content":            return toolQueryContent(args, admin);
-    case "query_person_activity":    return toolQueryPersonActivity(args, admin);
-    case "query_episode_delivery":   return toolQueryEpisodeDelivery(args, admin);
-    case "query_pending":            return toolQueryPending(args, admin);
-    case "query_team_stats":         return toolQueryTeamStats(args, admin);
-    case "query_overview":           return toolQueryOverview(args, admin);
-    case "query_contracts_payments": return toolQueryContractsPayments(args, admin);
-    case "query_writers":            return toolQueryWriters(args, admin);
-    case "query_meetings":           return toolQueryMeetings(args, admin);
-    case "query_approvals":          return toolQueryApprovals(args, admin);
+    case "query_evaluations":        return toolQueryEvaluations(args, admin, scope);
+    case "query_content":            return toolQueryContent(args, admin, scope);
+    case "query_person_activity":    return toolQueryPersonActivity(args, admin, scope);
+    case "query_episode_delivery":   return toolQueryEpisodeDelivery(args, admin, scope);
+    case "query_pending":            return toolQueryPending(args, admin, scope);
+    case "query_team_stats":         return toolQueryTeamStats(args, admin, scope);
+    case "query_overview":           return toolQueryOverview(args, admin, scope);
+    case "query_contracts_payments": return toolQueryContractsPayments(args, admin, scope);
+    case "query_writers":            return toolQueryWriters(args, admin, scope);
+    case "query_meetings":           return toolQueryMeetings(args, admin, scope);
+    case "query_approvals":          return toolQueryApprovals(args, admin, scope);
     default:                         return { error: `Unknown tool: ${name}` };
   }
 }
@@ -1243,11 +1364,10 @@ export async function POST(request: NextRequest) {
     if (!rate.success) return rate.response!;
 
     const { data: profile } = await supabase
-      .from("users").select("role, email").eq("id", user.id).single();
+      .from("users").select("role, email, team_id, name").eq("id", user.id).single();
 
-    const hasDataAccess =
-      ["admin", "management"].includes(profile?.role ?? "") ||
-      profile?.email === "mir@geo.tv";
+    const role = profile?.role ?? "";
+    const isUnrestricted = ["admin", "management"].includes(role);
 
     const body = await request.json();
     const { message, portalKey, history = [], memory = [] } = body as {
@@ -1262,8 +1382,8 @@ export async function POST(request: NextRequest) {
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) return NextResponse.json({ reply: "The AI assistant isn't configured yet. Please add a GEMINI_API_KEY." });
 
-    // ── Standard navigation assistant (non-management users) ─────────────────
-    if (!hasDataAccess) {
+    // ── Users without a team and not admin/management → navigation-only ──────
+    if (!isUnrestricted && !profile?.team_id) {
       const messages = [
         { role: "system", content: buildSystemPrompt(portalKey) },
         ...history.slice(-6),
@@ -1277,8 +1397,63 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // ── Data-access agent (management/admin) — native function calling ─────────
-    const DATA_SYSTEM = `You are a data assistant for Dastaan Portal at GEO TV.
+    // ── Set up team scope for non-admin users ────────────────────────────────
+    let scope: TeamScope = null;
+    let teamName = "";
+    let teamMemberNames: string[] = [];
+    if (!isUnrestricted && profile?.team_id) {
+      const adminForScope = createAdminClient();
+      const [{ data: teamMembers }, { data: teamRow }] = await Promise.all([
+        adminForScope.from("users").select("id, name, role").eq("team_id", profile.team_id),
+        adminForScope.from("teams").select("name").eq("id", profile.team_id).single(),
+      ]);
+      const members = teamMembers as any[] || [];
+      teamName = teamRow?.name || "Unknown Team";
+      const memberRoleLabels: Record<string, string> = {
+        content_creator: "Content Creator", content_manager: "Content Manager",
+        evaluator: "Evaluator", programmer: "Programmer", gcm: "GCM",
+        management: "Management", admin: "Admin", executive: "Executive",
+      };
+      teamMemberNames = members.map((m: any) => `${m.name} (${memberRoleLabels[m.role] || m.role})`);
+      scope = {
+        teamId: profile.team_id,
+        memberIds: members.map((m: any) => m.id),
+      };
+    }
+
+    // ── Determine available tools based on role ──────────────────────────────
+    const ROLE_BLOCKED_TOOLS: Record<string, string[]> = {
+      content_creator:  ["query_contracts_payments", "query_approvals"],
+      content_manager:  ["query_contracts_payments", "query_approvals"],
+      evaluator:        ["query_contracts_payments", "query_approvals"],
+      gcm:              ["query_approvals"],
+      programmer:       ["query_approvals"],
+    };
+    const blockedToolNames = isUnrestricted ? [] : (ROLE_BLOCKED_TOOLS[role] || ["query_approvals"]);
+    const availableTools = DATA_TOOLS.filter(t => !blockedToolNames.includes(t.function.name));
+
+    // ── Data-access agent — native function calling ──────────────────────────
+    const userName = profile?.name || "User";
+    const ROLE_LABELS: Record<string, string> = {
+      content_creator: "Content Creator",
+      content_manager: "Content Manager",
+      evaluator: "Evaluator",
+      programmer: "Programmer",
+      gcm: "GCM",
+      management: "Management",
+      admin: "Admin",
+      executive: "Executive",
+      management_viewer: "Management Viewer",
+    };
+    const roleLabel = ROLE_LABELS[role] || role;
+    const teamContext = scope
+      ? `\nTeam: ${teamName}\nTeam members: ${teamMemberNames.join(", ")}`
+      : "";
+    const scopeNote = scope
+      ? `\n\nIMPORTANT: The current user is ${userName} (${profile?.email || "unknown"}, role: ${roleLabel}).${teamContext}\nYou are serving a team member, NOT an executive. All data returned is scoped to their team only. If the user asks "who am I", tell them their name and role. If the user asks about their team or team members, use the info above. If the user asks about another team's data, other teams' performance, or people outside their team, do NOT call any tools — instead respond with a short message explaining that you can only access data for their own team. Respond: "I can only access data for your team. For information about other teams, please contact management."`
+      : `\n\nThe current user is ${userName} (${profile?.email || "unknown"}, role: ${roleLabel}).`;
+
+    const DATA_SYSTEM = `You are a data assistant for Dastaan Portal at GEO TV.${scopeNote}
 
 WHEN TO CALL TOOLS:
 - Call tools when the user asks a NEW question that requires fresh data from the database.
@@ -1297,7 +1472,7 @@ TOOL ROUTING GUIDE:
 - Episode delivery / behind / received → query_episode_delivery
 - Pending evaluations or approvals → query_pending
 - Team info, members, performance → query_team_stats
-- Call reports, ideas logged → query_content
+- Call reports, ideas logged, ideas logged BY a person → query_content (use logged_by param for the person who created the report)
 - Contracts, payments, money, rates → query_contracts_payments
 - Writers list, writer engagement → query_writers
 - Meetings, calendar → query_meetings
@@ -1312,7 +1487,30 @@ IMPORTANT: If the question is ambiguous or broad AND requires new data, call MUL
       ? `\n\nRELEVANT MEMORY FROM PAST CONVERSATIONS:\n${memory.slice(-20).map((m, i) => `${i + 1}. ${m}`).join("\n")}`
       : "";
 
-    const NARRATION_SYSTEM = `You are a senior analyst briefing the CEO of GEO TV on data from the Dastaan content portal. Present data in a clear, structured, professional format using markdown.
+    const NARRATION_SYSTEM = scope
+      ? `You are a helpful data assistant for Dastaan Portal at GEO TV, briefing a team member on their team's data. Present data clearly using markdown.
+
+FORMATTING RULES:
+- Start with a one-line summary sentence answering the question directly.
+- When there are 3+ items, use a markdown table.
+- Use **bold** for key numbers, names, and statuses.
+- Use ### headings to separate sections when needed.
+- For 1-2 items, a short paragraph is fine.
+- Mark statuses with labels: "Behind", "On Track", "Complete".
+
+CONTENT RULES:
+- Lead with the direct answer in the first sentence.
+- All data shown is scoped to the user's team — do not mention "all teams" or imply global scope.
+- Use actual names — never UUIDs or IDs.
+- If results are empty, say so plainly and suggest why.
+- Keep it concise and helpful.
+- Use the conversation history to connect follow-up answers to prior context.
+
+MEMORY EXTRACTION:
+After your main answer, on a new line output a memory block:
+<memory>["fact 1", "fact 2"]</memory>
+Extract 1-3 key facts. If nothing noteworthy: <memory>[]</memory>.`
+      : `You are a senior analyst briefing the CEO of GEO TV on data from the Dastaan content portal. Present data in a clear, structured, professional format using markdown.
 
 FORMATTING RULES:
 - Start with a one-line summary sentence answering the question directly.
@@ -1353,7 +1551,7 @@ Extract 1-3 key facts (scores, statuses, trends). If nothing noteworthy: <memory
           ...history.slice(-16),
           { role: "user", content: message.trim() },
         ],
-        tools: DATA_TOOLS,
+        tools: availableTools,
         tool_choice: "auto",
         max_tokens: 4096,
         temperature: 0.1,
@@ -1407,14 +1605,14 @@ Extract 1-3 key facts (scores, statuses, trends). If nothing noteworthy: <memory
 
     console.log("[AI Agent] Tools called:", toolCalls.map((tc: any) => tc.function.name).join(", "));
 
-    // Step 2: Execute the selected tools
+    // Step 2: Execute the selected tools (with team scope applied)
     const admin = createAdminClient();
     const toolResults: { name: string; data: string }[] = [];
     try {
       for (const tc of toolCalls) {
         const fnName = tc.function.name;
         const fnArgs = JSON.parse(tc.function.arguments || "{}");
-        const result = await executeTool(fnName, fnArgs, admin);
+        const result = await executeTool(fnName, fnArgs, admin, scope);
         toolResults.push({ name: fnName, data: JSON.stringify(result) });
       }
     } catch (err: any) {

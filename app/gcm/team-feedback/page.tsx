@@ -26,9 +26,7 @@ const EPISODIC_CRITERIA = [
   { label: "Overall Assessment",   scoreKey: "overall_assessment_score",    commentKey: "overall_assessment_comment" },
 ] as const;
 
-function teamLabel(role: string): "programming" | "management" {
-  return role === "programmer" ? "programming" : "management";
-}
+type FeedbackTeam = "programming" | "content_development";
 
 export default async function GcmTeamFeedbackPage() {
   const user = await getCurrentUser();
@@ -66,15 +64,34 @@ export default async function GcmTeamFeedbackPage() {
     );
   }
 
-  const MGMT_EMAILS = ["humera.safder@geo.tv", "salman.ahmed@geo.tv", "mir@geo.tv"];
+  // Identify Programming Team (team_type = 'programmer') and Content Development (Humera's team)
+  const { data: allTeams } = await admin
+    .from("teams")
+    .select("id, team_type, team_head:users!team_head_id(email)");
 
-  const [{ data: programmers }, { data: mgmtUsers }] = await Promise.all([
-    admin.from("users").select("id, name, role").eq("role", "programmer"),
-    admin.from("users").select("id, name, role").in("email", MGMT_EMAILS),
-  ]);
+  const programmingTeamIds = new Set(
+    (allTeams || [])
+      .filter((t: any) => t.team_type === "programmer")
+      .map((t: any) => t.id)
+  );
+  const contentDevTeamIds = new Set(
+    (allTeams || [])
+      .filter((t: any) => t.team_head?.email === "humera.safder@geo.tv")
+      .map((t: any) => t.id)
+  );
 
-  const globalUsers = [...(programmers || []), ...(mgmtUsers || [])] as any[];
-  const globalUserIds = new Set(globalUsers.map((u: any) => u.id));
+  const bothTeamIds = [...programmingTeamIds, ...contentDevTeamIds];
+  const { data: teamMembers } = bothTeamIds.length > 0
+    ? await admin.from("users").select("id, name, team_id").in("team_id", bothTeamIds)
+    : { data: [] };
+
+  const globalUsers: { id: string; name: string; team: FeedbackTeam }[] = [];
+  const globalUserIds = new Set<string>();
+  for (const u of (teamMembers || []) as any[]) {
+    const team: FeedbackTeam = programmingTeamIds.has(u.team_id) ? "programming" : "content_development";
+    globalUsers.push({ id: u.id, name: u.name || "Unknown", team });
+    globalUserIds.add(u.id);
+  }
 
   const { data: forms } = await admin
     .from("evaluator_forms")
@@ -185,12 +202,12 @@ export default async function GcmTeamFeedbackPage() {
     const submittedMap = new Map<string, any>();
     for (const f of formsByReport.get(cr.id) || []) submittedMap.set(f._ev.id, f);
 
-    const evaluations = globalUsers.map((u: any) => {
+    const evaluations = globalUsers.map(u => {
       const f = submittedMap.get(u.id);
       return {
         id: f?.id || `${cr.id}__${u.id}`,
-        evaluatorName: u.name || "Unknown",
-        team: teamLabel(u.role) as "programming" | "management",
+        evaluatorName: u.name,
+        team: u.team,
         averageScore: f?.average_score ?? null,
         criteria: ONELINER_CRITERIA.map(c => ({ label: c.label, score: f?.[c.scoreKey] ?? null, comment: f?.[c.commentKey] ?? null })),
         closingRemarks: f?.closing_remarks ?? null, decision: f?.decision ?? null, decisionNotes: f?.decision_notes ?? null,
@@ -198,25 +215,25 @@ export default async function GcmTeamFeedbackPage() {
         categoryOfTheme: f?.category_of_theme ?? null, noOfTracks: f?.no_of_tracks ?? null, first2EpsRequired: f?.first_2_eps_required ?? null,
         targetWriter: f?.target_writer ?? null, perEpPriceRange: f?.per_ep_price_range ?? null, slot: f?.slot ?? null, delayReason: f?.delay_reason ?? null,
       };
-    }).sort((a: any, b: any) => a.team.localeCompare(b.team) || a.evaluatorName.localeCompare(b.evaluatorName));
+    }).sort((a, b) => a.team.localeCompare(b.team) || a.evaluatorName.localeCompare(b.evaluatorName));
 
     const epList = (episodesByReport.get(cr.id) || []).map((ep: any) => {
       const epSubmittedMap = new Map<string, any>();
       for (const e of epEvalsByEpisode.get(ep.id) || []) epSubmittedMap.set(e._ev.id, e);
 
-      const epEvals = globalUsers.map((u: any) => {
+      const epEvals = globalUsers.map(u => {
         const e = epSubmittedMap.get(u.id);
         return {
           id: e?.id || `${ep.id}__${u.id}`,
-          evaluatorName: u.name || "Unknown",
-          team: teamLabel(u.role) as "programming" | "management",
+          evaluatorName: u.name,
+          team: u.team,
           overallAverage: e?.overall_average ?? null,
           criteria: EPISODIC_CRITERIA.map(c => ({ label: c.label, score: e?.[c.scoreKey] ?? null, comment: e?.[c.commentKey] ?? null })),
           decision: e?.decision ?? null, decisionNotes: e?.decision_notes ?? null, submittedAt: e?.submitted_at ?? null,
           noOfPages: e?.no_of_pages ?? null, noOfScenes: e?.no_of_scenes ?? null, freezeEndingScene: e?.freeze_ending_scene ?? null,
           scenesRemarks: e?.scenes_remarks ?? null, characterizationRemarks: e?.characterization_remarks ?? null,
         };
-      }).sort((a: any, b: any) => a.team.localeCompare(b.team) || a.evaluatorName.localeCompare(b.evaluatorName));
+      }).sort((a, b) => a.team.localeCompare(b.team) || a.evaluatorName.localeCompare(b.evaluatorName));
 
       return { id: ep.id, episodeNumber: ep.episode_number, evaluations: epEvals };
     });
