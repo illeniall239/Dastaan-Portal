@@ -10,6 +10,10 @@ import {
   ActiveProjectsChartsSection,
   ContractTermsSection,
   WriterFinancialSection,
+  RatingDifferentialSection,
+  PendingByPersonSection,
+  RatingComparisonSection,
+  DeptOutputSection,
 } from "@/components/management/dashboard-sections";
 import {
   TeamProjectsSkeleton,
@@ -118,9 +122,33 @@ export default async function ManagementDashboard({
         </Suspense>
       </ErrorBoundary>
 
+      <ErrorBoundary fallback={<SectionErrorFallback title="Pending by Person" />}>
+        <Suspense fallback={<ChartSkeleton />}>
+          <PendingByPersonSection />
+        </Suspense>
+      </ErrorBoundary>
+
       <ErrorBoundary fallback={<SectionErrorFallback title="Active Projects" />}>
         <Suspense fallback={<ChartSkeleton />}>
           <ActiveProjectsChartsSection />
+        </Suspense>
+      </ErrorBoundary>
+
+      <ErrorBoundary fallback={<SectionErrorFallback title="Rating Differential" />}>
+        <Suspense fallback={<ChartSkeleton />}>
+          <RatingDifferentialSection />
+        </Suspense>
+      </ErrorBoundary>
+
+      <ErrorBoundary fallback={<SectionErrorFallback title="One-Liner vs Episode Ratings" />}>
+        <Suspense fallback={<ChartSkeleton />}>
+          <RatingComparisonSection />
+        </Suspense>
+      </ErrorBoundary>
+
+      <ErrorBoundary fallback={<SectionErrorFallback title="Content Dept Output" />}>
+        <Suspense fallback={<ChartSkeleton />}>
+          <DeptOutputSection />
         </Suspense>
       </ErrorBoundary>
 

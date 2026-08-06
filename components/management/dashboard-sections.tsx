@@ -20,6 +20,10 @@ import {
   DynamicGenreDonut,
   DynamicSlotBars,
   DynamicRatingBars,
+  DynamicBiasPageClient,
+  DynamicPendingByPerson,
+  DynamicRatingComparison,
+  DynamicDeptOutputRanking,
 } from "@/components/management/dynamic-components";
 
 import type { TeamOverviewData } from "@/components/management/team-performance/top-teams-widget";
@@ -241,6 +245,118 @@ export async function WriterFinancialSection() {
         </div>
       </div>
       <DynamicWriterFinancialSummaryWidget />
+    </div>
+  );
+}
+
+/**
+ * Pending by Person Section - Async Component
+ * Shows what's pending with each evaluator (content heads, Humera, etc.)
+ */
+export async function PendingByPersonSection() {
+  return (
+    <div id="pending-by-person-section" className="mb-6 sm:mb-8">
+      <div className="flex items-center justify-between mb-3 sm:mb-4">
+        <div>
+          <h2 className="text-base sm:text-lg lg:text-xl font-bold text-gray-900">
+            Pending by Person
+          </h2>
+          <p className="text-muted-foreground mt-1 text-xs sm:text-sm">
+            Evaluation backlog per evaluator — one-liners and episodes awaiting review
+          </p>
+        </div>
+        <ExportButton
+          elementId="pending-by-person-section"
+          filename="pending-by-person"
+          formats={["png", "pdf"]}
+          compact
+        />
+      </div>
+      <DynamicPendingByPerson />
+    </div>
+  );
+}
+
+/**
+ * Rating Differential Section - Async Component
+ * Shows per-story evaluator scores to identify rating variance
+ */
+export async function RatingDifferentialSection() {
+  return (
+    <div id="rating-differential-section" className="mb-6 sm:mb-8">
+      <div className="flex items-center justify-between mb-3 sm:mb-4">
+        <div>
+          <h2 className="text-base sm:text-lg lg:text-xl font-bold text-gray-900">
+            Rating Differential
+          </h2>
+          <p className="text-muted-foreground mt-1 text-xs sm:text-sm">
+            Per-story evaluator scores — spot where opinions diverge most
+          </p>
+        </div>
+        <ExportButton
+          elementId="rating-differential-section"
+          filename="rating-differential"
+          formats={["png", "pdf"]}
+          compact
+        />
+      </div>
+      <DynamicBiasPageClient />
+    </div>
+  );
+}
+
+/**
+ * Rating Comparison Section - Async Component
+ * Compares one-liner scores vs episode scores per project
+ */
+export async function RatingComparisonSection() {
+  return (
+    <div id="rating-comparison-section" className="mb-6 sm:mb-8">
+      <div className="flex items-center justify-between mb-3 sm:mb-4">
+        <div>
+          <h2 className="text-base sm:text-lg lg:text-xl font-bold text-gray-900">
+            One-Liner vs Episode Ratings
+          </h2>
+          <p className="text-muted-foreground mt-1 text-xs sm:text-sm">
+            How episode quality compares to the original one-liner assessment
+          </p>
+        </div>
+        <ExportButton
+          elementId="rating-comparison-section"
+          filename="rating-comparison"
+          formats={["png", "pdf"]}
+          compact
+        />
+      </div>
+      <DynamicRatingComparison />
+    </div>
+  );
+}
+
+/**
+ * Content Dept Output Ranking Section - Async Component
+ * Episodes and one-liners per team per month, ranked by output
+ */
+export async function DeptOutputSection() {
+  return (
+    <div id="dept-output-section" className="mb-6 sm:mb-8">
+      <div className="flex items-center justify-between mb-3 sm:mb-4">
+        <div>
+          <h2 className="text-base sm:text-lg lg:text-xl font-bold text-gray-900">
+            Content Dept Output Ranking
+          </h2>
+          <p className="text-muted-foreground mt-1 text-xs sm:text-sm">
+            Episodes and one-liners submitted per team — last 6 months
+          </p>
+        </div>
+        <ExportButton
+          elementId="dept-output-section"
+          filename="dept-output-ranking"
+          formats={["png", "pdf"]}
+          compact
+        />
+      </div>
+      <DynamicDeptOutputRanking />
     </div>
   );
 }

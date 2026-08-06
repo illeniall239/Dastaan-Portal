@@ -522,10 +522,10 @@ export function TopTeamsWidget({ teams }: TopTeamsWidgetProps) {
 
         const pb = team.pendingBacklog;
         const pendingOneLinerSubtitle = pb.totalOneLiners > 0
-          ? `reviewed ${pb.evaluatedOneLiners}/${pb.totalOneLiners}`
+          ? `reviewed ${pb.evaluatedOneLiners}/${pb.totalOneLiners}${pb.oldestOneLinerDays != null ? ` · oldest: ${pb.oldestOneLinerDays}d` : ""}`
           : undefined;
         const pendingEpisodeSubtitle = pb.totalEpisodes > 0
-          ? `reviewed ${pb.evaluatedEpisodes}/${pb.totalEpisodes}`
+          ? `reviewed ${pb.evaluatedEpisodes}/${pb.totalEpisodes}${pb.oldestEpisodeDays != null ? ` · oldest: ${pb.oldestEpisodeDays}d` : ""}`
           : undefined;
 
         return (

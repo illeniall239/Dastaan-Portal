@@ -216,3 +216,47 @@ export const DynamicTimelineChart = dynamic(
     ssr: false,
   }
 );
+
+/**
+ * Evaluator Bias / Rating Differential
+ */
+export const DynamicBiasPageClient = dynamic(
+  () => import("@/components/management/evaluator-bias/bias-page-client").then((mod) => mod.BiasPageClient),
+  {
+    loading: () => <WidgetLoader />,
+    ssr: false,
+  }
+);
+
+/**
+ * Pending by Person
+ */
+export const DynamicPendingByPerson = dynamic(
+  () => import("@/components/management/pending-by-person").then((mod) => mod.PendingByPerson),
+  {
+    loading: () => <WidgetLoader />,
+    ssr: false,
+  }
+);
+
+/**
+ * Rating Comparison (One-liner vs Episode)
+ */
+export const DynamicRatingComparison = dynamic(
+  () => import("@/components/management/rating-comparison").then((mod) => mod.RatingComparison),
+  {
+    loading: () => <TableLoader />,
+    ssr: false,
+  }
+);
+
+/**
+ * Dept Output Ranking
+ */
+export const DynamicDeptOutputRanking = dynamic(
+  () => import("@/components/management/dept-output-ranking").then((mod) => mod.DeptOutputRanking),
+  {
+    loading: () => <TableLoader />,
+    ssr: false,
+  }
+);
