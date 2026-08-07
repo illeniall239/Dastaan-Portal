@@ -1,10 +1,10 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { ChevronDown, ChevronRight, BarChart3, Loader2, Search } from "lucide-react";
+import { Loader2, Search, ArrowUpDown } from "lucide-react";
 
 type Team = "content" | "programming" | "management";
 
@@ -32,23 +32,33 @@ interface Story {
   ratedCount: number;
 }
 
-const TEAM_BADGE: Record<Team, string> = {
-  content:     "bg-blue-100 text-blue-700 border-blue-200",
-  programming: "bg-purple-100 text-purple-700 border-purple-200",
-  management:  "bg-amber-100 text-amber-700 border-amber-200",
+interface ProcessedStory extends Story {
+  spread: number;
+  submittedEvals: { name: string; score: number; team: Team }[];
+}
+
+const TEAM_DOT: Record<Team, string> = {
+  content: "bg-blue-400",
+  programming: "bg-purple-400",
+  management: "bg-amber-400",
 };
 
-const TEAM_LABEL: Record<Team, string> = {
-  content:     "Content",
-  programming: "Programming",
-  management:  "Management",
-};
+function scoreColor(score: number): string {
+  if (score >= 7) return "bg-green-100 text-green-700 border-green-200";
+  if (score >= 5) return "bg-amber-100 text-amber-700 border-amber-200";
+  return "bg-red-100 text-red-700 border-red-200";
+}
 
-function scoreColor(score: number | null): string {
-  if (!score) return "text-slate-500";
-  if (score >= 7) return "text-green-600 font-semibold";
-  if (score >= 5) return "text-amber-600 font-semibold";
-  return "text-red-600 font-semibold";
+function spreadColor(spread: number): string {
+  if (spread >= 3) return "bg-red-100 text-red-700 border-red-200";
+  if (spread >= 2) return "bg-amber-100 text-amber-700 border-amber-200";
+  return "bg-green-100 text-green-700 border-green-200";
+}
+
+function spreadLabel(spread: number): string {
+  if (spread >= 3) return "High";
+  if (spread >= 2) return "Moderate";
+  return "Low";
 }
 
 export function BiasPageClient() {
@@ -56,8 +66,7 @@ export function BiasPageClient() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
-  const [filter, setFilter] = useState<"all" | "rated" | "unrated">("all");
-  const [expandedStory, setExpandedStory] = useState<string | null>(null);
+  const [sortBy, setSortBy] = useState<"spread" | "title">("spread");
 
   useEffect(() => {
     (async () => {
@@ -74,53 +83,64 @@ export function BiasPageClient() {
     })();
   }, []);
 
-  const filtered = stories.filter(s => {
-    if (filter === "rated"   && s.ratedCount === 0)  return false;
-    if (filter === "unrated" && s.ratedCount > 0)    return false;
-    if (search) {
+  // Process: stories with 1+ submitted scores, compute spread
+  const processed: ProcessedStory[] = stories
+    .map((s) => {
+      const submittedEvals = s.evaluations
+        .filter((e) => e.submitted && e.averageScore != null)
+        .map((e) => ({ name: e.evaluatorName, score: e.averageScore!, team: e.team }));
+      if (submittedEvals.length === 0) return null;
+      const scores = submittedEvals.map((e) => e.score);
+      const spread = scores.length >= 2
+        ? Math.round((Math.max(...scores) - Math.min(...scores)) * 10) / 10
+        : -1; // single evaluator, no spread
+      return { ...s, spread, submittedEvals };
+    })
+    .filter(Boolean) as ProcessedStory[];
+
+  // Filter + sort
+  const filtered = processed
+    .filter((s) => {
+      if (!search) return true;
       const q = search.toLowerCase();
       return s.workingTitle.toLowerCase().includes(q) || s.writerName.toLowerCase().includes(q);
-    }
-    return true;
-  });
-
-  const toggleStory = (id: string) =>
-    setExpandedStory(prev => (prev === id ? null : id));
+    })
+    .sort((a, b) => {
+      if (sortBy === "spread") {
+        // Single-eval (spread=-1) goes to bottom
+        if (a.spread < 0 && b.spread >= 0) return 1;
+        if (b.spread < 0 && a.spread >= 0) return -1;
+        return b.spread - a.spread;
+      }
+      return a.workingTitle.localeCompare(b.workingTitle);
+    });
 
   return (
     <Card>
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <div>
-            <CardTitle className="text-xl">Evaluations by Story</CardTitle>
-            <CardDescription>Per-story evaluator scores across content, programming, and management teams</CardDescription>
-          </div>
-          <BarChart3 className="h-6 w-6 text-muted-foreground" />
-        </div>
-
-        {/* Search + filter bar */}
-        <div className="flex flex-wrap gap-3 items-center pt-2">
+      <CardHeader className="pb-3">
+        <div className="flex flex-wrap gap-3 items-center justify-between">
           <div className="relative flex-1 min-w-[200px] max-w-sm">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Search by title or writer..."
               className="pl-9 h-8 text-sm"
               value={search}
-              onChange={e => setSearch(e.target.value)}
+              onChange={(e) => setSearch(e.target.value)}
             />
           </div>
-          <div className="flex rounded-md border overflow-hidden text-xs">
-            {(["all", "rated", "unrated"] as const).map(f => (
-              <button
-                key={f}
-                className={`px-3 py-1.5 capitalize transition-colors ${
-                  filter === f ? "bg-primary text-primary-foreground" : "bg-background hover:bg-muted"
-                }`}
-                onClick={() => setFilter(f)}
-              >
-                {f}
-              </button>
-            ))}
+          <div className="flex items-center gap-4 text-xs text-muted-foreground">
+            <div className="flex items-center gap-3">
+              <span className="flex items-center gap-1"><span className={`inline-block h-2 w-2 rounded-full ${TEAM_DOT.content}`} /> Content</span>
+              <span className="flex items-center gap-1"><span className={`inline-block h-2 w-2 rounded-full ${TEAM_DOT.programming}`} /> Programming</span>
+              <span className="flex items-center gap-1"><span className={`inline-block h-2 w-2 rounded-full ${TEAM_DOT.management}`} /> Management</span>
+            </div>
+            <button
+              onClick={() => setSortBy((p) => (p === "spread" ? "title" : "spread"))}
+              className="flex items-center gap-1 px-2 py-1 rounded border hover:bg-muted transition-colors"
+            >
+              <ArrowUpDown className="h-3 w-3" />
+              {sortBy === "spread" ? "Biggest Gap" : "A–Z"}
+            </button>
           </div>
         </div>
       </CardHeader>
@@ -128,128 +148,76 @@ export function BiasPageClient() {
       <CardContent>
         {loading ? (
           <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
           </div>
         ) : error ? (
           <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
             {error}
           </div>
         ) : filtered.length === 0 ? (
-          <p className="text-center text-muted-foreground py-8">
-            {search || filter !== "all" ? "No stories match your filters." : "No stories found."}
+          <p className="text-center text-muted-foreground py-8 text-sm">
+            {search ? "No stories match your search." : "No evaluated stories found."}
           </p>
         ) : (
-          <div className="space-y-3">
-            {filtered.map(story => {
-              const isExpanded = expandedStory === story.id;
-              const byTeam = (t: Team) => story.evaluations.filter(e => e.team === t);
-
-              return (
-                <div key={story.id} className="border rounded-lg">
-                  {/* Story row */}
-                  <div
-                    onClick={() => toggleStory(story.id)}
-                    className="w-full p-4 flex items-center justify-between hover:bg-slate-50 transition-colors rounded-lg cursor-pointer"
-                  >
-                    <div className="flex items-center gap-3 min-w-0">
-                      {isExpanded
-                        ? <ChevronDown  className="h-5 w-5 text-slate-400 shrink-0" />
-                        : <ChevronRight className="h-5 w-5 text-slate-400 shrink-0" />}
-                      <div className="min-w-0">
-                        <h4 className="font-semibold text-slate-900 leading-snug">{story.workingTitle}</h4>
-                        <p className="text-xs text-muted-foreground mt-0.5 truncate">
-                          {story.writerName}
-                          {story.contentType && ` · ${story.contentType}`}
-                          {story.genre      && ` · ${story.genre}`}
-                          {story.targetSlot && ` · ${story.targetSlot}`}
-                        </p>
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="border-b bg-gray-50">
+                  <th className="text-left py-2 px-3 font-medium text-gray-500 w-[30%]">Project</th>
+                  <th className="text-left py-2 px-3 font-medium text-gray-500">Evaluator Scores</th>
+                  <th className="text-center py-2 px-3 font-medium text-gray-500 w-20">Avg</th>
+                  <th className="text-center py-2 px-3 font-medium text-gray-500 w-24">Spread</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map((story) => (
+                  <tr key={story.id} className="border-b border-gray-50 last:border-0 hover:bg-gray-50/50">
+                    <td className="py-2.5 px-3">
+                      <div className="font-medium text-gray-800 leading-snug">{story.workingTitle}</div>
+                      <div className="text-[10px] text-gray-400 mt-0.5 truncate">
+                        {story.writerName}
+                        {story.genre && ` · ${story.genre}`}
                       </div>
-                    </div>
-
-                    <div className="flex items-center gap-2 shrink-0 ml-3">
-                      {story.overallAvg !== null && (
-                        <span className={`text-sm ${scoreColor(story.overallAvg)}`}>
-                          {story.overallAvg.toFixed(1)}/10
-                        </span>
+                    </td>
+                    <td className="py-2.5 px-3">
+                      <div className="flex flex-wrap gap-1">
+                        {story.submittedEvals
+                          .sort((a, b) => b.score - a.score)
+                          .map((ev, i) => (
+                            <Badge
+                              key={i}
+                              variant="outline"
+                              className={`text-[10px] px-1.5 py-0 ${scoreColor(ev.score)}`}
+                              title={`${ev.name} (${ev.team})`}
+                            >
+                              <span className={`inline-block h-1.5 w-1.5 rounded-full mr-1 ${TEAM_DOT[ev.team]}`} />
+                              {ev.name.split(" ")[0]}: {ev.score.toFixed(1)}
+                            </Badge>
+                          ))}
+                      </div>
+                    </td>
+                    <td className="py-2.5 px-3 text-center">
+                      {story.overallAvg != null && (
+                        <span className="font-semibold text-gray-700">{story.overallAvg.toFixed(1)}</span>
                       )}
-                      <Badge
-                        variant="outline"
-                        className={`text-xs ${
-                          story.ratedCount > 0
-                            ? "bg-green-50 text-green-700 border-green-200"
-                            : "bg-slate-50 text-slate-500 border-slate-200"
-                        }`}
-                      >
-                        {story.ratedCount}/{story.totalAssigned} rated
-                      </Badge>
-                      {story.contentAvg !== null && (
-                        <Badge variant="outline" className={`text-xs hidden sm:inline-flex ${TEAM_BADGE.content}`}>
-                          Content {story.contentAvg.toFixed(1)}
+                    </td>
+                    <td className="py-2.5 px-3 text-center">
+                      {story.spread >= 0 ? (
+                        <Badge variant="outline" className={`text-[10px] px-2 py-0.5 font-semibold ${spreadColor(story.spread)}`}>
+                          {story.spread.toFixed(1)} · {spreadLabel(story.spread)}
                         </Badge>
+                      ) : (
+                        <span className="text-[10px] text-gray-400">1 eval</span>
                       )}
-                      {story.programmingAvg !== null && (
-                        <Badge variant="outline" className={`text-xs hidden sm:inline-flex ${TEAM_BADGE.programming}`}>
-                          Prog {story.programmingAvg.toFixed(1)}
-                        </Badge>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Expanded evaluator list */}
-                  {isExpanded && (
-                    <div className="px-4 pb-4 space-y-2 border-t bg-slate-50/50">
-                      {(["content", "programming", "management"] as Team[]).map(team => {
-                        const evals = byTeam(team);
-                        if (evals.length === 0) return null;
-                        const ratedCount = evals.filter(e => e.submitted).length;
-
-                        return (
-                          <div key={team}>
-                            {/* Team sub-header */}
-                            <div className="flex items-center gap-2 pt-3 pb-1.5">
-                              <span className={`text-[11px] px-2 py-0.5 rounded border font-semibold ${TEAM_BADGE[team]}`}>
-                                {TEAM_LABEL[team]} Team
-                              </span>
-                              <span className="text-xs text-muted-foreground">
-                                {ratedCount}/{evals.length} rated
-                              </span>
-                            </div>
-
-                            {/* Evaluator rows */}
-                            <div className="space-y-1.5">
-                              {evals.map(e => (
-                                <div
-                                  key={e.evaluatorId}
-                                  className="w-full p-3 bg-white border rounded-lg flex items-center justify-between"
-                                >
-                                  <span className={`text-sm ${e.submitted ? "text-slate-800" : "text-slate-400"}`}>
-                                    {e.evaluatorName}
-                                  </span>
-                                  {e.submitted && e.averageScore !== null ? (
-                                    <span className={`text-sm ${scoreColor(e.averageScore)}`}>
-                                      {e.averageScore.toFixed(1)}/10
-                                    </span>
-                                  ) : (
-                                    <span className="text-xs text-slate-400 italic">not rated</span>
-                                  )}
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <p className="text-[10px] text-muted-foreground mt-3">
+              {filtered.length} evaluated projects · sorted by {sortBy === "spread" ? "biggest gap first" : "title A–Z"}
+            </p>
           </div>
-        )}
-
-        {!loading && !error && filtered.length > 0 && (
-          <p className="text-xs text-muted-foreground mt-4">
-            {filtered.length} of {stories.length} stories
-          </p>
         )}
       </CardContent>
     </Card>

@@ -260,3 +260,14 @@ export const DynamicDeptOutputRanking = dynamic(
     ssr: false,
   }
 );
+
+/**
+ * Production Phases (Pre Cast / Pre Production / Production Start)
+ */
+export const DynamicProductionPhases = dynamic(
+  () => import("@/components/management/production-phases").then((mod) => mod.ProductionPhases),
+  {
+    loading: () => <WidgetLoader />,
+    ssr: false,
+  }
+);

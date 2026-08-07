@@ -24,6 +24,7 @@ import {
   DynamicPendingByPerson,
   DynamicRatingComparison,
   DynamicDeptOutputRanking,
+  DynamicProductionPhases,
 } from "@/components/management/dynamic-components";
 
 import type { TeamOverviewData } from "@/components/management/team-performance/top-teams-widget";
@@ -357,6 +358,34 @@ export async function DeptOutputSection() {
         />
       </div>
       <DynamicDeptOutputRanking />
+    </div>
+  );
+}
+
+/**
+ * Production Phases Section - Async Component
+ * Shows projects bucketed into Pre Cast, Pre Production, Production Start
+ */
+export async function ProductionPhasesSection() {
+  return (
+    <div id="production-phases-section" className="mb-6 sm:mb-8">
+      <div className="flex items-center justify-between mb-3 sm:mb-4">
+        <div>
+          <h2 className="text-base sm:text-lg lg:text-xl font-bold text-gray-900">
+            Production Phases
+          </h2>
+          <p className="text-muted-foreground mt-1 text-xs sm:text-sm">
+            Projects approaching or ready for casting, pre-production, and production
+          </p>
+        </div>
+        <ExportButton
+          elementId="production-phases-section"
+          filename="production-phases"
+          formats={["png", "pdf"]}
+          compact
+        />
+      </div>
+      <DynamicProductionPhases />
     </div>
   );
 }

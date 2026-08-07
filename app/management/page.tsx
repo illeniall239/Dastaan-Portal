@@ -14,6 +14,7 @@ import {
   PendingByPersonSection,
   RatingComparisonSection,
   DeptOutputSection,
+  ProductionPhasesSection,
 } from "@/components/management/dashboard-sections";
 import {
   TeamProjectsSkeleton,
@@ -128,17 +129,23 @@ export default async function ManagementDashboard({
         </Suspense>
       </ErrorBoundary>
 
+      <ErrorBoundary fallback={<SectionErrorFallback title="Production Phases" />}>
+        <Suspense fallback={<ChartSkeleton />}>
+          <ProductionPhasesSection />
+        </Suspense>
+      </ErrorBoundary>
+
       <ErrorBoundary fallback={<SectionErrorFallback title="Active Projects" />}>
         <Suspense fallback={<ChartSkeleton />}>
           <ActiveProjectsChartsSection />
         </Suspense>
       </ErrorBoundary>
 
-      <ErrorBoundary fallback={<SectionErrorFallback title="Rating Differential" />}>
+      {/* <ErrorBoundary fallback={<SectionErrorFallback title="Rating Differential" />}>
         <Suspense fallback={<ChartSkeleton />}>
           <RatingDifferentialSection />
         </Suspense>
-      </ErrorBoundary>
+      </ErrorBoundary> */}
 
       <ErrorBoundary fallback={<SectionErrorFallback title="One-Liner vs Episode Ratings" />}>
         <Suspense fallback={<ChartSkeleton />}>
