@@ -271,3 +271,36 @@ export const DynamicProductionPhases = dynamic(
     ssr: false,
   }
 );
+
+/**
+ * Genre / Theme Breakdown (Commercial Positioning + Subject Matter)
+ */
+export const DynamicGenreThemeBreakdown = dynamic(
+  () => import("@/components/management/genre-theme-breakdown").then((mod) => mod.GenreThemeBreakdown),
+  {
+    loading: () => <ChartLoader />,
+    ssr: false,
+  }
+);
+
+/**
+ * Revision Ranking by Dept (fewest changes = best)
+ */
+export const DynamicRevisionRanking = dynamic(
+  () => import("@/components/management/revision-ranking").then((mod) => mod.RevisionRanking),
+  {
+    loading: () => <ChartLoader />,
+    ssr: false,
+  }
+);
+
+/**
+ * POV / Audience Focus Breakdown
+ */
+export const DynamicPovBreakdown = dynamic(
+  () => import("@/components/management/pov-breakdown").then((mod) => mod.PovBreakdown),
+  {
+    loading: () => <ChartLoader />,
+    ssr: false,
+  }
+);

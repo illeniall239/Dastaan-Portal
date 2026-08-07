@@ -25,6 +25,9 @@ import {
   DynamicRatingComparison,
   DynamicDeptOutputRanking,
   DynamicProductionPhases,
+  DynamicGenreThemeBreakdown,
+  DynamicRevisionRanking,
+  DynamicPovBreakdown,
 } from "@/components/management/dynamic-components";
 
 import type { TeamOverviewData } from "@/components/management/team-performance/top-teams-widget";
@@ -386,6 +389,90 @@ export async function ProductionPhasesSection() {
         />
       </div>
       <DynamicProductionPhases />
+    </div>
+  );
+}
+
+/**
+ * Genre / Theme Breakdown Section - Async Component
+ * Commercial positioning + subject matter themes
+ */
+export async function GenreThemeSection() {
+  return (
+    <div id="genre-theme-section" className="mb-6 sm:mb-8">
+      <div className="flex items-center justify-between mb-3 sm:mb-4">
+        <div>
+          <h2 className="text-base sm:text-lg lg:text-xl font-bold text-gray-900">
+            Genre & Theme Breakdown
+          </h2>
+          <p className="text-muted-foreground mt-1 text-xs sm:text-sm">
+            Commercial positioning and subject matter distribution across active projects
+          </p>
+        </div>
+        <ExportButton
+          elementId="genre-theme-section"
+          filename="genre-theme-breakdown"
+          formats={["png", "pdf"]}
+          compact
+        />
+      </div>
+      <DynamicGenreThemeBreakdown />
+    </div>
+  );
+}
+
+/**
+ * Revision Ranking Section - Async Component
+ * Teams ranked by average episode revisions (fewer = better)
+ */
+export async function RevisionRankingSection() {
+  return (
+    <div id="revision-ranking-section" className="mb-6 sm:mb-8">
+      <div className="flex items-center justify-between mb-3 sm:mb-4">
+        <div>
+          <h2 className="text-base sm:text-lg lg:text-xl font-bold text-gray-900">
+            Feedback Revision Ranking
+          </h2>
+          <p className="text-muted-foreground mt-1 text-xs sm:text-sm">
+            Which content dept or project has the lowest number of changes required in feedback
+          </p>
+        </div>
+        <ExportButton
+          elementId="revision-ranking-section"
+          filename="revision-ranking"
+          formats={["png", "pdf"]}
+          compact
+        />
+      </div>
+      <DynamicRevisionRanking />
+    </div>
+  );
+}
+
+/**
+ * POV / Audience Focus Section - Async Component
+ * Male-centric vs female-centric vs ensemble breakdown
+ */
+export async function PovBreakdownSection() {
+  return (
+    <div id="pov-breakdown-section" className="mb-6 sm:mb-8">
+      <div className="flex items-center justify-between mb-3 sm:mb-4">
+        <div>
+          <h2 className="text-base sm:text-lg lg:text-xl font-bold text-gray-900">
+            Audience Focus / POV
+          </h2>
+          <p className="text-muted-foreground mt-1 text-xs sm:text-sm">
+            Male-centric vs female-centric vs ensemble — perspective distribution
+          </p>
+        </div>
+        <ExportButton
+          elementId="pov-breakdown-section"
+          filename="pov-breakdown"
+          formats={["png", "pdf"]}
+          compact
+        />
+      </div>
+      <DynamicPovBreakdown />
     </div>
   );
 }

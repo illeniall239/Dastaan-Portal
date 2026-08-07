@@ -15,6 +15,9 @@ import {
   RatingComparisonSection,
   DeptOutputSection,
   ProductionPhasesSection,
+  GenreThemeSection,
+  RevisionRankingSection,
+  PovBreakdownSection,
 } from "@/components/management/dashboard-sections";
 import {
   TeamProjectsSkeleton,
@@ -141,6 +144,18 @@ export default async function ManagementDashboard({
         </Suspense>
       </ErrorBoundary>
 
+      <ErrorBoundary fallback={<SectionErrorFallback title="Genre & Theme Breakdown" />}>
+        <Suspense fallback={<ChartSkeleton />}>
+          <GenreThemeSection />
+        </Suspense>
+      </ErrorBoundary>
+
+      <ErrorBoundary fallback={<SectionErrorFallback title="Audience Focus / POV" />}>
+        <Suspense fallback={<ChartSkeleton />}>
+          <PovBreakdownSection />
+        </Suspense>
+      </ErrorBoundary>
+
       {/* <ErrorBoundary fallback={<SectionErrorFallback title="Rating Differential" />}>
         <Suspense fallback={<ChartSkeleton />}>
           <RatingDifferentialSection />
@@ -156,6 +171,12 @@ export default async function ManagementDashboard({
       <ErrorBoundary fallback={<SectionErrorFallback title="Content Dept Output" />}>
         <Suspense fallback={<ChartSkeleton />}>
           <DeptOutputSection />
+        </Suspense>
+      </ErrorBoundary>
+
+      <ErrorBoundary fallback={<SectionErrorFallback title="Feedback Revision Ranking" />}>
+        <Suspense fallback={<ChartSkeleton />}>
+          <RevisionRankingSection />
         </Suspense>
       </ErrorBoundary>
 
