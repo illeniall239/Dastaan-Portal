@@ -31,6 +31,7 @@ import {
   MessageSquare,
   MessageSquarePlus,
   Sparkles,
+  Target,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useSidebar } from "@/lib/providers/sidebar-provider";
@@ -76,6 +77,7 @@ function getIconComponent(iconName: string) {
     messageSquare: MessageSquare,
     messageSquarePlus: MessageSquarePlus,
     sparkles: Sparkles,
+    target: Target,
   };
   return icons[iconName] || HomeIcon;
 }

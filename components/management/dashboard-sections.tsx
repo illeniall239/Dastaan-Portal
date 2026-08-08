@@ -30,6 +30,8 @@ import {
   DynamicPovBreakdown,
   DynamicDelayTracker,
   DynamicRatingTrends,
+  DynamicQualityQuantityChart,
+  DynamicAnnualTargetVisual,
 } from "@/components/management/dynamic-components";
 
 import type { TeamOverviewData } from "@/components/management/team-performance/top-teams-widget";
@@ -531,6 +533,58 @@ export async function RatingTrendsSection() {
         />
       </div>
       <DynamicRatingTrends />
+    </div>
+  );
+}
+
+export async function QualityQuantitySection() {
+  return (
+    <div id="quality-quantity-section" className="mb-6 sm:mb-8">
+      <div className="flex items-center justify-between mb-3 sm:mb-4">
+        <div>
+          <h2 className="text-base sm:text-lg lg:text-xl font-bold text-gray-900">
+            Quality vs Quantity
+          </h2>
+          <p className="text-muted-foreground mt-1 text-xs sm:text-sm">
+            4-quadrant view — which projects deliver both quality and volume
+          </p>
+        </div>
+        <ExportButton
+          elementId="quality-quantity-section"
+          filename="quality-vs-quantity"
+          formats={["png", "pdf"]}
+          compact
+        />
+      </div>
+      <DynamicQualityQuantityChart />
+    </div>
+  );
+}
+
+/**
+ * Annual Target Visual Section
+ * Progress rings + slot-wise bar charts showing target vs achieved per team
+ */
+export async function AnnualTargetSection() {
+  return (
+    <div id="annual-target-section" className="mb-6 sm:mb-8">
+      <div className="flex items-center justify-between mb-3 sm:mb-4">
+        <div>
+          <h2 className="text-base sm:text-lg lg:text-xl font-bold text-gray-900">
+            Annual Target vs Current Situation
+          </h2>
+          <p className="text-muted-foreground mt-1 text-xs sm:text-sm">
+            Slot-wise concept targets and which teams are behind or ahead
+          </p>
+        </div>
+        <ExportButton
+          elementId="annual-target-section"
+          filename="annual-targets"
+          formats={["png", "pdf"]}
+          compact
+        />
+      </div>
+      <DynamicAnnualTargetVisual />
     </div>
   );
 }

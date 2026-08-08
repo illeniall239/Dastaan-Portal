@@ -20,6 +20,8 @@ import {
   PovBreakdownSection,
   DelayTrackerSection,
   RatingTrendsSection,
+  QualityQuantitySection,
+  AnnualTargetSection,
 } from "@/components/management/dashboard-sections";
 import {
   TeamProjectsSkeleton,
@@ -121,6 +123,13 @@ export default async function ManagementDashboard({
         />
       </div>
 
+      {/* Annual Target Progress */}
+      <ErrorBoundary fallback={<SectionErrorFallback title="Annual Targets" />}>
+        <Suspense fallback={<ChartSkeleton />}>
+          <AnnualTargetSection />
+        </Suspense>
+      </ErrorBoundary>
+
       {/* Below-the-fold sections - Stream in progressively */}
       <ErrorBoundary fallback={<SectionErrorFallback title="Teams Overview" />}>
         <Suspense fallback={<TeamProjectsSkeleton />}>
@@ -179,6 +188,12 @@ export default async function ManagementDashboard({
       <ErrorBoundary fallback={<SectionErrorFallback title="Rating Trends" />}>
         <Suspense fallback={<ChartSkeleton />}>
           <RatingTrendsSection />
+        </Suspense>
+      </ErrorBoundary>
+
+      <ErrorBoundary fallback={<SectionErrorFallback title="Quality vs Quantity" />}>
+        <Suspense fallback={<ChartSkeleton />}>
+          <QualityQuantitySection />
         </Suspense>
       </ErrorBoundary>
 

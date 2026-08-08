@@ -1,31 +1,9 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { expectedPerDay, scheduleLabel } from "@/lib/writers/commitment-utils";
 
 export const dynamic = "force-dynamic";
-
-/** Convert commitment_schedule to expected episodes per day */
-function expectedPerDay(schedule: string): number {
-  switch (schedule) {
-    case "3_per_week": return 3 / 7;
-    case "2_per_week": return 2 / 7;
-    case "1_per_week": return 1 / 7;
-    case "2_per_month": return 2 / 30;
-    case "1_per_month": return 1 / 30;
-    default: return 0;
-  }
-}
-
-function scheduleLabel(schedule: string): string {
-  switch (schedule) {
-    case "3_per_week": return "3/week";
-    case "2_per_week": return "2/week";
-    case "1_per_week": return "1/week";
-    case "2_per_month": return "2/month";
-    case "1_per_month": return "1/month";
-    default: return schedule?.replace(/_/g, " ") || "Unknown";
-  }
-}
 
 export async function GET() {
   try {

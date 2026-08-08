@@ -30,15 +30,15 @@ const programmerNavItems = [
     href: "/programmer/calendar",
     icon: "calendar",
   },
-  {
-    title: "Writers",
-    href: "/programmer/writers",
-    icon: "userPen",
-  },
-  {
+{
     title: "Writer Commitments",
     href: "/programmer/writer-commitment",
     icon: "listChecks",
+  },
+  {
+    title: "Delivery Rate",
+    href: "/programmer/delivery-rate",
+    icon: "activity",
   },
   {
     title: "One-Liner Reports",
@@ -61,6 +61,11 @@ const programmerNavItems = [
     icon: "clipboardCheck",
   },
   {
+    title: "Annual Targets",
+    href: "/programmer/annual-targets",
+    icon: "target",
+  },
+  {
     title: "Contract Terms",
     href: "/programmer/contract-terms",
     icon: "handshake",
@@ -74,16 +79,6 @@ const programmerNavItems = [
     title: "Feedback Timeline",
     href: "/programmer/feedback-timeline",
     icon: "clock",
-  },
-  {
-    title: "Idea Roadmap",
-    href: "/programmer/roadmap",
-    icon: "map",
-  },
-  {
-    title: "Cross-Team Shares Tracking",
-    href: "/programmer/cross-team-shares",
-    icon: "share2",
   },
   {
     title: "Requested Evaluations",

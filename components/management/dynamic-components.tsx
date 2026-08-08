@@ -326,3 +326,25 @@ export const DynamicRatingTrends = dynamic(
     ssr: false,
   }
 );
+
+/**
+ * Quality vs Quantity (4-Quadrant Scatter Plot)
+ */
+export const DynamicQualityQuantityChart = dynamic(
+  () => import("@/components/management/quality-quantity-chart").then((mod) => mod.QualityQuantityChart),
+  {
+    loading: () => <ChartLoader />,
+    ssr: false,
+  }
+);
+
+/**
+ * Annual Target Visual (Progress rings + slot-wise bar charts)
+ */
+export const DynamicAnnualTargetVisual = dynamic(
+  () => import("@/components/management/annual-target-visual").then((mod) => mod.AnnualTargetVisual),
+  {
+    loading: () => <ChartLoader />,
+    ssr: false,
+  }
+);
