@@ -28,6 +28,8 @@ import {
   DynamicGenreThemeBreakdown,
   DynamicRevisionRanking,
   DynamicPovBreakdown,
+  DynamicDelayTracker,
+  DynamicRatingTrends,
 } from "@/components/management/dynamic-components";
 
 import type { TeamOverviewData } from "@/components/management/team-performance/top-teams-widget";
@@ -473,6 +475,62 @@ export async function PovBreakdownSection() {
         />
       </div>
       <DynamicPovBreakdown />
+    </div>
+  );
+}
+
+/**
+ * Delay Tracker Section - Async Component
+ * Commitment vs actual pace, delay per team and project
+ */
+export async function DelayTrackerSection() {
+  return (
+    <div id="delay-tracker-section" className="mb-6 sm:mb-8">
+      <div className="flex items-center justify-between mb-3 sm:mb-4">
+        <div>
+          <h2 className="text-base sm:text-lg lg:text-xl font-bold text-gray-900">
+            Delay Tracker
+          </h2>
+          <p className="text-muted-foreground mt-1 text-xs sm:text-sm">
+            Writer commitment vs actual delivery pace — which projects are behind schedule
+          </p>
+        </div>
+        <ExportButton
+          elementId="delay-tracker-section"
+          filename="delay-tracker"
+          formats={["png", "pdf"]}
+          compact
+        />
+      </div>
+      <DynamicDelayTracker />
+    </div>
+  );
+}
+
+/**
+ * Rating Trends Section - Async Component
+ * Per-project sparklines: one-liner → episode scores trend
+ */
+export async function RatingTrendsSection() {
+  return (
+    <div id="rating-trends-section" className="mb-6 sm:mb-8">
+      <div className="flex items-center justify-between mb-3 sm:mb-4">
+        <div>
+          <h2 className="text-base sm:text-lg lg:text-xl font-bold text-gray-900">
+            Rating Trends
+          </h2>
+          <p className="text-muted-foreground mt-1 text-xs sm:text-sm">
+            One-liner to episode-by-episode score trends — track quality trajectory per project
+          </p>
+        </div>
+        <ExportButton
+          elementId="rating-trends-section"
+          filename="rating-trends"
+          formats={["png", "pdf"]}
+          compact
+        />
+      </div>
+      <DynamicRatingTrends />
     </div>
   );
 }

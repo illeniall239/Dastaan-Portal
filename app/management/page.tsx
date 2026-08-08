@@ -18,6 +18,8 @@ import {
   GenreThemeSection,
   RevisionRankingSection,
   PovBreakdownSection,
+  DelayTrackerSection,
+  RatingTrendsSection,
 } from "@/components/management/dashboard-sections";
 import {
   TeamProjectsSkeleton,
@@ -138,6 +140,12 @@ export default async function ManagementDashboard({
         </Suspense>
       </ErrorBoundary>
 
+      <ErrorBoundary fallback={<SectionErrorFallback title="Delay Tracker" />}>
+        <Suspense fallback={<ChartSkeleton />}>
+          <DelayTrackerSection />
+        </Suspense>
+      </ErrorBoundary>
+
       <ErrorBoundary fallback={<SectionErrorFallback title="Active Projects" />}>
         <Suspense fallback={<ChartSkeleton />}>
           <ActiveProjectsChartsSection />
@@ -165,6 +173,12 @@ export default async function ManagementDashboard({
       <ErrorBoundary fallback={<SectionErrorFallback title="One-Liner vs Episode Ratings" />}>
         <Suspense fallback={<ChartSkeleton />}>
           <RatingComparisonSection />
+        </Suspense>
+      </ErrorBoundary>
+
+      <ErrorBoundary fallback={<SectionErrorFallback title="Rating Trends" />}>
+        <Suspense fallback={<ChartSkeleton />}>
+          <RatingTrendsSection />
         </Suspense>
       </ErrorBoundary>
 

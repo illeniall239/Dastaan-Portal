@@ -291,12 +291,9 @@ async function toolQueryEvaluations(
 ) {
   const range = parsePeriod(args.period);
 
-  // Team-scope: restrict to evaluations of the team's projects
+  // Resolve episode IDs for project-level or team-level scope
   let scopedEpIds: string[] | null = null;
-  if (scope?.crIds) {
-    const { data: teamEps } = await admin.from("episodes").select("id").in("call_report_id", scope.crIds);
-    scopedEpIds = (teamEps as any[] || []).map((e: any) => e.id);
-  }
+  const epScopeCrIds = scope?.crIds;
 
   // Resolve evaluator(s)
   let userIds: string[] | null = null;
@@ -312,19 +309,31 @@ async function toolQueryEvaluations(
   // Resolve project(s) for title filter
   let crIds: string[] | null = null;
   if (args.project_title) {
-    const { data } = await admin.from("call_reports").select("id, working_title").ilike("working_title", fuzzy(args.project_title));
+    let pq: any = admin.from("call_reports").select("id, working_title").ilike("working_title", fuzzy(args.project_title));
+    // Team scope: only match projects belonging to this team
+    if (epScopeCrIds) pq = pq.in("id", epScopeCrIds);
+    const { data } = await pq;
     const found = data as any[] || [];
     if (found.length === 0) return { message: `No project found matching "${args.project_title}"`, total: 0 };
     crIds = found.map((r: any) => r.id);
   }
 
+  // Effective CR filter: project_title filter (already team-intersected) or team scope
+  const effectiveCrIds = crIds || epScopeCrIds || null;
+
+  // Resolve episode IDs so episodic_evaluations (q2) is also filtered
+  if (effectiveCrIds) {
+    const { data: filteredEps } = await admin.from("episodes").select("id").in("call_report_id", effectiveCrIds);
+    scopedEpIds = (filteredEps as any[] || []).map((e: any) => e.id);
+    if (scopedEpIds.length === 0) scopedEpIds = ["__none__"]; // force empty result
+  }
+
   // Get accurate total counts first (no limit)
   let cq1: any = admin.from("evaluator_forms").select("id", { count: "exact", head: true }).not("submitted_at", "is", null);
   let cq2: any = admin.from("episodic_evaluations").select("id", { count: "exact", head: true });
-  if (userIds) { cq1 = cq1.in("evaluator_id", userIds); cq2 = cq2.in("evaluator_id", userIds); }
-  if (crIds)   { cq1 = cq1.in("call_report_id", crIds); }
-  if (scope?.crIds) { cq1 = cq1.in("call_report_id", scope.crIds); }
-  if (scopedEpIds)  { cq2 = cq2.in("episode_id", scopedEpIds); }
+  if (userIds)        { cq1 = cq1.in("evaluator_id", userIds); cq2 = cq2.in("evaluator_id", userIds); }
+  if (effectiveCrIds) { cq1 = cq1.in("call_report_id", effectiveCrIds); }
+  if (scopedEpIds)    { cq2 = cq2.in("episode_id", scopedEpIds); }
   if (range) {
     cq1 = cq1.gte("submitted_at", range.start.toISOString()).lte("submitted_at", range.end.toISOString());
     cq2 = cq2.gte("created_at",   range.start.toISOString()).lte("created_at",   range.end.toISOString());
@@ -341,10 +350,9 @@ async function toolQueryEvaluations(
     .order("created_at", { ascending: false })
     .limit(2000);
 
-  if (userIds) { q1 = q1.in("evaluator_id", userIds); q2 = q2.in("evaluator_id", userIds); }
-  if (crIds)   { q1 = q1.in("call_report_id", crIds); }
-  if (scope?.crIds) { q1 = q1.in("call_report_id", scope.crIds); }
-  if (scopedEpIds)  { q2 = q2.in("episode_id", scopedEpIds); }
+  if (userIds)        { q1 = q1.in("evaluator_id", userIds); q2 = q2.in("evaluator_id", userIds); }
+  if (effectiveCrIds) { q1 = q1.in("call_report_id", effectiveCrIds); }
+  if (scopedEpIds)    { q2 = q2.in("episode_id", scopedEpIds); }
   if (range) {
     q1 = q1.gte("submitted_at", range.start.toISOString()).lte("submitted_at", range.end.toISOString());
     q2 = q2.gte("created_at",   range.start.toISOString()).lte("created_at",   range.end.toISOString());
@@ -733,16 +741,21 @@ async function toolQueryTeamStats(args: { team_name?: string; period?: string },
       let ideasCount = 0;
       let evalsCount = 0;
 
+      let episodicEvalsCount = 0;
+
       if (memberIds.length > 0) {
         let q1: any = admin.from("call_reports").select("id", { count: "exact", head: true }).in("created_by", memberIds);
         let q2: any = admin.from("evaluator_forms").select("id", { count: "exact", head: true }).in("evaluator_id", memberIds).not("submitted_at", "is", null);
+        let q3: any = admin.from("episodic_evaluations").select("id", { count: "exact", head: true }).in("evaluator_id", memberIds);
         if (range) {
           q1 = q1.gte("created_at",   range.start.toISOString()).lte("created_at",   range.end.toISOString());
           q2 = q2.gte("submitted_at", range.start.toISOString()).lte("submitted_at", range.end.toISOString());
+          q3 = q3.gte("created_at",   range.start.toISOString()).lte("created_at",   range.end.toISOString());
         }
-        const [{ count: ic }, { count: ec }] = await Promise.all([q1, q2]);
+        const [{ count: ic }, { count: ec }, { count: epc }] = await Promise.all([q1, q2, q3]);
         ideasCount = ic ?? 0;
         evalsCount = ec ?? 0;
+        episodicEvalsCount = epc ?? 0;
       }
 
       return {
@@ -751,7 +764,9 @@ async function toolQueryTeamStats(args: { team_name?: string; period?: string },
         member_count: members.length,
         members: members.map((m: any) => `${m.name} (${m.role})`),
         ideas_logged: ideasCount,
-        evaluations_submitted: evalsCount,
+        one_liner_evaluations: evalsCount,
+        episodic_evaluations: episodicEvalsCount,
+        total_evaluations: evalsCount + episodicEvalsCount,
         period: args.period || "all time",
       };
     })
@@ -766,7 +781,6 @@ async function toolQueryOverview(_args: Record<string, never>, admin: AdminClien
   let qEpisodes = admin.from("episodes").select("id", { count: "exact", head: true }).eq("is_current", true);
   let qOlEvals  = admin.from("evaluator_forms").select("id", { count: "exact", head: true }).not("submitted_at", "is", null);
   let qEpEvals: any  = admin.from("episodic_evaluations").select("id", { count: "exact", head: true });
-  let qWriters  = admin.from("writers").select("id", { count: "exact", head: true });
   let qTeams    = admin.from("teams").select("id", { count: "exact", head: true });
   let qContracts = admin.from("negotiations").select("id", { count: "exact", head: true });
   let qMeetings = admin.from("meetings").select("id", { count: "exact", head: true });
@@ -787,16 +801,26 @@ async function toolQueryOverview(_args: Record<string, never>, admin: AdminClien
     qMeetings = qMeetings.in("created_by", scope.memberIds);
   }
 
+  // Writer count: for scoped users, count distinct writers from team's projects
+  let totalWriters: number | null = 0;
+  if (scope?.crIds && scope.crIds.length > 0) {
+    const { data: teamCRs } = await admin.from("call_reports").select("writer_name").in("id", scope.crIds);
+    const uniqueWriters = new Set((teamCRs as any[] || []).map((r: any) => r.writer_name?.toLowerCase()).filter(Boolean));
+    totalWriters = uniqueWriters.size;
+  } else if (!scope) {
+    const { count } = await admin.from("writers").select("id", { count: "exact", head: true });
+    totalWriters = count ?? 0;
+  }
+
   const [
     { count: totalProjects },
     { count: totalEpisodes },
     { count: totalOneLinerEvals },
     { count: totalEpisodicEvals },
-    { count: totalWriters },
     { count: totalTeams },
     { count: totalContracts },
     { count: totalMeetings },
-  ] = await Promise.all([qProjects, qEpisodes, qOlEvals, qEpEvals, qWriters, qTeams, qContracts, qMeetings]);
+  ] = await Promise.all([qProjects, qEpisodes, qOlEvals, qEpEvals, qTeams, qContracts, qMeetings]);
 
   // This month counts
   const now = new Date();
@@ -832,7 +856,7 @@ async function toolQueryOverview(_args: Record<string, never>, admin: AdminClien
       total_episodes_received: totalEpisodes ?? 0,
       total_one_liner_evaluations: totalOneLinerEvals ?? 0,
       total_episodic_evaluations: totalEpisodicEvals ?? 0,
-      total_writers: scope ? "N/A (team view)" : (totalWriters ?? 0),
+      total_writers: totalWriters ?? 0,
       total_teams: totalTeams ?? 0,
       total_contracts: totalContracts ?? 0,
       total_meetings: totalMeetings ?? 0,
@@ -853,12 +877,29 @@ async function toolQueryContractsPayments(
 ) {
   const range = parsePeriod(args.period);
 
+  // Resolve project title and/or writer name to call_report IDs upfront
+  // so we filter at the DB level instead of post-query (avoids missing data beyond LIMIT)
+  let titleCrIds: string[] | null = null;
+  if (args.project_title || args.writer_name) {
+    let cq: any = admin.from("call_reports").select("id, working_title, writer_name").eq("meeting_type", "call_report");
+    if (args.project_title) cq = cq.ilike("working_title", fuzzy(args.project_title));
+    if (args.writer_name)   cq = cq.ilike("writer_name", fuzzy(args.writer_name));
+    const { data: matched } = await cq;
+    titleCrIds = (matched as any[] || []).map((r: any) => r.id);
+    if (titleCrIds.length === 0) return { period: args.period || "all time", contracts: { count: 0, items: [] }, payments: { count: 0, total_paid: 0, total_pending: 0, items: [] } };
+  }
+
+  // Combine scope + title filters
+  const effectiveCrIds = titleCrIds && scope?.crIds
+    ? titleCrIds.filter(id => scope.crIds!.includes(id))
+    : titleCrIds || scope?.crIds || null;
+
   // Query negotiations (contract terms)
   let nq: any = admin.from("negotiations")
     .select("id, call_report_id, per_episode_rate, estimated_episodes, total_cost, expected_completion_date, created_at")
     .order("created_at", { ascending: false })
     .limit(200);
-  if (scope?.crIds) nq = nq.in("call_report_id", scope.crIds);
+  if (effectiveCrIds) nq = nq.in("call_report_id", effectiveCrIds);
   if (range) nq = nq.gte("created_at", range.start.toISOString()).lte("created_at", range.end.toISOString());
 
   const { data: negotiations } = await nq;
@@ -871,7 +912,7 @@ async function toolQueryContractsPayments(
     : { data: [] };
   const crMap = new Map((crs as any[] || []).map((c: any) => [c.id, c]));
 
-  let items = negList.map((n: any) => {
+  const items = negList.map((n: any) => {
     const cr = crMap.get(n.call_report_id) || {} as any;
     return {
       project: cr.working_title || "Unknown",
@@ -884,16 +925,14 @@ async function toolQueryContractsPayments(
     };
   });
 
-  if (args.writer_name) items = items.filter(i => i.writer.toLowerCase().includes(args.writer_name!.toLowerCase()));
-  if (args.project_title) items = items.filter(i => i.project.toLowerCase().includes(args.project_title!.toLowerCase()));
-
   // Payment summary
   let pq: any = admin.from("payments")
     .select("id, amount, status, payment_date, call_report_id")
     .order("payment_date", { ascending: false })
     .limit(500);
-  if (scope?.crIds) pq = pq.in("call_report_id", scope.crIds);
+  if (effectiveCrIds) pq = pq.in("call_report_id", effectiveCrIds);
   if (range) pq = pq.gte("payment_date", range.start.toISOString()).lte("payment_date", range.end.toISOString());
+  if (args.status) pq = pq.eq("status", args.status.toLowerCase());
   const { data: payments } = await pq;
   const payList = payments as any[] || [];
 
@@ -904,7 +943,7 @@ async function toolQueryContractsPayments(
     : { data: [] };
   const payCrMap = new Map((payCrs as any[] || []).map((c: any) => [c.id, c]));
 
-  let payItems = payList.map((p: any) => {
+  const payItems = payList.map((p: any) => {
     const cr = payCrMap.get(p.call_report_id) || {} as any;
     return {
       project: cr.working_title || "Unknown",
@@ -914,10 +953,6 @@ async function toolQueryContractsPayments(
       date: p.payment_date ? fmtDate(p.payment_date) : "",
     };
   });
-
-  if (args.writer_name) payItems = payItems.filter(i => i.writer.toLowerCase().includes(args.writer_name!.toLowerCase()));
-  if (args.project_title) payItems = payItems.filter(i => i.project.toLowerCase().includes(args.project_title!.toLowerCase()));
-  if (args.status) payItems = payItems.filter(i => i.status?.toLowerCase() === args.status!.toLowerCase());
 
   const totalPaid = payItems.filter(p => p.status === "paid").reduce((s, p) => s + (p.amount || 0), 0);
   const totalPending = payItems.filter(p => p.status !== "paid").reduce((s, p) => s + (p.amount || 0), 0);
@@ -971,10 +1006,13 @@ async function toolQueryWriters(
     };
   }).sort((a, b) => b.projects - a.projects);
 
+  // Team-scoped: only show writers who have projects with this team
+  const filtered = scope ? writerStats.filter((w) => w.projects > 0) : writerStats;
+
   return {
-    count: writerStats.length,
+    count: filtered.length,
     period: args.period || "all time",
-    writers: writerStats.slice(0, 40),
+    writers: filtered.slice(0, 40),
   };
 }
 
@@ -1035,6 +1073,7 @@ async function toolQueryApprovals(
     .select("id, call_report_id, status, approved_by, comments, created_at")
     .order("created_at", { ascending: false })
     .limit(200);
+  if (scope?.crIds) q = q.in("call_report_id", scope.crIds);
   if (args.status) q = q.eq("status", args.status.toLowerCase());
   if (range) q = q.gte("created_at", range.start.toISOString()).lte("created_at", range.end.toISOString());
 

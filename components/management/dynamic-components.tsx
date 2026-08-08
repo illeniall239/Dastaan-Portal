@@ -304,3 +304,25 @@ export const DynamicPovBreakdown = dynamic(
     ssr: false,
   }
 );
+
+/**
+ * Delay Tracker (Commitment vs Actual Pace)
+ */
+export const DynamicDelayTracker = dynamic(
+  () => import("@/components/management/delay-tracker").then((mod) => mod.DelayTracker),
+  {
+    loading: () => <WidgetLoader />,
+    ssr: false,
+  }
+);
+
+/**
+ * Rating Trends (One-liner → Episode sparklines per project)
+ */
+export const DynamicRatingTrends = dynamic(
+  () => import("@/components/management/rating-trends").then((mod) => mod.RatingTrends),
+  {
+    loading: () => <TableLoader />,
+    ssr: false,
+  }
+);
