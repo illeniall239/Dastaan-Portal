@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { requireApiAuth } from "@/lib/api/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -64,6 +65,9 @@ function daysTaken(loggedAt: string, evaluatedAt: string): string {
 }
 
 export async function GET(request: NextRequest) {
+  const auth = await requireApiAuth(["management", "management_viewer"]);
+  if (!auth.success) return auth.response;
+
   try {
     const supabase = createAdminClient();
     const { searchParams } = new URL(request.url);

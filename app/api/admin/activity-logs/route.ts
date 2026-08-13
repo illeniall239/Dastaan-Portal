@@ -6,6 +6,10 @@ import { RateLimitPresets } from "@/lib/rate-limit-redis";
 
 export const dynamic = "force-dynamic";
 
+function escapeIlike(str: string): string {
+  return str.replace(/[%_\\]/g, '\\$&');
+}
+
 export async function GET(request: Request) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -39,7 +43,10 @@ export async function GET(request: Request) {
 
     if (typeFilter && typeFilter !== "all") query = query.eq("type", typeFilter);
     if (userIdFilter) query = query.eq("user_id", userIdFilter);
-    if (routeFilter) query = query.ilike("route", `%${routeFilter}%`);
+    if (routeFilter) {
+      const sanitized = escapeIlike(routeFilter.slice(0, 200));
+      query = query.ilike("route", `%${sanitized}%`);
+    }
     if (from) query = query.gte("timestamp", from);
     if (to) query = query.lte("timestamp", to);
 

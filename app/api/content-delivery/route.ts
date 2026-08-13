@@ -5,6 +5,7 @@ import { parsePaginationParams, createPaginatedResponse } from '@/lib/utils/pagi
 import { contentDeliveryQuerySchema } from '@/lib/validations/query-params';
 import { applyRateLimit } from '@/lib/api-middleware';
 import { RateLimitPresets } from '@/lib/rate-limit-redis';
+import { requireApiAuth } from '@/lib/api/auth';
 
 /**
  * GET /api/content-delivery
@@ -22,8 +23,11 @@ import { RateLimitPresets } from '@/lib/rate-limit-redis';
  * - time_slot: Filter by time slot (or 'all')
  */
 export async function GET(request: NextRequest) {
+  const auth = await requireApiAuth();
+  if (!auth.success) return auth.response;
+
   try {
-    const rate = await applyRateLimit(request, RateLimitPresets.relaxed);
+    const rate = await applyRateLimit(request, RateLimitPresets.relaxed, auth.user.id);
     if (!rate.success) return rate.response!;
 
     // Parse pagination parameters

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { createClient } from "@/lib/supabase/server";
+import { requireApiAuth } from "@/lib/api/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -14,10 +14,10 @@ function median(arr: number[]): number {
 }
 
 export async function GET() {
+  const auth = await requireApiAuth(["management", "management_viewer"]);
+  if (!auth.success) return auth.response;
+
   try {
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const admin = createAdminClient();
 

@@ -54,15 +54,17 @@ export default async function ManagementDashboard({
     redirect("/dashboard");
   }
 
+  const isViewer = user.role === "management_viewer";
+
   // Fetch ONLY critical above-the-fold data
   // Other sections will stream in via Suspense
   const [summary, workload] = await Promise.all([
-    getExecutiveSummary(),
-    getDepartmentWorkload(),
+    isViewer ? Promise.resolve(null) : getExecutiveSummary(),
+    isViewer ? Promise.resolve({ executives: { pendingApprovals: 0 } }) : getDepartmentWorkload(),
   ]);
 
   // Detect if current user is a mandatory approver (Humera / Salman)
-  const isMandatoryApprover = MANDATORY_APPROVER_EMAILS.includes(user.email ?? "");
+  const isMandatoryApprover = !isViewer && MANDATORY_APPROVER_EMAILS.includes(user.email ?? "");
 
   let mandatoryApproverPendingCount = 0;
   if (isMandatoryApprover) {
@@ -101,47 +103,55 @@ export default async function ManagementDashboard({
       <ManagementHeader userName={user.name} userRole={user.role} />
 
       {/* Executive Summary Stats - Critical, loaded immediately */}
-      <div id="executive-summary" className="mb-6 sm:mb-8">
-        <div className="flex items-center justify-between mb-3 sm:mb-4">
-          <h2 className="text-base sm:text-lg lg:text-xl font-bold text-gray-900">
-            Executive Summary
-          </h2>
-          <div className="no-print">
-            <ExportButton
-              elementId="executive-summary"
-              filename="executive-summary"
-              formats={["png", "pdf"]}
-              compact
-            />
+      {!isViewer && (
+        <div id="executive-summary" className="mb-6 sm:mb-8">
+          <div className="flex items-center justify-between mb-3 sm:mb-4">
+            <h2 className="text-base sm:text-lg lg:text-xl font-bold text-gray-900">
+              Executive Summary
+            </h2>
+            <div className="no-print">
+              <ExportButton
+                elementId="executive-summary"
+                filename="executive-summary"
+                formats={["png", "pdf"]}
+                compact
+              />
+            </div>
           </div>
+          <ExecutiveSummaryCards
+            summary={summary!}
+            pendingApprovals={workload.executives.pendingApprovals}
+            isMandatoryApprover={isMandatoryApprover}
+            mandatoryApproverPendingCount={mandatoryApproverPendingCount}
+          />
         </div>
-        <ExecutiveSummaryCards
-          summary={summary}
-          pendingApprovals={workload.executives.pendingApprovals}
-          isMandatoryApprover={isMandatoryApprover}
-          mandatoryApproverPendingCount={mandatoryApproverPendingCount}
-        />
-      </div>
+      )}
 
       {/* Annual Target Progress */}
-      <ErrorBoundary fallback={<SectionErrorFallback title="Annual Targets" />}>
-        <Suspense fallback={<ChartSkeleton />}>
-          <AnnualTargetSection />
-        </Suspense>
-      </ErrorBoundary>
+      {!isViewer && (
+        <ErrorBoundary fallback={<SectionErrorFallback title="Annual Targets" />}>
+          <Suspense fallback={<ChartSkeleton />}>
+            <AnnualTargetSection />
+          </Suspense>
+        </ErrorBoundary>
+      )}
 
       {/* Below-the-fold sections - Stream in progressively */}
-      <ErrorBoundary fallback={<SectionErrorFallback title="Teams Overview" />}>
-        <Suspense fallback={<TeamProjectsSkeleton />}>
-          <TeamsOverviewSection />
-        </Suspense>
-      </ErrorBoundary>
+      {!isViewer && (
+        <ErrorBoundary fallback={<SectionErrorFallback title="Teams Overview" />}>
+          <Suspense fallback={<TeamProjectsSkeleton />}>
+            <TeamsOverviewSection />
+          </Suspense>
+        </ErrorBoundary>
+      )}
 
-      <ErrorBoundary fallback={<SectionErrorFallback title="Pending by Person" />}>
-        <Suspense fallback={<ChartSkeleton />}>
-          <PendingByPersonSection />
-        </Suspense>
-      </ErrorBoundary>
+      {!isViewer && (
+        <ErrorBoundary fallback={<SectionErrorFallback title="Pending by Person" />}>
+          <Suspense fallback={<ChartSkeleton />}>
+            <PendingByPersonSection />
+          </Suspense>
+        </ErrorBoundary>
+      )}
 
       <ErrorBoundary fallback={<SectionErrorFallback title="Production Phases" />}>
         <Suspense fallback={<ChartSkeleton />}>
@@ -149,11 +159,13 @@ export default async function ManagementDashboard({
         </Suspense>
       </ErrorBoundary>
 
-      <ErrorBoundary fallback={<SectionErrorFallback title="Delay Tracker" />}>
-        <Suspense fallback={<ChartSkeleton />}>
-          <DelayTrackerSection />
-        </Suspense>
-      </ErrorBoundary>
+      {!isViewer && (
+        <ErrorBoundary fallback={<SectionErrorFallback title="Delay Tracker" />}>
+          <Suspense fallback={<ChartSkeleton />}>
+            <DelayTrackerSection />
+          </Suspense>
+        </ErrorBoundary>
+      )}
 
       <ErrorBoundary fallback={<SectionErrorFallback title="Active Projects" />}>
         <Suspense fallback={<ChartSkeleton />}>
@@ -167,47 +179,51 @@ export default async function ManagementDashboard({
         </Suspense>
       </ErrorBoundary>
 
-      <ErrorBoundary fallback={<SectionErrorFallback title="Audience Focus / POV" />}>
-        <Suspense fallback={<ChartSkeleton />}>
-          <PovBreakdownSection />
-        </Suspense>
-      </ErrorBoundary>
+      {!isViewer && (
+        <>
+          <ErrorBoundary fallback={<SectionErrorFallback title="Audience Focus / POV" />}>
+            <Suspense fallback={<ChartSkeleton />}>
+              <PovBreakdownSection />
+            </Suspense>
+          </ErrorBoundary>
 
-      {/* <ErrorBoundary fallback={<SectionErrorFallback title="Rating Differential" />}>
-        <Suspense fallback={<ChartSkeleton />}>
-          <RatingDifferentialSection />
-        </Suspense>
-      </ErrorBoundary> */}
+          {/* <ErrorBoundary fallback={<SectionErrorFallback title="Rating Differential" />}>
+            <Suspense fallback={<ChartSkeleton />}>
+              <RatingDifferentialSection />
+            </Suspense>
+          </ErrorBoundary> */}
 
-      <ErrorBoundary fallback={<SectionErrorFallback title="One-Liner vs Episode Ratings" />}>
-        <Suspense fallback={<ChartSkeleton />}>
-          <RatingComparisonSection />
-        </Suspense>
-      </ErrorBoundary>
+          <ErrorBoundary fallback={<SectionErrorFallback title="One-Liner vs Episode Ratings" />}>
+            <Suspense fallback={<ChartSkeleton />}>
+              <RatingComparisonSection />
+            </Suspense>
+          </ErrorBoundary>
 
-      <ErrorBoundary fallback={<SectionErrorFallback title="Rating Trends" />}>
-        <Suspense fallback={<ChartSkeleton />}>
-          <RatingTrendsSection />
-        </Suspense>
-      </ErrorBoundary>
+          <ErrorBoundary fallback={<SectionErrorFallback title="Rating Trends" />}>
+            <Suspense fallback={<ChartSkeleton />}>
+              <RatingTrendsSection />
+            </Suspense>
+          </ErrorBoundary>
 
-      <ErrorBoundary fallback={<SectionErrorFallback title="Quality vs Quantity" />}>
-        <Suspense fallback={<ChartSkeleton />}>
-          <QualityQuantitySection />
-        </Suspense>
-      </ErrorBoundary>
+          <ErrorBoundary fallback={<SectionErrorFallback title="Quality vs Quantity" />}>
+            <Suspense fallback={<ChartSkeleton />}>
+              <QualityQuantitySection />
+            </Suspense>
+          </ErrorBoundary>
 
-      <ErrorBoundary fallback={<SectionErrorFallback title="Content Dept Output" />}>
-        <Suspense fallback={<ChartSkeleton />}>
-          <DeptOutputSection />
-        </Suspense>
-      </ErrorBoundary>
+          <ErrorBoundary fallback={<SectionErrorFallback title="Content Dept Output" />}>
+            <Suspense fallback={<ChartSkeleton />}>
+              <DeptOutputSection />
+            </Suspense>
+          </ErrorBoundary>
 
-      <ErrorBoundary fallback={<SectionErrorFallback title="Feedback Revision Ranking" />}>
-        <Suspense fallback={<ChartSkeleton />}>
-          <RevisionRankingSection />
-        </Suspense>
-      </ErrorBoundary>
+          <ErrorBoundary fallback={<SectionErrorFallback title="Feedback Revision Ranking" />}>
+            <Suspense fallback={<ChartSkeleton />}>
+              <RevisionRankingSection />
+            </Suspense>
+          </ErrorBoundary>
+        </>
+      )}
 
       <ErrorBoundary fallback={<SectionErrorFallback title="Contract Terms" />}>
         <Suspense fallback={<ContractTermsSkeleton />}>

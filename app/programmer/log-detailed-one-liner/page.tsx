@@ -29,10 +29,16 @@ import { useFormAutosave } from "@/lib/hooks/useFormAutosave";
 import { DraftRestoreBanner } from "@/components/ui/draft-restore-banner";
 import { BackButton } from "@/components/ui/back-button";
 import type { NarrativeBreakdownItemFormData, EventPlanningItemFormData, CharacterRelationshipItemFormData } from "@/lib/validations/detailed-one-liner";
-import { CharacterRelationshipGraph } from "@/components/character-relationship-graph";
 import type { CharacterRelationship } from "@/types";
-import { ReactFlowProvider } from 'reactflow';
-import 'reactflow/dist/style.css';
+import dynamic from 'next/dynamic';
+const CharacterRelationshipGraph = dynamic(
+  () => import("@/components/character-relationship-graph").then(m => m.CharacterRelationshipGraph),
+  { ssr: false, loading: () => <div className="h-64 animate-pulse bg-muted rounded" /> }
+);
+const ReactFlowProvider = dynamic(
+  () => import('reactflow').then(m => m.ReactFlowProvider),
+  { ssr: false }
+);
 
 interface NarrativeRow {
   id: string;

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { createClient } from "@/lib/supabase/server";
+import { requireApiAuth } from "@/lib/api/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -20,9 +20,8 @@ interface DrillDownResult { columns: Column[]; rows: Record<string, any>[] }
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const auth = await requireApiAuth(["management", "management_viewer", "executive"]);
+    if (!auth.success) return auth.response;
 
     const metric = request.nextUrl.searchParams.get("metric") as MetricType;
     if (!metric || !VALID_METRICS.includes(metric)) {

@@ -31,6 +31,15 @@ export async function GET(request: NextRequest) {
         filePath.startsWith("episodes/") ||
         filePath.startsWith("episode/")) {
 
+      // Validate path segments - reject traversal attempts
+      const segments = filePath.split('/');
+      if (segments.some(seg => seg === '..' || seg === '.' || seg === '')) {
+        return NextResponse.json({ error: "Invalid file path" }, { status: 400 });
+      }
+      if (segments.length < 2 || segments.length > 4) {
+        return NextResponse.json({ error: "Invalid file path structure" }, { status: 400 });
+      }
+
       // Use admin client for public access
       const adminSupabase = createAdminClient();
 

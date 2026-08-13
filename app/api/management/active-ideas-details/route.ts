@@ -1,17 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { logger } from "@/lib/logger";
-import { createClient } from "@/lib/supabase/server";
 import { getActiveIdeasByGenre, getActiveIdeasStats } from '@/lib/management/active-ideas-details';
 import { applyRateLimit } from '@/lib/api-middleware';
 import { RateLimitPresets } from '@/lib/rate-limit-redis';
+import { requireApiAuth } from "@/lib/api/auth";
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const auth = await requireApiAuth(["management", "management_viewer"]);
+    if (!auth.success) return auth.response;
+    const user = auth.user;
 
     const rate = await applyRateLimit(request, RateLimitPresets.relaxed, user.id);
     if (!rate.success) return rate.response!;

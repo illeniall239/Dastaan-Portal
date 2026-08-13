@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getUserSession } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
+import { applyRateLimit } from "@/lib/api-middleware";
+import { RateLimitPresets } from "@/lib/rate-limit-redis";
 
 export const dynamic = "force-dynamic";
 
@@ -18,6 +20,9 @@ export async function POST(request: NextRequest) {
     if (!user) {
       return NextResponse.json({ ok: false }, { status: 401 });
     }
+
+    const rate = await applyRateLimit(request, RateLimitPresets.relaxed, user.id);
+    if (!rate.success) return rate.response!;
 
     const session = await getUserSession();
     if (!session?.sessionId) {

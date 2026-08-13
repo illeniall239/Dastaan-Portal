@@ -1,26 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { formatTeamDisplayName, getTeamDisplayLabel } from "@/lib/management/team-display";
+import { requireApiAuth } from "@/lib/api/auth";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
+  const auth = await requireApiAuth(["management", "management_viewer"]);
+  if (!auth.success) return auth.response;
+
   try {
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
-    const { data: currentUser } = await supabase
-      .from("users")
-      .select("role")
-      .eq("id", user.id)
-      .single();
-
-    if (!["admin", "management", "management_viewer"].includes(currentUser?.role)) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
-
     const admin = createAdminClient();
     const { searchParams } = new URL(request.url);
     const fromParam = searchParams.get("from");

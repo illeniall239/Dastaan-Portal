@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { createClient } from "@/lib/supabase/server";
 import { applyRateLimit } from "@/lib/api-middleware";
 import { RateLimitPresets } from "@/lib/rate-limit-redis";
 import { logger } from "@/lib/logger";
 import { CACHE_DURATION, createCacheControl } from '@/lib/constants';
+import { requireApiAuth } from "@/lib/api/auth";
 
 /**
  * GET /api/management/pending-evaluations
@@ -12,11 +12,9 @@ import { CACHE_DURATION, createCacheControl } from '@/lib/constants';
  */
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const auth = await requireApiAuth(["management", "management_viewer"]);
+    if (!auth.success) return auth.response;
+    const user = auth.user;
 
     const rate = await applyRateLimit(request, RateLimitPresets.standard, user.id);
     if (!rate.success) {

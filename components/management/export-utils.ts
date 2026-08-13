@@ -1,12 +1,9 @@
-import html2canvas from "html2canvas";
-import jsPDF from "jspdf";
-import ExcelJS from "exceljs";
-
 /**
  * Export a DOM element as PNG image
  */
 export async function exportAsPNG(element: HTMLElement, filename: string) {
   try {
+    const html2canvas = (await import("html2canvas")).default;
     // Scroll to top to ensure full capture
     window.scrollTo(0, 0);
 
@@ -50,6 +47,8 @@ export async function exportAsPNG(element: HTMLElement, filename: string) {
  */
 export async function exportAsPDF(element: HTMLElement, filename: string) {
   try {
+    const html2canvas = (await import("html2canvas")).default;
+    const { jsPDF } = await import("jspdf");
     // Scroll to top to ensure full capture
     window.scrollTo(0, 0);
 
@@ -141,6 +140,7 @@ export async function exportAsPDF(element: HTMLElement, filename: string) {
  */
 export async function exportAsExcel(data: any[], filename: string, sheetName: string = "Data") {
   try {
+    const ExcelJS = (await import("exceljs")).default;
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet(sheetName);
 
@@ -201,6 +201,7 @@ export async function exportAsMultiSheetExcel(
   filename: string
 ) {
   try {
+    const ExcelJS = (await import("exceljs")).default;
     const workbook = new ExcelJS.Workbook();
 
     for (const sheet of sheets) {
@@ -292,6 +293,8 @@ export function exportAsCSV(data: any[], filename: string) {
  */
 export async function generateDashboardReport(sections: Array<{ element: HTMLElement; title: string }>) {
   try {
+    const html2canvas = (await import("html2canvas")).default;
+    const { jsPDF } = await import("jspdf");
     // Scroll to top
     window.scrollTo(0, 0);
 

@@ -1,15 +1,14 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { createClient } from "@/lib/supabase/server";
 import { expectedPerDay, scheduleLabel } from "@/lib/writers/commitment-utils";
+import { requireApiAuth } from "@/lib/api/auth";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const auth = await requireApiAuth(["management", "management_viewer"]);
+    if (!auth.success) return auth.response;
 
     const admin = createAdminClient();
 

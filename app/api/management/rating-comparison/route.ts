@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { createClient } from "@/lib/supabase/server";
+import { requireApiAuth } from "@/lib/api/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -9,12 +9,10 @@ export const dynamic = "force-dynamic";
  * Compares one-liner evaluation scores vs episode evaluation scores per project.
  */
 export async function GET(request: NextRequest) {
+  const auth = await requireApiAuth(["management", "management_viewer"]);
+  if (!auth.success) return auth.response;
+
   try {
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
 
     const admin = createAdminClient();
 
