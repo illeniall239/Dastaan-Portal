@@ -4,6 +4,21 @@ import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
 import { Loader2, TrendingDown, TrendingUp } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+
+interface TeamProject {
+  id: string;
+  title: string;
+  writer: string;
+  slot: string | null;
+  slotGroup: string | null;
+  approved: boolean;
+}
 
 interface TeamRow {
   teamId: string;
@@ -19,6 +34,7 @@ interface TeamRow {
   diff8pm: number;
   diff7_9pm: number;
   diffTotal: number;
+  projects?: TeamProject[];
 }
 
 interface ApiResponse {
@@ -47,6 +63,7 @@ export function AnnualTargetVisual() {
   const [data, setData] = useState<ApiResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [slot, setSlot] = useState<SlotFilter>("all");
+  const [drillDown, setDrillDown] = useState<{ teamName: string; projects: TeamProject[]; slotLabel: string } | null>(null);
 
   useEffect(() => {
     fetch(`/api/programmer/annual-targets?_t=${Date.now()}`)
@@ -233,10 +250,21 @@ export function AnnualTargetVisual() {
             const achievedW = (r.achieved / maxVal) * 100;
             const behind = r.diff < 0;
 
+            const handleBarClick = () => {
+              if (!r.projects || r.projects.length === 0) return;
+              const slotLabel = slot === "8pm" ? "8PM" : slot === "7_9pm" ? "7/9PM" : "All Slots";
+              const filtered = slot === "all"
+                ? r.projects
+                : r.projects.filter((p) =>
+                    slot === "8pm" ? p.slotGroup === "8PM" : p.slotGroup === "7/9PM"
+                  );
+              setDrillDown({ teamName: r.teamName, projects: filtered, slotLabel });
+            };
+
             return (
-              <div key={r.teamId}>
+              <div key={r.teamId} className="cursor-pointer group" onClick={handleBarClick}>
                 <div className="flex items-center justify-between mb-1">
-                  <span className="text-xs font-medium text-gray-800">
+                  <span className="text-xs font-medium text-gray-800 group-hover:text-[#224794] transition-colors">
                     {r.teamName}
                   </span>
                   <span
@@ -297,6 +325,58 @@ export function AnnualTargetVisual() {
             Target line
           </div>
         </div>
+
+        {/* Drilldown Dialog */}
+        {drillDown && (
+          <Dialog open={!!drillDown} onOpenChange={(open) => !open && setDrillDown(null)}>
+            <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle className="text-base font-semibold">
+                  {drillDown.teamName} — {drillDown.slotLabel}
+                  <span className="ml-2 text-sm font-normal text-gray-500">
+                    ({drillDown.projects.length} project{drillDown.projects.length !== 1 ? "s" : ""})
+                  </span>
+                </DialogTitle>
+              </DialogHeader>
+              {drillDown.projects.length === 0 ? (
+                <p className="text-sm text-muted-foreground py-4 text-center">No projects found for this filter.</p>
+              ) : (
+                <div className="border rounded-lg overflow-hidden">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="bg-gray-50 border-b">
+                        <th className="text-left px-3 py-2 font-medium text-gray-600">#</th>
+                        <th className="text-left px-3 py-2 font-medium text-gray-600">Title</th>
+                        <th className="text-left px-3 py-2 font-medium text-gray-600">Writer</th>
+                        <th className="text-left px-3 py-2 font-medium text-gray-600">Slot</th>
+                        <th className="text-left px-3 py-2 font-medium text-gray-600">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {drillDown.projects.map((p, i) => (
+                        <tr key={p.id} className="border-b last:border-b-0 hover:bg-gray-50/50">
+                          <td className="px-3 py-2 text-gray-400">{i + 1}</td>
+                          <td className="px-3 py-2 font-medium text-gray-900 max-w-[200px] truncate">{p.title}</td>
+                          <td className="px-3 py-2 text-gray-600">{p.writer}</td>
+                          <td className="px-3 py-2 text-gray-500">{p.slot || "—"}</td>
+                          <td className="px-3 py-2">
+                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                              p.approved
+                                ? "bg-green-50 text-green-700 border border-green-200"
+                                : "bg-blue-50 text-blue-700 border border-blue-200"
+                            }`}>
+                              {p.approved ? "Approved" : "In Writing"}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </DialogContent>
+          </Dialog>
+        )}
       </CardContent>
     </Card>
   );

@@ -1,99 +1,22 @@
-/**
- * Sentry Server Configuration for GlitchTip
- *
- * This file runs on the server (Node.js runtime)
- * Handles server-side errors, API route errors, server component errors
- */
+// This file configures the initialization of Sentry on the server.
+// The config you add here will be used whenever the server handles a request.
+// https://docs.sentry.io/platforms/javascript/guides/nextjs/
 
 import * as Sentry from "@sentry/nextjs";
 
 Sentry.init({
-  // GlitchTip DSN (same format as Sentry DSN)
-  dsn: process.env.NEXT_PUBLIC_GLITCHTIP_DSN,
+  dsn: "https://179430a460e54ec7284397cd7d408419@o4511866103595008.ingest.us.sentry.io/4511866105036805",
 
-  // Environment (development/staging/production)
-  environment: process.env.NODE_ENV,
+  // Define how likely traces are sampled. Adjust this value in production, or use tracesSampler for greater control.
+  tracesSampleRate: 1,
 
-  // Only enable in production to avoid dev noise
-  enabled: process.env.NODE_ENV === "production",
+  // Enable logs to be sent to Sentry
+  enableLogs: true,
 
-  // Performance Monitoring: 10% of transactions
-  tracesSampleRate: 0.1,
-
-  // Capture 100% of errors
-  sampleRate: 1.0,
-
-  // Server-specific integrations
-  integrations: [
-    Sentry.httpIntegration(),
-    Sentry.postgresIntegration(),
-    Sentry.extraErrorDataIntegration({
-      // Capture extra error context
-      depth: 10,
-    }),
-  ],
-
-  // Privacy: Scrub sensitive data
-  beforeSend(event, hint) {
-    // Redact environment variables (contains secrets)
-    if (event.contexts?.runtime?.variables) {
-      delete event.contexts.runtime.variables;
-    }
-
-    // Redact sensitive environment variables from breadcrumbs
-    if (event.breadcrumbs) {
-      event.breadcrumbs = event.breadcrumbs.map((breadcrumb) => {
-        if (breadcrumb.data) {
-          // Remove any key that might contain secrets
-          Object.keys(breadcrumb.data).forEach((key) => {
-            if (
-              key.toLowerCase().includes("password") ||
-              key.toLowerCase().includes("secret") ||
-              key.toLowerCase().includes("token") ||
-              key.toLowerCase().includes("key")
-            ) {
-              breadcrumb.data![key] = "[Redacted]";
-            }
-          });
-        }
-        return breadcrumb;
-      });
-    }
-
-    // Redact sensitive headers
-    if (event.request?.headers) {
-      delete event.request.headers["authorization"];
-      delete event.request.headers["cookie"];
-      delete event.request.headers["x-api-key"];
-      delete event.request.headers["Authorization"];
-      delete event.request.headers["Cookie"];
-    }
-
-    // Redact Supabase service role key from error messages
-    if (event.exception?.values) {
-      event.exception.values = event.exception.values.map((exception) => {
-        if (exception.value) {
-          // Replace service role key patterns
-          exception.value = exception.value.replace(
-            /eyJ[a-zA-Z0-9_-]*\.eyJ[a-zA-Z0-9_-]*\.[a-zA-Z0-9_-]*/g,
-            "[JWT_REDACTED]"
-          );
-          // Replace generic secrets
-          exception.value = exception.value.replace(
-            /(secret|password|token|key)=([^\s&]+)/gi,
-            "$1=[Redacted]"
-          );
-        }
-        return exception;
-      });
-    }
-
-    return event;
+  dataCollection: {
+    // To disable sending user data and HTTP bodies, uncomment the lines below. For more info visit:
+    // https://docs.sentry.io/platforms/javascript/guides/nextjs/configuration/options/#dataCollection
+    // userInfo: false,
+    // httpBodies: [],
   },
-
-  // Attach stack traces to messages
-  attachStacktrace: true,
-
-  // Max breadcrumbs to keep in memory
-  maxBreadcrumbs: 50,
 });

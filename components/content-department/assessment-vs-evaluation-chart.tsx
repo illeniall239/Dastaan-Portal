@@ -30,23 +30,26 @@ interface ComparisonProject {
 
 interface AssessmentVsEvaluationChartProps {
   data: ComparisonProject[];
+  bare?: boolean;
 }
 
-export function AssessmentVsEvaluationChart({ data }: AssessmentVsEvaluationChartProps) {
+export function AssessmentVsEvaluationChart({ data, bare }: AssessmentVsEvaluationChartProps) {
   const oneLiners = useMemo(() => data.filter((d) => d.type === "oneliner"), [data]);
   const episodics = useMemo(() => data.filter((d) => d.type === "episodic"), [data]);
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <div className={bare ? "space-y-6" : "grid grid-cols-1 md:grid-cols-2 gap-4"}>
       <ComparisonChart
         title="One-Liner: Assessment vs Evaluation"
         subtitle="Your initial assessment vs content head's score"
         items={oneLiners}
+        bare={bare}
       />
       <ComparisonChart
         title="Episodic: Assessment vs Evaluation"
         subtitle="Your initial assessment vs content head's score"
         items={episodics}
+        bare={bare}
       />
     </div>
   );
@@ -56,10 +59,12 @@ function ComparisonChart({
   title,
   subtitle,
   items,
+  bare,
 }: {
   title: string;
   subtitle: string;
   items: ComparisonProject[];
+  bare?: boolean;
 }) {
   const [selectedProject, setSelectedProject] = useState<string>("all");
   const [drillDown, setDrillDown] = useState<{
@@ -128,6 +133,41 @@ function ComparisonChart({
 
   return (
     <>
+      {bare ? (
+        <div>
+          <div className="flex items-center justify-between mb-1">
+            <h3 className="text-[15px] font-bold text-[#15151A]">{title}</h3>
+            <select
+              value={selectedProject}
+              onChange={(e) => setSelectedProject(e.target.value)}
+              className="text-xs border border-gray-200 rounded-md px-2 py-1 text-gray-700 bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 max-w-[200px] truncate"
+            >
+              <option value="all">All Projects</option>
+              {projectOptions.map((t) => (
+                <option key={t} value={t}>{t}</option>
+              ))}
+            </select>
+          </div>
+          <p className="text-[11.5px] text-[#7B7B85] mb-3">{subtitle}</p>
+          {chartData.length === 0 ? (
+            <p className="text-sm text-gray-400 text-center py-12">No data yet</p>
+          ) : (
+            <div className="h-56">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={chartData} margin={{ top: 20, right: 10, left: 10, bottom: 5 }}>
+                  <XAxis dataKey="name" tick={{ fontSize: 11, fill: "#374151" }} axisLine={false} tickLine={false} />
+                  <YAxis domain={[0, 10]} tick={{ fontSize: 11, fill: "#6b7280" }} axisLine={false} tickLine={false} width={25} />
+                  <Tooltip contentStyle={{ backgroundColor: "white", border: "1px solid #e5e7eb", borderRadius: "8px", fontSize: "12px" }} formatter={(value: any, _name: any, props: any) => [value != null ? `${Number(value).toFixed(1)} (${props.payload.count} evals)` : "—", "Avg Score"]} />
+                  <Bar dataKey="score" radius={[6, 6, 0, 0]} maxBarSize={60} cursor="pointer" onClick={handleBarClick}>
+                    <LabelList dataKey="score" position="top" style={{ fontSize: 14, fontWeight: 700, fill: "#374151" }} formatter={(v: any) => (v != null ? Number(v).toFixed(1) : "")} />
+                    {chartData.map((entry, i) => (<Cell key={i} fill={entry.color} />))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+        </div>
+      ) : (
       <Card className="p-4 border border-gray-200 shadow-sm">
         <div className="flex items-center justify-between mb-1">
           <h3 className="text-sm font-semibold text-gray-900">{title}</h3>
@@ -204,6 +244,7 @@ function ComparisonChart({
           </div>
         )}
       </Card>
+      )}
 
       <Dialog open={!!drillDown} onOpenChange={() => setDrillDown(null)}>
         <DialogContent className="max-w-2xl">

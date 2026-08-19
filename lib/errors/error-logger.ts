@@ -93,10 +93,9 @@ class ErrorLogger {
             const supabase = createAdminClient();
 
             const { error } = await supabase.from('error_logs').insert({
-                severity: entry.severity,
                 error_type: entry.category,
-                message: entry.message,
-                stack_trace: entry.stackTrace,
+                error_message: entry.message,
+                error_stack: entry.stackTrace,
                 context: entry.context,
                 user_id: entry.userId,
             });

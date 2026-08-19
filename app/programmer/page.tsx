@@ -249,6 +249,7 @@ async function DashboardContent({ userId, userRole }: { userId: string; userRole
 
     // Production metrics
     isRestrictedProgrammer && teamId ? getProductionMetrics(teamId, userRole) : getProductionMetrics(),
+
   ]);
 
   // Extract counts from stats data

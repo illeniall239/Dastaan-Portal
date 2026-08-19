@@ -230,6 +230,28 @@ export async function GET() {
       });
     }
 
+    // Build monthly episode columns: Jan 2026 to latest month
+    const monthStart = new Date(2026, 0, 1); // Jan 2026
+    const latestMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const monthColumns: string[] = [];
+    for (let d = new Date(monthStart); d <= latestMonth; d.setMonth(d.getMonth() + 1)) {
+      monthColumns.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`);
+    }
+
+    // Add monthly episode counts to each project
+    for (const p of projects) {
+      const ep = epMap.get(p.id);
+      const monthly: Record<string, number> = {};
+      for (const col of monthColumns) monthly[col] = 0;
+      if (ep?.dates) {
+        for (const d of ep.dates) {
+          const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+          if (monthly[key] !== undefined) monthly[key]++;
+        }
+      }
+      (p as any).monthlyEpisodes = monthly;
+    }
+
     // Sort by standard rate ascending (worst first)
     projects.sort((a, b) => {
       const ra = a.standard.deliveryRatePercent === -1 ? 999 : a.standard.deliveryRatePercent;
@@ -264,6 +286,7 @@ export async function GET() {
     return NextResponse.json({
       success: true,
       projects,
+      monthColumns,
       teamSummary,
       stats: {
         totalProjects: projects.length,

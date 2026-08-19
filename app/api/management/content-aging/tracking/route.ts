@@ -70,13 +70,51 @@ export async function GET(request: NextRequest) {
       .select(`
         id, call_report_id, episode_number, created_at, original_submission_date, is_current,
         episode_revisions(id, revision_number, created_at, original_submission_date),
-        episodic_evaluations(episode_id, revision_id, submitted_at, decision),
+        episodic_evaluations(episode_id, revision_id, submitted_at, decision, evaluator_id),
         episode_tracking(payment_request_date, payment_date, tracking_status)
       `)
       .in("call_report_id", reportIds)
       .order("episode_number", { ascending: true });
 
     if (epErr) throw new Error(`episodes: ${epErr.message}`);
+
+    // 3. Fetch evaluator→team mapping for team-wise feedback columns
+    const [{ data: allTeams }, { data: allUsers }] = await Promise.all([
+      admin.from("teams").select("id, name, team_type, team_head:users!teams_team_head_id_fkey(name)"),
+      admin.from("users").select("id, team_id"),
+    ]);
+
+    // Build user→teamLabel map
+    // Find the programmer team head so we can merge their management team under "Programming"
+    const programmerHeadIds = new Set(
+      (allTeams || []).filter((t: any) => t.team_type === "programmer")
+        .map((t: any) => {
+          const head = t.team_head ? (Array.isArray(t.team_head) ? t.team_head[0] : t.team_head) : null;
+          return head?.name;
+        }).filter(Boolean)
+    );
+    const teamLabelMap = new Map<string, string>();
+    for (const t of allTeams || []) {
+      const head = t.team_head ? (Array.isArray(t.team_head) ? t.team_head[0] : t.team_head) : null;
+      let label: string;
+      if (t.team_type === "programmer" || (head?.name && programmerHeadIds.has(head.name))) {
+        label = "Programming";
+      } else if (t.team_type === "evaluator") {
+        label = "Content";
+      } else if (head?.name) {
+        label = `${head.name.split(" ")[0]}'s Team`;
+      } else {
+        label = t.name;
+      }
+      teamLabelMap.set(t.id, label);
+    }
+    const userTeamMap = new Map<string, string>();
+    for (const u of allUsers || []) {
+      if (u.team_id) userTeamMap.set(u.id, teamLabelMap.get(u.team_id) || "Other");
+    }
+
+    // Collect distinct feedback team labels from actual evaluations
+    const feedbackTeamSet = new Set<string>();
 
     if (!allEpisodes?.length) {
       return NextResponse.json({
@@ -138,24 +176,45 @@ export async function GET(request: NextRequest) {
     }
 
     // Collect evals from ALL episodes, remap to current episode IDs
-    type EvalRow = { episode_id: string; revision_id: string | null; submitted_at: string | null; decision: string | null };
+    // Store per-team feedback dates: Map<episodeId|revisionId, Map<teamLabel, latestDate>>
+    type EvalRow = { episode_id: string; revision_id: string | null; submitted_at: string | null; decision: string | null; evaluator_id: string };
     const baseEvalByEpisode = new Map<string, string>();
     const revEvalMap = new Map<string, string>();
+    // Team-wise feedback maps
+    const baseEvalByTeam = new Map<string, Map<string, string>>(); // episodeId → Map<teamLabel, latestDate>
+    const revEvalByTeam = new Map<string, Map<string, string>>();  // revisionId → Map<teamLabel, latestDate>
 
     for (const ep of allEpisodes) {
       const currentEpId = oldToCurrentEpId.get(ep.id) || ep.id;
       const epEvals = (ep.episodic_evaluations || []) as EvalRow[];
       for (const ev of epEvals) {
         if (!ev.submitted_at) continue;
+        const teamLabel = userTeamMap.get(ev.evaluator_id) || "Other";
+        feedbackTeamSet.add(teamLabel);
+
         if (ev.revision_id) {
           const existing = revEvalMap.get(ev.revision_id);
           if (!existing || ev.submitted_at > existing) {
             revEvalMap.set(ev.revision_id, ev.submitted_at);
           }
+          // Team-wise
+          if (!revEvalByTeam.has(ev.revision_id)) revEvalByTeam.set(ev.revision_id, new Map());
+          const teamMap = revEvalByTeam.get(ev.revision_id)!;
+          const existingTeam = teamMap.get(teamLabel);
+          if (!existingTeam || ev.submitted_at > existingTeam) {
+            teamMap.set(teamLabel, ev.submitted_at);
+          }
         } else {
           const existing = baseEvalByEpisode.get(currentEpId);
           if (!existing || ev.submitted_at > existing) {
             baseEvalByEpisode.set(currentEpId, ev.submitted_at);
+          }
+          // Team-wise
+          if (!baseEvalByTeam.has(currentEpId)) baseEvalByTeam.set(currentEpId, new Map());
+          const teamMap = baseEvalByTeam.get(currentEpId)!;
+          const existingTeam = teamMap.get(teamLabel);
+          if (!existingTeam || ev.submitted_at > existingTeam) {
+            teamMap.set(teamLabel, ev.submitted_at);
           }
         }
       }
@@ -201,12 +260,22 @@ export async function GET(request: NextRequest) {
           monthBuckets.get(mk)!.freshEps++;
         }
 
+        // Build team-wise feedback for first copy
+        const baseTeamFeedback: Record<string, string | null> = {};
+        const baseTeamMap = baseEvalByTeam.get(ep.id);
+        if (baseTeamMap) {
+          for (const [team, date] of baseTeamMap) {
+            baseTeamFeedback[team] = fmt(date);
+          }
+        }
+
         return {
           id: ep.id,
           episodeNumber: ep.episode_number,
           firstCopyDate: fmt(rawFirstCopy),
           firstCopyFeedbackDate: fmt(rawFirstFeedback),
           firstCopyFeedbackDays: daysBetween(rawFirstCopy, rawFirstFeedback),
+          firstCopyTeamFeedback: baseTeamFeedback,
           revisions: epRevs.map((rev) => {
             const rawRevDate = rev.original_submission_date ?? rev.created_at;
             const rawRevFeedback = revEvalMap.get(rev.id) ?? null;
@@ -218,11 +287,21 @@ export async function GET(request: NextRequest) {
               monthBuckets.get(rmk)!.revEps++;
             }
 
+            // Build team-wise feedback for revision
+            const revTeamFeedback: Record<string, string | null> = {};
+            const revTeamMap = revEvalByTeam.get(rev.id);
+            if (revTeamMap) {
+              for (const [team, date] of revTeamMap) {
+                revTeamFeedback[team] = fmt(date);
+              }
+            }
+
             return {
               revisionNumber: rev.revision_number,
               receivedDate: fmt(rawRevDate),
               feedbackDate: fmt(rawRevFeedback),
               feedbackDays: daysBetween(rawRevDate, rawRevFeedback),
+              teamFeedback: revTeamFeedback,
             };
           }),
           paymentRequestDate: tr?.payment_request_date ?? null,
@@ -262,7 +341,14 @@ export async function GET(request: NextRequest) {
     // Compute global max revisions
     const globalMaxRevisions = Math.max(0, ...projects.map((p) => p.maxRevisions));
 
-    return NextResponse.json({ projects, globalMaxRevisions });
+    // Sort feedback teams: Programming first, then alphabetically
+    const feedbackTeams = Array.from(feedbackTeamSet).sort((a, b) => {
+      if (a === "Programming") return -1;
+      if (b === "Programming") return 1;
+      return a.localeCompare(b);
+    });
+
+    return NextResponse.json({ projects, globalMaxRevisions, feedbackTeams });
   } catch (error) {
     console.error("Tracking API error:", error);
     return NextResponse.json({ error: "An unexpected error occurred" }, { status: 500 });

@@ -96,6 +96,7 @@ interface TrackingRevision {
   receivedDate: string | null;
   feedbackDate: string | null;
   feedbackDays: number | null;
+  teamFeedback?: Record<string, string | null>;
 }
 
 interface TrackingEpisode {
@@ -104,6 +105,7 @@ interface TrackingEpisode {
   firstCopyDate: string | null;
   firstCopyFeedbackDate: string | null;
   firstCopyFeedbackDays: number | null;
+  firstCopyTeamFeedback?: Record<string, string | null>;
   revisions: TrackingRevision[];
   paymentRequestDate: string | null;
   paymentDate: string | null;
@@ -300,6 +302,7 @@ export default function ContentAgingPage() {
   const [oneLinerAssessors, setOneLinerAssessors] = useState<OneLinerAssessor[]>([]);
   const [trackingProjects, setTrackingProjects] = useState<TrackingProject[]>([]);
   const [trackingMaxRevisions, setTrackingMaxRevisions] = useState(0);
+  const [feedbackTeams, setFeedbackTeams] = useState<string[]>([]);
   const [trackingLoading, setTrackingLoading] = useState(false);
   const trackingLoaded = useRef(false);
   const [selectedOneLinerIds, setSelectedOneLinerIds] = useState<Set<string>>(new Set());
@@ -350,6 +353,7 @@ export default function ContentAgingPage() {
       const data = await res.json();
       setTrackingProjects(data.projects || []);
       setTrackingMaxRevisions(data.globalMaxRevisions || 0);
+      setFeedbackTeams(data.feedbackTeams || []);
       trackingLoaded.current = true;
     } catch {
       toast.error("Failed to load tracking data");
@@ -662,18 +666,30 @@ export default function ContentAgingPage() {
 
   const exportTrackingToExcel = () => {
     if (trackingProjects.length === 0) { toast.error("No data to export"); return; }
-    const revHeaders = Array.from({ length: trackingMaxRevisions }, (_, i) => [`${i + 1}${i === 0 ? "st" : i === 1 ? "nd" : i === 2 ? "rd" : "th"} Revised`, "Feedback", "Days"]).flat();
-    const headers = ["Project", "Episode #", "1st Copy Received", "Feedback", "Days", ...revHeaders, "Payment Request Date", "Payment Date", "Writer's Commitment", "Status"];
+    const fbTeamHeaders = feedbackTeams.length > 0 ? feedbackTeams : ["Feedback"];
+    const revHeaders = Array.from({ length: trackingMaxRevisions }, (_, i) => [`${i + 1}${i === 0 ? "st" : i === 1 ? "nd" : i === 2 ? "rd" : "th"} Revised`, ...fbTeamHeaders, "Days"]).flat();
+    const headers = ["Project", "Episode #", "1st Copy Received", ...fbTeamHeaders, "Days", ...revHeaders, "Payment Request Date", "Payment Date", "Writer's Commitment", "Status"];
     const rows: (string | number | null)[][] = [];
     for (const p of trackingProjects) {
       for (const ep of p.episodes) {
+        const firstCopyFbCells = feedbackTeams.length > 0
+          ? feedbackTeams.map((team) => ep.firstCopyTeamFeedback?.[team] ?? "")
+          : [ep.firstCopyFeedbackDate ?? ""];
         const revCells: (string | number | null)[] = [];
         for (let i = 0; i < trackingMaxRevisions; i++) {
           const rev = ep.revisions[i];
-          revCells.push(rev?.receivedDate ?? "", rev?.feedbackDate ?? "", rev?.feedbackDays ?? "");
+          revCells.push(rev?.receivedDate ?? "");
+          if (feedbackTeams.length > 0) {
+            for (const team of feedbackTeams) {
+              revCells.push(rev?.teamFeedback?.[team] ?? "");
+            }
+          } else {
+            revCells.push(rev?.feedbackDate ?? "");
+          }
+          revCells.push(rev?.feedbackDays ?? "");
         }
         rows.push([
-          p.workingTitle, ep.episodeNumber, ep.firstCopyDate, ep.firstCopyFeedbackDate, ep.firstCopyFeedbackDays ?? "",
+          p.workingTitle, ep.episodeNumber, ep.firstCopyDate, ...firstCopyFbCells, ep.firstCopyFeedbackDays ?? "",
           ...revCells, ep.paymentRequestDate ?? "", ep.paymentDate ?? "", p.trackingNotes ?? "", ep.trackingStatus ?? "",
         ]);
       }
@@ -932,7 +948,7 @@ export default function ContentAgingPage() {
           ) : (
             <div className="space-y-4">
               <DeliveryTrendChart projects={trackingProjects} />
-              <TrackingTable projects={trackingProjects} globalMaxRevisions={trackingMaxRevisions} onUpdate={(projects) => setTrackingProjects(projects)} />
+              <TrackingTable projects={trackingProjects} globalMaxRevisions={trackingMaxRevisions} feedbackTeams={feedbackTeams} onUpdate={(projects) => setTrackingProjects(projects)} />
             </div>
           )
         ) : loading ? (
@@ -1673,15 +1689,23 @@ function DeliveryTrendChart({ projects }: { projects: TrackingProject[] }) {
 function TrackingTable({
   projects,
   globalMaxRevisions,
+  feedbackTeams = [],
   onUpdate,
 }: {
   projects: TrackingProject[];
   globalMaxRevisions: number;
+  feedbackTeams?: string[];
   onUpdate: (projects: TrackingProject[]) => void;
 }) {
-  const revColCount = globalMaxRevisions * 3;
-  const totalCols = 4 + revColCount + 4;
-  const minWidth = 50 + 110 * 2 + 55 + globalMaxRevisions * (110 + 110 + 55) + 120 * 2 + 180 + 140;
+  const fbTeamCount = Math.max(feedbackTeams.length, 1); // at least 1 col for fallback
+  const hasFbTeams = feedbackTeams.length > 0;
+  // Per copy block: 1st Copy + N team feedback cols + Days
+  // Per revision block: Revised + N team feedback cols + Days
+  const copyBlockCols = 1 + fbTeamCount + 1; // received + team feedbacks + days
+  const revColCount = globalMaxRevisions * copyBlockCols;
+  const totalCols = 1 + copyBlockCols + revColCount + 4; // ep# + first copy block + rev blocks + payment/commitment/status
+  const fbColWidth = 100;
+  const minWidth = 50 + 110 + fbTeamCount * fbColWidth + 55 + globalMaxRevisions * (110 + fbTeamCount * fbColWidth + 55) + 120 * 2 + 180 + 140;
 
   const daysColor = (d: number | null) => {
     if (d === null) return "";
@@ -1717,15 +1741,27 @@ function TrackingTable({
         <tr className="bg-muted/80">
           <th className="px-2 py-2 text-left text-xs font-semibold border-b border-r border-border whitespace-nowrap" style={{ width: 50 }}>Ep #</th>
           <th className="px-2 py-2 text-center text-xs font-semibold border-b border-r border-border whitespace-nowrap bg-blue-50 text-blue-700" style={{ width: 110 }}>1st Copy Received</th>
-          <th className="px-2 py-2 text-center text-xs font-semibold border-b border-r border-border whitespace-nowrap bg-amber-50 text-amber-700" style={{ width: 110 }}>Feedback</th>
+          {hasFbTeams ? feedbackTeams.map((team) => (
+            <th key={`fb-0-${team}`} className="px-2 py-2 text-center text-xs font-semibold border-b border-r border-border whitespace-nowrap bg-amber-50 text-amber-700" style={{ width: fbColWidth }}>
+              {team}
+            </th>
+          )) : (
+            <th className="px-2 py-2 text-center text-xs font-semibold border-b border-r border-border whitespace-nowrap bg-amber-50 text-amber-700" style={{ width: 110 }}>Feedback</th>
+          )}
           <th className="px-2 py-2 text-center text-xs font-semibold border-b border-r border-border whitespace-nowrap bg-slate-100 text-slate-600" style={{ width: 55 }}>Days</th>
           {Array.from({ length: globalMaxRevisions }, (_, i) => [
             <th key={`rev-${i}`} className="px-2 py-2 text-center text-xs font-semibold border-b border-r border-border whitespace-nowrap bg-blue-50 text-blue-700" style={{ width: 110 }}>
               {ordinal(i + 1)} Revised
             </th>,
-            <th key={`fb-${i}`} className="px-2 py-2 text-center text-xs font-semibold border-b border-r border-border whitespace-nowrap bg-amber-50 text-amber-700" style={{ width: 110 }}>
-              Feedback
-            </th>,
+            ...(hasFbTeams ? feedbackTeams.map((team) => (
+              <th key={`fb-${i}-${team}`} className="px-2 py-2 text-center text-xs font-semibold border-b border-r border-border whitespace-nowrap bg-amber-50 text-amber-700" style={{ width: fbColWidth }}>
+                {team}
+              </th>
+            )) : [
+              <th key={`fb-${i}`} className="px-2 py-2 text-center text-xs font-semibold border-b border-r border-border whitespace-nowrap bg-amber-50 text-amber-700" style={{ width: 110 }}>
+                Feedback
+              </th>,
+            ]),
             <th key={`days-${i}`} className="px-2 py-2 text-center text-xs font-semibold border-b border-r border-border whitespace-nowrap bg-slate-100 text-slate-600" style={{ width: 55 }}>
               Days
             </th>,
@@ -1751,7 +1787,13 @@ function TrackingTable({
               <tr key={ep.id} className="border-b hover:bg-muted/30">
                 <td className="px-2 py-1.5 border-r border-border/60 text-center font-medium">{ep.episodeNumber}</td>
                 <td className="px-2 py-1.5 border-r border-border/60 text-center text-blue-700">{ep.firstCopyDate ?? ""}</td>
-                <td className="px-2 py-1.5 border-r border-border/60 text-center text-amber-700">{ep.firstCopyFeedbackDate ?? ""}</td>
+                {hasFbTeams ? feedbackTeams.map((team) => (
+                  <td key={`fb-0-${team}`} className="px-2 py-1.5 border-r border-border/60 text-center text-amber-700 text-[10px]">
+                    {ep.firstCopyTeamFeedback?.[team] ?? ""}
+                  </td>
+                )) : (
+                  <td className="px-2 py-1.5 border-r border-border/60 text-center text-amber-700">{ep.firstCopyFeedbackDate ?? ""}</td>
+                )}
                 <td className={`px-2 py-1.5 border-r border-border/60 text-center font-medium ${daysColor(ep.firstCopyFeedbackDays)}`}>
                   {ep.firstCopyFeedbackDays != null ? `${ep.firstCopyFeedbackDays}d` : ""}
                 </td>
@@ -1759,7 +1801,13 @@ function TrackingTable({
                   const rev = ep.revisions[i];
                   return [
                     <td key={`rev-${i}`} className="px-2 py-1.5 border-r border-border/60 text-center text-blue-700">{rev?.receivedDate ?? ""}</td>,
-                    <td key={`fb-${i}`} className="px-2 py-1.5 border-r border-border/60 text-center text-amber-700">{rev?.feedbackDate ?? ""}</td>,
+                    ...(hasFbTeams ? feedbackTeams.map((team) => (
+                      <td key={`fb-${i}-${team}`} className="px-2 py-1.5 border-r border-border/60 text-center text-amber-700 text-[10px]">
+                        {rev?.teamFeedback?.[team] ?? ""}
+                      </td>
+                    )) : [
+                      <td key={`fb-${i}`} className="px-2 py-1.5 border-r border-border/60 text-center text-amber-700">{rev?.feedbackDate ?? ""}</td>,
+                    ]),
                     <td key={`days-${i}`} className={`px-2 py-1.5 border-r border-border/60 text-center font-medium ${daysColor(rev?.feedbackDays ?? null)}`}>
                       {rev?.feedbackDays != null ? `${rev.feedbackDays}d` : ""}
                     </td>,

@@ -150,6 +150,29 @@ export function classifyError(error: unknown): AppError {
         );
     }
 
+    // Plain object with message property (e.g. Supabase/PostgREST error objects)
+    if (error && typeof error === 'object' && 'message' in error) {
+        const msg = String((error as any).message);
+        const code = (error as any).code;
+        const details = (error as any).details;
+        const context: Record<string, any> = {};
+        if (code) context.code = code;
+        if (details) context.details = details;
+
+        const msgLower = msg.toLowerCase();
+        if (code === 'PGRST' || msgLower.includes('relation') || msgLower.includes('column')) {
+            return new DatabaseError(msg, context);
+        }
+        if (msgLower.includes('auth') || msgLower.includes('unauthorized') || code === '401') {
+            return new AuthenticationError(msg, context);
+        }
+        if (msgLower.includes('permission') || msgLower.includes('forbidden') || code === '403') {
+            return new AuthorizationError(msg, context);
+        }
+
+        return new DatabaseError(msg, context);
+    }
+
     // String error
     if (typeof error === 'string') {
         return new AppError(error, ErrorCategory.UNKNOWN, ErrorSeverity.ERROR);

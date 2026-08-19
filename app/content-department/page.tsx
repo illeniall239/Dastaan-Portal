@@ -1,70 +1,35 @@
 import { getCurrentUser } from "@/lib/auth";
 import { redirect } from "next/navigation";
-import { Button } from "@/components/ui/button";
-import Link from "next/link";
-import { CalendarIcon, PlusIcon, FileTextIcon, Calendar, FileText, Film } from "lucide-react";
+// Icon names are passed as strings to client components (Calendar, FileText, Film)
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { Suspense } from "react";
 import { logger } from "@/lib/logger";
-import { ModernStatCard } from "@/components/dashboard/modern-stat-card";
-import { ModernContentCard } from "@/components/dashboard/modern-content-card";
-import { formatDateTime } from "@/lib/utils/format-date";
-import { SlotDistributionChart, GenreDistributionChart, ContentTypeChart } from "@/components/evaluator/score-distribution-chart";
 import type { ChartProject } from "@/components/evaluator/score-distribution-chart";
-import { AssessmentVsEvaluationChart } from "@/components/content-department/assessment-vs-evaluation-chart";
+import { BsRowHero } from "@/components/content-department/bento-studio/bs-row-hero";
+import { BsRowStats } from "@/components/content-department/bento-studio/bs-row-stats";
+import { BsRowPipeline } from "@/components/content-department/bento-studio/bs-row-pipeline";
+import { BsRowBottom } from "@/components/content-department/bento-studio/bs-row-bottom";
 
-// Add Next.js caching - revalidate every 30 seconds
-export const revalidate = 300; // 5 minutes for better performance
+export const revalidate = 300;
 
 export default async function ContentDepartmentDashboard() {
   const user = await getCurrentUser();
 
-  // Redirect if user is not authenticated (handled by layout, but keeping for safety)
   if (!user) {
     redirect("/login");
   }
 
   return (
-    <div className="mobile-container mobile-section space-y-4 sm:space-y-6">
-      {/* Page Header with Actions - Static, shows immediately */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Welcome back, <span className="text-[#224794]">{user.name}</span>.</h1>
-          <p className="text-muted-foreground mt-1 text-sm sm:text-base">
-            Here&apos;s what&apos;s happening today.
-          </p>
-        </div>
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3 w-full sm:w-auto">
-          <Button asChild className="bg-[#10b981] hover:bg-[#059669] touch-target">
-            <Link href="/content-department/calendar" prefetch>
-              <PlusIcon className="h-4 w-4 mr-2" />
-              Schedule Meeting
-            </Link>
-          </Button>
-          <Button asChild variant="outline" className="touch-target">
-            <Link href="/content-department/log-call-report" prefetch>
-              <FileTextIcon className="h-4 w-4 mr-2" />
-              <span className="hidden sm:inline">Log One-Liner Report</span>
-              <span className="sm:hidden">Log Report</span>
-            </Link>
-          </Button>
-        </div>
-      </div>
-
-      {/* Dashboard Content */}
-      <Suspense fallback={<DashboardContentSkeleton />}>
-        <DashboardContent />
-      </Suspense>
-    </div>
+    <Suspense fallback={<DashboardContentSkeleton />}>
+      <DashboardContent />
+    </Suspense>
   );
 }
 
-// Dashboard Content Component - Fetches data and displays modern grid layout
 async function DashboardContent() {
   const supabase = await createClient();
 
-  // STEP 1: Get current user's team context for team isolation
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {
     return <div>Not authenticated</div>;
@@ -83,7 +48,6 @@ async function DashboardContent() {
   let upcomingMeetings: any[] = [];
 
   try {
-    // STEP 2: Build queries with team filters
     let callReportsQuery = supabase
       .from("call_reports")
       .select("id", { count: "exact", head: true })
@@ -101,7 +65,6 @@ async function DashboardContent() {
       .order("meeting_date", { ascending: true })
       .limit(5);
 
-    // TEAM ISOLATION: Apply filters unless admin/management
     if (!hasGlobalAccess && currentUser?.team_id) {
       callReportsQuery = callReportsQuery.eq("team_id", currentUser.team_id);
       episodesQuery = episodesQuery.eq("team_id", currentUser.team_id);
@@ -121,7 +84,6 @@ async function DashboardContent() {
     logger.error("❌ [Stats] Error fetching dashboard data:", error);
   }
 
-  // Chart data — slot, genre, content_type
   const adminClient = createAdminClient();
   let chartProjects: ChartProject[] = [];
   try {
@@ -165,7 +127,6 @@ async function DashboardContent() {
     logger.error("❌ [Charts] Error fetching chart data:", error);
   }
 
-  // Assessment vs Evaluation comparison data
   type ComparisonProject = {
     id: string;
     title: string;
@@ -179,7 +140,6 @@ async function DashboardContent() {
     if (chartProjects.length > 0) {
       const crIds = chartProjects.map((p) => p.id);
 
-      // One-liner: initial assessment from call_reports.overall_rating + evaluator avg from evaluator_forms
       const { data: crWithRating } = await adminClient
         .from("call_reports")
         .select("id, working_title, overall_rating")
@@ -220,7 +180,6 @@ async function DashboardContent() {
         });
       }
 
-      // Episodic: initial_assessment from episodes table + evaluator avg from episodic_evaluations
       const { data: episodes } = await adminClient
         .from("episodes")
         .select("id, call_report_id, episode_number, initial_assessment")
@@ -231,7 +190,6 @@ async function DashboardContent() {
       if (episodes && episodes.length > 0) {
         const epIds = episodes.map((e: any) => e.id);
 
-        // Also check episode_revisions for latest initial_assessment
         const { data: epRevisions } = await adminClient
           .from("episode_revisions")
           .select("episode_id, initial_assessment")
@@ -257,7 +215,6 @@ async function DashboardContent() {
         }
 
         for (const ep of episodes as any[]) {
-          // Prefer revision initial_assessment, fallback to episode's own
           const initScore = epRevMap.get(ep.id) ?? ep.initial_assessment ?? null;
           const evalScores = epEvalAvgMap.get(ep.id);
           const evalAvg = evalScores && evalScores.length > 0
@@ -277,27 +234,28 @@ async function DashboardContent() {
   } catch (error) {
     logger.error("❌ [Comparison] Error fetching comparison data:", error);
   }
+
   const quickActions = [
     {
-      icon: Calendar,
+      iconName: "calendar" as const,
       label: "Schedule Meeting",
       description: "Book meetings on calendar",
       href: "/content-department/calendar",
     },
     {
-      icon: FileText,
-      label: "Log One-Liner Report",
+      iconName: "fileText" as const,
+      label: "Log One-Liner",
       description: "Document writer meetings",
       href: "/content-department/log-call-report",
     },
     {
-      icon: FileText,
-      label: "View One-Liner Reports",
+      iconName: "fileText" as const,
+      label: "View Reports",
       description: "All engagement reports",
       href: "/content-department/call-reports",
     },
     {
-      icon: Film,
+      iconName: "film" as const,
       label: "View Episodes",
       description: "Manage episodes",
       href: "/content-department/episodes",
@@ -305,164 +263,68 @@ async function DashboardContent() {
   ];
 
   return (
-    <>
-      {/* Stats Grid - 4 columns */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <ModernStatCard
-          title="One-Liners Logged"
-          value={callReportsCount}
-          icon={FileText}
-          href="/content-department/call-reports"
-          accent={true}
-        />
+    <div className="space-y-4">
+      {/* Row A: Hero + Coverage */}
+      <BsRowHero
+        callReportsCount={callReportsCount}
+        episodesCount={episodesCount}
+        chartProjects={chartProjects}
+      />
 
-        <ModernStatCard
-          title="Episodes Logged"
-          value={episodesCount}
-          icon={Film}
-          href="/content-department/episodes"
-        />
-      </div>
+      {/* Row B: 4 Stat Cards */}
+      <BsRowStats
+        callReportsCount={callReportsCount}
+        episodesCount={episodesCount}
+        pipelineCount={chartProjects.length}
+        meetingsCount={upcomingMeetings.length}
+      />
 
-      {/* Charts Row */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <SlotDistributionChart projects={chartProjects} />
-        <GenreDistributionChart projects={chartProjects} />
-        <ContentTypeChart projects={chartProjects} />
-      </div>
+      {/* Row C: Pipeline + Genre */}
+      <BsRowPipeline
+        comparisonData={comparisonData}
+        chartProjects={chartProjects}
+      />
 
-      {/* Assessment vs Evaluation */}
-      <AssessmentVsEvaluationChart data={comparisonData} />
-
-      {/* Content Grid - 3 columns */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {/* Quick Actions */}
-        <ModernContentCard
-          title="Quick Actions"
-          subtitle="Frequently accessed pages"
-        >
-          <div className="space-y-2">
-            {quickActions.map((action, index) => {
-              const Icon = action.icon;
-              return (
-                <Link
-                  key={index}
-                  href={action.href}
-                  className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors border border-transparent hover:border-gray-200"
-                >
-                  <Icon className="h-5 w-5 text-gray-600 flex-shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-900">
-                      {action.label}
-                    </p>
-                    <p className="text-xs text-gray-500">{action.description}</p>
-                  </div>
-                </Link>
-              );
-            })}
-          </div>
-        </ModernContentCard>
-
-        {/* Recent One-Liner Reports */}
-        <ModernContentCard
-          title="Recent One-Liner Reports"
-          subtitle="Last 5 one-liner reports"
-        >
-          <p className="text-sm text-gray-500 text-center py-8">
-            View all one-liner reports to see recent activity
-          </p>
-          <div className="pt-2 text-center">
-            <Link
-              href="/content-department/call-reports"
-              className="text-sm text-[#224794] hover:underline font-medium"
-            >
-              View all reports →
-            </Link>
-          </div>
-        </ModernContentCard>
-
-        {/* Upcoming Meetings */}
-        <ModernContentCard
-          title="Upcoming Meetings"
-          subtitle="Next 5 scheduled meetings"
-        >
-          {upcomingMeetings.length > 0 ? (
-            <div className="space-y-2">
-              {upcomingMeetings.map((meeting) => (
-                <Link
-                  key={meeting.id}
-                  href="/content-department/calendar"
-                  className="block p-3 rounded-lg hover:bg-gray-50 transition-colors border border-transparent hover:border-gray-200"
-                >
-                  <p className="text-sm font-medium text-gray-900 line-clamp-1">
-                    {meeting.title || "Untitled Meeting"}
-                  </p>
-                  <p className="text-xs text-gray-500 mt-1">
-                    {meeting.contact_name ? `With: ${meeting.contact_name}` : "No contact specified"}
-                  </p>
-                  <p className="text-xs text-gray-400 mt-0.5">
-                    {formatDateTime(meeting.meeting_date)}
-                  </p>
-                </Link>
-              ))}
-            </div>
-          ) : (
-            <p className="text-sm text-gray-500 text-center py-8">
-              No upcoming meetings scheduled
-            </p>
-          )}
-          <div className="pt-2 text-center">
-            <Link
-              href="/content-department/calendar"
-              className="text-sm text-[#224794] hover:underline font-medium"
-            >
-              View calendar →
-            </Link>
-          </div>
-        </ModernContentCard>
-      </div>
-    </>
+      {/* Row D: One-Liners + Deliveries + Quick Actions */}
+      <BsRowBottom
+        quickActions={quickActions}
+        upcomingMeetings={upcomingMeetings}
+      />
+    </div>
   );
 }
 
-// Skeleton for Dashboard Content
 function DashboardContentSkeleton() {
   return (
-    <>
-      {/* Stats Grid Skeleton */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {[1, 2].map((i) => (
-          <div
-            key={i}
-            className="rounded-lg border border-gray-200 bg-white p-4 sm:p-5 shadow-sm"
-          >
-            <div className="h-4 w-24 bg-gray-200 rounded animate-pulse mb-4"></div>
-            <div className="h-12 w-16 bg-gray-200 rounded animate-pulse"></div>
+    <div className="space-y-4">
+      {/* Row A Skeleton: Hero + Coverage */}
+      <div className="flex flex-col md:flex-row gap-4">
+        <div className="flex-1 rounded-[28px] bg-gradient-to-br from-[#5B4BFF]/20 to-[#FF6B4A]/20 h-[300px] animate-pulse" />
+        <div className="w-full md:w-[400px] rounded-[28px] bg-white h-[300px] animate-pulse" />
+      </div>
+
+      {/* Row B Skeleton: 4 Stats */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {[1, 2, 3, 4].map((i) => (
+          <div key={i} className="rounded-[24px] bg-white p-[22px] h-[158px] animate-pulse">
+            <div className="h-3 w-20 bg-gray-100 rounded mb-auto" />
+            <div className="h-10 w-14 bg-gray-100 rounded mt-12" />
           </div>
         ))}
       </div>
 
-      {/* Content Grid Skeleton */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {[1, 2, 3].map((i) => (
-          <div
-            key={i}
-            className="rounded-lg border border-gray-200 bg-white p-4 sm:p-5 shadow-sm"
-          >
-            <div className="h-6 w-32 bg-gray-200 rounded animate-pulse mb-2"></div>
-            <div className="h-4 w-48 bg-gray-200 rounded animate-pulse mb-4"></div>
-            <div className="space-y-3">
-              {[1, 2, 3].map((j) => (
-                <div
-                  key={j}
-                  className="h-20 bg-gray-100 rounded-lg animate-pulse"
-                ></div>
-              ))}
-            </div>
-          </div>
-        ))}
+      {/* Row C Skeleton: Pipeline + Genre */}
+      <div className="flex flex-col md:flex-row gap-4">
+        <div className="flex-1 rounded-[28px] bg-white h-[320px] animate-pulse" />
+        <div className="w-full md:w-[400px] rounded-[28px] bg-white h-[320px] animate-pulse" />
       </div>
-    </>
+
+      {/* Row D Skeleton: 3 tiles */}
+      <div className="flex flex-col md:flex-row gap-4">
+        <div className="flex-1 rounded-[28px] bg-white h-[372px] animate-pulse" />
+        <div className="w-full md:w-[340px] rounded-[28px] bg-[#17171F]/10 h-[372px] animate-pulse" />
+        <div className="w-full md:w-[230px] rounded-[28px] bg-white h-[372px] animate-pulse" />
+      </div>
+    </div>
   );
 }
-

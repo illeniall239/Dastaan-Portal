@@ -1,7 +1,7 @@
 import { getCurrentUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
-import { SidebarWrapper } from "./sidebar-wrapper";
+import { BsLayoutWrapper } from "@/components/content-department/bento-studio/bs-layout-wrapper";
 
 export default async function ContentDepartmentLayout({
   children,
@@ -89,7 +89,7 @@ export default async function ContentDepartmentLayout({
   ];
 
   return (
-    <SidebarWrapper
+    <BsLayoutWrapper
       userName={user.name || "User"}
       userEmail={user.email}
       userPosition={user.position}
@@ -98,6 +98,6 @@ export default async function ContentDepartmentLayout({
       showAIButton
     >
       {children}
-    </SidebarWrapper>
+    </BsLayoutWrapper>
   );
 }

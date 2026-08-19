@@ -132,6 +132,7 @@ export async function getActiveIdeasByGenre(
     const { data: results, error } = await query;
 
     if (error) {
+      console.error('[getActiveIdeasByGenre] Supabase error:', JSON.stringify(error, null, 2));
       return handleError(error, {
         context: 'getActiveIdeasByGenre',
         fallbackValue: [],
@@ -194,6 +195,7 @@ export async function getActiveIdeasByGenre(
       };
     });
   } catch (error) {
+    console.error('[getActiveIdeasByGenre] Caught exception:', error instanceof Error ? error.message : typeof error, error);
     return handleError(error, {
       context: 'getActiveIdeasByGenre',
       fallbackValue: [],

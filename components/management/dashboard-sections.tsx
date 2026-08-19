@@ -267,7 +267,7 @@ export async function PendingByPersonSection() {
       <div className="flex items-center justify-between mb-3 sm:mb-4">
         <div>
           <h2 className="text-base sm:text-lg lg:text-xl font-bold text-gray-900">
-            Pending by Person
+            Pending Evaluations
           </h2>
           <p className="text-muted-foreground mt-1 text-xs sm:text-sm">
             Evaluation backlog per evaluator — one-liners and episodes awaiting review

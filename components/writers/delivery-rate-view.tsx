@@ -52,6 +52,7 @@ interface ProjectRow {
     waada3: number | null;
     waada4: number | null;
   };
+  monthlyEpisodes?: Record<string, number>;
 }
 
 function rateBg(pct: number): string {
@@ -71,8 +72,15 @@ function fmtNum(n: number): string {
   return n % 1 === 0 ? String(n) : n.toFixed(1);
 }
 
+const MONTH_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+function fmtMonthCol(key: string): string {
+  const [y, m] = key.split("-");
+  return `${MONTH_SHORT[parseInt(m) - 1]} ${y.slice(2)}`;
+}
+
 export function DeliveryRateView() {
   const [projects, setProjects] = useState<ProjectRow[]>([]);
+  const [monthColumns, setMonthColumns] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [teamFilter, setTeamFilter] = useState<string>("all");
   const [saving, setSaving] = useState(false);
@@ -87,6 +95,7 @@ export function DeliveryRateView() {
       .then((res) => {
         if (res.success) {
           setProjects(res.projects);
+          if (res.monthColumns) setMonthColumns(res.monthColumns);
           // Initialize waada col counts from data (max waada per team)
           const counts: Record<string, number> = {};
           for (const p of res.projects) {
@@ -252,7 +261,7 @@ export function DeliveryRateView() {
         // Waada 1 = 10 cols, Waada 2+ = 12 cols (2 extra cumulative columns)
         const waadaColCount = (n: number) => n === 1 ? 10 : 12;
         const totalWaadaCols = waadaNums.reduce((s, n) => s + waadaColCount(n), 0);
-        const totalCols = 7 + 10 + totalWaadaCols + (shownWaadas > 0 ? 1 + shownWaadas : 0);
+        const totalCols = 7 + 10 + totalWaadaCols + (shownWaadas > 0 ? 1 + shownWaadas : 0) + monthColumns.length;
 
         return (
           <Card key={group.teamId}>
@@ -289,7 +298,10 @@ export function DeliveryRateView() {
                         <th key={n} colSpan={waadaColCount(n)} className={`${groupHeaderClass} bg-amber-50 text-amber-800 border-r border-gray-300`}>Waada {String(n).padStart(2, "0")}</th>
                       ))}
                       {(shownWaadas > 0) && (
-                        <th colSpan={1 + shownWaadas} className={`${groupHeaderClass} bg-purple-50 text-purple-800`}>Waada Summary %</th>
+                        <th colSpan={1 + shownWaadas} className={`${groupHeaderClass} bg-purple-50 text-purple-800 border-r border-gray-300`}>Waada Summary %</th>
+                      )}
+                      {monthColumns.length > 0 && (
+                        <th colSpan={monthColumns.length} className={`${groupHeaderClass} bg-teal-50 text-teal-800`}>Monthly Episodes Received</th>
                       )}
                     </tr>
                     {/* Column headers */}
@@ -335,6 +347,9 @@ export function DeliveryRateView() {
                           ))}
                         </>
                       )}
+                      {monthColumns.map((mc) => (
+                        <th key={mc} className={`${thClass} text-teal-700`}>{fmtMonthCol(mc)}</th>
+                      ))}
                     </tr>
                   </thead>
                   <tbody>
@@ -455,6 +470,15 @@ export function DeliveryRateView() {
                               })}
                             </>
                           )}
+                          {/* Monthly episode counts */}
+                          {monthColumns.map((mc) => {
+                            const count = p.monthlyEpisodes?.[mc] || 0;
+                            return (
+                              <td key={mc} className={`${tdClass} ${count > 0 ? "font-semibold text-teal-800 bg-teal-50" : "text-gray-300"}`}>
+                                {count > 0 ? count : "—"}
+                              </td>
+                            );
+                          })}
                         </tr>
                       );
                     })}

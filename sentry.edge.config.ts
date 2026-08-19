@@ -1,47 +1,23 @@
-/**
- * Sentry Edge Configuration for GlitchTip
- *
- * This file runs on the Edge runtime (Vercel Edge Functions)
- * Handles middleware errors and edge function errors
- *
- * Note: Edge runtime has limited APIs (no Node.js APIs)
- */
+// This file configures the initialization of Sentry for edge features (middleware, edge routes, and so on).
+// The config you add here will be used whenever one of the edge features is loaded.
+// Note that this config is unrelated to the Vercel Edge Runtime and is also required when running locally.
+// https://docs.sentry.io/platforms/javascript/guides/nextjs/
 
 import * as Sentry from "@sentry/nextjs";
 
 Sentry.init({
-  // GlitchTip DSN (same format as Sentry DSN)
-  dsn: process.env.NEXT_PUBLIC_GLITCHTIP_DSN,
+  dsn: "https://179430a460e54ec7284397cd7d408419@o4511866103595008.ingest.us.sentry.io/4511866105036805",
 
-  // Environment (development/staging/production)
-  environment: process.env.NODE_ENV,
+  // Define how likely traces are sampled. Adjust this value in production, or use tracesSampler for greater control.
+  tracesSampleRate: 1,
 
-  // Only enable in production to avoid dev noise
-  enabled: process.env.NODE_ENV === "production",
+  // Enable logs to be sent to Sentry
+  enableLogs: true,
 
-  // Performance Monitoring: 10% of transactions
-  tracesSampleRate: 0.1,
-
-  // Capture 100% of errors
-  sampleRate: 1.0,
-
-  // Privacy: Scrub sensitive data
-  beforeSend(event, hint) {
-    // Redact sensitive headers
-    if (event.request?.headers) {
-      delete event.request.headers["authorization"];
-      delete event.request.headers["cookie"];
-      delete event.request.headers["x-api-key"];
-      delete event.request.headers["Authorization"];
-      delete event.request.headers["Cookie"];
-    }
-
-    return event;
+  dataCollection: {
+    // To disable sending user data and HTTP bodies, uncomment the lines below. For more info visit:
+    // https://docs.sentry.io/platforms/javascript/guides/nextjs/configuration/options/#dataCollection
+    // userInfo: false,
+    // httpBodies: [],
   },
-
-  // Attach stack traces to messages
-  attachStacktrace: true,
-
-  // Max breadcrumbs to keep in memory (lower for edge runtime)
-  maxBreadcrumbs: 30,
 });

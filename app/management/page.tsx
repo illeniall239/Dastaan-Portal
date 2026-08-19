@@ -146,7 +146,7 @@ export default async function ManagementDashboard({
       )}
 
       {!isViewer && (
-        <ErrorBoundary fallback={<SectionErrorFallback title="Pending by Person" />}>
+        <ErrorBoundary fallback={<SectionErrorFallback title="Pending Evaluations" />}>
           <Suspense fallback={<ChartSkeleton />}>
             <PendingByPersonSection />
           </Suspense>

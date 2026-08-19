@@ -18,6 +18,7 @@ import {
 interface EvaluatorDetail {
   name: string;
   score: number;
+  teamName?: string;
 }
 
 interface EpisodePoint {
@@ -351,23 +352,47 @@ export function RatingTrends() {
                   {clickedPoint.evalCount} {clickedPoint.evalCount === 1 ? "evaluator" : "evaluators"}
                 </p>
                 {clickedPoint.evaluators.length > 0 ? (
-                  <div className="space-y-1.5">
-                    {clickedPoint.evaluators
-                      .sort((a, b) => b.score - a.score)
-                      .map((ev, i) => (
-                        <div
-                          key={i}
-                          className="flex items-center justify-between py-1.5 px-3 rounded-lg bg-gray-50 border"
-                        >
-                          <span className="text-sm font-medium text-gray-800">{ev.name}</span>
-                          <Badge
-                            variant="outline"
-                            className={`text-xs font-bold ${scoreBadgeClass(ev.score)}`}
-                          >
-                            {ev.score.toFixed(1)}
-                          </Badge>
-                        </div>
-                      ))}
+                  <div className="space-y-3">
+                    {Object.entries(
+                      clickedPoint.evaluators.reduce((acc, ev) => {
+                        const team = ev.teamName || "Other";
+                        if (!acc[team]) acc[team] = [];
+                        acc[team].push(ev);
+                        return acc;
+                      }, {} as Record<string, EvaluatorDetail[]>)
+                    )
+                      .sort(([a], [b]) => a.localeCompare(b))
+                      .map(([teamName, members]) => {
+                        const teamAvg = members.reduce((s, m) => s + m.score, 0) / members.length;
+                        return (
+                          <div key={teamName} className="rounded-lg border overflow-hidden">
+                            <div className="flex items-center justify-between px-3 py-1.5 bg-gray-50 border-b">
+                              <span className="text-xs font-semibold text-gray-700">{teamName}</span>
+                              <Badge variant="outline" className={`text-[10px] font-bold ${scoreBadgeClass(teamAvg)}`}>
+                                avg {teamAvg.toFixed(1)}
+                              </Badge>
+                            </div>
+                            <div className="divide-y divide-gray-50">
+                              {members
+                                .sort((a, b) => b.score - a.score)
+                                .map((ev, i) => (
+                                  <div
+                                    key={i}
+                                    className="flex items-center justify-between py-1.5 px-3"
+                                  >
+                                    <span className="text-sm text-gray-800">{ev.name}</span>
+                                    <Badge
+                                      variant="outline"
+                                      className={`text-xs font-bold ${scoreBadgeClass(ev.score)}`}
+                                    >
+                                      {ev.score.toFixed(1)}
+                                    </Badge>
+                                  </div>
+                                ))}
+                            </div>
+                          </div>
+                        );
+                      })}
                   </div>
                 ) : (
                   <p className="text-sm text-muted-foreground">No evaluator details available.</p>

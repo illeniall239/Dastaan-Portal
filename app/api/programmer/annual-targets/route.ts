@@ -41,7 +41,7 @@ export async function GET() {
         .eq("year", year),
       admin
         .from("call_reports")
-        .select("id, team_id, target_slot")
+        .select("id, team_id, target_slot, working_title, writer_name, genre, content_type")
         .eq("meeting_type", "call_report")
         .is("archived_at", null),
       admin
@@ -84,6 +84,9 @@ export async function GET() {
       { "8PM": number; "7/9PM": number; null: number }
     >();
 
+    // Per-team project lists for drilldown
+    const teamProjects = new Map<string, Array<{ id: string; title: string; writer: string; slot: string | null; slotGroup: string | null; approved: boolean }>>();
+
     for (const cr of callReports || []) {
       const sg = slotGroup(cr.target_slot);
       const key = sg || "null";
@@ -94,11 +97,22 @@ export async function GET() {
         achievedMap.set(tid, { "8PM": 0, "7/9PM": 0, null: 0 });
       achievedMap.get(tid)![key as "8PM" | "7/9PM" | "null"]++;
 
-      if (approvedSet.has(cr.id)) {
+      const isApproved = approvedSet.has(cr.id);
+      if (isApproved) {
         if (!approvedMap.has(tid))
           approvedMap.set(tid, { "8PM": 0, "7/9PM": 0, null: 0 });
         approvedMap.get(tid)![key as "8PM" | "7/9PM" | "null"]++;
       }
+
+      if (!teamProjects.has(tid)) teamProjects.set(tid, []);
+      teamProjects.get(tid)!.push({
+        id: cr.id,
+        title: cr.working_title || "Untitled",
+        writer: cr.writer_name || "—",
+        slot: cr.target_slot,
+        slotGroup: sg,
+        approved: isApproved,
+      });
     }
 
     // Build per-team rows (only teams that have targets)
@@ -124,6 +138,7 @@ export async function GET() {
           diff8pm: ach["8PM"] - tgt["8PM"],
           diff7_9pm: ach["7/9PM"] - tgt["7/9PM"],
           diffTotal: ach["8PM"] + ach["7/9PM"] + ach["null"] - tgt["8PM"] - tgt["7/9PM"],
+          projects: teamProjects.get(tid) || [],
         };
       })
       .sort((a, b) => a.teamName.localeCompare(b.teamName));

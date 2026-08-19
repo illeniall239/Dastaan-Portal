@@ -10,6 +10,9 @@ import {
   Tooltip,
   Cell,
   LabelList,
+  PieChart,
+  Pie,
+  Legend,
 } from "recharts";
 import { Card } from "@/components/ui/card";
 import {
@@ -72,7 +75,7 @@ function normalizeSlot(s: string): string {
   return s;
 }
 
-export function SlotDistributionChart({ projects }: { projects: ChartProject[] }) {
+export function SlotDistributionChart({ projects, bare }: { projects: ChartProject[]; bare?: boolean }) {
   const [drillDown, setDrillDown] = useState<{ label: string; items: ChartProject[] } | null>(null);
 
   const { data, projectsBySlot } = useMemo(() => {
@@ -98,6 +101,25 @@ export function SlotDistributionChart({ projects }: { projects: ChartProject[] }
 
   return (
     <>
+      {bare ? (
+        <div>
+          <h3 className="text-[15px] font-bold text-[#15151A] mb-1">Projects by Time Slot</h3>
+          <p className="text-[11.5px] text-[#7B7B85] mb-3">Active projects in 7, 8 &amp; 9 PM slots</p>
+          <div className="h-48">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={data} margin={{ top: 20, right: 10, left: 10, bottom: 5 }}>
+                <XAxis dataKey="name" tick={{ fontSize: 13, fill: "#374151", fontWeight: 600 }} axisLine={false} tickLine={false} />
+                <YAxis hide domain={[0, maxValue * 1.3]} allowDecimals={false} />
+                <Tooltip formatter={(value: number) => [`${value} projects`, "Count"]} contentStyle={{ backgroundColor: "white", border: "1px solid #e5e7eb", borderRadius: "8px", fontSize: "12px" }} />
+                <Bar dataKey="count" radius={[6, 6, 0, 0]} maxBarSize={60} cursor="pointer" onClick={(d: any) => { if (projectsBySlot[d.name]?.length) setDrillDown({ label: d.name, items: projectsBySlot[d.name] }); }}>
+                  <LabelList dataKey="count" position="top" style={{ fontSize: 14, fontWeight: 700, fill: "#374151" }} />
+                  {data.map((entry, i) => (<Cell key={i} fill={entry.color} />))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      ) : (
       <Card className="p-4 border border-gray-200 shadow-sm">
         <h3 className="text-sm font-semibold text-gray-900 mb-1">Projects by Time Slot</h3>
         <p className="text-xs text-gray-500 mb-3">Active projects in 7, 8 &amp; 9 PM slots</p>
@@ -115,6 +137,7 @@ export function SlotDistributionChart({ projects }: { projects: ChartProject[] }
           </ResponsiveContainer>
         </div>
       </Card>
+      )}
       <Dialog open={!!drillDown} onOpenChange={() => setDrillDown(null)}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
@@ -134,10 +157,10 @@ const GENRE_COLORS = [
   "#ef4444", "#06b6d4", "#f97316", "#6366f1", "#14b8a6",
 ];
 
-export function GenreDistributionChart({ projects }: { projects: ChartProject[] }) {
+export function GenreDistributionChart({ projects, bare }: { projects: ChartProject[]; bare?: boolean }) {
   const [drillDown, setDrillDown] = useState<{ label: string; items: ChartProject[] } | null>(null);
 
-  const { data, projectsByGenre } = useMemo(() => {
+  const { data, projectsByGenre, total } = useMemo(() => {
     const buckets: Record<string, ChartProject[]> = {};
     for (const p of projects) {
       for (const g of p.genre) {
@@ -146,6 +169,7 @@ export function GenreDistributionChart({ projects }: { projects: ChartProject[] 
       }
     }
     const sorted = Object.entries(buckets).sort((a, b) => b[1].length - a[1].length);
+    const totalCount = sorted.reduce((s, [, items]) => s + items.length, 0);
     return {
       data: sorted.map(([name, items], i) => ({
         name,
@@ -153,30 +177,68 @@ export function GenreDistributionChart({ projects }: { projects: ChartProject[] 
         color: GENRE_COLORS[i % GENRE_COLORS.length],
       })),
       projectsByGenre: Object.fromEntries(sorted),
+      total: totalCount,
     };
   }, [projects]);
 
-  const maxValue = Math.max(...data.map((d) => d.count), 1);
-
   return (
     <>
+      {bare ? (
+        <div>
+          <h3 className="text-[15px] font-bold text-[#15151A] mb-1">Genre coverage</h3>
+          <p className="text-[11.5px] text-[#7B7B85] mb-3">Breakdown across active projects</p>
+          <div className="h-48 relative">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie data={data} cx="50%" cy="50%" innerRadius={40} outerRadius={70} paddingAngle={2} dataKey="count" nameKey="name" cursor="pointer" onClick={(d: any) => { if (projectsByGenre[d.name]?.length) setDrillDown({ label: d.name, items: projectsByGenre[d.name] }); }}>
+                  {data.map((entry, i) => (<Cell key={i} fill={entry.color} stroke="white" strokeWidth={2} />))}
+                </Pie>
+                <Tooltip formatter={(value: number, name: string) => [`${value} projects`, name]} contentStyle={{ backgroundColor: "white", border: "1px solid #e5e7eb", borderRadius: "8px", fontSize: "12px" }} />
+                <Legend formatter={(value: string) => <span style={{ fontSize: 10, color: "#374151" }}>{value}</span>} />
+              </PieChart>
+            </ResponsiveContainer>
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none" style={{ marginBottom: 24 }}>
+              <div className="text-center">
+                <p className="text-lg font-bold text-gray-900">{total}</p>
+                <p className="text-[9px] text-gray-500 uppercase">Total</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : (
       <Card className="p-4 border border-gray-200 shadow-sm">
         <h3 className="text-sm font-semibold text-gray-900 mb-1">Projects by Genre</h3>
         <p className="text-xs text-gray-500 mb-3">Genre breakdown across active projects</p>
-        <div className="h-48">
+        <div className="h-48 relative">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={data} margin={{ top: 20, right: 10, left: 10, bottom: 5 }} layout="vertical">
-              <XAxis type="number" hide domain={[0, maxValue * 1.3]} />
-              <YAxis type="category" dataKey="name" tick={{ fontSize: 11, fill: "#374151" }} axisLine={false} tickLine={false} width={80} />
-              <Tooltip formatter={(value: number) => [`${value} projects`, "Count"]} contentStyle={{ backgroundColor: "white", border: "1px solid #e5e7eb", borderRadius: "8px", fontSize: "12px" }} />
-              <Bar dataKey="count" radius={[0, 6, 6, 0]} maxBarSize={20} cursor="pointer" onClick={(d: any) => { if (projectsByGenre[d.name]?.length) setDrillDown({ label: d.name, items: projectsByGenre[d.name] }); }}>
-                <LabelList dataKey="count" position="right" style={{ fontSize: 12, fontWeight: 700, fill: "#374151" }} />
-                {data.map((entry, i) => (<Cell key={i} fill={entry.color} />))}
-              </Bar>
-            </BarChart>
+            <PieChart>
+              <Pie
+                data={data}
+                cx="50%"
+                cy="50%"
+                innerRadius={40}
+                outerRadius={70}
+                paddingAngle={2}
+                dataKey="count"
+                nameKey="name"
+                cursor="pointer"
+                onClick={(d: any) => { if (projectsByGenre[d.name]?.length) setDrillDown({ label: d.name, items: projectsByGenre[d.name] }); }}
+              >
+                {data.map((entry, i) => (<Cell key={i} fill={entry.color} stroke="white" strokeWidth={2} />))}
+              </Pie>
+              <Tooltip formatter={(value: number, name: string) => [`${value} projects`, name]} contentStyle={{ backgroundColor: "white", border: "1px solid #e5e7eb", borderRadius: "8px", fontSize: "12px" }} />
+              <Legend formatter={(value: string) => <span style={{ fontSize: 10, color: "#374151" }}>{value}</span>} />
+            </PieChart>
           </ResponsiveContainer>
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none" style={{ marginBottom: 24 }}>
+            <div className="text-center">
+              <p className="text-lg font-bold text-gray-900">{total}</p>
+              <p className="text-[9px] text-gray-500 uppercase">Total</p>
+            </div>
+          </div>
         </div>
       </Card>
+      )}
       <Dialog open={!!drillDown} onOpenChange={() => setDrillDown(null)}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
@@ -201,7 +263,7 @@ const CT_COLORS: Record<string, string> = {
   "Soap": "#f97316",
 };
 
-export function ContentTypeChart({ projects }: { projects: ChartProject[] }) {
+export function ContentTypeChart({ projects, bare }: { projects: ChartProject[]; bare?: boolean }) {
   const [drillDown, setDrillDown] = useState<{ label: string; items: ChartProject[] } | null>(null);
 
   const { data, projectsByCT } = useMemo(() => {
@@ -226,6 +288,25 @@ export function ContentTypeChart({ projects }: { projects: ChartProject[] }) {
 
   return (
     <>
+      {bare ? (
+        <div>
+          <h3 className="text-[15px] font-bold text-[#15151A] mb-1">Content Type</h3>
+          <p className="text-[11.5px] text-[#7B7B85] mb-3">Serial, Telefilm &amp; other formats</p>
+          <div className="h-48">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={data} margin={{ top: 20, right: 10, left: 10, bottom: 5 }}>
+                <XAxis dataKey="name" tick={{ fontSize: 11, fill: "#374151" }} axisLine={false} tickLine={false} />
+                <YAxis hide domain={[0, maxValue * 1.3]} allowDecimals={false} />
+                <Tooltip formatter={(value: number) => [`${value} projects`, "Count"]} contentStyle={{ backgroundColor: "white", border: "1px solid #e5e7eb", borderRadius: "8px", fontSize: "12px" }} />
+                <Bar dataKey="count" radius={[6, 6, 0, 0]} maxBarSize={56} cursor="pointer" onClick={(d: any) => { if (projectsByCT[d.name]?.length) setDrillDown({ label: d.name, items: projectsByCT[d.name] }); }}>
+                  <LabelList dataKey="count" position="top" style={{ fontSize: 13, fontWeight: 700, fill: "#374151" }} />
+                  {data.map((entry, i) => (<Cell key={i} fill={entry.color} />))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      ) : (
       <Card className="p-4 border border-gray-200 shadow-sm">
         <h3 className="text-sm font-semibold text-gray-900 mb-1">Content Type</h3>
         <p className="text-xs text-gray-500 mb-3">Serial, Telefilm &amp; other formats</p>
@@ -243,6 +324,7 @@ export function ContentTypeChart({ projects }: { projects: ChartProject[] }) {
           </ResponsiveContainer>
         </div>
       </Card>
+      )}
       <Dialog open={!!drillDown} onOpenChange={() => setDrillDown(null)}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>

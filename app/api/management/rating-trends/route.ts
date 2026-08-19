@@ -34,21 +34,21 @@ export async function GET() {
         .eq("meeting_type", "call_report")
         .order("working_title"),
       admin.from("evaluator_forms")
-        .select("call_report_id, average_score, evaluator:users!evaluator_forms_evaluator_id_fkey(name)")
+        .select("call_report_id, average_score, evaluator:users!evaluator_forms_evaluator_id_fkey(name, team_id)")
         .not("submitted_at", "is", null)
         .not("average_score", "is", null),
       admin.from("episodes")
         .select("id, call_report_id, episode_number")
         .not("call_report_id", "is", null),
       admin.from("episodic_evaluations")
-        .select("episode_id, overall_average, evaluator:users!episodic_evaluations_evaluator_id_fkey(name)")
+        .select("episode_id, overall_average, evaluator:users!episodic_evaluations_evaluator_id_fkey(name, team_id)")
         .not("submitted_at", "is", null)
         .not("overall_average", "is", null),
       admin.from("teams")
-        .select("id, name, team_head:users!teams_team_head_id_fkey(name)"),
+        .select("id, name, team_type, team_head:users!teams_team_head_id_fkey(name)"),
     ]);
 
-    // Team display names
+    // Team display names (for project labels)
     const teamMap = new Map(
       (teams || []).map((t: any) => {
         const head = t.team_head ? (Array.isArray(t.team_head) ? t.team_head[0] : t.team_head) : null;
@@ -56,8 +56,33 @@ export async function GET() {
       })
     );
 
-    // One-liner scores per CR with evaluator names
-    type EvalDetail = { name: string; score: number };
+    // Evaluator team labels — merge programmer team + same head's management team into "Programming"
+    const programmerHeadNames = new Set(
+      (teams || []).filter((t: any) => t.team_type === "programmer")
+        .map((t: any) => {
+          const head = t.team_head ? (Array.isArray(t.team_head) ? t.team_head[0] : t.team_head) : null;
+          return head?.name;
+        }).filter(Boolean)
+    );
+    const evalTeamMap = new Map(
+      (teams || []).map((t: any) => {
+        const head = t.team_head ? (Array.isArray(t.team_head) ? t.team_head[0] : t.team_head) : null;
+        let label: string;
+        if (t.team_type === "programmer" || (head?.name && programmerHeadNames.has(head.name))) {
+          label = "Programming";
+        } else if (t.team_type === "evaluator") {
+          label = "Content";
+        } else if (head?.name) {
+          label = `${head.name}'s Team`;
+        } else {
+          label = t.name;
+        }
+        return [t.id, label];
+      })
+    );
+
+    // One-liner scores per CR with evaluator names + team
+    type EvalDetail = { name: string; score: number; teamName: string };
     const crOneLiner = new Map<string, EvalDetail[]>();
     for (const ef of evalForms || []) {
       if (!crOneLiner.has(ef.call_report_id)) crOneLiner.set(ef.call_report_id, []);
@@ -65,6 +90,7 @@ export async function GET() {
       crOneLiner.get(ef.call_report_id)!.push({
         name: evaluator?.name || "Unknown",
         score: ef.average_score,
+        teamName: evalTeamMap.get(evaluator?.team_id) || "Other",
       });
     }
 
@@ -86,6 +112,7 @@ export async function GET() {
       epMap.get(info.epNum)!.push({
         name: evaluator?.name || "Unknown",
         score: ee.overall_average,
+        teamName: evalTeamMap.get(evaluator?.team_id) || "Other",
       });
     }
 
@@ -98,7 +125,7 @@ export async function GET() {
         const olAvg = olScores
           ? Math.round((olScores.reduce((a, b) => a + b.score, 0) / olScores.length) * 10) / 10
           : null;
-        const olEvaluators = olScores?.map((e) => ({ name: e.name, score: Math.round(e.score * 10) / 10 })) || [];
+        const olEvaluators = olScores?.map((e) => ({ name: e.name, score: Math.round(e.score * 10) / 10, teamName: e.teamName })) || [];
 
         const episodeTrend: { episode: number; avgScore: number; evalCount: number; evaluators: { name: string; score: number }[] }[] = [];
         if (epScoresMap) {
@@ -108,7 +135,7 @@ export async function GET() {
               episode: epNum,
               avgScore: Math.round((evals.reduce((a, b) => a + b.score, 0) / evals.length) * 10) / 10,
               evalCount: evals.length,
-              evaluators: evals.map((e) => ({ name: e.name, score: Math.round(e.score * 10) / 10 })),
+              evaluators: evals.map((e) => ({ name: e.name, score: Math.round(e.score * 10) / 10, teamName: e.teamName })),
             });
           }
         }
