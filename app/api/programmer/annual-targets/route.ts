@@ -11,11 +11,6 @@ function slotGroup(slot: string | null): "8PM" | "7/9PM" | null {
   return null;
 }
 
-// Aamra's evaluator team call_reports count toward Humera's management team targets
-const TEAM_ACHIEVEMENT_ALIASES: Record<string, string> = {
-  "2c8d93a9-0034-4b8d-af8d-696e5da11fae": "bcaaeca4-6d9c-4445-8e74-117c71736f66",
-};
-
 export async function GET() {
   try {
     const supabase = await createClient();
@@ -90,8 +85,7 @@ export async function GET() {
     for (const cr of callReports || []) {
       const sg = slotGroup(cr.target_slot);
       const key = sg || "null";
-      // Map to alias team if applicable (e.g., Aamra → Humera)
-      const tid = TEAM_ACHIEVEMENT_ALIASES[cr.team_id] || cr.team_id;
+      const tid = cr.team_id;
 
       if (!achievedMap.has(tid))
         achievedMap.set(tid, { "8PM": 0, "7/9PM": 0, null: 0 });
