@@ -69,7 +69,7 @@ const DATA_TOOLS = [
     function: {
       name: "query_evaluations",
       description:
-        "Search evaluation records. Use for: how many evaluations did [person] do, what did [person] score for [project], evaluation counts by period. Searches BOTH one-liner evaluations (call report assessments) AND episodic evaluations (episode script assessments).",
+        "Search evaluation records. Use for: how many evaluations did [person] do, what did [person] score for [project], evaluation counts by period, which projects have been evaluated. Searches BOTH one-liner evaluations (call report assessments) AND episodic evaluations (episode script assessments). Use created_by to find evaluations ON projects logged/created by a specific person (e.g. 'which of my projects have been evaluated').",
       parameters: {
         type: "object",
         properties: {
@@ -80,6 +80,10 @@ const DATA_TOOLS = [
           project_title: {
             type: "string",
             description: "Partial title of the project or call report to filter by.",
+          },
+          created_by: {
+            type: "string",
+            description: "Name of the person who created/logged the projects. Use this to find evaluations on projects created by a specific person. For 'my projects' use the current user's name.",
           },
           period: {
             type: "string",
@@ -280,12 +284,28 @@ const DATA_TOOLS = [
       },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "query_team_feedback",
+      description:
+        "Get evaluations and feedback from OTHER teams (Programming team, Content Development team) on the current team's projects. Use for: 'which of our projects have been evaluated by others', 'what feedback have we received', 'what did programming team think of our ideas', 'team feedback on project X', 'have other teams reviewed our work'. This is the data shown in the Team Feedback tab.",
+      parameters: {
+        type: "object",
+        properties: {
+          project_title: { type: "string", description: "Filter by project title." },
+          team_filter: { type: "string", description: "Filter by feedback source: 'programming' or 'content_development'. Leave blank for both." },
+          period: { type: "string", description: "Time period: this_month, last_month, this_year, etc." },
+        },
+      },
+    },
+  },
 ];
 
 // ─── Tool execution ────────────────────────────────────────────────────────────
 
 async function toolQueryEvaluations(
-  args: { evaluator_name?: string; project_title?: string; period?: string },
+  args: { evaluator_name?: string; project_title?: string; created_by?: string; period?: string },
   admin: AdminClient,
   scope: TeamScope = null
 ) {
@@ -306,20 +326,36 @@ async function toolQueryEvaluations(
     for (const u of found) userNames[u.id] = u.name;
   }
 
+  // Resolve projects created by a specific person (e.g. "which of my projects have been evaluated")
+  let createdByCrIds: string[] | null = null;
+  if (args.created_by) {
+    const { data: creators } = await admin.from("users").select("id, name").ilike("name", fuzzy(args.created_by));
+    const creatorIds = (creators as any[] || []).map((u: any) => u.id);
+    if (creatorIds.length === 0) return { message: `No person found matching "${args.created_by}"`, total: 0 };
+
+    let cbq: any = admin.from("call_reports").select("id").eq("meeting_type", "call_report").in("created_by", creatorIds);
+    if (epScopeCrIds) cbq = cbq.in("id", epScopeCrIds);
+    const { data: createdCrs } = await cbq;
+    createdByCrIds = (createdCrs as any[] || []).map((r: any) => r.id);
+    if (createdByCrIds.length === 0) return { message: `No projects found created by "${args.created_by}"`, total: 0 };
+  }
+
   // Resolve project(s) for title filter
   let crIds: string[] | null = null;
   if (args.project_title) {
     let pq: any = admin.from("call_reports").select("id, working_title").ilike("working_title", fuzzy(args.project_title));
     // Team scope: only match projects belonging to this team
     if (epScopeCrIds) pq = pq.in("id", epScopeCrIds);
+    // If created_by filter is active, also intersect with those projects
+    if (createdByCrIds) pq = pq.in("id", createdByCrIds);
     const { data } = await pq;
     const found = data as any[] || [];
     if (found.length === 0) return { message: `No project found matching "${args.project_title}"`, total: 0 };
     crIds = found.map((r: any) => r.id);
   }
 
-  // Effective CR filter: project_title filter (already team-intersected) or team scope
-  const effectiveCrIds = crIds || epScopeCrIds || null;
+  // Effective CR filter: project_title filter → created_by filter → team scope
+  const effectiveCrIds = crIds || createdByCrIds || epScopeCrIds || null;
 
   // Resolve episode IDs so episodic_evaluations (q2) is also filtered
   if (effectiveCrIds) {
@@ -1118,6 +1154,211 @@ async function toolQueryApprovals(
   };
 }
 
+async function toolQueryTeamFeedback(
+  args: { project_title?: string; team_filter?: string; period?: string },
+  admin: AdminClient,
+  scope: TeamScope = null
+) {
+  const range = parsePeriod(args.period);
+
+  // Get call reports for the user's team (or all if admin)
+  let crQuery: any = admin
+    .from("call_reports")
+    .select("id, working_title, writer_name")
+    .eq("meeting_type", "call_report")
+    .is("archived_at", null)
+    .order("created_at", { ascending: false });
+
+  if (scope) crQuery = crQuery.eq("team_id", scope.teamId);
+  if (args.project_title) crQuery = crQuery.ilike("working_title", fuzzy(args.project_title));
+
+  const { data: callReports } = await crQuery;
+  const crs = callReports as any[] || [];
+  if (crs.length === 0) return { message: "No projects found for your team.", total_projects_with_feedback: 0, projects: [] };
+
+  const reportIds = crs.map((r: any) => r.id);
+
+  // Identify Programming and Content Development teams
+  const { data: allTeams } = await admin
+    .from("teams")
+    .select("id, team_type, team_head:users!team_head_id(email)");
+
+  const programmingTeamIds = new Set(
+    (allTeams || []).filter((t: any) => t.team_type === "programmer").map((t: any) => t.id)
+  );
+  const contentDevTeamIds = new Set(
+    (allTeams || []).filter((t: any) => (t.team_head as any)?.email === "humera.safder@geo.tv").map((t: any) => t.id)
+  );
+
+  // Filter by team_filter if specified
+  let bothTeamIds: string[] = [];
+  if (args.team_filter === "programming") {
+    bothTeamIds = [...programmingTeamIds];
+  } else if (args.team_filter === "content_development") {
+    bothTeamIds = [...contentDevTeamIds];
+  } else {
+    bothTeamIds = [...programmingTeamIds, ...contentDevTeamIds];
+  }
+
+  if (bothTeamIds.length === 0) return { message: "No feedback teams found.", total_projects_with_feedback: 0, projects: [] };
+
+  // Fetch members of feedback teams
+  const { data: teamMembers } = await admin
+    .from("users")
+    .select("id, name, team_id")
+    .in("team_id", bothTeamIds);
+
+  const feedbackUserIds = (teamMembers as any[] || []).map((u: any) => u.id);
+  const userNameMap = new Map((teamMembers as any[] || []).map((u: any) => [u.id, u.name]));
+  const userTeamType = new Map((teamMembers as any[] || []).map((u: any) => [
+    u.id,
+    programmingTeamIds.has(u.team_id) ? "programming" : "content_development"
+  ]));
+
+  if (feedbackUserIds.length === 0) return { message: "No feedback team members found.", total_projects_with_feedback: 0, projects: [] };
+
+  // Fetch one-liner evaluations from feedback teams
+  let olQuery: any = admin
+    .from("evaluator_forms")
+    .select("id, call_report_id, evaluator_id, average_score, decision, submitted_at")
+    .in("call_report_id", reportIds)
+    .in("evaluator_id", feedbackUserIds)
+    .not("submitted_at", "is", null);
+
+  if (range) olQuery = olQuery.gte("submitted_at", range.start.toISOString()).lte("submitted_at", range.end.toISOString());
+
+  // Fetch episodes for episodic evaluations
+  const { data: episodes } = await admin
+    .from("episodes")
+    .select("id, call_report_id, episode_number")
+    .in("call_report_id", reportIds)
+    .eq("is_current", true);
+
+  const episodeIds = (episodes as any[] || []).map((e: any) => e.id);
+  const epToCr = new Map((episodes as any[] || []).map((e: any) => [e.id, e.call_report_id]));
+
+  // Fetch episodic evaluations from feedback teams
+  let epQuery: any = episodeIds.length
+    ? admin
+        .from("episodic_evaluations")
+        .select("id, episode_id, evaluator_id, overall_average, decision, submitted_at")
+        .in("episode_id", episodeIds)
+        .in("evaluator_id", feedbackUserIds)
+        .not("submitted_at", "is", null)
+    : null;
+
+  if (epQuery && range) epQuery = epQuery.gte("submitted_at", range.start.toISOString()).lte("submitted_at", range.end.toISOString());
+
+  // Fetch programmer feedback
+  let pfQuery: any = admin
+    .from("programmer_feedback")
+    .select("id, call_report_id, feedback_date, content, programmer:users!programmer_id(name)")
+    .in("call_report_id", reportIds)
+    .order("feedback_date", { ascending: false });
+
+  if (range) pfQuery = pfQuery.gte("feedback_date", range.start.toISOString()).lte("feedback_date", range.end.toISOString());
+
+  const [{ data: olEvals }, epResult, { data: pfRows }] = await Promise.all([
+    olQuery,
+    epQuery ? epQuery : Promise.resolve({ data: [] }),
+    pfQuery,
+  ]);
+
+  const ol = olEvals as any[] || [];
+  const ep = (epResult?.data || epResult || []) as any[];
+  const pf = pfRows as any[] || [];
+
+  // Build per-project summary
+  const crMap = new Map(crs.map((r: any) => [r.id, r]));
+  type TeamFeedback = { evaluators: Set<string>; olScores: number[]; epScores: number[]; decisions: string[]; epCount: number };
+  const projectData: Record<string, { programming: TeamFeedback; content_development: TeamFeedback; programmerNotes: any[] }> = {};
+
+  const ensureProject = (crId: string) => {
+    if (!projectData[crId]) {
+      projectData[crId] = {
+        programming: { evaluators: new Set(), olScores: [], epScores: [], decisions: [], epCount: 0 },
+        content_development: { evaluators: new Set(), olScores: [], epScores: [], decisions: [], epCount: 0 },
+        programmerNotes: [],
+      };
+    }
+    return projectData[crId];
+  };
+
+  for (const e of ol) {
+    const team = userTeamType.get(e.evaluator_id) || "programming";
+    const p = ensureProject(e.call_report_id);
+    const fb = p[team as "programming" | "content_development"];
+    fb.evaluators.add(userNameMap.get(e.evaluator_id) || "Unknown");
+    if (e.average_score != null) fb.olScores.push(parseFloat(e.average_score));
+    if (e.decision) fb.decisions.push(e.decision);
+  }
+
+  for (const e of ep) {
+    const crId = epToCr.get(e.episode_id);
+    if (!crId) continue;
+    const team = userTeamType.get(e.evaluator_id) || "programming";
+    const p = ensureProject(crId);
+    const fb = p[team as "programming" | "content_development"];
+    fb.evaluators.add(userNameMap.get(e.evaluator_id) || "Unknown");
+    if (e.overall_average != null) fb.epScores.push(parseFloat(e.overall_average));
+    fb.epCount++;
+  }
+
+  for (const row of pf) {
+    const p = ensureProject(row.call_report_id);
+    p.programmerNotes.push({
+      by: (row.programmer as any)?.name || "Unknown",
+      date: row.feedback_date ? fmtDate(row.feedback_date) : "",
+      content: row.content ? (row.content.length > 200 ? row.content.slice(0, 200) + "..." : row.content) : null,
+    });
+  }
+
+  const avg = (arr: number[]) => arr.length ? parseFloat((arr.reduce((a, b) => a + b, 0) / arr.length).toFixed(1)) : null;
+
+  const projects = Object.entries(projectData)
+    .map(([crId, data]) => {
+      const cr = crMap.get(crId) || {} as any;
+      const result: any = {
+        title: cr.working_title || "Unknown",
+        writer: cr.writer_name || "Unknown",
+      };
+
+      if (data.programming.evaluators.size > 0 || data.programming.epCount > 0) {
+        result.programming_feedback = {
+          evaluators: [...data.programming.evaluators],
+          avg_oneliner_score: avg(data.programming.olScores),
+          decisions: data.programming.decisions,
+          episodic_avg: avg(data.programming.epScores),
+          episodic_count: data.programming.epCount,
+        };
+      }
+
+      if (data.content_development.evaluators.size > 0 || data.content_development.epCount > 0) {
+        result.content_dev_feedback = {
+          evaluators: [...data.content_development.evaluators],
+          avg_oneliner_score: avg(data.content_development.olScores),
+          decisions: data.content_development.decisions,
+          episodic_avg: avg(data.content_development.epScores),
+          episodic_count: data.content_development.epCount,
+        };
+      }
+
+      if (data.programmerNotes.length > 0) {
+        result.programmer_notes = data.programmerNotes.slice(0, 3);
+      }
+
+      return result;
+    })
+    .filter(p => p.programming_feedback || p.content_dev_feedback || p.programmer_notes);
+
+  return {
+    period: args.period || "all time",
+    total_projects_with_feedback: projects.length,
+    total_team_projects: crs.length,
+    projects: projects.slice(0, 30),
+  };
+}
+
 async function executeTool(name: string, args: any, admin: AdminClient, scope: TeamScope = null): Promise<any> {
   // Pre-populate team CR IDs once for scoped access (cached across multiple tool calls)
   if (scope && !scope.crIds) {
@@ -1137,6 +1378,7 @@ async function executeTool(name: string, args: any, admin: AdminClient, scope: T
     case "query_writers":            return toolQueryWriters(args, admin, scope);
     case "query_meetings":           return toolQueryMeetings(args, admin, scope);
     case "query_approvals":          return toolQueryApprovals(args, admin, scope);
+    case "query_team_feedback":      return toolQueryTeamFeedback(args, admin, scope);
     default:                         return { error: `Unknown tool: ${name}` };
   }
 }
@@ -1442,9 +1684,10 @@ export async function POST(request: NextRequest) {
     let teamMemberNames: string[] = [];
     if (!isUnrestricted && profile?.team_id) {
       const adminForScope = createAdminClient();
-      const [{ data: teamMembers }, { data: teamRow }] = await Promise.all([
+      const [{ data: teamMembers }, { data: teamRow }, { data: teamCrs }] = await Promise.all([
         adminForScope.from("users").select("id, name, role").eq("team_id", profile.team_id),
         adminForScope.from("teams").select("name").eq("id", profile.team_id).single(),
+        adminForScope.from("call_reports").select("id").eq("team_id", profile.team_id),
       ]);
       const members = teamMembers as any[] || [];
       teamName = teamRow?.name || "Unknown Team";
@@ -1457,6 +1700,7 @@ export async function POST(request: NextRequest) {
       scope = {
         teamId: profile.team_id,
         memberIds: members.map((m: any) => m.id),
+        crIds: (teamCrs as any[] || []).map((r: any) => r.id),
       };
     }
 
@@ -1508,6 +1752,8 @@ WHEN TO SKIP TOOLS (respond with text instead):
 TOOL ROUTING GUIDE:
 - Overall summary / big picture / how are we doing → query_overview
 - Evaluation scores, counts, highest rated → query_evaluations
+- "Which of my projects have been evaluated" / evaluations on someone's projects → query_evaluations(created_by=name)
+- Feedback from other teams, what others think of our projects, team feedback → query_team_feedback
 - Person's work / activity / what has X done → query_person_activity
 - Episode delivery / behind / received → query_episode_delivery
 - Pending evaluations or approvals → query_pending
