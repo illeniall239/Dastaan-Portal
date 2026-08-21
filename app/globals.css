@@ -667,24 +667,3 @@ body[data-scroll-locked] {
     grid-template-columns: repeat(3, 1fr);
   }
 }
-
-/* ── Bento Studio Design System ───────────────────────────── */
-.bento-studio {
-  --bs-bg: #EFEFEC;
-  --bs-text: #15151A;
-  --bs-text-secondary: #7B7B85;
-  --bs-accent: #5B4BFF;
-  --bs-orange: #FF6B4A;
-  --bs-green: #12B886;
-  --bs-amber: #FFC94D;
-  --bs-dark: #17171F;
-  --bs-tile-bg: #FFFFFF;
-  --bs-subtle-bg: #F8F8F5;
-  --bs-tile-radius: 28px;
-  --bs-stat-radius: 24px;
-  --bs-gap: 16px;
-
-  font-family: var(--font-jakarta), sans-serif;
-  background: var(--bs-bg);
-  color: var(--bs-text);
-}
