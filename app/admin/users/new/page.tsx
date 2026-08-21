@@ -407,6 +407,12 @@ export default function NewUserPage() {
                               Programming Team
                             </div>
                           </SelectItem>
+                          <SelectItem value="content_development">
+                            <div className="flex items-center gap-2">
+                              <div className="h-2 w-2 rounded-full bg-indigo-500" />
+                              Content Development
+                            </div>
+                          </SelectItem>
                         </SelectContent>
                       </Select>
                     )}
@@ -434,14 +440,16 @@ export default function NewUserPage() {
                       <Select
                         onValueChange={field.onChange}
                         defaultValue={field.value}
-                        disabled={teamsLoading || watch("department") === "gcm" || watch("department") === "programming_team"}
+                        disabled={teamsLoading || watch("department") === "gcm" || watch("department") === "programming_team" || watch("department") === "content_development"}
                       >
-                        <SelectTrigger className={`touch-target ${errors.team_id ? 'border-red-500' : ''} ${(watch("department") === "gcm" || watch("department") === "programming_team") ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                        <SelectTrigger className={`touch-target ${errors.team_id ? 'border-red-500' : ''} ${(watch("department") === "gcm" || watch("department") === "programming_team" || watch("department") === "content_development") ? 'opacity-50 cursor-not-allowed' : ''}`}>
                           <SelectValue placeholder={
                             watch("department") === "gcm"
                               ? "GCM users auto-assigned to shared team"
                               : watch("department") === "programming_team"
                               ? "Programmer users auto-assigned to Programming Team"
+                              : watch("department") === "content_development"
+                              ? "Auto-assigned to Humera's Team"
                               : (teamsLoading ? "Loading teams..." : "Select a team (optional)")
                           } />
                         </SelectTrigger>
@@ -453,6 +461,10 @@ export default function NewUserPage() {
                           ) : watch("department") === "programming_team" ? (
                             <div className="px-2 py-3 text-sm text-muted-foreground">
                               Programmer users are automatically assigned to the shared Programming Team
+                            </div>
+                          ) : watch("department") === "content_development" ? (
+                            <div className="px-2 py-3 text-sm text-muted-foreground">
+                              Content Development users are automatically assigned to Humera&apos;s Team
                             </div>
                           ) : (
                             teams.length === 0 && !teamsLoading ? (
@@ -493,6 +505,10 @@ export default function NewUserPage() {
                   ) : watch("department") === "programming_team" ? (
                     <p className="text-xs text-muted-foreground">
                       Programmer users are automatically assigned to the shared Programming Team
+                    </p>
+                  ) : watch("department") === "content_development" ? (
+                    <p className="text-xs text-muted-foreground">
+                      Content Development users are automatically assigned to Humera&apos;s Team with restricted programmer access
                     </p>
                   ) : (
                     <p className="text-xs text-muted-foreground">

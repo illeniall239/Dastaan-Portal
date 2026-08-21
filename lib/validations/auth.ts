@@ -19,6 +19,8 @@ export const departmentToRole = (department: string): UserRole => {
       return "gcm";
     case "programming_team":
       return "programmer";
+    case "content_development":
+      return "programmer";
     case "admin":
       return "admin";
     default:
@@ -68,6 +70,7 @@ export const signupSchema = z
       "management_viewer",
       "content_team",
       "programming_team",
+      "content_development",
     ], {
       required_error: "Department is required",
       invalid_type_error: "Please select a valid department",
@@ -176,6 +179,7 @@ export const adminCreateUserSchema = z.object({
     "content_team",
     "gcm",
     "programming_team",
+    "content_development",
   ], {
     required_error: "Department is required",
     invalid_type_error: "Please select a valid department",

@@ -189,8 +189,42 @@ export async function POST(request: Request) {
           role: 'gcm',
         });
       }
-    } else if (role === 'programmer') {
-      // Programmer users always belong to the shared Programming Team
+    } else if (department === 'content_development') {
+      // Content Development users go to Humera Safder's team
+      const { data: humeraUser } = await adminClient
+        .from('users')
+        .select('id')
+        .eq('email', 'humera.safder@geo.tv')
+        .single();
+      const { data: humeraTeam } = humeraUser
+        ? await adminClient
+            .from('teams')
+            .select('id')
+            .eq('team_head_id', humeraUser.id)
+            .single()
+        : { data: null };
+
+      if (humeraTeam?.id) {
+        const { error: updateError } = await adminClient
+          .from('users')
+          .update({ team_id: humeraTeam.id })
+          .eq('id', newUser.user.id);
+
+        if (updateError) {
+          logger.dbError('content_dev_team_assignment', updateError, {
+            userId: newUser.user.id,
+            teamId: humeraTeam.id,
+            email,
+          });
+        }
+      } else {
+        logger.warn('Management team not found for Content Development user assignment', {
+          userId: newUser.user.id,
+          email,
+        });
+      }
+    } else if (department === 'programming_team') {
+      // Programming Team users go to the shared Programming Team
       const { data: programmingTeam } = await adminClient
         .from('teams')
         .select('id')

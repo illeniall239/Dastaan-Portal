@@ -1403,7 +1403,7 @@ export async function POST(request: NextRequest) {
     if (!rate.success) return rate.response!;
 
     const { data: profile } = await supabase
-      .from("users").select("role, email, team_id, name").eq("id", user.id).single();
+      .from("users").select("role, email, team_id, name, position").eq("id", user.id).single();
 
     const role = profile?.role ?? "";
     const isUnrestricted = ["admin", "management"].includes(role);
@@ -1485,12 +1485,13 @@ export async function POST(request: NextRequest) {
       management_viewer: "Management Viewer",
     };
     const roleLabel = ROLE_LABELS[role] || role;
+    const userDesignation = profile?.position || roleLabel;
     const teamContext = scope
       ? `\nTeam: ${teamName}\nTeam members: ${teamMemberNames.join(", ")}`
       : "";
     const scopeNote = scope
-      ? `\n\nIMPORTANT: The current user is ${userName} (${profile?.email || "unknown"}, role: ${roleLabel}).${teamContext}\nYou are serving a team member, NOT an executive. All data returned is scoped to their team only. If the user asks "who am I", tell them their name and role. If the user asks about their team or team members, use the info above. If the user asks about another team's data, other teams' performance, or people outside their team, do NOT call any tools — instead respond with a short message explaining that you can only access data for their own team. Respond: "I can only access data for your team. For information about other teams, please contact management."`
-      : `\n\nThe current user is ${userName} (${profile?.email || "unknown"}, role: ${roleLabel}).`;
+      ? `\n\nIMPORTANT: The current user is ${userName} (${profile?.email || "unknown"}, designation: ${userDesignation}).${teamContext}\nYou are serving a team member, NOT an executive. All data returned is scoped to their team only. If the user asks "who am I", tell them their name and designation. If the user asks about their team or team members, use the info above. If the user asks about another team's data, other teams' performance, or people outside their team, do NOT call any tools — instead respond with a short message explaining that you can only access data for their own team. Respond: "I can only access data for your team. For information about other teams, please contact management."`
+      : `\n\nThe current user is ${userName} (${profile?.email || "unknown"}, designation: ${userDesignation}).`;
 
     const DATA_SYSTEM = `You are a data assistant for Dastaan Portal at GEO TV.${scopeNote}
 

@@ -11,6 +11,8 @@ const managementTeamHiddenPaths = new Set([
   "/programmer/feedback-timeline",
   "/programmer/roadmap",
   "/programmer/cross-team-shares",
+  "/programmer/delivery-rate",
+  "/programmer/annual-targets",
 ]);
 
 // Programmer-specific navigation items
