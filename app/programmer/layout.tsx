@@ -3,16 +3,18 @@ import { redirect } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { SidebarWrapper } from "./sidebar-wrapper";
 
-// Tabs hidden from management-type teams (e.g., Humera's team)
-const managementTeamHiddenPaths = new Set([
-  "/programmer/missing-details",
-  "/programmer/content-aging",
-  "/programmer/writer-commitment",
-  "/programmer/feedback-timeline",
-  "/programmer/roadmap",
-  "/programmer/cross-team-shares",
-  "/programmer/delivery-rate",
-  "/programmer/annual-targets",
+// Allowlist: only these paths are visible to management-type teams (e.g., Humera's team)
+// New programmer tabs will NOT appear for them unless explicitly added here.
+const managementTeamAllowedPaths = new Set([
+  "/programmer",
+  "/programmer/ai-assistant",
+  "/programmer/calendar",
+  "/programmer/call-reports",
+  "/programmer/evaluations-list",
+  "/programmer/episodes",
+  "/programmer/status-updater",
+  "/programmer/contract-terms",
+  "/programmer/requested-evaluations",
 ]);
 
 // Programmer-specific navigation items
@@ -128,7 +130,7 @@ export default async function ProgrammerLayout({
         .single();
       if (team?.team_type === "management") {
         filteredNavItems = programmerNavItems.filter(
-          (item) => !managementTeamHiddenPaths.has(item.href)
+          (item) => managementTeamAllowedPaths.has(item.href)
         );
       }
     }
