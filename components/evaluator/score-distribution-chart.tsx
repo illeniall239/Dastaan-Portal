@@ -187,54 +187,87 @@ export function GenreDistributionChart({ projects, bare }: { projects: ChartProj
         <div>
           <h3 className="text-[15px] font-bold text-[#15151A] mb-1">Genre coverage</h3>
           <p className="text-[11.5px] text-[#7B7B85] mb-3">Breakdown across active projects</p>
-          <div className="h-48 relative">
+          <div className="h-44 relative">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
-                <Pie data={data} cx="50%" cy="50%" innerRadius={40} outerRadius={70} paddingAngle={2} dataKey="count" nameKey="name" cursor="pointer" onClick={(d: any) => { if (projectsByGenre[d.name]?.length) setDrillDown({ label: d.name, items: projectsByGenre[d.name] }); }}>
+                <Pie
+                  data={data}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={36}
+                  outerRadius={56}
+                  paddingAngle={2}
+                  dataKey="count"
+                  nameKey="name"
+                  cursor="pointer"
+                  onClick={(d: any) => { if (projectsByGenre[d.name]?.length) setDrillDown({ label: d.name, items: projectsByGenre[d.name] }); }}
+                >
                   {data.map((entry, i) => (<Cell key={i} fill={entry.color} stroke="white" strokeWidth={2} />))}
                 </Pie>
                 <Tooltip formatter={(value: number, name: string) => [`${value} projects`, name]} contentStyle={{ backgroundColor: "white", border: "1px solid #e5e7eb", borderRadius: "8px", fontSize: "12px" }} />
-                <Legend formatter={(value: string) => <span style={{ fontSize: 10, color: "#374151" }}>{value}</span>} />
               </PieChart>
             </ResponsiveContainer>
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none" style={{ marginBottom: 24 }}>
-              <div className="text-center">
-                <p className="text-lg font-bold text-gray-900">{total}</p>
-                <p className="text-[9px] text-gray-500 uppercase">Total</p>
-              </div>
+            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+              <span className="text-lg font-bold text-gray-900 leading-none">{total}</span>
+              <span className="text-[9px] font-semibold text-gray-400 uppercase tracking-wider mt-0.5">Total</span>
             </div>
+          </div>
+          <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1.5 mt-2 px-1">
+            {data.map((entry) => (
+              <button
+                key={entry.name}
+                type="button"
+                onClick={() => { if (projectsByGenre[entry.name]?.length) setDrillDown({ label: entry.name, items: projectsByGenre[entry.name] }); }}
+                className="flex items-center gap-1.5 hover:opacity-80 transition-opacity cursor-pointer text-left"
+              >
+                <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: entry.color }} />
+                <span className="text-[11px] text-gray-700 font-medium">{entry.name}</span>
+              </button>
+            ))}
           </div>
         </div>
       ) : (
-      <Card className="p-4 border border-gray-200 shadow-sm">
-        <h3 className="text-sm font-semibold text-gray-900 mb-1">Projects by Genre</h3>
-        <p className="text-xs text-gray-500 mb-3">Genre breakdown across active projects</p>
-        <div className="h-48 relative">
-          <ResponsiveContainer width="100%" height="100%">
-            <PieChart>
-              <Pie
-                data={data}
-                cx="50%"
-                cy="50%"
-                innerRadius={40}
-                outerRadius={70}
-                paddingAngle={2}
-                dataKey="count"
-                nameKey="name"
-                cursor="pointer"
-                onClick={(d: any) => { if (projectsByGenre[d.name]?.length) setDrillDown({ label: d.name, items: projectsByGenre[d.name] }); }}
-              >
-                {data.map((entry, i) => (<Cell key={i} fill={entry.color} stroke="white" strokeWidth={2} />))}
-              </Pie>
-              <Tooltip formatter={(value: number, name: string) => [`${value} projects`, name]} contentStyle={{ backgroundColor: "white", border: "1px solid #e5e7eb", borderRadius: "8px", fontSize: "12px" }} />
-              <Legend formatter={(value: string) => <span style={{ fontSize: 10, color: "#374151" }}>{value}</span>} />
-            </PieChart>
-          </ResponsiveContainer>
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none" style={{ marginBottom: 24 }}>
-            <div className="text-center">
-              <p className="text-lg font-bold text-gray-900">{total}</p>
-              <p className="text-[9px] text-gray-500 uppercase">Total</p>
+      <Card className="p-4 border border-gray-200 shadow-sm flex flex-col justify-between">
+        <div>
+          <h3 className="text-sm font-semibold text-gray-900 mb-1">Projects by Genre</h3>
+          <p className="text-xs text-gray-500 mb-3">Genre breakdown across active projects</p>
+          <div className="h-44 relative">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={data}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={36}
+                  outerRadius={56}
+                  paddingAngle={2}
+                  dataKey="count"
+                  nameKey="name"
+                  cursor="pointer"
+                  onClick={(d: any) => { if (projectsByGenre[d.name]?.length) setDrillDown({ label: d.name, items: projectsByGenre[d.name] }); }}
+                >
+                  {data.map((entry, i) => (<Cell key={i} fill={entry.color} stroke="white" strokeWidth={2} />))}
+                </Pie>
+                <Tooltip formatter={(value: number, name: string) => [`${value} projects`, name]} contentStyle={{ backgroundColor: "white", border: "1px solid #e5e7eb", borderRadius: "8px", fontSize: "12px" }} />
+              </PieChart>
+            </ResponsiveContainer>
+            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+              <span className="text-lg font-bold text-gray-900 leading-none">{total}</span>
+              <span className="text-[9px] font-semibold text-gray-400 uppercase tracking-wider mt-0.5">Total</span>
             </div>
+          </div>
+          <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1.5 mt-2 px-1">
+            {data.map((entry) => (
+              <button
+                key={entry.name}
+                type="button"
+                onClick={() => { if (projectsByGenre[entry.name]?.length) setDrillDown({ label: entry.name, items: projectsByGenre[entry.name] }); }}
+                className="flex items-center gap-1.5 hover:opacity-80 transition-opacity cursor-pointer text-left"
+              >
+                <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: entry.color }} />
+                <span className="text-[11px] text-gray-700 font-medium">{entry.name}</span>
+              </button>
+            ))}
           </div>
         </div>
       </Card>
