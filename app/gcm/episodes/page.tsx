@@ -49,11 +49,13 @@ import {
 import { formatFileSize } from "@/lib/validations/episodes";
 import { EpisodeUploadForm, type EpisodeFormEntry } from "@/components/episodes/episode-upload-form";
 import { EpisodeFileUpload } from "@/components/episodes/episode-file-upload";
+import { getGradeColorClasses } from "@/lib/validations/episodic-evaluations";
 import { ScoreCard } from "@/components/episodic-evaluations/score-card";
-import type { EpisodeWithDetails } from "@/types";
+import type { EpisodeWithDetails, EpisodicEvaluationWithDetails } from "@/types";
 import { canEditEpisode as canEditEpisodeUtil } from "@/lib/episodes/permissions";
 import { BackButton } from "@/components/ui/back-button";
 import { formatDate } from "@/lib/utils/format-date";
+import { ShareCrossTeamButton } from "@/components/call-report/share-cross-team-button";
 import { RevisionEvaluateList } from "@/components/episodes/revision-evaluate-list";
 
 interface CallReportWriter {
@@ -91,6 +93,16 @@ interface ProjectGroup {
   sourceId?: string;
 }
 
+interface EvaluationProjectGroup {
+  projectId: string;
+  projectName: string;
+  projectType: "call_report" | "story";
+  writerName?: string;
+  projectStatus?: string;
+  evaluations: EpisodicEvaluationWithDetails[];
+  totalCount: number;
+}
+
 type ExistingEpisodeEdit = EpisodeWithDetails & {
   _newFile?: File | null;
   _isSaving?: boolean;
@@ -120,11 +132,18 @@ export default function GcmEpisodesPage() {
   const [projectPage, setProjectPage] = useState(1);
   const [hasMoreProjects, setHasMoreProjects] = useState(false);
   const [totalProjects, setTotalProjects] = useState(0);
+  const [expandedEvalProjects, setExpandedEvalProjects] = useState<Set<string>>(new Set());
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [currentUserRole, setCurrentUserRole] = useState<string | null>(null);
+  const [isTeamHead, setIsTeamHead] = useState(false);
   const [currentTeamId, setCurrentTeamId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("list");
   const logSectionRef = useRef<HTMLDivElement | null>(null);
+
+  // AbortController refs for cancelling in-flight requests
+  const episodesAbortRef = useRef<AbortController | null>(null);
+  const evaluationsAbortRef = useRef<AbortController | null>(null);
+  const existingEpisodesAbortRef = useRef<AbortController | null>(null);
 
   // Log episodes state
   const [logLoading, setLogLoading] = useState(false);
@@ -143,8 +162,15 @@ export default function GcmEpisodesPage() {
     },
   ]);
 
-  const searchAbortRef = useRef<AbortController | null>(null);
+  // My evaluations state
+  const [myEvaluations, setMyEvaluations] = useState<EpisodicEvaluationWithDetails[]>([]);
+  const [evaluationsLoading, setEvaluationsLoading] = useState(false);
   const fetchEpisodesAndStatus = useCallback(async (page: number = 1, append: boolean = false, search: string = "") => {
+    // Cancel any in-flight request
+    episodesAbortRef.current?.abort();
+    const controller = new AbortController();
+    episodesAbortRef.current = controller;
+
     if (page === 1) {
       setLoading(true);
     } else {
@@ -154,34 +180,36 @@ export default function GcmEpisodesPage() {
     try {
       // Fetch user info first
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user || controller.signal.aborted) return;
 
       setCurrentUserId(user.id);
 
-      // Fetch user role and team (team_id not used here but good to have for consistency)
+      // Fetch user role and team
       const { data: userData } = await supabase
         .from("users")
-        .select("team_id, role")
+        .select("role, team_id")
         .eq("id", user.id)
         .single();
 
       if (userData) {
         setCurrentUserRole(userData.role);
-        setCurrentTeamId(userData.team_id || null);
+        if (userData.team_id) {
+          setCurrentTeamId(userData.team_id);
+          // Check if user is team head
+          const { data: team } = await supabase
+            .from("teams")
+            .select("team_head_id")
+            .eq("id", userData.team_id)
+            .single();
+          setIsTeamHead(team?.team_head_id === user.id);
+        }
       }
-
-      // Cancel previous search request
-      if (search && searchAbortRef.current) {
-        searchAbortRef.current.abort();
-      }
-      const abortController = new AbortController();
-      if (search) searchAbortRef.current = abortController;
 
       // Fetch episodes with project-based pagination (20 projects at a time, all their episodes)
       const searchParam = search ? `&search=${encodeURIComponent(search)}` : "";
       const response = await fetch(
         `/api/episodes?group_by_project=true&project_limit=20&project_page=${page}&include_evaluation_status=true${searchParam}&_t=${Date.now()}`,
-        { cache: 'no-store', signal: abortController.signal }
+        { cache: 'no-store', signal: controller.signal }
       );
       const data = await response.json();
 
@@ -215,12 +243,14 @@ export default function GcmEpisodesPage() {
       setHasMoreProjects(data.pagination?.hasMoreProjects || false);
       setTotalProjects(data.pagination?.totalProjects || 0);
     } catch (error: any) {
-      if (error?.name === "AbortError") return;
+      if (error.name === 'AbortError') return;
       console.error("Error fetching episodes:", error);
       toast.error(error.message || "Failed to load episodes");
     } finally {
-      setLoading(false);
-      setLoadingMore(false);
+      if (!controller.signal.aborted) {
+        setLoading(false);
+        setLoadingMore(false);
+      }
     }
   }, []);
 
@@ -315,6 +345,13 @@ export default function GcmEpisodesPage() {
   // Initial load - only fetch episodes, call reports loaded when Log tab is active
   useEffect(() => {
     fetchEpisodesAndStatus();
+
+    return () => {
+      // Cleanup all in-flight requests on unmount
+      episodesAbortRef.current?.abort();
+      evaluationsAbortRef.current?.abort();
+      existingEpisodesAbortRef.current?.abort();
+    };
   }, [fetchEpisodesAndStatus]);
 
   // Lazy load call reports only when Log tab is active
@@ -386,11 +423,16 @@ export default function GcmEpisodesPage() {
       return;
     }
 
+    // Cancel any in-flight request
+    existingEpisodesAbortRef.current?.abort();
+    const controller = new AbortController();
+    existingEpisodesAbortRef.current = controller;
+
     setExistingEpisodesLoading(true);
     try {
       const response = await fetch(
         `/api/episodes?call_report_id=${selectedSource}&limit=100`,
-        { cache: 'no-store' }
+        { cache: 'no-store', signal: controller.signal }
       );
       const data = await response.json();
       if (!response.ok) {
@@ -416,6 +458,7 @@ export default function GcmEpisodesPage() {
 
       setExistingEpisodesForSource(episodesList);
     } catch (error) {
+      if ((error as Error).name === 'AbortError') return;
       console.error("Error fetching existing episodes:", error);
       toast.error("Failed to fetch existing episodes");
       setExistingEpisodesForSource([]);
@@ -429,7 +472,9 @@ export default function GcmEpisodesPage() {
         },
       ]);
     } finally {
-      setExistingEpisodesLoading(false);
+      if (!controller.signal.aborted) {
+        setExistingEpisodesLoading(false);
+      }
     }
   }, [selectedSource]);
 
@@ -437,8 +482,41 @@ export default function GcmEpisodesPage() {
     loadExistingEpisodes();
   }, [loadExistingEpisodes]);
 
+  const fetchMyEvaluations = async () => {
+    // Cancel any in-flight request
+    evaluationsAbortRef.current?.abort();
+    const controller = new AbortController();
+    evaluationsAbortRef.current = controller;
+
+    setEvaluationsLoading(true);
+    try {
+      const response = await fetch(`/api/episodic-evaluations?_t=${Date.now()}`, {
+        signal: controller.signal,
+        cache: 'no-store',
+      });
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to fetch evaluations");
+      }
+
+      setMyEvaluations((data.data || []).filter((e: any) => !e.cross_team_share_id));
+    } catch (error: any) {
+      if (error.name === 'AbortError') return;
+      console.error("Error fetching evaluations:", error);
+      toast.error(error.message || "Failed to load evaluations");
+    } finally {
+      if (!controller.signal.aborted) {
+        setEvaluationsLoading(false);
+      }
+    }
+  };
+
   const handleTabChange = (value: string) => {
     setActiveTab(value);
+    if (value === "evaluations") {
+      fetchMyEvaluations();
+    }
     if (value === "log") {
       setTimeout(() => {
         logSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -652,10 +730,73 @@ export default function GcmEpisodesPage() {
     [filteredEpisodes, evaluationStatus]
   );
 
+  // Group my evaluations by project for collapsible UI in My Evaluations tab
+  const groupMyEvaluationsByProject = (
+    evalList: EpisodicEvaluationWithDetails[]
+  ): EvaluationProjectGroup[] => {
+    const map = new Map<string, EvaluationProjectGroup>();
+    evalList.forEach((e) => {
+      const ep = e.episode;
+      if (!ep) return;
+      let projectId: string;
+      let projectName: string;
+      let projectType: "call_report" | "story";
+      let writerName: string | undefined;
+      let projectStatus: string | undefined;
+
+      if (ep.call_report_id && ep.call_report) {
+        const callReport = ep.call_report as any;
+        projectId = `call_report_${ep.call_report_id}`;
+        projectName = callReport.working_title;
+        const crWriters = callReport.call_report_writers;
+        if (crWriters && crWriters.length > 0) {
+          const sorted = [...crWriters].sort((a: any, b: any) => (a.display_order ?? 0) - (b.display_order ?? 0));
+          writerName = sorted.map((w: any) => w.writer?.name).filter(Boolean).join(", ");
+        }
+        if (!writerName) writerName = callReport.writer_name;
+        projectType = "call_report";
+      } else if (ep.story_id && ep.story) {
+        projectId = `story_${ep.story_id}`;
+        projectName = ep.story.title;
+        projectStatus = ep.story.status;
+        projectType = "story";
+      } else {
+        projectId = `episode_${ep.id}`;
+        projectName = ep.title || "Untitled Episode";
+        projectType = "call_report";
+      }
+
+      if (!map.has(projectId)) {
+        map.set(projectId, {
+          projectId,
+          projectName,
+          projectType,
+          writerName,
+          projectStatus,
+          evaluations: [],
+          totalCount: 0,
+        });
+      }
+      const group = map.get(projectId)!;
+      group.evaluations.push(e);
+      group.totalCount++;
+    });
+
+    return Array.from(map.values()).sort((a, b) => a.projectName.localeCompare(b.projectName));
+  };
+
+  const evalProjects = groupMyEvaluationsByProject(myEvaluations);
+
   const toggleProject = (projectId: string) => {
     const next = new Set(expandedProjects);
     if (next.has(projectId)) next.delete(projectId); else next.add(projectId);
     setExpandedProjects(next);
+  };
+
+  const toggleEvalProject = (projectId: string) => {
+    const next = new Set(expandedEvalProjects);
+    if (next.has(projectId)) next.delete(projectId); else next.add(projectId);
+    setExpandedEvalProjects(next);
   };
 
   const handleContinueEpisodes = (project: ProjectGroup) => {
@@ -831,9 +972,10 @@ export default function GcmEpisodesPage() {
         onValueChange={handleTabChange}
         className="space-y-4 sm:space-y-6"
       >
-        <TabsList className="grid w-full max-w-md grid-cols-2">
+        <TabsList className="grid w-full max-w-md grid-cols-3">
           <TabsTrigger value="list">Episodes List</TabsTrigger>
           <TabsTrigger value="log">Log Episodes</TabsTrigger>
+          <TabsTrigger value="evaluations">My Evaluations</TabsTrigger>
         </TabsList>
 
         {/* Episodes List Tab */}
@@ -957,7 +1099,14 @@ export default function GcmEpisodesPage() {
                                   </div>
                                 </TableCell>
                                 <TableCell>
-                                  {episode.logged_by_user?.name || "Unknown"}
+                                  <div className="flex flex-col gap-1">
+                                    <span>{episode.logged_by_user?.name || "Unknown"}</span>
+                                    {episode.initial_assessment != null && currentUserRole && ["content_manager", "content_creator", "admin", "management"].includes(currentUserRole) && (
+                                      <span className="text-xs text-muted-foreground">
+                                        Initial Assessment: <span className="font-semibold text-blue-700">{episode.initial_assessment}/10</span>
+                                      </span>
+                                    )}
+                                  </div>
                                 </TableCell>
                                 <TableCell>
                                   <div className="flex items-center gap-2">
@@ -992,6 +1141,14 @@ export default function GcmEpisodesPage() {
                                         )}
                                       </DropdownMenuContent>
                                     </DropdownMenu>
+                                    {isTeamHead && (
+                                      <ShareCrossTeamButton
+                                        callReportId={episode.call_report_id || ""}
+                                        currentTeamId={currentTeamId || undefined}
+                                        episodeId={episode.id}
+                                        callReportTitle={project.projectName}
+                                      />
+                                    )}
                                   </div>
                                 </TableCell>
                               </TableRow>
@@ -1095,10 +1252,25 @@ export default function GcmEpisodesPage() {
                                   originalFileName={episode.attachment_name}
                                   originalDate={episode.original_submission_date || episode.created_at}
                                 />
+                                {episode.initial_assessment != null && currentUserRole && ["content_manager", "content_creator", "admin", "management"].includes(currentUserRole) && (
+                                  <div className="flex items-center gap-2 text-sm">
+                                    <span className="text-muted-foreground">Initial Assessment:</span>
+                                    <span className="font-semibold text-blue-700">{episode.initial_assessment}/10</span>
+                                    <span className="text-muted-foreground">by {episode.logged_by_user?.name || "Unknown"}</span>
+                                  </div>
+                                )}
                                 <div className="flex items-center gap-2 flex-wrap">
                                   <span className="text-sm text-muted-foreground flex-1">
                                     By: {episode.logged_by_user?.name || "Unknown"}
                                   </span>
+                                  {isTeamHead && (
+                                    <ShareCrossTeamButton
+                                      callReportId={episode.call_report_id || ""}
+                                      currentTeamId={currentTeamId || undefined}
+                                      episodeId={episode.id}
+                                      callReportTitle={project.projectName}
+                                    />
+                                  )}
                                   {canEditEpisode(episode) && (
                                     <Button size="sm" variant="outline" onClick={() => router.push(`/gcm/episodes/${episode.id}/edit`)} className="touch-target">
                                       <Pencil className="h-4 w-4 mr-1" />
@@ -1373,6 +1545,164 @@ export default function GcmEpisodesPage() {
               </div>
             </form>
           </div>
+        </TabsContent>
+
+        {/* My Evaluations Tab */}
+        <TabsContent value="evaluations">
+          {evaluationsLoading ? (
+            <div className="flex items-center justify-center h-64">
+              <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+            </div>
+          ) : myEvaluations.length === 0 ? (
+            <div className="text-center py-12 bg-white rounded-lg border">
+              <ClipboardCheck className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+              <h3 className="text-lg font-semibold mb-2">No evaluations yet</h3>
+              <p className="text-muted-foreground">
+                Start evaluating episodes to see your submissions here
+              </p>
+            </div>
+          ) : (
+            <div className="bg-white rounded-lg border shadow-sm">
+              {/* Desktop grouped table */}
+              <div className="hidden md:block">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Episode #</TableHead>
+                      <TableHead>Project</TableHead>
+                      <TableHead>Score</TableHead>
+                      <TableHead>Submitted</TableHead>
+                      <TableHead className="text-right">Action</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {evalProjects.map((project) => (
+                      <Fragment key={project.projectId}>
+                        <TableRow
+                          className="bg-slate-50 hover:bg-slate-100 cursor-pointer border-t-2 border-slate-200"
+                          onClick={() => toggleEvalProject(project.projectId)}
+                        >
+                          <TableCell colSpan={5} className="font-semibold py-4">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-3">
+                                {expandedEvalProjects.has(project.projectId) ? (
+                                  <ChevronDown className="h-5 w-5 text-slate-600 flex-shrink-0" />
+                                ) : (
+                                  <ChevronRight className="h-5 w-5 text-slate-600 flex-shrink-0" />
+                                )}
+                                <div>
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-base">{project.projectName}</span>
+                                    {project.writerName && (
+                                      <span className="text-sm text-muted-foreground font-normal">by {project.writerName}</span>
+                                    )}
+                                  </div>
+                                  {project.projectStatus && (
+                                    <Badge variant="secondary" className="text-xs mt-1">{project.projectStatus}</Badge>
+                                  )}
+                                </div>
+                              </div>
+                              <span className="text-sm text-muted-foreground">
+                                {project.totalCount} {project.totalCount === 1 ? "Evaluation" : "Evaluations"}
+                              </span>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+
+                        {expandedEvalProjects.has(project.projectId) &&
+                          project.evaluations.map((evaluation) => (
+                            <TableRow key={evaluation.id} className="hover:bg-slate-50">
+                              <TableCell className="pl-12">
+                                <Badge variant="outline">EP {evaluation.episode?.episode_number}</Badge>
+                              </TableCell>
+                              <TableCell>{/* Project in header */}</TableCell>
+                              <TableCell>
+                                <span className="font-bold text-lg">{evaluation.overall_average.toFixed(2)}</span>
+                                <span className="text-sm text-muted-foreground">/10</span>
+                              </TableCell>
+                              <TableCell className="text-sm text-muted-foreground">
+                                {formatDate(evaluation.submitted_at)}
+                              </TableCell>
+                              <TableCell className="text-right">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => router.push(`/gcm/episodes/${evaluation.episode_id}`)}
+                                >
+                                  <Eye className="h-4 w-4 mr-1" />
+                                  View
+                                </Button>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                      </Fragment>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+
+              {/* Mobile grouped cards */}
+              <div className="md:hidden divide-y">
+                {evalProjects.map((project) => (
+                  <div key={project.projectId}>
+                    <div
+                      className="p-4 flex items-center justify-between bg-slate-50"
+                      onClick={() => toggleEvalProject(project.projectId)}
+                    >
+                      <div className="flex items-center gap-2">
+                        {expandedEvalProjects.has(project.projectId) ? (
+                          <ChevronDown className="h-5 w-5 text-slate-600" />
+                        ) : (
+                          <ChevronRight className="h-5 w-5 text-slate-600" />
+                        )}
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium">{project.projectName}</span>
+                            {project.writerName && (
+                              <span className="text-sm text-muted-foreground">by {project.writerName}</span>
+                            )}
+                          </div>
+                          {project.projectStatus && (
+                            <Badge variant="secondary" className="text-xs mt-1">{project.projectStatus}</Badge>
+                          )}
+                        </div>
+                      </div>
+                      <span className="text-sm text-muted-foreground">{project.totalCount}</span>
+                    </div>
+
+                    {expandedEvalProjects.has(project.projectId) && (
+                      <div className="divide-y divide-slate-200">
+                        {project.evaluations.map((evaluation) => (
+                          <div key={evaluation.id} className="p-4 flex flex-col gap-3 items-center text-center bg-white">
+                            <div className="flex flex-col items-center gap-2 w-full">
+                              <Badge variant="outline" className="text-sm">EP {evaluation.episode?.episode_number}</Badge>
+                              <span className="font-medium text-base">
+                                {evaluation.episode?.title || (
+                                  <span className="text-muted-foreground italic">Untitled</span>
+                                )}
+                              </span>
+                            </div>
+                            <div className="text-lg font-bold">
+                              {evaluation.overall_average.toFixed(2)}<span className="text-muted-foreground text-base">/10</span>
+                            </div>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => router.push(`/gcm/episodes/${evaluation.episode_id}`)}
+                              className="touch-target w-full max-w-xs"
+                            >
+                              <Eye className="h-4 w-4 mr-1" />
+                              View
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </TabsContent>
       </Tabs>
     </div>
