@@ -348,3 +348,14 @@ export const DynamicAnnualTargetVisual = dynamic(
     ssr: false,
   }
 );
+
+/**
+ * Delivery Rate Overview (Grouped bar chart by team + waada periods)
+ */
+export const DynamicDeliveryRateOverview = dynamic(
+  () => import("@/components/management/delivery-rate-overview").then((mod) => mod.DeliveryRateOverview),
+  {
+    loading: () => <ChartLoader />,
+    ssr: false,
+  }
+);

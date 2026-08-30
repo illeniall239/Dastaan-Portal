@@ -23,6 +23,7 @@ export async function GET() {
       { data: waadas },
       { data: episodes },
       { data: callReports },
+      { data: manualRows },
     ] = await Promise.all([
       admin.from("writer_commitments")
         .select("id, call_report_id, writer_id, commitment_schedule, project_initiation_date, commitment_date, revised_commitment_date, is_delivered"),
@@ -36,9 +37,17 @@ export async function GET() {
         .select("id, working_title, writer_name, total_episodes, team_id, target_slot, team:teams!call_reports_team_id_fkey(name, team_head:users!teams_team_head_id_fkey(name))")
         .is("archived_at", null)
         .eq("meeting_type", "call_report"),
+      admin.from("delivery_rate_manual")
+        .select("*"),
     ]);
 
-    // Episode data per call_report: dates + count
+    // Manual overrides keyed by writer_commitment_id
+    const manualMap = new Map<string, any>();
+    for (const m of manualRows || []) {
+      manualMap.set(m.writer_commitment_id, m);
+    }
+
+    // Episode data per call_report: dates + count (fallback when no manual data)
     const epMap = new Map<string, { count: number; dates: Date[]; firstDate: Date | null }>();
     for (const ep of episodes || []) {
       if (!ep.call_report_id) continue;
@@ -118,25 +127,35 @@ export async function GET() {
       const cr = crMap.get(wc.call_report_id);
       if (!cr) continue;
 
-      const schedule = wc.commitment_schedule;
-      const rate = expectedPerDay(schedule);
-      const perMonth = expectedPerMonth(schedule);
-      const perWeek = rate * 7;
-
+      const manual = manualMap.get(wc.id);
       const ep = epMap.get(cr.id);
-      const actualEps = ep?.count || 0;
+
+      // Standard CPW: manual override → derive from schedule
+      const schedule = wc.commitment_schedule;
+      const scheduleRate = expectedPerDay(schedule);
+      const stdCpw = manual?.standard_cpw != null ? Number(manual.standard_cpw) : scheduleRate * 7;
+      const stdCpwPerMonth = stdCpw * (30 / 7); // formula: cpw × 30/7
+
+      // In-hand episodes: manual → auto-count from episodes table
+      const actualEps = manual?.in_hand_eps != null ? Number(manual.in_hand_eps) : (ep?.count || 0);
       const firstDate = ep?.firstDate || null;
 
-      // Standard delivery rate — always from project_initiation_date
+      // Standard weeks & months: formula from project_initiation_date to now
       const startRef = new Date(wc.project_initiation_date);
-      // End reference: use deadline if it exists and has passed, otherwise now
-      const deadlineDate = wc.revised_commitment_date ? new Date(wc.revised_commitment_date) : (wc.commitment_date ? new Date(wc.commitment_date) : null);
-      const endRef = (deadlineDate && deadlineDate <= now) ? deadlineDate : now;
-      const msElapsed = endRef.getTime() - startRef.getTime();
+      const msElapsed = now.getTime() - startRef.getTime();
       const weeks = Math.max(msElapsed / (1000 * 60 * 60 * 24 * 7), 0.1);
       const months = Math.max(msElapsed / (1000 * 60 * 60 * 24 * 30), 0.1);
-      let totalCommitted = perMonth * months;
-      if (cr.total_episodes) totalCommitted = Math.min(totalCommitted, cr.total_episodes);
+
+      // Standard total committed: manual override → formula (cpw × weeks, capped at total_episodes)
+      let totalCommitted: number;
+      if (manual?.standard_total_committed != null) {
+        totalCommitted = Number(manual.standard_total_committed);
+      } else {
+        totalCommitted = stdCpw * weeks;
+        if (cr.total_episodes) totalCommitted = Math.min(totalCommitted, cr.total_episodes);
+      }
+
+      // Formulas
       const deliveryRatePerMonth = months > 0 ? actualEps / months : 0;
       const standardRate = totalCommitted > 0 ? Math.round((actualEps / totalCommitted) * 100) : 0;
 
@@ -150,18 +169,30 @@ export async function GET() {
       const waadaDetails: WaadaDetail[] = wcWaadas.map((w) => {
         const wStart = new Date(w.start_date);
         const wEndRaw = w.end_date ? new Date(w.end_date) : null;
-        // Use end_date if it's in the past, otherwise use now (ongoing waada)
         const wEnd = wEndRaw && wEndRaw <= now ? wEndRaw : now;
         const wMs = wEnd.getTime() - wStart.getTime();
-        const wWeeks = Math.max(wMs / (1000 * 60 * 60 * 24 * 7), 0.1);
-        const wMonths = Math.max(wMs / (1000 * 60 * 60 * 24 * 30), 0.1);
         const wpw = Number(w.commitment_per_week);
-        const wCommitted = wpw * wWeeks;
-        const wPerMonth = wpw * 4; // commitment/week * 4
+        const wPerMonth = wpw * 4;
 
-        // Count episodes received during this waada period (use actual end date for range, or now if ongoing)
-        const epEnd = wEndRaw || now;
-        const epsInRange = (ep?.dates || []).filter((d) => d >= wStart && d <= epEnd).length;
+        // Weeks: manual override → formula (end - start) / 7
+        const wKey = `w${w.waada_number}` as "w1" | "w2" | "w3" | "w4";
+        const manualWeeks = manual?.[`${wKey}_no_of_weeks`];
+        const wWeeks = manualWeeks != null ? Number(manualWeeks) : Math.max(wMs / (1000 * 60 * 60 * 24 * 7), 0.1);
+        const wMonths = Math.max(wMs / (1000 * 60 * 60 * 24 * 30), 0.1);
+
+        // Committed: formula weeks × cpw
+        const wCommitted = wpw * wWeeks;
+
+        // Episodes received: manual override → auto-count from episodes table
+        const manualEps = manual?.[`${wKey}_eps_received`];
+        let epsInRange: number;
+        if (manualEps != null) {
+          epsInRange = Number(manualEps);
+        } else {
+          const epEnd = wEndRaw || now;
+          epsInRange = (ep?.dates || []).filter((d) => d >= wStart && d <= epEnd).length;
+        }
+
         const wRate = wCommitted > 0 ? Math.round((epsInRange / wCommitted) * 100) : 0;
         const wRatePerMonth = wMonths > 0 ? epsInRange / wMonths : 0;
 
@@ -209,19 +240,19 @@ export async function GET() {
         commitmentDate: wc.commitment_date || null,
         deadline: wc.revised_commitment_date || wc.commitment_date || null,
         standard: {
-          commitmentPerWeek: Math.round(perWeek * 10) / 10,
-          commitmentPerMonth: Math.round(perMonth * 10) / 10,
-          scheduleLabel: rate > 0 ? scheduleLabel(schedule) : "Custom",
+          commitmentPerWeek: Math.round(stdCpw * 10) / 10,
+          commitmentPerMonth: Math.round(stdCpwPerMonth * 10) / 10,
+          scheduleLabel: stdCpw > 0 ? (manual?.standard_cpw != null ? `${stdCpw}/week` : scheduleLabel(schedule)) : "Custom",
           firstEpDate: firstDate ? firstDate.toISOString().slice(0, 10) : null,
           weeks: Math.round(weeks * 10) / 10,
           months: Math.round(months * 10) / 10,
           totalCommitted: Math.round(totalCommitted * 10) / 10,
           deliveryRatePerMonth: Math.round(deliveryRatePerMonth * 10) / 10,
-          deliveryRatePercent: rate > 0 ? standardRate : -1, // -1 = N/A
+          deliveryRatePercent: stdCpw > 0 ? standardRate : -1,
         },
         waadas: waadaDetails,
         summaryRates: {
-          standard: rate > 0 ? standardRate : -1,
+          standard: stdCpw > 0 ? standardRate : -1,
           waada1: waadaDetails.find((w) => w.number === 1)?.deliveryRatePercent ?? null,
           waada2: waadaDetails.find((w) => w.number === 2)?.deliveryRatePercent ?? null,
           waada3: waadaDetails.find((w) => w.number === 3)?.deliveryRatePercent ?? null,
@@ -351,7 +382,15 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// PATCH: Update commitment_date or revised_commitment_date
+// PATCH: Update editable fields across tables
+const COMMITMENT_FIELDS = new Set(["commitment_date", "revised_commitment_date", "project_initiation_date"]);
+const MANUAL_FIELDS = new Set([
+  "in_hand_eps", "standard_cpw", "standard_total_committed",
+  "w1_eps_received", "w1_no_of_weeks", "w2_eps_received", "w2_no_of_weeks",
+  "w3_eps_received", "w3_no_of_weeks", "w4_eps_received", "w4_no_of_weeks",
+]);
+const WAADA_FIELDS = new Set(["start_date", "end_date", "commitment_per_week"]);
+
 export async function PATCH(request: NextRequest) {
   try {
     const supabase = await createClient();
@@ -359,25 +398,46 @@ export async function PATCH(request: NextRequest) {
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const body = await request.json();
-    const { commitmentId, field, value } = body;
-
-    if (!commitmentId || !field) {
-      return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
-    }
-
-    if (!["commitment_date", "revised_commitment_date"].includes(field)) {
-      return NextResponse.json({ error: "Invalid field" }, { status: 400 });
-    }
+    const { commitmentId, waadaId, field, value } = body;
+    if (!field) return NextResponse.json({ error: "Missing field" }, { status: 400 });
 
     const admin = createAdminClient();
-    const { error } = await admin
-      .from("writer_commitments")
-      .update({ [field]: value || null })
-      .eq("id", commitmentId);
 
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    // Route 1: writer_commitments fields
+    if (commitmentId && COMMITMENT_FIELDS.has(field)) {
+      const { error } = await admin
+        .from("writer_commitments")
+        .update({ [field]: value || null })
+        .eq("id", commitmentId);
+      if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+      return NextResponse.json({ success: true });
+    }
 
-    return NextResponse.json({ success: true });
+    // Route 2: delivery_rate_manual fields (upsert)
+    if (commitmentId && MANUAL_FIELDS.has(field)) {
+      const parsed = value === "" || value === null || value === undefined ? null : Number(value);
+      const { error } = await admin
+        .from("delivery_rate_manual")
+        .upsert(
+          { writer_commitment_id: commitmentId, [field]: parsed, updated_at: new Date().toISOString() },
+          { onConflict: "writer_commitment_id" }
+        );
+      if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+      return NextResponse.json({ success: true });
+    }
+
+    // Route 3: writer_waadas fields
+    if (waadaId && WAADA_FIELDS.has(field)) {
+      const val = field === "commitment_per_week" ? (value ? Number(value) : null) : (value || null);
+      const { error } = await admin
+        .from("writer_waadas")
+        .update({ [field]: val })
+        .eq("id", waadaId);
+      if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+      return NextResponse.json({ success: true });
+    }
+
+    return NextResponse.json({ error: "Invalid field or missing ID" }, { status: 400 });
   } catch (error: any) {
     return NextResponse.json({ error: error.message || "Internal error" }, { status: 500 });
   }

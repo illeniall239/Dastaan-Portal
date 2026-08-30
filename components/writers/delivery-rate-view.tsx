@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo, useCallback, Fragment } from "react";
 import { Card, CardContent } from "@/components/ui/card";
-import { Loader2, Minus, Plus, Save } from "lucide-react";
+import { Download, Loader2, Minus, Plus, Save } from "lucide-react";
 
 interface WaadaDetail {
   id: string;
@@ -88,6 +88,32 @@ export function DeliveryRateView() {
   const [teamWaadaCols, setTeamWaadaCols] = useState<Record<string, number>>({});
   // Track inline waada input per row: commitmentId → { startDate, endDate, commitmentPerWeek }
   const [rowWaadaInputs, setRowWaadaInputs] = useState<Record<string, { startDate: string; endDate: string; commitmentPerWeek: string }>>({});
+  // Counter to force re-render of defaultValue inputs after data refresh
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [exporting, setExporting] = useState(false);
+
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      const res = await fetch(`/api/writer-commitments/delivery-rate/export?_t=${Date.now()}`);
+      if (!res.ok) throw new Error("Export failed");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      const disposition = res.headers.get("Content-Disposition") || "";
+      const match = disposition.match(/filename="(.+)"/);
+      a.download = match?.[1] || "Delivery Rate.xlsx";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch {
+      // silent
+    } finally {
+      setExporting(false);
+    }
+  };
 
   const fetchData = useCallback(() => {
     fetch(`/api/writer-commitments/delivery-rate?_t=${Date.now()}`)
@@ -113,7 +139,7 @@ export function DeliveryRateView() {
         }
       })
       .catch(() => {})
-      .finally(() => setLoading(false));
+      .finally(() => { setLoading(false); setRefreshKey((k) => k + 1); });
   }, []);
 
   useEffect(() => { fetchData(); }, [fetchData]);
@@ -213,6 +239,21 @@ export function DeliveryRateView() {
     );
   };
 
+  // Generic field save: routes to PATCH with commitmentId or waadaId
+  const handleFieldSave = async (
+    ids: { commitmentId?: string; waadaId?: string },
+    field: string,
+    value: string
+  ) => {
+    await fetch("/api/writer-commitments/delivery-rate", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...ids, field, value: value || null }),
+    });
+    // Refetch to get recomputed formula values
+    fetchData();
+  };
+
   const handleDeleteWaada = async (waadaId: string) => {
     await fetch(`/api/writer-commitments/delivery-rate?id=${waadaId}`, { method: "DELETE" });
     setLoading(true);
@@ -241,17 +282,27 @@ export function DeliveryRateView() {
 
   return (
     <div className="space-y-6">
-      {/* Filter */}
-      <div className="flex items-center gap-3">
-        <label className="text-xs font-medium text-gray-600">Team:</label>
-        <select
-          value={teamFilter}
-          onChange={(e) => setTeamFilter(e.target.value)}
-          className="text-xs border border-gray-200 rounded-md px-2 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-blue-400"
+      {/* Filter + Export */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <label className="text-xs font-medium text-gray-600">Team:</label>
+          <select
+            value={teamFilter}
+            onChange={(e) => setTeamFilter(e.target.value)}
+            className="text-xs border border-gray-200 rounded-md px-2 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-blue-400"
+          >
+            <option value="all">All Teams</option>
+            {teams.map(([id, name]) => <option key={id} value={id}>{name}</option>)}
+          </select>
+        </div>
+        <button
+          onClick={handleExport}
+          disabled={exporting}
+          className="text-xs font-medium text-white bg-[#224794] hover:bg-[#1a3670] disabled:opacity-50 rounded-md px-3 py-1.5 flex items-center gap-1.5 transition-colors"
         >
-          <option value="all">All Teams</option>
-          {teams.map(([id, name]) => <option key={id} value={id}>{name}</option>)}
-        </select>
+          {exporting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
+          Export Excel
+        </button>
       </div>
 
       {grouped.map((group) => {
@@ -292,7 +343,8 @@ export function DeliveryRateView() {
                   <thead>
                     {/* Group headers */}
                     <tr className="border-b border-gray-300">
-                      <th colSpan={7} className={`${groupHeaderClass} bg-blue-50 text-blue-800 border-r border-gray-300`}>Summary</th>
+                      <th className={`${groupHeaderClass} bg-blue-50 text-blue-800 sticky left-0 z-20 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.1)]`}>&nbsp;</th>
+                      <th colSpan={6} className={`${groupHeaderClass} bg-blue-50 text-blue-800 border-r border-gray-300`}>Summary</th>
                       <th colSpan={10} className={`${groupHeaderClass} bg-gray-50 text-gray-700 border-r border-gray-300`}>Standard</th>
                       {waadaNums.map((n) => (
                         <th key={n} colSpan={waadaColCount(n)} className={`${groupHeaderClass} bg-amber-50 text-amber-800 border-r border-gray-300`}>Waada {String(n).padStart(2, "0")}</th>
@@ -306,7 +358,7 @@ export function DeliveryRateView() {
                     </tr>
                     {/* Column headers */}
                     <tr className="border-b-2 border-gray-300 bg-gray-50">
-                      <th className={`${thClass} text-left text-gray-700`}>Title</th>
+                      <th className={`${thClass} text-left text-gray-700 sticky left-0 z-20 bg-gray-50 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.1)]`}>Title</th>
                       <th className={`${thClass} text-left text-gray-700`}>Writer</th>
                       <th className={`${thClass} text-gray-700`}>Slot</th>
                       <th className={`${thClass} text-gray-700`}>Total Eps</th>
@@ -357,13 +409,18 @@ export function DeliveryRateView() {
                       const w = (n: number) => p.waadas.find((w) => w.number === n);
 
                       return (
-                        <tr key={p.id} className="border-b border-gray-100 hover:bg-gray-50/50">
+                        <tr key={`${p.id}-${refreshKey}`} className="border-b border-gray-100 hover:bg-gray-50/50">
                           {/* Summary */}
-                          <td className={`${tdClass} text-left font-medium text-gray-900 max-w-[160px] truncate`}>{p.title}</td>
+                          <td className={`${tdClass} text-left font-medium text-gray-900 max-w-[160px] truncate sticky left-0 z-10 bg-white shadow-[2px_0_4px_-2px_rgba(0,0,0,0.1)]`}>{p.title}</td>
                           <td className={`${tdClass} text-left text-gray-600 max-w-[120px] truncate`}>{p.writer}</td>
                           <td className={`${tdClass} text-gray-600`}>{p.slot || "—"}</td>
                           <td className={`${tdClass} text-gray-700`}>{p.totalEpisodes ?? "—"}</td>
-                          <td className={`${tdClass} font-semibold text-gray-900`}>{p.inHandEpisodes}</td>
+                          <td className={tdClass}>
+                            <input type="number" min="0" step="1"
+                              defaultValue={p.inHandEpisodes}
+                              onBlur={(e) => handleFieldSave({ commitmentId: p.commitmentId }, "in_hand_eps", e.target.value)}
+                              className={`${inputClass} w-[50px] font-semibold text-gray-900`} />
+                          </td>
                           <td className={tdClass}>
                             <input type="date" value={p.commitmentDate || ""}
                               onChange={(e) => handleDateChange(p.commitmentId, "commitment_date", e.target.value)}
@@ -375,10 +432,25 @@ export function DeliveryRateView() {
                               className={`${inputClass} w-[105px]`} />
                           </td>
                           {/* Standard */}
-                          <td className={tdClass}>{p.standard.commitmentPerWeek > 0 ? fmtNum(p.standard.commitmentPerWeek) : "—"}</td>
+                          <td className={tdClass}>
+                            <input type="number" min="0" step="0.5"
+                              defaultValue={p.standard.commitmentPerWeek || ""}
+                              onBlur={(e) => handleFieldSave({ commitmentId: p.commitmentId }, "standard_cpw", e.target.value)}
+                              className={`${inputClass} w-[50px]`} />
+                          </td>
                           <td className={tdClass}>{p.standard.commitmentPerMonth > 0 ? fmtNum(p.standard.commitmentPerMonth) : "—"}</td>
-                          <td className={tdClass}>{p.standard.totalCommitted > 0 ? fmtNum(p.standard.totalCommitted) : "—"}</td>
-                          <td className={tdClass}>{fmtDate(p.standard.firstEpDate)}</td>
+                          <td className={tdClass}>
+                            <input type="number" min="0" step="0.5"
+                              defaultValue={p.standard.totalCommitted || ""}
+                              onBlur={(e) => handleFieldSave({ commitmentId: p.commitmentId }, "standard_total_committed", e.target.value)}
+                              className={`${inputClass} w-[55px]`} />
+                          </td>
+                          <td className={tdClass}>
+                            <input type="date"
+                              defaultValue={p.standard.firstEpDate || ""}
+                              onChange={(e) => handleFieldSave({ commitmentId: p.commitmentId }, "project_initiation_date", e.target.value)}
+                              className={`${inputClass} w-[105px]`} />
+                          </td>
                           <td className={tdClass}>{p.standard.weeks > 0 ? fmtNum(p.standard.weeks) : "—"}</td>
                           <td className={`${tdClass} text-gray-400`}>{new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "2-digit" })}</td>
                           <td className={tdClass}>{p.standard.months > 0 ? fmtNum(p.standard.months) : "—"}</td>
@@ -393,18 +465,41 @@ export function DeliveryRateView() {
                             const inputKey = `${p.commitmentId}-${n}`;
                             const input = rowWaadaInputs[inputKey];
 
-                            // Has saved data — show computed values
+                            // Has saved data — editable manual fields, read-only formula fields
                             if (wd) {
                               return (
                                 <Fragment key={n}>
-                                  <td className={tdClass}>{fmtDate(wd.startDate)}</td>
-                                  <td className={tdClass}>{fmtDate(wd.endDate)}</td>
-                                  <td className={tdClass}>{fmtNum(wd.weeks)}</td>
-                                  <td className={tdClass}>{fmtNum(wd.commitmentPerWeek)}</td>
+                                  <td className={tdClass}>
+                                    <input type="date" defaultValue={wd.startDate || ""}
+                                      onChange={(e) => handleFieldSave({ waadaId: wd.id }, "start_date", e.target.value)}
+                                      className={`${inputClass} w-[105px]`} />
+                                  </td>
+                                  <td className={tdClass}>
+                                    <input type="date" defaultValue={wd.endDate || ""}
+                                      onChange={(e) => handleFieldSave({ waadaId: wd.id }, "end_date", e.target.value)}
+                                      className={`${inputClass} w-[105px]`} />
+                                  </td>
+                                  <td className={tdClass}>
+                                    <input type="number" min="0" step="0.5"
+                                      defaultValue={wd.weeks || ""}
+                                      onBlur={(e) => handleFieldSave({ commitmentId: p.commitmentId }, `w${n}_no_of_weeks`, e.target.value)}
+                                      className={`${inputClass} w-[50px]`} />
+                                  </td>
+                                  <td className={tdClass}>
+                                    <input type="number" min="0.5" step="0.5"
+                                      defaultValue={wd.commitmentPerWeek || ""}
+                                      onBlur={(e) => handleFieldSave({ waadaId: wd.id }, "commitment_per_week", e.target.value)}
+                                      className={`${inputClass} w-[50px]`} />
+                                  </td>
                                   <td className={tdClass}>{fmtNum(wd.commitmentPerMonth)}</td>
                                   <td className={tdClass}>{fmtNum(wd.committedEps)}</td>
                                   {n >= 2 && <td className={`${tdClass} font-semibold`}>{wd.cumulativeCommittedEps !== null ? fmtNum(wd.cumulativeCommittedEps) : "—"}</td>}
-                                  <td className={`${tdClass} font-semibold`}>{wd.receivedEps}</td>
+                                  <td className={tdClass}>
+                                    <input type="number" min="0" step="1"
+                                      defaultValue={wd.receivedEps}
+                                      onBlur={(e) => handleFieldSave({ commitmentId: p.commitmentId }, `w${n}_eps_received`, e.target.value)}
+                                      className={`${inputClass} w-[50px] font-semibold`} />
+                                  </td>
                                   {n >= 2 && <td className={`${tdClass} font-semibold`}>{wd.cumulativeReceivedEps !== null ? wd.cumulativeReceivedEps : "—"}</td>}
                                   <td className={tdClass}>{fmtNum(wd.months)}</td>
                                   <td className={tdClass}>{fmtNum(wd.ratePerMonth)}</td>

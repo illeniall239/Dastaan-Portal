@@ -32,6 +32,7 @@ import {
   DynamicRatingTrends,
   DynamicQualityQuantityChart,
   DynamicAnnualTargetVisual,
+  DynamicDeliveryRateOverview,
 } from "@/components/management/dynamic-components";
 
 import type { TeamOverviewData } from "@/components/management/team-performance/top-teams-widget";
@@ -505,6 +506,34 @@ export async function DelayTrackerSection() {
         />
       </div>
       <DynamicDelayTracker />
+    </div>
+  );
+}
+
+/**
+ * Delivery Rate Overview Section - Async Component
+ * Grouped bar chart showing team delivery rates across standard + waada periods
+ */
+export async function DeliveryRateOverviewSection() {
+  return (
+    <div id="delivery-rate-section" className="mb-6 sm:mb-8">
+      <div className="flex items-center justify-between mb-3 sm:mb-4">
+        <div>
+          <h2 className="text-base sm:text-lg lg:text-xl font-bold text-gray-900">
+            Delivery Rate Overview
+          </h2>
+          <p className="text-muted-foreground mt-1 text-xs sm:text-sm">
+            Team delivery performance across standard and waada commitment periods
+          </p>
+        </div>
+        <ExportButton
+          elementId="delivery-rate-section"
+          filename="delivery-rate-overview"
+          formats={["png", "pdf"]}
+          compact
+        />
+      </div>
+      <DynamicDeliveryRateOverview />
     </div>
   );
 }

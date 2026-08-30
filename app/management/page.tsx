@@ -19,6 +19,7 @@ import {
   RevisionRankingSection,
   PovBreakdownSection,
   DelayTrackerSection,
+  DeliveryRateOverviewSection,
   RatingTrendsSection,
   QualityQuantitySection,
   AnnualTargetSection,
@@ -163,6 +164,14 @@ export default async function ManagementDashboard({
         <ErrorBoundary fallback={<SectionErrorFallback title="Delay Tracker" />}>
           <Suspense fallback={<ChartSkeleton />}>
             <DelayTrackerSection />
+          </Suspense>
+        </ErrorBoundary>
+      )}
+
+      {!isViewer && (
+        <ErrorBoundary fallback={<SectionErrorFallback title="Delivery Rate Overview" />}>
+          <Suspense fallback={<ChartSkeleton />}>
+            <DeliveryRateOverviewSection />
           </Suspense>
         </ErrorBoundary>
       )}
