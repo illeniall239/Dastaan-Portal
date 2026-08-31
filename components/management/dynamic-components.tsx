@@ -359,3 +359,14 @@ export const DynamicDeliveryRateOverview = dynamic(
     ssr: false,
   }
 );
+
+/**
+ * Delivery Performance (Unified horizontal bars + drill-down)
+ */
+export const DynamicDeliveryPerformance = dynamic(
+  () => import("@/components/management/delivery-performance").then((mod) => mod.DeliveryPerformance),
+  {
+    loading: () => <ChartLoader />,
+    ssr: false,
+  }
+);

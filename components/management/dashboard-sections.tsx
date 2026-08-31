@@ -33,6 +33,7 @@ import {
   DynamicQualityQuantityChart,
   DynamicAnnualTargetVisual,
   DynamicDeliveryRateOverview,
+  DynamicDeliveryPerformance,
 } from "@/components/management/dynamic-components";
 
 import type { TeamOverviewData } from "@/components/management/team-performance/top-teams-widget";
@@ -534,6 +535,34 @@ export async function DeliveryRateOverviewSection() {
         />
       </div>
       <DynamicDeliveryRateOverview />
+    </div>
+  );
+}
+
+/**
+ * Delivery Performance Section - Async Component
+ * Unified horizontal bar chart + progressive drill-down (replaces Delay Tracker + Delivery Rate Overview)
+ */
+export async function DeliveryPerformanceSection() {
+  return (
+    <div id="delivery-performance-section" className="mb-6 sm:mb-8">
+      <div className="flex items-center justify-between mb-3 sm:mb-4">
+        <div>
+          <h2 className="text-base sm:text-lg lg:text-xl font-bold text-gray-900">
+            Delivery Performance
+          </h2>
+          <p className="text-muted-foreground mt-1 text-xs sm:text-sm">
+            Team delivery health at a glance — click a bar to see who&apos;s behind
+          </p>
+        </div>
+        <ExportButton
+          elementId="delivery-performance-section"
+          filename="delivery-performance"
+          formats={["png", "pdf"]}
+          compact
+        />
+      </div>
+      <DynamicDeliveryPerformance />
     </div>
   );
 }

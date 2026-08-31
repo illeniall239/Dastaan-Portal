@@ -537,7 +537,12 @@ export function CallReportForm({
             try {
               const ext = att.file_name.includes('.') ? '.' + att.file_name.split('.').pop() : '';
               const newPath = `call_report/${result.id}/${crypto.randomUUID()}${ext}`;
-              await supabase.storage.from('attachments').move(att.file_path, newPath);
+              const { error: moveError } = await supabase.storage.from('attachments').move(att.file_path, newPath);
+              if (moveError) {
+                console.error("Storage move failed:", moveError);
+                toast.error(`Failed to attach ${att.file_name}: could not move file`);
+                continue;
+              }
               await supabase.from('attachments').insert({
                 entity_type: 'call_report',
                 entity_id: result.id,

@@ -44,10 +44,11 @@ export async function GET(request: NextRequest) {
       (teams || []).map((t: any) => [t.id, formatTeamDisplayName(t.name, t.team_head?.name)])
     );
 
-    // Build monthly buckets
+    // Build monthly buckets (use day=1 to avoid month overflow on 31st)
     const months: string[] = [];
     for (let i = 5; i >= 0; i--) {
       const d = new Date();
+      d.setDate(1);
       d.setMonth(d.getMonth() - i);
       months.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`);
     }

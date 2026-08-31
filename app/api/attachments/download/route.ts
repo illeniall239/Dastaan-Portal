@@ -49,9 +49,19 @@ export async function GET(request: NextRequest) {
         .createSignedUrl(filePath, 3600);
 
       if (signedUrlError || !signedUrlData?.signedUrl) {
-        logger.error("Error creating signed URL:", signedUrlError);
+        logger.error("Error creating signed URL:", { error: signedUrlError, filePath, bucket: "attachments" });
+
+        // Check if file actually exists in storage
+        const { data: fileList } = await adminSupabase.storage
+          .from("attachments")
+          .list(filePath.substring(0, filePath.lastIndexOf("/")), {
+            search: filePath.substring(filePath.lastIndexOf("/") + 1),
+          });
+
+        logger.error("File existence check:", { filePath, found: fileList && fileList.length > 0, fileList });
+
         return NextResponse.json(
-          { error: "Failed to generate download URL" },
+          { error: "Failed to generate download URL", detail: signedUrlError?.message || "File may not exist in storage" },
           { status: 500 }
         );
       }
@@ -82,9 +92,9 @@ export async function GET(request: NextRequest) {
       .createSignedUrl(filePath, 3600);
 
     if (signedUrlError || !signedUrlData?.signedUrl) {
-      logger.error("Error creating signed URL:", signedUrlError);
+      logger.error("Error creating signed URL (authenticated):", { error: signedUrlError, filePath, bucket: "attachments" });
       return NextResponse.json(
-        { error: "Failed to generate download URL" },
+        { error: "Failed to generate download URL", detail: signedUrlError?.message || "File may not exist in storage" },
         { status: 500 }
       );
     }

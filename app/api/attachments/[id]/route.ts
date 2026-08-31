@@ -38,14 +38,25 @@ async function checkEntityAccess(
 
         if (evaluatorForm) return true;
 
-        // Check if user is the content manager who created this call report
+        // Check if user created this call report OR is on the same team
         const { data: callReport } = await supabase
           .from('call_reports')
-          .select('created_by')
+          .select('created_by, team_id')
           .eq('id', entityId)
           .single();
 
         if (callReport && callReport.created_by === userId) return true;
+
+        // Check if user is on the same team as the call report
+        if (callReport?.team_id) {
+          const { data: userData } = await supabase
+            .from('users')
+            .select('team_id')
+            .eq('id', userId)
+            .single();
+
+          if (userData && userData.team_id === callReport.team_id) return true;
+        }
 
         // Management, executive, and programmer roles can access all call reports
         if (['management', 'executive', 'content_manager', 'content_head', 'programmer'].includes(userRole)) {
