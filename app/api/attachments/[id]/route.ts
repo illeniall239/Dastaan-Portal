@@ -79,11 +79,30 @@ async function checkEntityAccess(
         // Check if user is the content manager who created this episode
         const { data: episode } = await supabase
           .from('episodes')
-          .select('created_by')
+          .select('created_by, call_report_id')
           .eq('id', entityId)
           .single();
 
         if (episode && episode.created_by === userId) return true;
+
+        // Check if user is on the same team (via the episode's call report)
+        if (episode?.call_report_id) {
+          const { data: epCallReport } = await supabase
+            .from('call_reports')
+            .select('team_id')
+            .eq('id', episode.call_report_id)
+            .single();
+
+          if (epCallReport?.team_id) {
+            const { data: epUserData } = await supabase
+              .from('users')
+              .select('team_id')
+              .eq('id', userId)
+              .single();
+
+            if (epUserData && epUserData.team_id === epCallReport.team_id) return true;
+          }
+        }
 
         // Management, executive, and programmer roles can access all episodes
         if (['management', 'executive', 'content_manager', 'content_head', 'programmer'].includes(userRole)) {
