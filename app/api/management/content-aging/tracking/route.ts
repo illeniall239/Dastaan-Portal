@@ -3,6 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { applyRateLimit } from "@/lib/api-middleware";
 import { RateLimitPresets } from "@/lib/rate-limit-redis";
+import { formatTeamDisplayName } from "@/lib/management/team-display";
 
 export const dynamic = "force-dynamic";
 
@@ -51,7 +52,7 @@ export async function GET(request: NextRequest) {
     const { data: callReports, error: crErr } = await admin
       .from("call_reports")
       .select(`id, working_title, writer_name, tracking_notes, target_slot, average_initial_assessment,
-        team:teams!call_reports_team_id_fkey(id, name)`)
+        team:teams!call_reports_team_id_fkey(id, name, team_head:users!teams_team_head_id_fkey(name))`)
       .eq("meeting_type", "call_report")
       .is("archived_at", null)
       .order("working_title", { ascending: true });
@@ -118,13 +119,17 @@ export async function GET(request: NextRequest) {
 
     if (!allEpisodes?.length) {
       return NextResponse.json({
-        projects: callReports.map((cr) => ({
-          id: cr.id, workingTitle: cr.working_title, writerName: cr.writer_name,
-          trackingNotes: cr.tracking_notes, targetSlot: cr.target_slot || null,
-          teamName: (Array.isArray(cr.team) ? cr.team[0] : cr.team)?.name || null,
-          avgScore: cr.average_initial_assessment ?? null,
-          episodes: [], maxRevisions: 0, monthlySummary: [],
-        })),
+        projects: callReports.map((cr) => {
+          const td = Array.isArray(cr.team) ? cr.team[0] : cr.team;
+          const th = td?.team_head ? (Array.isArray(td.team_head) ? td.team_head[0] : td.team_head) : null;
+          return {
+            id: cr.id, workingTitle: cr.working_title, writerName: cr.writer_name,
+            trackingNotes: cr.tracking_notes, targetSlot: cr.target_slot || null,
+            teamName: formatTeamDisplayName(td?.name || "", th?.name),
+            avgScore: cr.average_initial_assessment ?? null,
+            episodes: [], maxRevisions: 0, monthlySummary: [],
+          };
+        }),
       });
     }
 
@@ -142,13 +147,17 @@ export async function GET(request: NextRequest) {
 
     if (!currentEpisodes.length) {
       return NextResponse.json({
-        projects: callReports.map((cr) => ({
-          id: cr.id, workingTitle: cr.working_title, writerName: cr.writer_name,
-          trackingNotes: cr.tracking_notes, targetSlot: cr.target_slot || null,
-          teamName: (Array.isArray(cr.team) ? cr.team[0] : cr.team)?.name || null,
-          avgScore: cr.average_initial_assessment ?? null,
-          episodes: [], maxRevisions: 0, monthlySummary: [],
-        })),
+        projects: callReports.map((cr) => {
+          const td = Array.isArray(cr.team) ? cr.team[0] : cr.team;
+          const th = td?.team_head ? (Array.isArray(td.team_head) ? td.team_head[0] : td.team_head) : null;
+          return {
+            id: cr.id, workingTitle: cr.working_title, writerName: cr.writer_name,
+            trackingNotes: cr.tracking_notes, targetSlot: cr.target_slot || null,
+            teamName: formatTeamDisplayName(td?.name || "", th?.name),
+            avgScore: cr.average_initial_assessment ?? null,
+            episodes: [], maxRevisions: 0, monthlySummary: [],
+          };
+        }),
       });
     }
 
@@ -323,6 +332,7 @@ export async function GET(request: NextRequest) {
         .map(([month, counts]) => ({ month, ...counts }));
 
       const teamData = Array.isArray(cr.team) ? cr.team[0] : cr.team;
+      const teamHead = teamData?.team_head ? (Array.isArray(teamData.team_head) ? teamData.team_head[0] : teamData.team_head) : null;
 
       return {
         id: cr.id,
@@ -330,7 +340,7 @@ export async function GET(request: NextRequest) {
         writerName: cr.writer_name || null,
         trackingNotes: cr.tracking_notes || null,
         targetSlot: cr.target_slot || null,
-        teamName: teamData?.name || null,
+        teamName: formatTeamDisplayName(teamData?.name || "", teamHead?.name),
         avgScore: cr.average_initial_assessment ?? null,
         episodes: mappedEpisodes,
         maxRevisions,

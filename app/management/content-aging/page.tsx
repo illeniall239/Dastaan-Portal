@@ -305,6 +305,7 @@ export default function ContentAgingPage() {
   const [feedbackTeams, setFeedbackTeams] = useState<string[]>([]);
   const [trackingLoading, setTrackingLoading] = useState(false);
   const trackingLoaded = useRef(false);
+  const [trackingTeamFilter, setTrackingTeamFilter] = useState<string>("all");
   const [selectedOneLinerIds, setSelectedOneLinerIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -354,6 +355,7 @@ export default function ContentAgingPage() {
       setTrackingProjects(data.projects || []);
       setTrackingMaxRevisions(data.globalMaxRevisions || 0);
       setFeedbackTeams(data.feedbackTeams || []);
+      setTrackingTeamFilter("all");
       trackingLoaded.current = true;
     } catch {
       toast.error("Failed to load tracking data");
@@ -365,6 +367,17 @@ export default function ContentAgingPage() {
   useEffect(() => {
     if (activeTab === "tracking") loadTracking();
   }, [activeTab, loadTracking]);
+
+  const trackingTeams = useMemo(() => {
+    const teams = new Set<string>();
+    for (const p of trackingProjects) { if (p.teamName) teams.add(p.teamName); }
+    return Array.from(teams).sort();
+  }, [trackingProjects]);
+
+  const filteredTrackingProjects = useMemo(() => {
+    if (trackingTeamFilter === "all") return trackingProjects;
+    return trackingProjects.filter(p => p.teamName === trackingTeamFilter);
+  }, [trackingProjects, trackingTeamFilter]);
 
   const monthGroups = useMemo(() => groupWeeksByMonth(weeks), [weeks]);
   const visibleEvaluators = useMemo(
@@ -666,41 +679,59 @@ export default function ContentAgingPage() {
 
   const exportTrackingToExcel = () => {
     if (trackingProjects.length === 0) { toast.error("No data to export"); return; }
-    const fbTeamHeaders = feedbackTeams.length > 0 ? feedbackTeams : ["Feedback"];
-    const revHeaders = Array.from({ length: trackingMaxRevisions }, (_, i) => [`${i + 1}${i === 0 ? "st" : i === 1 ? "nd" : i === 2 ? "rd" : "th"} Revised`, ...fbTeamHeaders, "Days"]).flat();
-    const headers = ["Project", "Episode #", "1st Copy Received", ...fbTeamHeaders, "Days", ...revHeaders, "Payment Request Date", "Payment Date", "Writer's Commitment", "Status"];
+    const showFb = !isViewerOnly;
+    const showDays = !isViewerOnly;
+    const fbTeamHeaders = showFb ? (feedbackTeams.length > 0 ? feedbackTeams : ["Feedback"]) : [];
+    const revHeaders = Array.from({ length: trackingMaxRevisions }, (_, i) => [
+      `${i + 1}${i === 0 ? "st" : i === 1 ? "nd" : i === 2 ? "rd" : "th"} Revised`,
+      ...fbTeamHeaders,
+      ...(showDays ? ["Days"] : []),
+    ]).flat();
+    const headers = ["Project", "Episode #", "1st Copy Received", ...fbTeamHeaders, ...(showDays ? ["Days"] : []), ...revHeaders, "Payment Request Date", "Payment Date", "Writer's Commitment", "Status"];
     const rows: (string | number | null)[][] = [];
     for (const p of trackingProjects) {
       for (const ep of p.episodes) {
-        const firstCopyFbCells = feedbackTeams.length > 0
-          ? feedbackTeams.map((team) => ep.firstCopyTeamFeedback?.[team] ?? "")
-          : [ep.firstCopyFeedbackDate ?? ""];
+        const firstCopyFbCells = showFb
+          ? (feedbackTeams.length > 0
+            ? feedbackTeams.map((team) => ep.firstCopyTeamFeedback?.[team] ?? "")
+            : [ep.firstCopyFeedbackDate ?? ""])
+          : [];
         const revCells: (string | number | null)[] = [];
         for (let i = 0; i < trackingMaxRevisions; i++) {
           const rev = ep.revisions[i];
           revCells.push(rev?.receivedDate ?? "");
-          if (feedbackTeams.length > 0) {
-            for (const team of feedbackTeams) {
-              revCells.push(rev?.teamFeedback?.[team] ?? "");
+          if (showFb) {
+            if (feedbackTeams.length > 0) {
+              for (const team of feedbackTeams) {
+                revCells.push(rev?.teamFeedback?.[team] ?? "");
+              }
+            } else {
+              revCells.push(rev?.feedbackDate ?? "");
             }
-          } else {
-            revCells.push(rev?.feedbackDate ?? "");
           }
-          revCells.push(rev?.feedbackDays ?? "");
+          if (showDays) revCells.push(rev?.feedbackDays ?? "");
         }
         rows.push([
-          p.workingTitle, ep.episodeNumber, ep.firstCopyDate, ...firstCopyFbCells, ep.firstCopyFeedbackDays ?? "",
+          p.workingTitle, ep.episodeNumber, ep.firstCopyDate, ...firstCopyFbCells, ...(showDays ? [ep.firstCopyFeedbackDays ?? ""] : []),
           ...revCells, ep.paymentRequestDate ?? "", ep.paymentDate ?? "", p.trackingNotes ?? "", ep.trackingStatus ?? "",
         ]);
       }
     }
-    const tableHTML = `<table><thead><tr>${headers.map((h) => `<th>${h}</th>`).join("")}</tr></thead><tbody>${rows.map((r) => `<tr>${r.map((c) => `<td>${c ?? ""}</td>`).join("")}</tr>`).join("")}</tbody></table>`;
-    const blob = new Blob([tableHTML], { type: "application/vnd.ms-excel" });
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
-    link.download = `tracking_${new Date().toISOString().split("T")[0]}.xls`;
-    link.click();
-    toast.success("Exported successfully");
+    import("exceljs").then(async (ExcelJS) => {
+      const wb = new ExcelJS.Workbook();
+      const ws = wb.addWorksheet("Tracking");
+      const headerRow = ws.addRow(headers);
+      headerRow.eachCell((cell) => { cell.font = { bold: true }; cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFE2E8F0" } }; });
+      for (const r of rows) ws.addRow(r);
+      ws.columns.forEach((col) => { col.width = 18; });
+      const buffer = await wb.xlsx.writeBuffer();
+      const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = `tracking_${new Date().toISOString().split("T")[0]}.xlsx`;
+      link.click();
+      toast.success("Exported successfully");
+    });
   };
 
   // Total dynamic cols for minWidth calculation
@@ -947,8 +978,17 @@ export default function ContentAgingPage() {
             </div>
           ) : (
             <div className="space-y-4">
-              <DeliveryTrendChart projects={trackingProjects} />
-              <TrackingTable projects={trackingProjects} globalMaxRevisions={trackingMaxRevisions} feedbackTeams={feedbackTeams} onUpdate={(projects) => setTrackingProjects(projects)} />
+              <div className="flex items-center gap-3 flex-wrap">
+                <Select value={trackingTeamFilter} onValueChange={setTrackingTeamFilter}>
+                  <SelectTrigger className="h-8 text-xs w-[180px]"><SelectValue placeholder="Team" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Teams</SelectItem>
+                    {trackingTeams.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+                <span className="text-xs text-muted-foreground">{filteredTrackingProjects.length} project{filteredTrackingProjects.length !== 1 ? "s" : ""}</span>
+              </div>
+              <TrackingTable projects={filteredTrackingProjects} globalMaxRevisions={trackingMaxRevisions} feedbackTeams={isViewerOnly ? [] : feedbackTeams} hideDays={isViewerOnly} hideFeedback={isViewerOnly} onUpdate={(projects) => setTrackingProjects(projects)} />
             </div>
           )
         ) : loading ? (
@@ -1690,22 +1730,29 @@ function TrackingTable({
   projects,
   globalMaxRevisions,
   feedbackTeams = [],
+  hideDays = false,
+  hideFeedback = false,
   onUpdate,
 }: {
   projects: TrackingProject[];
   globalMaxRevisions: number;
   feedbackTeams?: string[];
+  hideDays?: boolean;
+  hideFeedback?: boolean;
   onUpdate: (projects: TrackingProject[]) => void;
 }) {
-  const fbTeamCount = Math.max(feedbackTeams.length, 1); // at least 1 col for fallback
-  const hasFbTeams = feedbackTeams.length > 0;
-  // Per copy block: 1st Copy + N team feedback cols + Days
-  // Per revision block: Revised + N team feedback cols + Days
-  const copyBlockCols = 1 + fbTeamCount + 1; // received + team feedbacks + days
+  const effectiveFbTeams = hideFeedback ? [] : feedbackTeams;
+  const fbTeamCount = hideFeedback ? 0 : Math.max(effectiveFbTeams.length, 1);
+  const hasFbTeams = effectiveFbTeams.length > 0;
+  const daysColCount = hideDays ? 0 : 1;
+  // Per copy block: 1st Copy + N team feedback cols + Days (if shown)
+  // Per revision block: Revised + N team feedback cols + Days (if shown)
+  const copyBlockCols = 1 + fbTeamCount + daysColCount; // received + team feedbacks + days
   const revColCount = globalMaxRevisions * copyBlockCols;
   const totalCols = 1 + copyBlockCols + revColCount + 4; // ep# + first copy block + rev blocks + payment/commitment/status
   const fbColWidth = 100;
-  const minWidth = 50 + 110 + fbTeamCount * fbColWidth + 55 + globalMaxRevisions * (110 + fbTeamCount * fbColWidth + 55) + 120 * 2 + 180 + 140;
+  const daysWidth = hideDays ? 0 : 55;
+  const minWidth = 50 + 110 + fbTeamCount * fbColWidth + daysWidth + globalMaxRevisions * (110 + fbTeamCount * fbColWidth + daysWidth) + 120 * 2 + 180 + 140;
 
   const daysColor = (d: number | null) => {
     if (d === null) return "";
@@ -1741,30 +1788,30 @@ function TrackingTable({
         <tr className="bg-muted/80">
           <th className="px-2 py-2 text-left text-xs font-semibold border-b border-r border-border whitespace-nowrap" style={{ width: 50 }}>Ep #</th>
           <th className="px-2 py-2 text-center text-xs font-semibold border-b border-r border-border whitespace-nowrap bg-blue-50 text-blue-700" style={{ width: 110 }}>1st Copy Received</th>
-          {hasFbTeams ? feedbackTeams.map((team) => (
+          {hasFbTeams ? effectiveFbTeams.map((team) => (
             <th key={`fb-0-${team}`} className="px-2 py-2 text-center text-xs font-semibold border-b border-r border-border whitespace-nowrap bg-amber-50 text-amber-700" style={{ width: fbColWidth }}>
               {team}
             </th>
-          )) : (
+          )) : !hideFeedback ? (
             <th className="px-2 py-2 text-center text-xs font-semibold border-b border-r border-border whitespace-nowrap bg-amber-50 text-amber-700" style={{ width: 110 }}>Feedback</th>
-          )}
-          <th className="px-2 py-2 text-center text-xs font-semibold border-b border-r border-border whitespace-nowrap bg-slate-100 text-slate-600" style={{ width: 55 }}>Days</th>
+          ) : null}
+          {!hideDays && <th className="px-2 py-2 text-center text-xs font-semibold border-b border-r border-border whitespace-nowrap bg-slate-100 text-slate-600" style={{ width: 55 }}>Days</th>}
           {Array.from({ length: globalMaxRevisions }, (_, i) => [
             <th key={`rev-${i}`} className="px-2 py-2 text-center text-xs font-semibold border-b border-r border-border whitespace-nowrap bg-blue-50 text-blue-700" style={{ width: 110 }}>
               {ordinal(i + 1)} Revised
             </th>,
-            ...(hasFbTeams ? feedbackTeams.map((team) => (
+            ...(hasFbTeams ? effectiveFbTeams.map((team) => (
               <th key={`fb-${i}-${team}`} className="px-2 py-2 text-center text-xs font-semibold border-b border-r border-border whitespace-nowrap bg-amber-50 text-amber-700" style={{ width: fbColWidth }}>
                 {team}
               </th>
-            )) : [
+            )) : !hideFeedback ? [
               <th key={`fb-${i}`} className="px-2 py-2 text-center text-xs font-semibold border-b border-r border-border whitespace-nowrap bg-amber-50 text-amber-700" style={{ width: 110 }}>
                 Feedback
               </th>,
-            ]),
-            <th key={`days-${i}`} className="px-2 py-2 text-center text-xs font-semibold border-b border-r border-border whitespace-nowrap bg-slate-100 text-slate-600" style={{ width: 55 }}>
+            ] : []),
+            ...(!hideDays ? [<th key={`days-${i}`} className="px-2 py-2 text-center text-xs font-semibold border-b border-r border-border whitespace-nowrap bg-slate-100 text-slate-600" style={{ width: 55 }}>
               Days
-            </th>,
+            </th>] : []),
           ]).flat()}
           <th className="px-2 py-2 text-center text-xs font-semibold border-b border-r border-border whitespace-nowrap bg-green-50 text-green-700" style={{ width: 120 }}>Payment Request</th>
           <th className="px-2 py-2 text-center text-xs font-semibold border-b border-r border-border whitespace-nowrap bg-green-50 text-green-700" style={{ width: 120 }}>Payment Date</th>
@@ -1787,30 +1834,32 @@ function TrackingTable({
               <tr key={ep.id} className="border-b hover:bg-muted/30">
                 <td className="px-2 py-1.5 border-r border-border/60 text-center font-medium">{ep.episodeNumber}</td>
                 <td className="px-2 py-1.5 border-r border-border/60 text-center text-blue-700">{ep.firstCopyDate ?? ""}</td>
-                {hasFbTeams ? feedbackTeams.map((team) => (
+                {hasFbTeams ? effectiveFbTeams.map((team) => (
                   <td key={`fb-0-${team}`} className="px-2 py-1.5 border-r border-border/60 text-center text-amber-700 text-[10px]">
                     {ep.firstCopyTeamFeedback?.[team] ?? ""}
                   </td>
-                )) : (
+                )) : !hideFeedback ? (
                   <td className="px-2 py-1.5 border-r border-border/60 text-center text-amber-700">{ep.firstCopyFeedbackDate ?? ""}</td>
+                ) : null}
+                {!hideDays && (
+                  <td className={`px-2 py-1.5 border-r border-border/60 text-center font-medium ${daysColor(ep.firstCopyFeedbackDays)}`}>
+                    {ep.firstCopyFeedbackDays != null ? `${ep.firstCopyFeedbackDays}d` : ""}
+                  </td>
                 )}
-                <td className={`px-2 py-1.5 border-r border-border/60 text-center font-medium ${daysColor(ep.firstCopyFeedbackDays)}`}>
-                  {ep.firstCopyFeedbackDays != null ? `${ep.firstCopyFeedbackDays}d` : ""}
-                </td>
                 {Array.from({ length: globalMaxRevisions }, (_, i) => {
                   const rev = ep.revisions[i];
                   return [
                     <td key={`rev-${i}`} className="px-2 py-1.5 border-r border-border/60 text-center text-blue-700">{rev?.receivedDate ?? ""}</td>,
-                    ...(hasFbTeams ? feedbackTeams.map((team) => (
+                    ...(hasFbTeams ? effectiveFbTeams.map((team) => (
                       <td key={`fb-${i}-${team}`} className="px-2 py-1.5 border-r border-border/60 text-center text-amber-700 text-[10px]">
                         {rev?.teamFeedback?.[team] ?? ""}
                       </td>
-                    )) : [
+                    )) : !hideFeedback ? [
                       <td key={`fb-${i}`} className="px-2 py-1.5 border-r border-border/60 text-center text-amber-700">{rev?.feedbackDate ?? ""}</td>,
-                    ]),
-                    <td key={`days-${i}`} className={`px-2 py-1.5 border-r border-border/60 text-center font-medium ${daysColor(rev?.feedbackDays ?? null)}`}>
+                    ] : []),
+                    ...(!hideDays ? [<td key={`days-${i}`} className={`px-2 py-1.5 border-r border-border/60 text-center font-medium ${daysColor(rev?.feedbackDays ?? null)}`}>
                       {rev?.feedbackDays != null ? `${rev.feedbackDays}d` : ""}
-                    </td>,
+                    </td>] : []),
                   ];
                 }).flat()}
                 <td className="px-1 py-0.5 border-r border-border/60">

@@ -305,6 +305,7 @@ export default function ContentAgingPage() {
   const [feedbackTeams, setFeedbackTeams] = useState<string[]>([]);
   const [trackingLoading, setTrackingLoading] = useState(false);
   const trackingLoaded = useRef(false);
+  const [trackingTeamFilter, setTrackingTeamFilter] = useState<string>("all");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [slotFilter, setSlotFilter] = useState<string>("all");
@@ -352,6 +353,7 @@ export default function ContentAgingPage() {
       setTrackingProjects(data.projects || []);
       setTrackingMaxRevisions(data.globalMaxRevisions || 0);
       setFeedbackTeams(data.feedbackTeams || []);
+      setTrackingTeamFilter("all");
       trackingLoaded.current = true;
     } catch {
       toast.error("Failed to load tracking data");
@@ -363,6 +365,17 @@ export default function ContentAgingPage() {
   useEffect(() => {
     if (activeTab === "tracking") loadTracking();
   }, [activeTab, loadTracking]);
+
+  const trackingTeams = useMemo(() => {
+    const teams = new Set<string>();
+    for (const p of trackingProjects) { if (p.teamName) teams.add(p.teamName); }
+    return Array.from(teams).sort();
+  }, [trackingProjects]);
+
+  const filteredTrackingProjects = useMemo(() => {
+    if (trackingTeamFilter === "all") return trackingProjects;
+    return trackingProjects.filter(p => p.teamName === trackingTeamFilter);
+  }, [trackingProjects, trackingTeamFilter]);
 
   const monthGroups = useMemo(() => groupWeeksByMonth(weeks), [weeks]);
   const visibleEvaluators = useMemo(
@@ -718,13 +731,21 @@ export default function ContentAgingPage() {
         ]);
       }
     }
-    const tableHTML = `<table><thead><tr>${headers.map((h) => `<th>${h}</th>`).join("")}</tr></thead><tbody>${rows.map((r) => `<tr>${r.map((c) => `<td>${c ?? ""}</td>`).join("")}</tr>`).join("")}</tbody></table>`;
-    const blob = new Blob([tableHTML], { type: "application/vnd.ms-excel" });
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
-    link.download = `tracking_${new Date().toISOString().split("T")[0]}.xls`;
-    link.click();
-    toast.success("Exported successfully");
+    import("exceljs").then(async (ExcelJS) => {
+      const wb = new ExcelJS.Workbook();
+      const ws = wb.addWorksheet("Tracking");
+      const headerRow = ws.addRow(headers);
+      headerRow.eachCell((cell) => { cell.font = { bold: true }; cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFE2E8F0" } }; });
+      for (const r of rows) ws.addRow(r);
+      ws.columns.forEach((col) => { col.width = 18; });
+      const buffer = await wb.xlsx.writeBuffer();
+      const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = `tracking_${new Date().toISOString().split("T")[0]}.xlsx`;
+      link.click();
+      toast.success("Exported successfully");
+    });
   };
 
   const dynamicCols = monthGroups.reduce((s, mg) => s + mg.weeks.length + 1, 0);
@@ -964,8 +985,17 @@ export default function ContentAgingPage() {
             </div>
           ) : (
             <div className="space-y-4">
-              <DeliveryTrendChart projects={trackingProjects} />
-              <TrackingTable projects={trackingProjects} globalMaxRevisions={trackingMaxRevisions} feedbackTeams={feedbackTeams} onUpdate={(projects) => setTrackingProjects(projects)} />
+              <div className="flex items-center gap-3 flex-wrap">
+                <Select value={trackingTeamFilter} onValueChange={setTrackingTeamFilter}>
+                  <SelectTrigger className="h-8 text-xs w-[180px]"><SelectValue placeholder="Team" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Teams</SelectItem>
+                    {trackingTeams.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+                <span className="text-xs text-muted-foreground">{filteredTrackingProjects.length} project{filteredTrackingProjects.length !== 1 ? "s" : ""}</span>
+              </div>
+              <TrackingTable projects={filteredTrackingProjects} globalMaxRevisions={trackingMaxRevisions} feedbackTeams={feedbackTeams} onUpdate={(projects) => setTrackingProjects(projects)} />
             </div>
           )
         ) : loading ? (
