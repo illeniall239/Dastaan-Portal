@@ -24,6 +24,7 @@ import {
   RatingTrendsSection,
   QualityQuantitySection,
   AnnualTargetSection,
+  DeliveryTrendDashboardSection,
 } from "@/components/management/dashboard-sections";
 import {
   TeamProjectsSkeleton,
@@ -165,6 +166,14 @@ export default async function ManagementDashboard({
         <ErrorBoundary fallback={<SectionErrorFallback title="Delivery Performance" />}>
           <Suspense fallback={<ChartSkeleton />}>
             <DeliveryPerformanceSection />
+          </Suspense>
+        </ErrorBoundary>
+      )}
+
+      {!isViewer && (
+        <ErrorBoundary fallback={<SectionErrorFallback title="Monthly Delivery Trend" />}>
+          <Suspense fallback={<ChartSkeleton />}>
+            <DeliveryTrendDashboardSection />
           </Suspense>
         </ErrorBoundary>
       )}

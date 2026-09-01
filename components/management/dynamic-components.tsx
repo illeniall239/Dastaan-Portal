@@ -370,3 +370,11 @@ export const DynamicDeliveryPerformance = dynamic(
     ssr: false,
   }
 );
+
+export const DynamicDeliveryTrend = dynamic(
+  () => import("@/components/management/delivery-trend-section").then((mod) => mod.DeliveryTrendSection),
+  {
+    loading: () => <ChartLoader />,
+    ssr: false,
+  }
+);

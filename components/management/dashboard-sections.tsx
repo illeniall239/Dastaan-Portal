@@ -34,6 +34,7 @@ import {
   DynamicAnnualTargetVisual,
   DynamicDeliveryRateOverview,
   DynamicDeliveryPerformance,
+  DynamicDeliveryTrend,
 } from "@/components/management/dynamic-components";
 
 import type { TeamOverviewData } from "@/components/management/team-performance/top-teams-widget";
@@ -623,6 +624,30 @@ export async function QualityQuantitySection() {
  * Annual Target Visual Section
  * Progress rings + slot-wise bar charts showing target vs achieved per team
  */
+export async function DeliveryTrendDashboardSection() {
+  return (
+    <div id="delivery-trend-section" className="mb-6 sm:mb-8">
+      <div className="flex items-center justify-between mb-3 sm:mb-4">
+        <div>
+          <h2 className="text-base sm:text-lg lg:text-xl font-bold text-gray-900">
+            Monthly Delivery Trend
+          </h2>
+          <p className="text-muted-foreground mt-1 text-xs sm:text-sm">
+            Fresh and revised episodes received per month across all projects
+          </p>
+        </div>
+        <ExportButton
+          elementId="delivery-trend-section"
+          filename="delivery-trend"
+          formats={["png", "pdf"]}
+          compact
+        />
+      </div>
+      <DynamicDeliveryTrend />
+    </div>
+  );
+}
+
 export async function AnnualTargetSection() {
   return (
     <div id="annual-target-section" className="mb-6 sm:mb-8">
