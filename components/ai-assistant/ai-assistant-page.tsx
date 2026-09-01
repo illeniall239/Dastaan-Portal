@@ -8,6 +8,7 @@ import remarkGfm from "remark-gfm";
 interface Message {
   role: "user" | "assistant";
   content: string;
+  timestamp?: string;
 }
 
 export type PortalKey = "management" | "content_department" | "evaluator" | "programmer" | "gcm";
@@ -61,6 +62,12 @@ const mdComponents = {
 };
 
 const MAX_MEMORY_ITEMS = 50;
+
+function formatTime(iso?: string): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+}
 
 function stripDigest(text: string): string {
   return text.replace(/\n*<!--\s*data-digest[\s\S]*?-->/g, "").trimEnd();
@@ -124,7 +131,7 @@ export function AIAssistantPage({
     const msg = (text ?? input).trim();
     if (!msg || loading) return;
 
-    const userMessage: Message = { role: "user", content: msg };
+    const userMessage: Message = { role: "user", content: msg, timestamp: new Date().toISOString() };
     const history = messages.slice(-20);
 
     const newMessages = [...messages, userMessage];
@@ -146,7 +153,7 @@ export function AIAssistantPage({
 
       const data = await res.json();
       const reply = data.reply ?? "Sorry, something went wrong.";
-      const finalMessages = [...newMessages, { role: "assistant" as const, content: reply }];
+      const finalMessages = [...newMessages, { role: "assistant" as const, content: reply, timestamp: new Date().toISOString() }];
 
       let finalMemory = memory;
       if (data.memoryExtract?.length) {
@@ -157,7 +164,7 @@ export function AIAssistantPage({
       setMessages(finalMessages);
       saveToDb(finalMessages, finalMemory);
     } catch {
-      const errorMessages = [...newMessages, { role: "assistant" as const, content: "Couldn't reach the assistant. Please try again." }];
+      const errorMessages = [...newMessages, { role: "assistant" as const, content: "Couldn't reach the assistant. Please try again.", timestamp: new Date().toISOString() }];
       setMessages(errorMessages);
       saveToDb(errorMessages, memory);
     } finally {
@@ -231,17 +238,25 @@ export function AIAssistantPage({
                   <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-primary/10 shrink-0 mt-0.5">
                     <Bot className="w-4 h-4 text-primary" />
                   </div>
-                  <div className="text-sm leading-relaxed pt-1.5 min-w-0 max-w-full overflow-hidden">
-                    <ReactMarkdown remarkPlugins={[remarkGfm]} components={mdComponents}>
-                      {stripDigest(msg.content)}
-                    </ReactMarkdown>
+                  <div className="min-w-0 max-w-full overflow-hidden">
+                    <div className="text-sm leading-relaxed pt-1.5">
+                      <ReactMarkdown remarkPlugins={[remarkGfm]} components={mdComponents}>
+                        {stripDigest(msg.content)}
+                      </ReactMarkdown>
+                    </div>
+                    {msg.timestamp && (
+                      <p className="text-[10px] text-muted-foreground mt-1">{formatTime(msg.timestamp)}</p>
+                    )}
                   </div>
                 </div>
               ) : (
-                <div key={i} className="flex justify-end">
+                <div key={i} className="flex flex-col items-end">
                   <div className="bg-primary text-primary-foreground rounded-2xl rounded-br-sm px-4 py-2.5 text-sm leading-relaxed max-w-[80%]">
                     {msg.content}
                   </div>
+                  {msg.timestamp && (
+                    <p className="text-[10px] text-muted-foreground mt-1">{formatTime(msg.timestamp)}</p>
+                  )}
                 </div>
               )
             )}

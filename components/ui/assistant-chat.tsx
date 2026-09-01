@@ -6,6 +6,13 @@ import { MessageCircle, X, Send, Bot } from "lucide-react";
 interface Message {
   role: "user" | "assistant";
   content: string;
+  timestamp?: string;
+}
+
+function formatTime(iso?: string): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 }
 
 interface AssistantChatProps {
@@ -69,7 +76,7 @@ export function AssistantChat({ portalKey }: AssistantChatProps) {
     const text = input.trim();
     if (!text || loading) return;
 
-    const userMessage: Message = { role: "user", content: text };
+    const userMessage: Message = { role: "user", content: text, timestamp: new Date().toISOString() };
     const history = messages.filter((m) => m.role !== "assistant" || messages.indexOf(m) > 0);
 
     setMessages((prev) => [...prev, userMessage]);
@@ -88,9 +95,9 @@ export function AssistantChat({ portalKey }: AssistantChatProps) {
       });
 
       const data = await res.json();
-      setMessages((prev) => [...prev, { role: "assistant", content: data.reply ?? "Sorry, something went wrong." }]);
+      setMessages((prev) => [...prev, { role: "assistant", content: data.reply ?? "Sorry, something went wrong.", timestamp: new Date().toISOString() }]);
     } catch {
-      setMessages((prev) => [...prev, { role: "assistant", content: "Couldn't reach the assistant. Please try again." }]);
+      setMessages((prev) => [...prev, { role: "assistant", content: "Couldn't reach the assistant. Please try again.", timestamp: new Date().toISOString() }]);
     } finally {
       setLoading(false);
     }
@@ -133,15 +140,23 @@ export function AssistantChat({ portalKey }: AssistantChatProps) {
                   <div className="flex items-center justify-center w-6 h-6 rounded-full bg-primary/10 shrink-0">
                     <Bot className="w-3.5 h-3.5 text-primary" />
                   </div>
-                  <div className="bg-muted rounded-2xl rounded-bl-sm px-3 py-2 text-sm leading-relaxed max-w-[85%]">
-                    {stripDigest(msg.content)}
+                  <div>
+                    <div className="bg-muted rounded-2xl rounded-bl-sm px-3 py-2 text-sm leading-relaxed max-w-[85%]">
+                      {stripDigest(msg.content)}
+                    </div>
+                    {msg.timestamp && (
+                      <p className="text-[10px] text-muted-foreground mt-0.5 ml-1">{formatTime(msg.timestamp)}</p>
+                    )}
                   </div>
                 </div>
               ) : (
-                <div key={i} className="flex justify-end">
+                <div key={i} className="flex flex-col items-end">
                   <div className="bg-primary text-primary-foreground rounded-2xl rounded-br-sm px-3 py-2 text-sm leading-relaxed max-w-[85%]">
                     {msg.content}
                   </div>
+                  {msg.timestamp && (
+                    <p className="text-[10px] text-muted-foreground mt-0.5 mr-1">{formatTime(msg.timestamp)}</p>
+                  )}
                 </div>
               )
             )}
