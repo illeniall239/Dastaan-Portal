@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -166,6 +167,7 @@ export function ProductionPhases() {
   const [loading, setLoading] = useState(true);
   const [selectedPhase, setSelectedPhase] = useState<{ phase: string; projects: ProjectEntry[] } | null>(null);
   const [slotFilter, setSlotFilter] = useState<string>("all");
+  const [teamFilter, setTeamFilter] = useState<string>("all");
 
   useEffect(() => {
     fetch(`/api/management/production-phases?_t=${Date.now()}`)
@@ -174,6 +176,17 @@ export function ProductionPhases() {
       .catch(() => setData(null))
       .finally(() => setLoading(false));
   }, []);
+
+  const allTeams = useMemo(() => {
+    if (!data) return [];
+    const teams = new Set<string>();
+    for (const key of ["preCast", "preProduction", "productionStart"] as const) {
+      for (const p of data[key].projects) {
+        if (p.teamName) teams.add(p.teamName);
+      }
+    }
+    return Array.from(teams).sort();
+  }, [data]);
 
   if (loading) {
     return (
@@ -207,8 +220,12 @@ export function ProductionPhases() {
     );
   }
 
-  const filterProjects = (projects: ProjectEntry[]) =>
-    slotFilter === "all" ? projects : projects.filter((p) => p.slot === slotFilter);
+  const filterProjects = (projects: ProjectEntry[]) => {
+    let result = projects;
+    if (slotFilter !== "all") result = result.filter((p) => p.slot === slotFilter);
+    if (teamFilter !== "all") result = result.filter((p) => p.teamName === teamFilter);
+    return result;
+  };
 
   const chartData = PHASE_CONFIG.map((p) => {
     const filtered = filterProjects(data[p.key].projects);
@@ -243,6 +260,14 @@ export function ProductionPhases() {
                 );
               })}
             </div>
+            <div className="flex items-center gap-2">
+            <Select value={teamFilter} onValueChange={setTeamFilter}>
+              <SelectTrigger className="h-7 text-xs w-[160px]"><SelectValue placeholder="All Teams" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Teams</SelectItem>
+                {allTeams.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+              </SelectContent>
+            </Select>
             <div className="flex rounded-md border overflow-hidden text-xs">
               {["all", "7:00 PM", "8:00 PM", "9:00 PM"].map((s) => (
                 <button
@@ -255,6 +280,7 @@ export function ProductionPhases() {
                   {s === "all" ? "All" : s.replace(":00 ", "")}
                 </button>
               ))}
+            </div>
             </div>
           </div>
           <ResponsiveContainer width="100%" height={220}>
