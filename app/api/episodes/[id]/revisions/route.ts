@@ -165,7 +165,7 @@ export async function POST(
     // Verify episode exists
     const { data: episode, error: episodeError } = await supabase
       .from("episodes")
-      .select("id, episode_number, call_report_id, story_id, logged_by, call_report:call_reports!call_report_id(working_title)")
+      .select("id, episode_number, call_report_id, story_id, logged_by, call_report:call_reports!call_report_id(working_title, writer_name)")
       .eq("id", id)
       .single();
 
@@ -299,11 +299,13 @@ export async function POST(
         const epLabel = episode.episode_number ? `EP${episode.episode_number}` : "Episode";
         const storyTitle = (episode.call_report as any)?.working_title;
         const titleSuffix = storyTitle ? ` — "${storyTitle}"` : "";
+        const uploaderName = (revision as any).uploaded_by_user?.name || "Someone";
+        const writerLabel = (episode.call_report as any)?.writer_name ? `, writer: ${(episode.call_report as any).writer_name}` : "";
         await createNotifications(
           recipients,
           "info",
           `New revision: ${epLabel}${titleSuffix}`,
-          `Revision ${nextRevisionNumber} has been uploaded for ${epLabel}${storyTitle ? ` of "${storyTitle}"` : ""}.`,
+          `${uploaderName} uploaded revision ${nextRevisionNumber} for ${epLabel}${titleSuffix}${writerLabel}.`,
           "episode",
           id,
           user.id

@@ -183,8 +183,8 @@ export const TopBar = memo(function TopBar({
                     <DropdownMenuItem
                       key={notification.id}
                       className={cn(
-                        "flex items-start gap-3 p-4 cursor-pointer transition-all m-1 rounded-xl",
-                        !notification.is_read && "bg-blue-50 hover:bg-blue-100"
+                        "flex items-start gap-3 p-4 cursor-pointer transition-all m-1 rounded-xl focus:bg-slate-50 focus:text-inherit",
+                        !notification.is_read && "bg-blue-50 hover:bg-blue-100 focus:bg-blue-100"
                       )}
                       onClick={() => {
                         if (!notification.is_read) {
