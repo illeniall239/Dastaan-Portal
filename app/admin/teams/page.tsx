@@ -11,6 +11,7 @@ import { ResponsiveTable } from "@/components/ui/responsive-table";
 import { Search, Users, Loader2, Building2, User, Calendar, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { logger } from "@/lib/logger";
+import { cleanEmailTeamName } from "@/lib/management/team-display";
 import { useRouter } from "next/navigation";
 import {
   AlertDialog,
@@ -211,7 +212,7 @@ export default function AdminTeamsPage() {
           renderRow={(team) => (
             <>
               <td className="px-6 py-4 whitespace-nowrap">
-                <div className="font-medium text-gray-900">{team.name}</div>
+                <div className="font-medium text-gray-900">{cleanEmailTeamName(team.name)}</div>
                 {team.description && (
                   <div className="text-xs text-gray-500 mt-1 truncate max-w-xs">
                     {team.description}
@@ -287,7 +288,7 @@ export default function AdminTeamsPage() {
                       <Building2 className="h-4 w-4 text-primary" />
                     </div>
                     <div>
-                      <h3 className="font-semibold text-base">{team.name}</h3>
+                      <h3 className="font-semibold text-base">{cleanEmailTeamName(team.name)}</h3>
                       <Badge
                         variant="outline"
                         className={`mt-1 text-xs ${getTeamTypeBadgeColor(team.team_type)}`}

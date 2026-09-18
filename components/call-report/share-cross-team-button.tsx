@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { cleanEmailTeamName } from '@/lib/management/team-display';
 import {
   Dialog,
   DialogContent,
@@ -284,7 +285,7 @@ export function ShareCrossTeamButton({ callReportId, currentTeamId, episodeId, c
                 <SelectContent className="z-[200]">
                   {teams.map(team => (
                     <SelectItem key={team.id} value={team.id}>
-                      {team.name} ({team.team_type})
+                      {cleanEmailTeamName(team.name)} ({team.team_type})
                     </SelectItem>
                   ))}
                 </SelectContent>

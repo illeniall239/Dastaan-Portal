@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Users, FileText, Star, Clock, Film } from 'lucide-react';
 import { BackButton } from '@/components/ui/back-button';
+import { cleanEmailTeamName } from '@/lib/management/team-display';
 
 function getRatingColor(rating: number) {
   if (rating >= 9) return 'bg-blue-100 text-blue-800 border-blue-200';
@@ -52,7 +53,7 @@ export default async function GcmTeamPage() {
             <div className="space-y-1">
               <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Team Activity</h1>
               <p className="text-muted-foreground text-sm sm:text-base">
-                {team.name} — see what your team has been working on
+                {cleanEmailTeamName(team.name)} — see what your team has been working on
               </p>
             </div>
           </div>

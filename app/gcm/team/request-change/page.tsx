@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { getEvaluatorTeam, getTeamMembers } from '@/lib/evaluations/team';
+import { cleanEmailTeamName } from '@/lib/management/team-display';
 import RequestChangeForm from './request-change-form';
 
 export default async function RequestTeamChangePage() {
@@ -27,7 +28,7 @@ export default async function RequestTeamChangePage() {
         <h1 className="text-xl sm:text-2xl font-bold mb-6">Request Team Change</h1>
         <RequestChangeForm
           teamId={team.id}
-          teamName={team.name}
+          teamName={cleanEmailTeamName(team.name)}
           currentMembers={currentMembers}
           availableUsers={availableUsers || []}
         />

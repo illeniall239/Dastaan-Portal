@@ -13,6 +13,7 @@ import { DeleteUserDialog } from "@/components/admin/delete-user-dialog";
 import { ResponsiveTable } from "@/components/ui/responsive-table";
 import { Search, UserPlus, Loader2, User, Users, Mail, Briefcase, Shield, Calendar } from "lucide-react";
 import { toast } from "sonner";
+import { cleanEmailTeamName } from "@/lib/management/team-display";
 import { logger } from "@/lib/logger";
 
 interface User {
@@ -304,7 +305,7 @@ export default function AdminUsersPage() {
                   >
                     {user.team.team_head?.name
                       ? `${user.team.team_head.name}'s Team`
-                      : user.team.name
+                      : cleanEmailTeamName(user.team.name)
                     }
                   </Badge>
                 ) : (

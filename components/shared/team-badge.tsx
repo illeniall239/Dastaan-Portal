@@ -1,6 +1,7 @@
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import type { Team, TeamType } from "@/types";
+import { cleanEmailTeamName } from "@/lib/management/team-display";
 
 // Team type color mappings based on existing design system
 const TEAM_TYPE_COLORS: Record<TeamType, string> = {
@@ -62,6 +63,7 @@ export function TeamBadge({
 
   // Get color class for team type, fallback to 'other' if invalid
   const colorClass = TEAM_TYPE_COLORS[team.team_type] || TEAM_TYPE_COLORS.other;
+  const displayName = cleanEmailTeamName(team.name);
 
   return (
     <Badge
@@ -72,9 +74,9 @@ export function TeamBadge({
         "border font-medium",
         className
       )}
-      title={`Team: ${team.name}${showType ? ` (${team.team_type})` : ""}`}
+      title={`Team: ${displayName}${showType ? ` (${team.team_type})` : ""}`}
     >
-      {team.name}
+      {displayName}
       {showType && (
         <span className="ml-1 text-xs opacity-75">({team.team_type})</span>
       )}
