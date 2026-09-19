@@ -12,6 +12,7 @@ import { EpisodeFileUpload } from "./episode-file-upload";
 import { EpisodeRevisions } from "./episode-revisions";
 import { updateEpisodeClient } from "@/lib/episodes/client";
 import { createClient } from "@/lib/supabase/client";
+import { uploadAndVerify } from "@/lib/storage/verify-upload";
 import { toast } from "sonner";
 import { ScoreCard } from "@/components/episodic-evaluations/score-card";
 import { Loader2, Save, ArrowLeft, FileText } from "lucide-react";
@@ -63,19 +64,7 @@ export function EpisodeEditForm({ episode, onSuccess }: EpisodeEditFormProps) {
         const sourceId = episode.call_report_id || episode.story_id;
         const filePath = `${sourceId}/${fileName}`;
 
-        const { data: uploadData, error: uploadError } = await supabase.storage
-          .from("episodes")
-          .upload(filePath, file);
-
-        if (uploadError) {
-          throw new Error(`Failed to upload file: ${uploadError.message}`);
-        }
-
-        const { data: urlData } = supabase.storage
-          .from("episodes")
-          .getPublicUrl(filePath);
-
-        attachment_url = urlData.publicUrl;
+        attachment_url = await uploadAndVerify(supabase, "episodes", filePath, file);
         attachment_name = file.name;
         attachment_type = file.type;
 

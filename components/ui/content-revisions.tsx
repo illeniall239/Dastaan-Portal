@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { uploadAndVerify } from "@/lib/storage/verify-upload";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -226,19 +227,7 @@ export function ContentRevisions({
         const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
         const storagePath = `${sourceId || entityId}/revisions/${fileName}`;
 
-        const { error: uploadError } = await supabase.storage
-          .from(storageBucket)
-          .upload(storagePath, file);
-
-        if (uploadError) {
-          throw new Error(`Failed to upload file: ${uploadError.message}`);
-        }
-
-        const { data: urlData } = supabase.storage
-          .from(storageBucket)
-          .getPublicUrl(storagePath);
-
-        attachment_url = urlData.publicUrl;
+        attachment_url = await uploadAndVerify(supabase, storageBucket, storagePath, file);
         attachment_name = file.name;
         attachment_type = file.type;
       }

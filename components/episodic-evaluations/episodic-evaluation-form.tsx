@@ -327,15 +327,13 @@ export function EpisodicEvaluationForm({
     setFeedbackUploading(true);
     try {
       const { createClient: createBrowserClient } = await import("@/lib/supabase/client");
+      const { uploadAndVerify } = await import("@/lib/storage/verify-upload");
       const supabase = createBrowserClient();
       const uploaded: Array<{ url: string; name: string }> = [];
       for (const file of files) {
         const ext = file.name.split(".").pop();
         const path = `feedback-communications/${crypto.randomUUID()}.${ext}`;
-        const { error: uploadError } = await supabase.storage
-          .from("attachments")
-          .upload(path, file, { upsert: false });
-        if (uploadError) throw uploadError;
+        await uploadAndVerify(supabase, "attachments", path, file);
         uploaded.push({ url: path, name: file.name });
       }
       setFeedbackAttachments(prev => [...prev, ...uploaded]);

@@ -56,6 +56,18 @@ export async function uploadFile(
     xhr.send(file);
   });
 
+  // Verify the file actually landed in storage before registering
+  const verifyClient = createClient();
+  const { error: verifyError } = await verifyClient.storage
+    .from('attachments')
+    .createSignedUrl(path, 10);
+
+  if (verifyError) {
+    throw new Error(
+      'Upload verification failed \u2014 the file was not saved correctly. Please check your connection and try again.'
+    );
+  }
+
   // Step 3: Register the attachment in the database
   onProgress?.(95);
 

@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useMemo, Fragment, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { uploadAndVerify } from "@/lib/storage/verify-upload";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -567,20 +568,7 @@ export default function ProgrammerEpisodesPage() {
                         const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
                         const filePath = `${selectedSource}/${fileName}`;
 
-                        const { data: uploadData, error: uploadError } = await supabase.storage
-                            .from("episodes")
-                            .upload(filePath, episode.file);
-
-                        if (uploadError) {
-                            console.error("File upload error:", uploadError);
-                            throw new Error(`Failed to upload ${episode.file.name}`);
-                        }
-
-                        const { data: urlData } = supabase.storage
-                            .from("episodes")
-                            .getPublicUrl(filePath);
-
-                        attachment_url = urlData.publicUrl;
+                        attachment_url = await uploadAndVerify(supabase, "episodes", filePath, episode.file);
                         attachment_name = episode.file.name;
                         attachment_type = episode.file.type;
                     }
@@ -849,17 +837,7 @@ export default function ProgrammerEpisodesPage() {
                 const safeExt = fileExt ? `.${fileExt}` : "";
                 const storagePath = `${episode.call_report_id || episode.story_id || "episode"}/${episode.id}-${Date.now()}${safeExt}`;
 
-                const { error: uploadError } = await supabase.storage
-                    .from("episodes")
-                    .upload(storagePath, episode._newFile, { upsert: true });
-
-                if (uploadError) throw new Error(uploadError.message || "Failed to upload file");
-
-                const { data: publicUrlData } = supabase.storage
-                    .from("episodes")
-                    .getPublicUrl(storagePath);
-
-                payload.attachment_url = publicUrlData.publicUrl;
+                payload.attachment_url = await uploadAndVerify(supabase, "episodes", storagePath, episode._newFile, { upsert: true });
                 payload.attachment_name = episode._newFile.name;
                 payload.attachment_type = episode._newFile.type || safeExt || "application/octet-stream";
                 attachmentUpdated = true;

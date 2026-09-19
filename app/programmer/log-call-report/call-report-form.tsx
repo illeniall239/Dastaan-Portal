@@ -31,6 +31,7 @@ import type { Writer, CallReportWriter } from "@/types";
 import { useFormAutosave } from "@/lib/hooks/useFormAutosave";
 import { DraftRestoreBanner } from "@/components/ui/draft-restore-banner";
 import { createClient } from "@/lib/supabase/client";
+import { uploadAndVerify } from "@/lib/storage/verify-upload";
 
 interface User {
   id: string;
@@ -292,13 +293,11 @@ export function CallReportForm({
         const supabase = createClient();
         const ext = file.name.includes('.') ? '.' + file.name.split('.').pop() : '';
         const path = `drafts/${userId}/${crypto.randomUUID()}${ext}`;
-        const { error } = await supabase.storage.from('attachments').upload(path, file, {
+        await uploadAndVerify(supabase, 'attachments', path, file, {
           cacheControl: '3600',
-          upsert: false,
           contentType: file.type || undefined,
         });
         setUploadProgress(prev => { const p = { ...prev }; delete p[file.name]; return p; });
-        if (error) throw error;
         setDraftAttachments(prev => [...prev, {
           id: path,
           file_name: file.name,

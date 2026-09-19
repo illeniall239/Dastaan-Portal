@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { Image, X, Upload } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
+import { uploadAndVerify } from '@/lib/storage/verify-upload';
 import { v4 as uuidv4 } from 'uuid';
 
 interface LoglineImageUploadProps {
@@ -114,19 +115,10 @@ export function LoglineImageUpload({
       const fileExtension = file.name.split('.').pop();
       const filePath = `call_report_logline/${entityId || 'temp'}/${uuidv4()}.${fileExtension}`;
 
-      // Upload to Supabase storage
-      const { data, error } = await supabase.storage
-        .from('attachments')
-        .upload(filePath, file, {
-          cacheControl: '3600',
-          upsert: false
-        });
-
-      if (error) {
-        console.error('Upload error:', error);
-        toast.error('Failed to upload image');
-        return;
-      }
+      // Upload to Supabase storage with verification
+      await uploadAndVerify(supabase, 'attachments', filePath, file, {
+        cacheControl: '3600',
+      });
 
       // Store the file path (not public URL)
       setStoredPath(filePath);
