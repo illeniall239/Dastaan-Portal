@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { applyRateLimit } from "@/lib/api-middleware";
 import { RateLimitPresets } from "@/lib/rate-limit-redis";
+import { requireApiAuth } from "@/lib/api/auth";
 import { logger } from "@/lib/logger";
 import { CACHE_DURATION, createCacheControl } from '@/lib/constants';
 
@@ -10,8 +11,11 @@ import { CACHE_DURATION, createCacheControl } from '@/lib/constants';
  * Returns the count of evaluations completed today (both call report and episodic)
  */
 export async function GET(request: NextRequest) {
+  const auth = await requireApiAuth();
+  if (!auth.success) return auth.response;
+
   // Apply rate limiting
-  const rateLimitResult = await applyRateLimit(request, RateLimitPresets.relaxed);
+  const rateLimitResult = await applyRateLimit(request, RateLimitPresets.relaxed, auth.user.id);
   if (!rateLimitResult.success) {
     return rateLimitResult.response;
   }

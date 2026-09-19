@@ -1,6 +1,8 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { logger } from "@/lib/logger";
+import { signSessionPayload, verifySessionPayload, SESSION_MAX_AGE } from "@/lib/session";
+import { checkCsrfOrigin } from "@/lib/csrf";
 
 // Define role-based protected routes
 const protectedRoutes: Record<string, string[]> = {
@@ -21,14 +23,25 @@ const protectedRoutes: Record<string, string[]> = {
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Early return for paths that don't need processing
+  // Early return for static assets
   if (
     pathname.startsWith('/_next/') ||
-    pathname.startsWith('/api/') ||
     pathname.startsWith('/images/') ||
     pathname.startsWith('/fonts/') ||
     pathname.match(/\.(ico|png|jpg|jpeg|gif|webp|svg|css|js|woff|woff2|ttf|otf|eot)$/)
   ) {
+    return NextResponse.next();
+  }
+
+  // CSRF: reject state-changing requests from foreign origins (covers /api/ and pages)
+  // Public API routes for external evaluators are excluded (no Origin header from those flows)
+  if (pathname.startsWith('/api/') && !pathname.startsWith('/api/public/')) {
+    const csrfResult = checkCsrfOrigin(request.method, request.headers.get('origin'));
+    if (csrfResult) return csrfResult;
+  }
+
+  // Early return for API routes (auth handled per-route)
+  if (pathname.startsWith('/api/')) {
     return NextResponse.next();
   }
 
@@ -91,17 +104,15 @@ export async function proxy(request: NextRequest) {
   if (user) {
     let userRole: string | undefined;
 
-    // Try session cookie first (fast path)
+    // Try session cookie first (fast path) — HMAC-signed to prevent tampering
     const sessionCookie = request.cookies.get('user_session');
     if (sessionCookie) {
-      try {
-        const sessionData = JSON.parse(sessionCookie.value);
-        if (sessionData.id === user.id) {
-          userRole = sessionData.role;
-          logger.dev(`✅ [Proxy] Using session cookie for role: ${userRole}`);
-        }
-      } catch (error) {
-        logger.error('❌ [Proxy] Failed to parse session cookie:', error);
+      const sessionData = verifySessionPayload(sessionCookie.value);
+      if (sessionData && sessionData.id === user.id) {
+        userRole = sessionData.role as string;
+        logger.dev(`✅ [Proxy] Using verified session cookie for role: ${userRole}`);
+      } else if (sessionCookie.value) {
+        logger.error('❌ [Proxy] Session cookie verification failed (tampered or expired format)');
       }
     }
 
@@ -124,7 +135,7 @@ export async function proxy(request: NextRequest) {
 
           // Set session cookie for future requests (performance optimization)
           if (userData) {
-            const sessionData = {
+            const sessionPayload = {
               id: userData.id,
               email: userData.email,
               name: userData.name,
@@ -132,11 +143,11 @@ export async function proxy(request: NextRequest) {
               position: userData.position,
               department: userData.department,
             };
-            supabaseResponse.cookies.set('user_session', JSON.stringify(sessionData), {
+            supabaseResponse.cookies.set('user_session', signSessionPayload(sessionPayload), {
               httpOnly: true,
               secure: process.env.NODE_ENV === 'production',
               sameSite: 'lax',
-              maxAge: 60 * 60 * 24 * 7, // 7 days
+              maxAge: SESSION_MAX_AGE,
               path: '/',
             });
             logger.dev('✅ [Proxy] Session cookie updated');

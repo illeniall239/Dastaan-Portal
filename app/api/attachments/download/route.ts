@@ -4,6 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { logger } from "@/lib/logger";
 import { applyRateLimit } from '@/lib/api-middleware';
 import { RateLimitPresets } from '@/lib/rate-limit-redis';
+import { validateDownloadAccess } from '@/lib/download-validation';
 
 export async function GET(request: NextRequest) {
   try {
@@ -12,6 +13,7 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const filePath = searchParams.get("path");
+    const externalToken = searchParams.get("token");
 
     if (!filePath) {
       return NextResponse.json(
@@ -20,86 +22,54 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Path-based download (public access for external evaluators)
-    // Validate path is within allowed folders for security
-    // Both singular (call_report/) and plural (call_reports/) forms are checked
-    // because the upload route stores paths as `${entityType}/...` (singular).
-    if (filePath.startsWith("call_reports/") ||
-        filePath.startsWith("call_report/") ||
-        filePath.startsWith("one_liners/") ||
-        filePath.startsWith("one_liner/") ||
-        filePath.startsWith("episodes/") ||
-        filePath.startsWith("episode/")) {
-
-      // Validate path segments - reject traversal attempts
-      const segments = filePath.split('/');
-      if (segments.some(seg => seg === '..' || seg === '.' || seg === '')) {
-        return NextResponse.json({ error: "Invalid file path" }, { status: 400 });
-      }
-      if (segments.length < 2 || segments.length > 4) {
-        return NextResponse.json({ error: "Invalid file path structure" }, { status: 400 });
-      }
-
-      // Use admin client for public access
-      const adminSupabase = createAdminClient();
-
-      // Generate signed URL (1 hour expiry)
-      const { data: signedUrlData, error: signedUrlError } = await adminSupabase.storage
-        .from("attachments")
-        .createSignedUrl(filePath, 3600);
-
-      if (signedUrlError || !signedUrlData?.signedUrl) {
-        logger.error("Error creating signed URL:", { error: signedUrlError, filePath, bucket: "attachments" });
-
-        // Check if file actually exists in storage
-        const { data: fileList } = await adminSupabase.storage
-          .from("attachments")
-          .list(filePath.substring(0, filePath.lastIndexOf("/")), {
-            search: filePath.substring(filePath.lastIndexOf("/") + 1),
-          });
-
-        logger.error("File existence check:", { filePath, found: fileList && fileList.length > 0, fileList });
-
-        return NextResponse.json(
-          { error: "Failed to generate download URL", detail: signedUrlError?.message || "File may not exist in storage" },
-          { status: 500 }
-        );
-      }
-
-      // Redirect to signed URL
-      return NextResponse.redirect(signedUrlData.signedUrl);
-    }
-
-    // For other paths, require authentication
+    // Try to get authenticated user (may be null for external evaluators)
     const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
 
-    // Verify user is authenticated
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
+    // Validate access: must be authenticated or have external token
+    const access = validateDownloadAccess({
+      userId: user?.id ?? null,
+      externalToken,
+      filePath,
+    });
 
-    if (authError || !user) {
+    if (!access.allowed) {
+      const status = access.reason === 'unauthorized' ? 401 : 400;
       return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
+        { error: access.reason === 'unauthorized' ? 'Unauthorized' : 'Invalid file path' },
+        { status }
       );
     }
 
-    // Generate signed URL (expires in 1 hour = 3600 seconds)
-    const { data: signedUrlData, error: signedUrlError } = await supabase.storage
+    // If external token provided, validate it exists and is active
+    if (!user && externalToken) {
+      const adminSupabase = createAdminClient();
+      const { data: link } = await adminSupabase
+        .from("external_evaluation_links")
+        .select("id, is_active")
+        .eq("token", externalToken)
+        .eq("is_active", true)
+        .single();
+
+      if (!link) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      }
+    }
+
+    // Use admin client for signed URL generation (storage RLS doesn't support fine-grained path access)
+    const adminSupabase = createAdminClient();
+    const { data: signedUrlData, error: signedUrlError } = await adminSupabase.storage
       .from("attachments")
       .createSignedUrl(filePath, 3600);
 
     if (signedUrlError || !signedUrlData?.signedUrl) {
-      logger.error("Error creating signed URL (authenticated):", { error: signedUrlError, filePath, bucket: "attachments" });
+      logger.error("Error creating signed URL:", { error: signedUrlError, filePath, bucket: "attachments" });
       return NextResponse.json(
-        { error: "Failed to generate download URL", detail: signedUrlError?.message || "File may not exist in storage" },
+        { error: "Failed to generate download URL" },
         { status: 500 }
       );
     }
 
-    // Redirect to the signed URL
     return NextResponse.redirect(signedUrlData.signedUrl);
   } catch (error) {
     logger.error("Download error:", error);

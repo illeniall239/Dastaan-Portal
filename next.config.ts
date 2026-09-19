@@ -38,9 +38,8 @@ const nextConfig: NextConfig = {
     optimizePackageImports: ['lucide-react', 'date-fns', 'recharts'],
   },
 
-  // Production optimizations
-  // Enable source maps for GlitchTip error tracking (readable stack traces)
-  productionBrowserSourceMaps: true,
+  // Source maps uploaded to Sentry at build time — not served to browsers
+  productionBrowserSourceMaps: false,
 
   // Bundle analyzer (comment out after use to speed up builds)
   // To use: npm install @next/bundle-analyzer --save-dev

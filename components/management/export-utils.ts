@@ -1,3 +1,5 @@
+import { sanitizeForPrintTitle } from "@/lib/print-utils";
+
 /**
  * Export a DOM element as PNG image
  */
@@ -449,12 +451,13 @@ export function printSection(sectionId: string) {
     // Clone section content
     const sectionClone = section.cloneNode(true) as HTMLElement;
 
-    // Build print HTML
+    // Build print HTML — sanitize title to prevent XSS via data attributes
+    const safeTitle = sanitizeForPrintTitle(section.getAttribute("data-section-title"));
     printWindow.document.write(`
       <!DOCTYPE html>
       <html>
         <head>
-          <title>Print - ${section.getAttribute("data-section-title") || "Dashboard Section"}</title>
+          <title>Print - ${safeTitle}</title>
           <style>
             * { margin: 0; padding: 0; box-sizing: border-box; }
             body {

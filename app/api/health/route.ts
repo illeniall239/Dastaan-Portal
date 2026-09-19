@@ -35,7 +35,6 @@ export async function GET() {
           checks: {
             api: "ok",
             database: "error",
-            error: dbError.message,
           },
           responseTime: `${Date.now() - startTime}ms`,
         },
@@ -68,7 +67,6 @@ export async function GET() {
           api: "ok",
           database: "error",
         },
-        error: error instanceof Error ? error.message : "Unknown error",
         responseTime: `${Date.now() - startTime}ms`,
       },
       { status: 503 }

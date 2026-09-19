@@ -6,6 +6,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { logger } from "@/lib/logger";
 import { applyRateLimit } from '@/lib/api-middleware';
 import { RateLimitPresets } from '@/lib/rate-limit-redis';
+import { isAllowedFileExtension } from '@/lib/file-validation';
 
 export const runtime = "nodejs";
 
@@ -41,6 +42,13 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({
           error: "Missing required fields",
           message: "entityType, entityId, and fileName are required."
+        }, { status: 400 });
+      }
+
+      if (!isAllowedFileExtension(fileName)) {
+        return NextResponse.json({
+          error: "File type not allowed",
+          message: "This file type is not permitted. Allowed types: PDF, DOC, DOCX, XLS, XLSX, PPT, PPTX, TXT, CSV, INP, JPG, PNG, GIF, WEBP, MP4, MP3, OGG, WAV, ZIP, RAR."
         }, { status: 400 });
       }
 
