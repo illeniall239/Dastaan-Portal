@@ -320,6 +320,7 @@ export function ProductionPhases() {
                 cursor="pointer"
                 onClick={handleBarClick}
                 maxBarSize={80}
+                label={{ position: "inside", fontSize: 12, fontWeight: 700, fill: "#fff" }}
               >
                 {chartData.map((entry, i) => (
                   <Cell key={i} fill={entry.fill} />
