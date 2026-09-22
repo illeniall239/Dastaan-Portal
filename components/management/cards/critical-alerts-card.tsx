@@ -75,7 +75,7 @@ export function CriticalAlertsCard({ insights }: CriticalAlertsCardProps) {
                 </span>
               </div>
               <span
-                className={`text-2xl font-bold ${
+                className={`text-xl sm:text-2xl font-bold ${
                   isCritical ? "text-red-600" : "text-amber-600"
                 }`}
               >

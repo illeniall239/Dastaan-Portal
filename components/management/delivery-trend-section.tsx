@@ -119,35 +119,35 @@ export function DeliveryTrendSection() {
       <h3 className="text-sm font-semibold text-slate-700 mb-3">{chartTitle}</h3>
       <div className="flex gap-2 mb-3 flex-wrap">
         <Select value={chartProject} onValueChange={setChartProject}>
-          <SelectTrigger className="h-8 text-xs w-[160px]"><SelectValue placeholder="Project" /></SelectTrigger>
+          <SelectTrigger className="h-8 text-xs w-full sm:w-[160px]"><SelectValue placeholder="Project" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Projects</SelectItem>
             {projects.map((p) => <SelectItem key={p.id} value={p.id}>{p.workingTitle}</SelectItem>)}
           </SelectContent>
         </Select>
         <Select value={chartWriter} onValueChange={setChartWriter}>
-          <SelectTrigger className="h-8 text-xs w-[140px]"><SelectValue placeholder="Writer" /></SelectTrigger>
+          <SelectTrigger className="h-8 text-xs w-full sm:w-[140px]"><SelectValue placeholder="Writer" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Writers</SelectItem>
             {filterOptions.writers.map((w) => <SelectItem key={w} value={w}>{w}</SelectItem>)}
           </SelectContent>
         </Select>
         <Select value={chartSlot} onValueChange={setChartSlot}>
-          <SelectTrigger className="h-8 text-xs w-[130px]"><SelectValue placeholder="Slot" /></SelectTrigger>
+          <SelectTrigger className="h-8 text-xs w-full sm:w-[130px]"><SelectValue placeholder="Slot" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Slots</SelectItem>
             {filterOptions.slots.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
           </SelectContent>
         </Select>
         <Select value={chartTeam} onValueChange={setChartTeam}>
-          <SelectTrigger className="h-8 text-xs w-[130px]"><SelectValue placeholder="Team" /></SelectTrigger>
+          <SelectTrigger className="h-8 text-xs w-full sm:w-[130px]"><SelectValue placeholder="Team" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Teams</SelectItem>
             {filterOptions.teams.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
           </SelectContent>
         </Select>
         <Select value={chartGrade} onValueChange={setChartGrade}>
-          <SelectTrigger className="h-8 text-xs w-[130px]"><SelectValue placeholder="Grade" /></SelectTrigger>
+          <SelectTrigger className="h-8 text-xs w-full sm:w-[130px]"><SelectValue placeholder="Grade" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Grades</SelectItem>
             <SelectItem value="high">High (7+)</SelectItem>

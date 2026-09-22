@@ -144,9 +144,9 @@ export function DrillDownModal({ isOpen, onClose, data }: DrillDownModalProps) {
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
-          <div className="flex items-start justify-between p-6 border-b border-slate-200">
+          <div className="flex items-start justify-between p-3 sm:p-6 border-b border-slate-200">
             <div className="flex-1">
-              <h2 className="text-2xl font-bold text-slate-900">{data.title}</h2>
+              <h2 className="text-lg sm:text-2xl font-bold text-slate-900">{data.title}</h2>
               {data.subtitle && (
                 <p className="text-sm text-muted-foreground mt-1">{data.subtitle}</p>
               )}

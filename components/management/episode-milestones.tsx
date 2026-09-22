@@ -126,7 +126,7 @@ function MilestoneRow({
   return (
     <div>
       <h3 className="text-sm font-semibold mb-2">{label}</h3>
-      <div className="grid grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {buckets.map((b) => (
           <button
             key={b.min}

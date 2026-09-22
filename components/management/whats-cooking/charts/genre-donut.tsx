@@ -128,7 +128,7 @@ export function GenreDonut({ ideas, teams }: GenreDonutProps) {
         )}
       </div>
 
-      <div className="flex items-center gap-4">
+      <div className="flex flex-col sm:flex-row items-center gap-4">
         {/* Donut Chart */}
         <div className="relative w-32 h-32 flex-shrink-0">
           <ResponsiveContainer width="100%" height="100%">

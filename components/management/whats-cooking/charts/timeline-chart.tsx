@@ -157,7 +157,7 @@ export function TimelineChart({ ideas }: TimelineChartProps) {
               tick={{ fontSize: 9, fill: "#9ca3af" }}
               axisLine={false}
               tickLine={false}
-              interval={2}
+              interval={3}
               angle={-45}
               textAnchor="end"
               height={40}

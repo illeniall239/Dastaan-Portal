@@ -341,7 +341,7 @@ export function AnnualTargetVisual() {
               {drillDown.projects.length === 0 ? (
                 <p className="text-sm text-muted-foreground py-4 text-center">No projects found for this filter.</p>
               ) : (
-                <div className="border rounded-lg overflow-hidden">
+                <div className="border rounded-lg overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="bg-gray-50 border-b">

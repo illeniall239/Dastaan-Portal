@@ -112,7 +112,7 @@ export function SlotBars({ ideas, teams }: SlotBarsProps) {
             <BarChart
               data={data}
               layout="vertical"
-              margin={{ top: 0, right: 30, left: 60, bottom: 0 }}
+              margin={{ top: 0, right: 30, left: 40, bottom: 0 }}
             >
               <XAxis type="number" hide />
               <YAxis

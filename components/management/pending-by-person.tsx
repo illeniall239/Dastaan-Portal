@@ -154,7 +154,7 @@ function PendingDetailDialog({ userId, personName, personRole, onClose }: {
 
   return (
     <Dialog open onOpenChange={(open) => { if (!open) onClose(); }}>
-      <DialogContent className="max-w-3xl max-h-[80vh] flex flex-col overflow-hidden">
+      <DialogContent className="max-w-[95vw] sm:max-w-3xl max-h-[80vh] flex flex-col overflow-hidden">
         <DialogHeader>
           <div className="flex items-center gap-2">
             <DialogTitle className="text-base">{personName}</DialogTitle>

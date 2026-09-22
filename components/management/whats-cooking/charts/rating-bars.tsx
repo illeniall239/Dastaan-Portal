@@ -157,7 +157,7 @@ export function RatingBars({ ideas, teams }: RatingBarsProps) {
       </div>
 
       {/* Legend */}
-      <div className="flex justify-center gap-4 text-[10px] text-gray-500 mt-1">
+      <div className="flex justify-center gap-2 sm:gap-4 flex-wrap text-[10px] text-gray-500 mt-1">
         {data.map(item => (
           <div key={item.name} className="flex items-center gap-1">
             <span

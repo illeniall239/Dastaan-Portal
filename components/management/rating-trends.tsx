@@ -179,7 +179,7 @@ export function RatingTrends() {
           <select
             value={selectedId || ""}
             onChange={(e) => setSelectedId(e.target.value)}
-            className="text-sm border border-gray-200 rounded-lg px-3 py-1.5 text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 max-w-xs truncate"
+            className="text-sm border border-gray-200 rounded-lg px-3 py-1.5 text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 max-w-[70vw] sm:max-w-xs truncate"
           >
             {(() => {
               const byTeam = new Map<string, ProjectTrend[]>();

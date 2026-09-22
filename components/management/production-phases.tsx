@@ -260,9 +260,9 @@ export function ProductionPhases() {
                 );
               })}
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
             <Select value={teamFilter} onValueChange={setTeamFilter}>
-              <SelectTrigger className="h-7 text-xs w-[160px]"><SelectValue placeholder="All Teams" /></SelectTrigger>
+              <SelectTrigger className="h-7 text-xs w-full sm:w-[160px]"><SelectValue placeholder="All Teams" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Teams</SelectItem>
                 {allTeams.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}

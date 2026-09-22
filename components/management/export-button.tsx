@@ -82,7 +82,7 @@ export function ExportButton({
               className="fixed inset-0 z-40"
               onClick={() => setIsOpen(false)}
             />
-            <div className="absolute right-0 mt-1 w-40 bg-white border border-slate-200 rounded-lg shadow-lg z-50 py-1">
+            <div className="absolute right-0 mt-1 w-40 max-w-[90vw] bg-white border border-slate-200 rounded-lg shadow-lg z-50 py-1">
               {formats.map((format) => (
                 <button
                   key={format}
@@ -122,7 +122,7 @@ export function ExportButton({
             className="fixed inset-0 z-40"
             onClick={() => setIsOpen(false)}
           />
-          <div className="absolute right-0 mt-1 w-48 bg-white border border-slate-200 rounded-lg shadow-lg z-50 p-2">
+          <div className="absolute right-0 mt-1 w-48 max-w-[90vw] bg-white border border-slate-200 rounded-lg shadow-lg z-50 p-2">
             <p className="text-xs font-semibold text-slate-500 uppercase px-2 py-1">
               Export as
             </p>

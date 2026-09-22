@@ -171,7 +171,7 @@ export function RecentActivityCard({ activities }: RecentActivityCardProps) {
         </div>
       </CardHeader>
       <CardContent>
-        <div className="max-h-[600px] overflow-y-auto pr-2">
+        <div className="max-h-[400px] md:max-h-[600px] overflow-y-auto pr-2">
           {renderActivityGroup(grouped.today, 'Today')}
           {renderActivityGroup(grouped.yesterday, 'Yesterday')}
           {renderActivityGroup(grouped.thisWeek, 'This Week')}
