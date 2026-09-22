@@ -35,6 +35,7 @@ import {
   DynamicDeliveryRateOverview,
   DynamicDeliveryPerformance,
   DynamicDeliveryTrend,
+  DynamicEpisodeMilestones,
 } from "@/components/management/dynamic-components";
 
 import type { TeamOverviewData } from "@/components/management/team-performance/top-teams-widget";
@@ -668,6 +669,30 @@ export async function AnnualTargetSection() {
         />
       </div>
       <DynamicAnnualTargetVisual />
+    </div>
+  );
+}
+
+export async function EpisodeMilestonesSection() {
+  return (
+    <div id="episode-milestones-section" className="mb-6 sm:mb-8">
+      <div className="flex items-center justify-between mb-3 sm:mb-4">
+        <div>
+          <h2 className="text-base sm:text-lg lg:text-xl font-bold text-gray-900">
+            Episode Milestone Tracker
+          </h2>
+          <p className="text-muted-foreground mt-1 text-xs sm:text-sm">
+            Projects that have reached key episode milestones
+          </p>
+        </div>
+        <ExportButton
+          elementId="episode-milestones-section"
+          filename="episode-milestones"
+          formats={["png", "pdf"]}
+          compact
+        />
+      </div>
+      <DynamicEpisodeMilestones />
     </div>
   );
 }

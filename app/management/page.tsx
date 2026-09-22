@@ -25,6 +25,7 @@ import {
   QualityQuantitySection,
   AnnualTargetSection,
   DeliveryTrendDashboardSection,
+  EpisodeMilestonesSection,
 } from "@/components/management/dashboard-sections";
 import {
   TeamProjectsSkeleton,
@@ -138,6 +139,13 @@ export default async function ManagementDashboard({
           </Suspense>
         </ErrorBoundary>
       )}
+
+      {/* Episode Milestone Tracker */}
+      <ErrorBoundary fallback={<SectionErrorFallback title="Episode Milestones" />}>
+        <Suspense fallback={<ChartSkeleton />}>
+          <EpisodeMilestonesSection />
+        </Suspense>
+      </ErrorBoundary>
 
       {/* Below-the-fold sections - Stream in progressively */}
       {!isViewer && (
