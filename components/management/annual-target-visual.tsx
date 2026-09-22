@@ -152,7 +152,7 @@ export function AnnualTargetVisual() {
     <Card>
       <CardContent className="p-4 sm:p-6">
         {/* Slot-wise summary with pie charts */}
-        <div className="grid grid-cols-2 gap-3 mb-5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-5">
           {[
             { label: "8PM Slot", achieved: data.totals.achieved8pm, target: data.totals.target8pm, approved: data.totals.approved8pm, diff: data.totals.diff8pm },
             { label: "7/9PM Slot", achieved: data.totals.achieved7_9pm, target: data.totals.target7_9pm, approved: data.totals.approved7_9pm, diff: data.totals.diff7_9pm },
@@ -216,7 +216,7 @@ export function AnnualTargetVisual() {
         </div>
 
         {/* Filter + inline total */}
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
           <div className="flex items-center gap-2 text-xs">
             <span className="text-gray-500">Overall:</span>
             <span className="font-bold text-gray-900">{achieved}/{target}</span>
@@ -307,7 +307,7 @@ export function AnnualTargetVisual() {
         </div>
 
         {/* Legend */}
-        <div className="flex items-center gap-4 mt-4 pt-3 border-t border-gray-100 text-[10px] text-gray-500">
+        <div className="flex flex-wrap items-center gap-3 sm:gap-4 mt-4 pt-3 border-t border-gray-100 text-[10px] text-gray-500">
           <div className="flex items-center gap-1.5">
             <div className="w-3 h-3 rounded bg-gray-100 border border-gray-200" />
             Target
