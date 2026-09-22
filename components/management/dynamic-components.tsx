@@ -350,6 +350,17 @@ export const DynamicAnnualTargetVisual = dynamic(
 );
 
 /**
+ * Episode Milestone Tracker (Serial / Long Serial milestone grid)
+ */
+export const DynamicEpisodeMilestones = dynamic(
+  () => import("@/components/management/episode-milestones").then((mod) => mod.EpisodeMilestones),
+  {
+    loading: () => <ChartLoader />,
+    ssr: false,
+  }
+);
+
+/**
  * Delivery Rate Overview (Grouped bar chart by team + waada periods)
  */
 export const DynamicDeliveryRateOverview = dynamic(
