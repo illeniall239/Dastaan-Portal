@@ -21,18 +21,12 @@ export default async function GcmLayout({
 
   const navItems = [
     { title: "Dashboard", href: "/gcm", icon: "home" },
-    { title: "AI Assistant", href: "/gcm/ai-assistant", icon: "sparkles" },
-    { title: "Calendar", href: "/gcm/calendar", icon: "calendar" },
-{ title: "One-Liner Reports", href: "/gcm/call-reports", icon: "fileText" },
-    { title: "Episodes", href: "/gcm/episodes", icon: "film" },
-    { title: "One-Liner Evaluations", href: "/gcm/evaluations-list", icon: "clipboardList" },
-    { title: "Status Report", href: "/gcm/status-updater", icon: "clipboardCheck" },
+    { title: "One-Liners", href: "/gcm/one-liners", icon: "fileText", highlight: true },
+    { title: "Scripts & Episodes", href: "/gcm/episodes", icon: "film", highlight: true },
     { title: "Team Feedback", href: "/gcm/team-feedback", icon: "users" },
-    { title: "Incoming Evaluations", href: "/gcm/cross-team-shares", icon: "inbox" },
-    { title: "Requested Evaluations", href: "/gcm/requested-evaluations", icon: "share2" },
-    { title: "Team", href: "/gcm/team", icon: "users" },
-    { title: "Contract Terms", href: "/gcm/contract-terms", icon: "handshake" },
-    { title: "Notifications", href: "/gcm/notifications", icon: "bell" },
+    { title: "My Team", href: "/gcm/team", icon: "users" },
+    { title: "Writer Contracts", href: "/gcm/contract-terms", icon: "handshake" },
+    { title: "Calendar", href: "/gcm/calendar", icon: "calendar" },
   ];
 
   return (

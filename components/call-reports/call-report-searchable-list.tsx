@@ -15,6 +15,8 @@ interface CallReportSearchableListProps {
   emptyStateHref: string;
   isTeamHead?: boolean;
   currentTeamId?: string;
+  readOnly?: boolean;
+  userRole?: string;
 }
 
 export function CallReportSearchableList({
@@ -23,6 +25,8 @@ export function CallReportSearchableList({
   emptyStateHref,
   isTeamHead = false,
   currentTeamId,
+  readOnly,
+  userRole,
 }: CallReportSearchableListProps) {
   const [filters, setFilters] = useState<CallReportFilters>({
     search: "",
@@ -137,6 +141,8 @@ export function CallReportSearchableList({
               portalPrefix={portalPrefix}
               isTeamHead={isTeamHead}
               currentTeamId={currentTeamId}
+              readOnly={readOnly}
+              userRole={userRole}
             />
           ))
         )}

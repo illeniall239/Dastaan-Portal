@@ -10,34 +10,16 @@ const evaluatorNavItems = [
     icon: "home",
   },
   {
-    title: "AI Assistant",
-    href: "/evaluator/ai-assistant",
-    icon: "sparkles",
-  },
-  {
-    title: "Calendar",
-    href: "/evaluator/calendar",
-    icon: "calendar",
-  },
-  {
-    title: "One-Liner Reports",
-    href: "/evaluator/call-reports",
+    title: "One-Liners",
+    href: "/evaluator/one-liners",
     icon: "fileText",
+    highlight: true,
   },
   {
-    title: "Episodes",
+    title: "Scripts & Episodes",
     href: "/evaluator/episodes",
     icon: "film",
-  },
-  {
-    title: "One-Liner Evaluations",
-    href: "/evaluator/evaluations-list",
-    icon: "clipboardList",
-  },
-  {
-    title: "Status Report",
-    href: "/evaluator/status-updater",
-    icon: "clipboardCheck",
+    highlight: true,
   },
   {
     title: "Team Feedback",
@@ -45,29 +27,19 @@ const evaluatorNavItems = [
     icon: "users",
   },
   {
-    title: "Incoming Evaluations",
-    href: "/evaluator/cross-team-shares",
-    icon: "inbox",
-  },
-  {
-    title: "Requested Evaluations",
-    href: "/evaluator/requested-evaluations",
-    icon: "share2",
-  },
-  {
-    title: "Team",
+    title: "My Team",
     href: "/evaluator/team",
     icon: "users",
   },
   {
-    title: "Contract Terms",
+    title: "Writer Contracts",
     href: "/evaluator/contract-terms",
     icon: "handshake",
   },
   {
-    title: "Notifications",
-    href: "/evaluator/notifications",
-    icon: "bell",
+    title: "Calendar",
+    href: "/evaluator/calendar",
+    icon: "calendar",
   },
 ];
 

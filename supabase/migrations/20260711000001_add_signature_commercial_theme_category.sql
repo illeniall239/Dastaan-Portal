@@ -6,3 +6,4 @@ ALTER TABLE evaluator_forms
   CHECK (theme_category IS NULL OR theme_category IN ('commercial', 'non_commercial', 'commercial_edge', 'signature_commercial'));
 
 COMMENT ON COLUMN evaluator_forms.theme_category IS 'commercial | non_commercial | commercial_edge | signature_commercial';
+

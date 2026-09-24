@@ -687,6 +687,7 @@ export interface EpisodeRevision {
   initial_assessment?: number | null;
   assessed_by?: string | null;
   assessed_at?: string | null;
+  assessed_by_user?: { name: string } | null;
   evaluation_count?: number;
   average_evaluation_score?: number | null;
   evaluations?: RevisionEvaluation[];

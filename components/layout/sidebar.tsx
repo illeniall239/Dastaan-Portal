@@ -43,6 +43,7 @@ interface NavItem {
   title: string;
   href: string;
   icon: string;
+  highlight?: boolean;
 }
 
 interface SidebarProps {
@@ -177,11 +178,15 @@ export const Sidebar = memo(function Sidebar({
                       "flex items-center gap-3 rounded-lg text-sm font-medium transition-all duration-150",
                       isCollapsed ? "justify-center px-2 py-2.5" : "px-3 py-2.5",
                       isActive
-                        ? "bg-blue-50 text-[#224794] border-l-4 border-[#224794]"
-                        : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                        ? item.highlight
+                          ? "bg-orange-50 bg-gradient-to-r from-orange-500 to-amber-500 bg-clip-text text-transparent font-semibold border-l-4 border-orange-500"
+                          : "bg-blue-50 text-[#224794] border-l-4 border-[#224794]"
+                        : item.highlight
+                          ? "bg-gradient-to-r from-orange-500 to-amber-500 bg-clip-text text-transparent font-semibold hover:bg-gray-50"
+                          : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
                     )}
                   >
-                    <Icon className="h-5 w-5 flex-shrink-0" />
+                    <Icon className={cn("h-5 w-5 flex-shrink-0", item.highlight && "text-orange-500")} />
                     {!isCollapsed && <span className="truncate">{item.title}</span>}
                   </Link>
                   {/* Tooltip on hover when collapsed */}

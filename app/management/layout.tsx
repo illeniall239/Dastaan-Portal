@@ -25,21 +25,16 @@ export default async function ManagementLayout({
     redirect("/dashboard");
   }
 
-  let navItems = [
-    baseNavItems[0],
-    { title: "AI Assistant", href: "/management/ai-assistant", icon: "sparkles" },
-    ...baseNavItems.slice(1),
-  ];
+  let navItems = [...baseNavItems];
 
   // management_viewer: data/quantity reports only — no scripts, evaluations, or one-liners
   if (user.role === "management_viewer") {
     const blockedHrefs = [
       "/management/evaluations",
       "/management/teams",
-      "/management/ai-assistant",
     ];
     navItems = navItems.filter((item) => !blockedHrefs.includes(item.href));
-    navItems.push({ title: "Contract Terms", href: "/management/contract-terms", icon: "fileText" });
+    navItems.push({ title: "Writer Contracts", href: "/management/contract-terms", icon: "fileText" });
   }
 
   const showAI = user.role !== "management_viewer";

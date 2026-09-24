@@ -30,7 +30,7 @@ export async function GET(
     // Query all evaluations for this call report by current user (no revision filter)
     const { data: evaluations, error } = await supabase
       .from("evaluator_forms")
-      .select("id, revision_id, evaluator_id")
+      .select("id, revision_id, evaluator_id, average_score, decision")
       .eq("call_report_id", callReportId)
       .eq("evaluator_id", user.id);
 
@@ -40,14 +40,22 @@ export async function GET(
     }
 
     // Build status map
-    const original: { hasEvaluated: boolean } = { hasEvaluated: false };
-    const revisions: Record<string, { hasEvaluated: boolean }> = {};
+    const original: { hasEvaluated: boolean; averageScore?: number; decision?: string; evaluationId?: string } = { hasEvaluated: false };
+    const revisions: Record<string, { hasEvaluated: boolean; averageScore?: number; decision?: string; evaluationId?: string }> = {};
 
     for (const ev of evaluations || []) {
       if (ev.revision_id === null) {
         original.hasEvaluated = true;
+        original.averageScore = ev.average_score;
+        original.decision = ev.decision;
+        original.evaluationId = ev.id;
       } else {
-        revisions[ev.revision_id] = { hasEvaluated: true };
+        revisions[ev.revision_id] = {
+          hasEvaluated: true,
+          averageScore: ev.average_score,
+          decision: ev.decision,
+          evaluationId: ev.id,
+        };
       }
     }
 

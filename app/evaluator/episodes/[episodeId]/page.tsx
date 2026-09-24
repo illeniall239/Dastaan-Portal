@@ -33,6 +33,7 @@ export default function EpisodicEvaluationPage({ params }: EpisodePageProps) {
   const [loading, setLoading] = useState(true);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [currentUserRole, setCurrentUserRole] = useState<string | null>(null);
+  const [currentUserTeamId, setCurrentUserTeamId] = useState<string | null>(null);
 
   useEffect(() => {
     params.then((resolvedParams) => {
@@ -47,10 +48,13 @@ export default function EpisodicEvaluationPage({ params }: EpisodePageProps) {
       setCurrentUserId(user.id);
       const { data: profile } = await supabase
         .from("users")
-        .select("role")
+        .select("role, team_id")
         .eq("id", user.id)
         .single();
-      if (profile) setCurrentUserRole(profile.role);
+      if (profile) {
+        setCurrentUserRole(profile.role);
+        setCurrentUserTeamId(profile.team_id || null);
+      }
     };
     fetchCurrentUser();
   }, [supabase]);

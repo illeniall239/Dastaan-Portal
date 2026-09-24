@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import {
   CheckCircle2,
   ClipboardCheck,
+  Eye,
   FileText,
   Loader2,
   Pencil,
@@ -15,6 +16,10 @@ import {
 interface RevisionStatus {
   hasEvaluated: boolean;
   evaluatorName?: string;
+  averageScore?: number;
+  decision?: string;
+  grade?: string;
+  evaluationId?: string;
 }
 
 interface Revision {
@@ -37,6 +42,8 @@ interface RevisionEvaluateListProps {
   originalDate?: string | null;
   /** Override the default evaluate URL pattern (e.g. "/management/evaluate/episode") */
   evaluateBasePath?: string;
+  /** Hide evaluate/edit/view buttons — show only file info and status badges */
+  readOnly?: boolean;
 }
 
 export function RevisionEvaluateList({
@@ -47,6 +54,7 @@ export function RevisionEvaluateList({
   originalFileName,
   originalDate,
   evaluateBasePath,
+  readOnly,
 }: RevisionEvaluateListProps) {
   const router = useRouter();
   const [revisions, setRevisions] = useState<Revision[]>([]);
@@ -115,6 +123,16 @@ export function RevisionEvaluateList({
     });
   };
 
+  const getScoreColor = (score: number) => {
+    if (score >= 7) return "text-green-700 bg-green-50 border-green-200";
+    if (score >= 5) return "text-yellow-700 bg-yellow-50 border-yellow-200";
+    return "text-red-700 bg-red-50 border-red-200";
+  };
+
+  const formatDecision = (decision: string) => {
+    return decision.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+  };
+
   if (loading) {
     return (
       <div className="bg-slate-50 rounded-lg border border-slate-200 p-3">
@@ -127,6 +145,71 @@ export function RevisionEvaluateList({
   }
 
   const originalStatus = statuses?.original || { hasEvaluated: false };
+
+  const renderStatus = (status: RevisionStatus, revisionId?: string) => {
+    if (status.hasEvaluated) {
+      return (
+        <div className="shrink-0 flex items-center gap-1.5 flex-wrap justify-end">
+          {status.averageScore != null && (
+            <Badge className={`h-5 text-[10px] ${getScoreColor(status.averageScore)}`}>
+              {status.averageScore.toFixed(1)}/10
+            </Badge>
+          )}
+          {status.grade && (
+            <Badge className={`h-5 text-[10px] ${status.averageScore != null ? getScoreColor(status.averageScore) : "bg-slate-50 text-slate-700 border-slate-200"}`}>
+              Grade: {status.grade}
+            </Badge>
+          )}
+          {status.decision ? (
+            <Badge className="h-5 text-[10px] bg-green-50 text-green-700 border-green-200">
+              <CheckCircle2 className="h-3 w-3 mr-0.5" />
+              {formatDecision(status.decision)}
+            </Badge>
+          ) : (
+            <Badge className="h-5 text-[10px] bg-green-50 text-green-700 border-green-200">
+              <CheckCircle2 className="h-3 w-3 mr-0.5" />
+              Evaluated
+            </Badge>
+          )}
+          {!readOnly && (
+            <>
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-7 text-xs gap-1"
+                onClick={() => router.push(getEvaluateUrl(revisionId))}
+              >
+                <Eye className="h-3 w-3" />
+                View Evaluation
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-7 text-xs gap-1"
+                onClick={() => router.push(getEvaluateUrl(revisionId))}
+              >
+                <Pencil className="h-3 w-3" />
+                Edit Evaluation
+              </Button>
+            </>
+          )}
+        </div>
+      );
+    }
+    if (readOnly) return null;
+    return (
+      <div className="shrink-0 flex items-center gap-1.5">
+        <Button
+          size="sm"
+          className="h-7 text-xs gap-1"
+          onClick={() => router.push(getEvaluateUrl(revisionId))}
+        >
+          <ClipboardCheck className="h-3 w-3" />
+          Evaluate
+        </Button>
+      </div>
+    );
+  };
 
   return (
     <div className="bg-slate-50 rounded-lg border border-slate-200 overflow-hidden">
@@ -157,34 +240,7 @@ export function RevisionEvaluateList({
               )}
             </div>
           </div>
-          <div className="shrink-0 flex items-center gap-1.5">
-            {originalStatus.hasEvaluated ? (
-              <>
-                <Badge className="h-5 text-[10px] bg-green-50 text-green-700 border-green-200">
-                  <CheckCircle2 className="h-3 w-3 mr-0.5" />
-                  Evaluated{originalStatus.evaluatorName ? ` by ${originalStatus.evaluatorName}` : ""}
-                </Badge>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="h-7 text-xs gap-1"
-                  onClick={() => router.push(getEvaluateUrl())}
-                >
-                  <Pencil className="h-3 w-3" />
-                  Edit
-                </Button>
-              </>
-            ) : (
-              <Button
-                size="sm"
-                className="h-7 text-xs gap-1"
-                onClick={() => router.push(getEvaluateUrl())}
-              >
-                <ClipboardCheck className="h-3 w-3" />
-                Evaluate
-              </Button>
-            )}
-          </div>
+          {renderStatus(originalStatus)}
         </div>
 
         {/* Revisions */}
@@ -206,34 +262,7 @@ export function RevisionEvaluateList({
                   <span className="shrink-0">&middot; {formatDate(rev.original_submission_date || rev.created_at)}</span>
                 </div>
               </div>
-              <div className="shrink-0 flex items-center gap-1.5">
-                {revStatus.hasEvaluated ? (
-                  <>
-                    <Badge className="h-5 text-[10px] bg-green-50 text-green-700 border-green-200">
-                      <CheckCircle2 className="h-3 w-3 mr-0.5" />
-                      Evaluated{revStatus.evaluatorName ? ` by ${revStatus.evaluatorName}` : ""}
-                    </Badge>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="h-7 text-xs gap-1"
-                      onClick={() => router.push(getEvaluateUrl(rev.id))}
-                    >
-                      <Pencil className="h-3 w-3" />
-                      Edit
-                    </Button>
-                  </>
-                ) : (
-                  <Button
-                    size="sm"
-                    className="h-7 text-xs gap-1"
-                    onClick={() => router.push(getEvaluateUrl(rev.id))}
-                  >
-                    <ClipboardCheck className="h-3 w-3" />
-                    Evaluate
-                  </Button>
-                )}
-              </div>
+              {renderStatus(revStatus, rev.id)}
             </div>
           );
         })}

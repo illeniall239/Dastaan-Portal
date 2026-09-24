@@ -11,6 +11,7 @@ import { toast } from "sonner";
 import { Loader2, FileText, Trash2, FilePenLine } from "lucide-react";
 import { BackButton } from "@/components/ui/back-button";
 import { EpisodeRevisions } from "@/components/episodes/episode-revisions";
+import { canUploadRevision } from "@/lib/episodes/permissions";
 import type { Episode, EpisodicEvaluation } from "@/types";
 import type { EpisodicEvaluationFormData } from "@/lib/validations/episodic-evaluations";
 
@@ -31,6 +32,7 @@ export default function ProgrammerEpisodicEvaluationPage({ params }: EpisodePage
     const [loading, setLoading] = useState(true);
     const [currentUserId, setCurrentUserId] = useState<string | null>(null);
     const [currentUserRole, setCurrentUserRole] = useState<string | null>(null);
+    const [currentUserTeamId, setCurrentUserTeamId] = useState<string | null>(null);
     const [canEvaluate, setCanEvaluate] = useState(true);
     const [deleting, setDeleting] = useState(false);
 
@@ -48,12 +50,13 @@ export default function ProgrammerEpisodicEvaluationPage({ params }: EpisodePage
             setCurrentUserId(user.id);
             const { data: profile } = await supabase
                 .from("users")
-                .select("role, can_evaluate")
+                .select("role, can_evaluate, team_id")
                 .eq("id", user.id)
                 .single();
             if (profile) {
                 setCurrentUserRole(profile.role);
                 setCanEvaluate((profile as any).can_evaluate !== false);
+                setCurrentUserTeamId((profile as any).team_id || null);
             }
         };
         fetchCurrentUser();
@@ -235,7 +238,7 @@ export default function ProgrammerEpisodicEvaluationPage({ params }: EpisodePage
             {episodeId && (
                 <EpisodeRevisions
                     episodeId={episodeId}
-                    canEdit={false}
+                    canEdit={!!(currentUserId && currentUserRole && episode && canUploadRevision(currentUserId, currentUserRole, episode, currentUserTeamId))}
                     userRole={currentUserRole || undefined}
                 />
             )}

@@ -55,7 +55,7 @@ export async function GET(
     );
   }
 
-  if (!userData || !["evaluator", "programmer", "content_manager", "admin", "management", "executive"].includes(userData.role)) {
+  if (!userData || !["evaluator", "programmer", "content_manager", "gcm", "admin", "management", "executive"].includes(userData.role)) {
     return NextResponse.json(
       { error: "Forbidden - Insufficient permissions" },
       { status: 403 }

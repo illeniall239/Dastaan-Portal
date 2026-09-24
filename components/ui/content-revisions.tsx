@@ -173,15 +173,17 @@ export function ContentRevisions({
   const [file, setFile] = useState<File | null>(null);
   const [comment, setComment] = useState("");
   const [originalSubmissionDate, setOriginalSubmissionDate] = useState("");
+  const [revisionAssessment, setRevisionAssessment] = useState<number | null>(null);
 
   const revisionsUrl = `${apiBasePath}/${entityId}/revisions`;
 
   // Determine if user can view/set initial assessment
-  // Only content dept, management, and admin can see assessments
   const canViewAssessment = userRole && [
-    "content_manager", "content_creator", "admin", "management"
+    "content_manager", "content_creator", "content_head", "admin", "management", "programmer", "gcm", "evaluator"
   ].includes(userRole);
-  const canAssess = canViewAssessment;
+  const canAssess = userRole && [
+    "content_manager", "content_creator", "content_head", "admin", "management"
+  ].includes(userRole);
 
   // Determine if user can evaluate revisions
   const canEvaluate = evaluateUrl && userRole && [
@@ -241,6 +243,7 @@ export function ContentRevisions({
           attachment_type,
           comment: comment.trim() || null,
           original_submission_date: originalSubmissionDate || null,
+          ...(revisionAssessment != null ? { initial_assessment: revisionAssessment } : {}),
         }),
       });
 
@@ -253,6 +256,7 @@ export function ContentRevisions({
       setFile(null);
       setComment("");
       setOriginalSubmissionDate("");
+      setRevisionAssessment(null);
       setShowAddForm(false);
       fetchRevisions();
     } catch (error: any) {
@@ -427,6 +431,17 @@ export function ContentRevisions({
         )}
       </div>
 
+      {canAssess && size === "default" && (
+        <div className="space-y-2">
+          <Label>Initial Assessment <span className="text-slate-400 font-normal text-xs">(optional)</span></Label>
+          <InlineScoreSelector
+            score={revisionAssessment}
+            onChange={setRevisionAssessment}
+            disabled={submitting}
+          />
+        </div>
+      )}
+
       <div className="flex gap-2">
         <Button
           size={size}
@@ -441,7 +456,7 @@ export function ContentRevisions({
           ) : (
             <>
               {size === "default" && <Plus className="h-4 w-4 mr-2" />}
-              {size === "default" ? "Submit Revision" : "Submit"}
+              {size === "default" ? "Upload" : "Upload"}
             </>
           )}
         </Button>
@@ -589,13 +604,16 @@ export function ContentRevisions({
 
         {/* Row 2: Initial Assessment (content dept) */}
         {canAssess && (
-          <div className={isCompact ? "ml-0" : "ml-0"}>
+          <div className="flex items-center gap-2">
             <InlineScoreSelector
               score={revision.initial_assessment}
               onChange={(score) => handleAssessmentChange(revision, score)}
               saving={savingAssessmentId === revision.id}
               disabled={false}
             />
+            {revision.assessed_by_user?.name && (
+              <span className="text-xs text-muted-foreground">by {revision.assessed_by_user.name}</span>
+            )}
           </div>
         )}
 
@@ -606,6 +624,9 @@ export function ContentRevisions({
             <Badge variant="outline" className="text-xs">
               {revision.initial_assessment}/10
             </Badge>
+            {revision.assessed_by_user?.name && (
+              <span className="text-xs text-muted-foreground">by {revision.assessed_by_user.name}</span>
+            )}
           </div>
         )}
 
@@ -703,7 +724,7 @@ export function ContentRevisions({
                 onClick={() => setShowAddForm(true)}
               >
                 <Plus className="h-3 w-3 mr-1" />
-                Add Revision
+                Upload Revision #{revisions.length + 1}
               </Button>
             )}
             {showAddForm && canEdit && renderAddForm("sm")}
@@ -719,7 +740,7 @@ export function ContentRevisions({
                 onClick={() => setShowAddForm(true)}
               >
                 <Plus className="h-3 w-3 mr-1" />
-                Add First Revision
+                Upload First Revision
               </Button>
             ) : (
               renderAddForm("sm")
@@ -751,7 +772,7 @@ export function ContentRevisions({
               onClick={() => setShowAddForm(true)}
             >
               <Plus className="h-4 w-4 mr-1" />
-              Add Revision
+              Upload Revision #{revisions.length + 1}
             </Button>
           )}
         </div>

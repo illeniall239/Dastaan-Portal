@@ -7,14 +7,11 @@ import { SidebarWrapper } from "./sidebar-wrapper";
 // New programmer tabs will NOT appear for them unless explicitly added here.
 const managementTeamAllowedPaths = new Set([
   "/programmer",
-  "/programmer/ai-assistant",
   "/programmer/calendar",
-  "/programmer/call-reports",
-  "/programmer/evaluations-list",
+  "/programmer/one-liners",
   "/programmer/episodes",
   "/programmer/status-updater",
   "/programmer/contract-terms",
-  "/programmer/requested-evaluations",
 ]);
 
 // Programmer-specific navigation items
@@ -25,16 +22,6 @@ const programmerNavItems = [
     icon: "home",
   },
   {
-    title: "AI Assistant",
-    href: "/programmer/ai-assistant",
-    icon: "sparkles",
-  },
-  {
-    title: "Calendar",
-    href: "/programmer/calendar",
-    icon: "calendar",
-  },
-{
     title: "Writer Commitments",
     href: "/programmer/writer-commitment",
     icon: "listChecks",
@@ -45,19 +32,16 @@ const programmerNavItems = [
     icon: "activity",
   },
   {
-    title: "One-Liner Reports",
-    href: "/programmer/call-reports",
+    title: "One-Liners",
+    href: "/programmer/one-liners",
     icon: "fileText",
+    highlight: true,
   },
   {
-    title: "One-Liner Evaluations",
-    href: "/programmer/evaluations-list",
-    icon: "clipboardList",
-  },
-  {
-    title: "Episodes",
+    title: "Scripts & Episodes",
     href: "/programmer/episodes",
     icon: "film",
+    highlight: true,
   },
   {
     title: "Status Report",
@@ -70,7 +54,7 @@ const programmerNavItems = [
     icon: "target",
   },
   {
-    title: "Contract Terms",
+    title: "Writer Contracts",
     href: "/programmer/contract-terms",
     icon: "handshake",
   },
@@ -85,14 +69,14 @@ const programmerNavItems = [
     icon: "clock",
   },
   {
-    title: "Requested Evaluations",
-    href: "/programmer/requested-evaluations",
-    icon: "clipboardCheck",
-  },
-  {
     title: "Missing Details",
     href: "/programmer/missing-details",
     icon: "alertCircle",
+  },
+  {
+    title: "Calendar",
+    href: "/programmer/calendar",
+    icon: "calendar",
   },
 ];
 

@@ -55,11 +55,6 @@ export default async function AdminLayout({
       href: "/admin/settings",
       icon: "settings",
     },
-    {
-      title: "Notifications",
-      href: "/admin/notifications",
-      icon: "bell",
-    },
   ];
 
   return (

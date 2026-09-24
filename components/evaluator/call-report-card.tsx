@@ -1,22 +1,28 @@
 "use client";
 
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { EyeIcon, TrendingUp, TrendingDown, Minus, History, CheckCircle2, XCircle } from "lucide-react";
+import { EyeIcon, TrendingUp, TrendingDown, Minus, CheckCircle2, XCircle, Upload } from "lucide-react";
 import Link from "next/link";
 import { EvaluationProgressBar } from "@/components/evaluations/evaluation-progress-bar";
 import { TeamBadge } from "@/components/shared/team-badge";
-import { ShareCrossTeamButton } from "@/components/call-report/share-cross-team-button";
+import { RevisionEvaluateList } from "@/components/episodes/revision-evaluate-list";
+import { ContentRevisions } from "@/components/ui/content-revisions";
 
 interface CallReportCardProps {
   report: any;
   portalPrefix?: string; // e.g., "evaluator" or "programmer"
   isTeamHead?: boolean;
   currentTeamId?: string;
+  readOnly?: boolean;
+  userRole?: string;
 }
 
-export function CallReportCard({ report, portalPrefix = "evaluator", isTeamHead = false, currentTeamId }: CallReportCardProps) {
+export function CallReportCard({ report, portalPrefix = "evaluator", isTeamHead = false, currentTeamId, readOnly, userRole }: CallReportCardProps) {
+  const [showRevisions, setShowRevisions] = useState(false);
+
   // Format timestamp — original_submission_date is DATE-only (no time component)
   const isDateOnly = !!report.original_submission_date;
   const loggedTimestamp =
@@ -296,35 +302,22 @@ export function CallReportCard({ report, portalPrefix = "evaluator", isTeamHead 
                 </div>
               </div>
             )}
-            {/* Revisions */}
-            {report.revision_count > 0 && (
-              <div className="bg-blue-50 rounded-lg p-3 border border-blue-100">
-                <div className="flex items-center gap-2 mb-1">
-                  <History className="h-3.5 w-3.5 text-blue-600" />
-                  <span className="text-xs font-semibold text-blue-700">
-                    {report.revision_count} Revision{report.revision_count !== 1 ? "s" : ""}
-                  </span>
-                  {report.latest_revision_date && (
-                    <span className="text-xs text-blue-500">
-                      &middot; Latest: {new Date(report.latest_revision_date).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
-                    </span>
-                  )}
-                </div>
-                {report.latest_revision_comment && (
-                  <p className="text-xs text-blue-600 line-clamp-1 ml-5.5">
-                    {report.latest_revision_comment}
-                  </p>
-                )}
-              </div>
-            )}
+            {/* Revisions & Evaluate */}
+            <RevisionEvaluateList
+              entityId={report.id}
+              entityType="call-report"
+              revisionCount={report.revision_count || 0}
+              portalPrefix={portalPrefix}
+              readOnly={readOnly}
+              originalFileName={report.working_title}
+              originalDate={report.original_submission_date || report.logged_at || report.created_at}
+            />
           </div>
           <div className="mt-4 pt-4 border-t flex justify-end gap-2">
-            {isTeamHead && (
-              <ShareCrossTeamButton
-                callReportId={report.id}
-                currentTeamId={currentTeamId}
-              />
-            )}
+            <Button variant="outline" size="sm" onClick={() => setShowRevisions(!showRevisions)}>
+              <Upload className="h-4 w-4 mr-2" />
+              Upload Revision
+            </Button>
             <Button variant="outline" size="sm" asChild>
               <Link href={`/${portalPrefix}/call-reports/${report.id}`}>
                 <EyeIcon className="h-4 w-4 mr-2" />
@@ -332,6 +325,19 @@ export function CallReportCard({ report, portalPrefix = "evaluator", isTeamHead 
               </Link>
             </Button>
           </div>
+          {showRevisions && (
+            <div className="mt-4">
+              <ContentRevisions
+                entityId={report.id}
+                apiBasePath="/api/call-reports"
+                storageBucket="attachments"
+                canEdit={true}
+                entityType="call-report"
+                evaluateUrl={readOnly ? undefined : `/${portalPrefix}/evaluate`}
+                userRole={userRole}
+              />
+            </div>
+          )}
         </CardContent>
       </Card>
     </>

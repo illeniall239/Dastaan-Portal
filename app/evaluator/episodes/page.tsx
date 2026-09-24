@@ -1,82 +1,38 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo, Fragment, useRef } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { uploadAndVerify } from "@/lib/storage/verify-upload";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
 import {
   Loader2,
+  MoreVertical,
   Download,
   FileText,
   Plus,
   Search,
-  ClipboardCheck,
-  Eye,
-  CheckCircle2,
   ChevronRight,
   ChevronDown,
   Pencil,
-  Info,
+  Upload,
 } from "lucide-react";
-import { formatFileSize } from "@/lib/validations/episodes";
-import { EpisodeUploadForm, type EpisodeFormEntry } from "@/components/episodes/episode-upload-form";
-import { EpisodeFileUpload } from "@/components/episodes/episode-file-upload";
-import { getGradeColorClasses } from "@/lib/validations/episodic-evaluations";
-import { ScoreCard } from "@/components/episodic-evaluations/score-card";
-import type { EpisodeWithDetails, EpisodicEvaluationWithDetails } from "@/types";
+import type { EpisodeWithDetails } from "@/types";
 import { canEditEpisode as canEditEpisodeUtil } from "@/lib/episodes/permissions";
 import { BackButton } from "@/components/ui/back-button";
 import { formatDate } from "@/lib/utils/format-date";
-import { ShareCrossTeamButton } from "@/components/call-report/share-cross-team-button";
 import { RevisionEvaluateList } from "@/components/episodes/revision-evaluate-list";
+import { EpisodeRevisions } from "@/components/episodes/episode-revisions";
+import Link from "next/link";
 
-interface CallReportWriter {
-  id?: string;
-  writer_id: string;
-  writer_name: string;
-  writer_email?: string;
-  writer_phone?: string;
-  display_order: number;
-}
-
-interface CallReport {
-  id: string;
-  working_title: string;
-  writer_name: string;
-  meeting_type: string;
-  story_id?: string;
-  writer_names?: string[];
-  writers?: CallReportWriter[];
-}
-
-interface Story {
-  id: string;
-  title: string;
-  status: string;
-}
 
 interface EvaluationStatus {
   [episodeId: string]: boolean;
@@ -94,27 +50,6 @@ interface ProjectGroup {
   sourceId?: string;
 }
 
-interface EvaluationProjectGroup {
-  projectId: string;
-  projectName: string;
-  projectType: "call_report" | "story";
-  writerName?: string;
-  projectStatus?: string;
-  evaluations: EpisodicEvaluationWithDetails[];
-  totalCount: number;
-}
-
-type ExistingEpisodeEdit = EpisodeWithDetails & {
-  _newFile?: File | null;
-  _isSaving?: boolean;
-  _error?: string | null;
-  _originalEpisodeNumber?: number | null;
-  _originalAttachmentName?: string | null;
-  _originalAttachmentUrl?: string | null;
-  _originalAttachmentType?: string | null;
-  _originalAdditionalInfo?: string | null;
-  _originalInitialAssessment?: number | null;
-};
 
 export default function EvaluatorEpisodesPage() {
   const router = useRouter();
@@ -133,40 +68,14 @@ export default function EvaluatorEpisodesPage() {
   const [projectPage, setProjectPage] = useState(1);
   const [hasMoreProjects, setHasMoreProjects] = useState(false);
   const [totalProjects, setTotalProjects] = useState(0);
-  const [expandedEvalProjects, setExpandedEvalProjects] = useState<Set<string>>(new Set());
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [currentUserRole, setCurrentUserRole] = useState<string | null>(null);
   const [isTeamHead, setIsTeamHead] = useState(false);
   const [currentTeamId, setCurrentTeamId] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState("list");
-  const logSectionRef = useRef<HTMLDivElement | null>(null);
+  const [revisionOpenEpisodeId, setRevisionOpenEpisodeId] = useState<string | null>(null);
 
-  // AbortController refs for cancelling in-flight requests
+  // AbortController ref for cancelling in-flight requests
   const episodesAbortRef = useRef<AbortController | null>(null);
-  const evaluationsAbortRef = useRef<AbortController | null>(null);
-  const existingEpisodesAbortRef = useRef<AbortController | null>(null);
-
-  // Log episodes state
-  const [logLoading, setLogLoading] = useState(false);
-  const [fetchingData, setFetchingData] = useState(true);
-  const [selectedSource, setSelectedSource] = useState<string>("");
-  const [callReports, setCallReports] = useState<CallReport[]>([]);
-  const [existingEpisodesForSource, setExistingEpisodesForSource] = useState<ExistingEpisodeEdit[]>([]);
-  const [existingEpisodeNumbers, setExistingEpisodeNumbers] = useState<number[]>([]);
-  const [existingEpisodesLoading, setExistingEpisodesLoading] = useState(false);
-
-  const [newEpisodes, setNewEpisodes] = useState<EpisodeFormEntry[]>([
-    {
-      episode_number: 1,
-      file: null,
-      additional_info: "",
-    },
-  ]);
-
-  // My evaluations state
-  const [myEvaluations, setMyEvaluations] = useState<EpisodicEvaluationWithDetails[]>([]);
-  const [evaluationsLoading, setEvaluationsLoading] = useState(false);
-
   const fetchEpisodesAndStatus = useCallback(async (page: number = 1, append: boolean = false, search: string = "") => {
     // Cancel any in-flight request
     episodesAbortRef.current?.abort();
@@ -180,7 +89,7 @@ export default function EvaluatorEpisodesPage() {
     }
 
     try {
-      // Fetch user info first (needed for evaluation status)
+      // Fetch user info first
       const { data: { user } } = await supabase.auth.getUser();
       if (!user || controller.signal.aborted) return;
 
@@ -228,7 +137,7 @@ export default function EvaluatorEpisodesPage() {
         setEpisodes(fetchedEpisodes);
       }
 
-      // Build evaluation status from API response (already included)
+      // Build evaluation status from API response
       const status: EvaluationStatus = {};
       fetchedEpisodes.forEach((ep: any) => {
         status[ep.id] = ep.is_evaluated || false;
@@ -254,7 +163,7 @@ export default function EvaluatorEpisodesPage() {
         setLoadingMore(false);
       }
     }
-  }, []); // supabase client is stable, no need to include in dependencies
+  }, []);
 
   // Load more projects
   const loadMoreProjects = useCallback(() => {
@@ -263,105 +172,14 @@ export default function EvaluatorEpisodesPage() {
     }
   }, [loadingMore, hasMoreProjects, projectPage, fetchEpisodesAndStatus, debouncedSearchTerm]);
 
-  const fetchCallReports = useCallback(async () => {
-    setFetchingData(true);
-    try {
-      // Get current user's team context for team isolation
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        setFetchingData(false);
-        return;
-      }
-
-      const { data: currentUser } = await supabase
-        .from("users")
-        .select("team_id, role")
-        .eq("id", user.id)
-        .single();
-
-      // If user has no team, show nothing
-      if (!currentUser?.team_id) {
-        setCallReports([]);
-        setFetchingData(false);
-        return;
-      }
-
-      const { data: callReportsData, error: crError } = await supabase
-        .from("call_reports")
-        .select(`
-          id,
-          working_title,
-          writer_name,
-          meeting_type,
-          story_id,
-          call_report_writers:call_report_writers (
-            writer_id,
-            writer_email,
-            writer_phone,
-            display_order,
-            writer:writers(name)
-          )
-        `)
-        .eq("meeting_type", "call_report")
-        .eq("team_id", currentUser.team_id)
-        .order("created_at", { ascending: false })
-        .limit(100);
-
-      if (crError) {
-        console.error("Error fetching call reports:", crError);
-      } else if (callReportsData) {
-        const transformedReports = callReportsData.map((report: any) => {
-          const writers: CallReportWriter[] =
-            report.call_report_writers?.map((w: any) => ({
-              writer_id: w.writer_id,
-              writer_name: w.writer?.name || "",
-              writer_email: w.writer_email,
-              writer_phone: w.writer_phone,
-              display_order: w.display_order ?? 0,
-            })) || [];
-
-          const sortedWriters = writers.sort(
-            (a: CallReportWriter, b: CallReportWriter) =>
-              a.display_order - b.display_order
-          );
-
-          return {
-            ...report,
-            writers: sortedWriters,
-            writer_names: sortedWriters
-              .map((w) => w.writer_name)
-              .filter((name) => !!name),
-          };
-        });
-
-        setCallReports(transformedReports);
-      }
-    } catch (error) {
-      console.error("Error fetching data:", error);
-      toast.error("Failed to load data");
-    } finally {
-      setFetchingData(false);
-    }
-  }, []); // supabase client is stable, no need to include in dependencies
-
-  // Initial load - only fetch episodes, call reports loaded when Log tab is active
+  // Initial load
   useEffect(() => {
     fetchEpisodesAndStatus();
 
     return () => {
-      // Cleanup all in-flight requests on unmount
       episodesAbortRef.current?.abort();
-      evaluationsAbortRef.current?.abort();
-      existingEpisodesAbortRef.current?.abort();
     };
   }, [fetchEpisodesAndStatus]);
-
-  // Lazy load call reports only when Log tab is active
-  useEffect(() => {
-    if (activeTab === "log" && callReports.length === 0) {
-      fetchCallReports();
-    }
-  }, [activeTab, callReports.length, fetchCallReports]);
 
   // Server-side search: debounce input, then re-fetch from API
   useEffect(() => {
@@ -383,160 +201,6 @@ export default function EvaluatorEpisodesPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [debouncedSearchTerm]);
 
-  useEffect(() => {
-    const numbers = existingEpisodesForSource
-      .map((ep) => ep.episode_number)
-      .filter((num): num is number => typeof num === "number");
-
-    // Only update if numbers actually changed to prevent unnecessary re-renders
-    setExistingEpisodeNumbers((prev) => {
-      if (prev.length !== numbers.length) return numbers;
-      if (prev.every((num, idx) => num === numbers[idx])) return prev;
-      return numbers;
-    });
-
-    // Calculate next episode number for new episodes
-    const nextEpisodeNumber = numbers.length > 0
-      ? Math.max(...numbers) + 1
-      : 1;
-
-    // Update initial episode state with calculated number
-    setNewEpisodes([
-      {
-        episode_number: nextEpisodeNumber,
-        file: null,
-        additional_info: "",
-      },
-    ]);
-  }, [existingEpisodesForSource]);
-
-  const loadExistingEpisodes = useCallback(async () => {
-    if (!selectedSource) {
-      setExistingEpisodesForSource([]);
-      setExistingEpisodeNumbers([]);
-      // Reset to episode 1 when no source selected
-      setNewEpisodes([
-        {
-          episode_number: 1,
-          file: null,
-          additional_info: "",
-        },
-      ]);
-      return;
-    }
-
-    // Cancel any in-flight request
-    existingEpisodesAbortRef.current?.abort();
-    const controller = new AbortController();
-    existingEpisodesAbortRef.current = controller;
-
-    setExistingEpisodesLoading(true);
-    try {
-      const response = await fetch(
-        `/api/episodes?call_report_id=${selectedSource}&limit=100`,
-        { cache: 'no-store', signal: controller.signal }
-      );
-      const data = await response.json();
-      if (!response.ok) {
-        throw new Error(data.error || "Failed to fetch episodes");
-      }
-
-      const episodesList: ExistingEpisodeEdit[] = (data.data || [])
-        .sort(
-          (a: EpisodeWithDetails, b: EpisodeWithDetails) =>
-            (a.episode_number ?? 0) - (b.episode_number ?? 0)
-        )
-        .map((episode: EpisodeWithDetails) => ({
-          ...episode,
-          _newFile: null,
-          _isSaving: false,
-          _error: null,
-          _originalEpisodeNumber: episode.episode_number ?? null,
-          _originalAttachmentName: episode.attachment_name ?? null,
-          _originalAttachmentUrl: episode.attachment_url ?? null,
-          _originalAttachmentType: episode.attachment_type ?? null,
-          _originalAdditionalInfo: episode.additional_info ?? null,
-        }));
-
-      setExistingEpisodesForSource(episodesList);
-    } catch (error) {
-      if ((error as Error).name === 'AbortError') return;
-      console.error("Error fetching existing episodes:", error);
-      toast.error("Failed to fetch existing episodes");
-      setExistingEpisodesForSource([]);
-      setExistingEpisodeNumbers([]);
-      // Reset to episode 1 on error
-      setNewEpisodes([
-        {
-          episode_number: 1,
-          file: null,
-          additional_info: "",
-        },
-      ]);
-    } finally {
-      if (!controller.signal.aborted) {
-        setExistingEpisodesLoading(false);
-      }
-    }
-  }, [selectedSource]);
-
-  useEffect(() => {
-    loadExistingEpisodes();
-  }, [loadExistingEpisodes]);
-
-  const fetchMyEvaluations = async () => {
-    // Cancel any in-flight request
-    evaluationsAbortRef.current?.abort();
-    const controller = new AbortController();
-    evaluationsAbortRef.current = controller;
-
-    setEvaluationsLoading(true);
-    try {
-      const response = await fetch(`/api/episodic-evaluations?_t=${Date.now()}`, {
-        signal: controller.signal,
-        cache: 'no-store',
-      });
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || "Failed to fetch evaluations");
-      }
-
-      setMyEvaluations((data.data || []).filter((e: any) => !e.cross_team_share_id));
-    } catch (error: any) {
-      if (error.name === 'AbortError') return;
-      console.error("Error fetching evaluations:", error);
-      toast.error(error.message || "Failed to load evaluations");
-    } finally {
-      if (!controller.signal.aborted) {
-        setEvaluationsLoading(false);
-      }
-    }
-  };
-
-  const handleTabChange = (value: string) => {
-    setActiveTab(value);
-    if (value === "evaluations") {
-      fetchMyEvaluations();
-    }
-    if (value === "log") {
-      setTimeout(() => {
-        logSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-      }, 50);
-    }
-  };
-
-  const focusEpisodeInput = (episodeNumber: number) => {
-    setTimeout(() => {
-      const input = document.querySelector<HTMLInputElement>(
-        `[data-episode-number="${episodeNumber}"]`
-      );
-      if (input) {
-        input.scrollIntoView({ behavior: "smooth", block: "center" });
-        input.focus();
-      }
-    }, 200);
-  };
 
   const handleDownload = async (episode: EpisodeWithDetails) => {
     if (!episode.attachment_url) {
@@ -554,110 +218,10 @@ export default function EvaluatorEpisodesPage() {
     }
   };
 
-
-
-  const handleLogEpisodes = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!selectedSource) {
-      toast.error("Please select a story");
-      return;
-    }
-
-    if (newEpisodes.length === 0) {
-      toast.error("Please add at least one episode");
-      return;
-    }
-
-    const missingFile = newEpisodes.find((ep) => !ep.file);
-    if (missingFile) {
-      toast.error(`Please attach a file for Episode ${missingFile.episode_number}`);
-      return;
-    }
-
-    setLogLoading(true);
-
-    try {
-      const episodesData = await Promise.all(
-        newEpisodes.map(async (episode) => {
-          let attachment_url = null;
-          let attachment_name = null;
-          let attachment_type = null;
-
-          if (episode.file) {
-            const fileExt = episode.file.name.split(".").pop();
-            const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
-            const filePath = `${selectedSource}/${fileName}`;
-
-            attachment_url = await uploadAndVerify(supabase, "episodes", filePath, episode.file);
-            attachment_name = episode.file.name;
-            attachment_type = episode.file.type;
-          }
-
-          return {
-            episode_number: episode.episode_number,
-            attachment_url,
-            attachment_name,
-            attachment_type,
-            additional_info: episode.additional_info || null,
-          };
-        })
-      );
-
-      const payload = {
-        call_report_id: selectedSource,
-        episodes: episodesData,
-      };
-
-
-      const response = await fetch("/api/episodes", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(payload),
-      });
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        console.error("API Error Response:", result);
-        // Handle validation errors (Zod format)
-        if (result.error && typeof result.error === 'object') {
-          const errorMessage = result.details || JSON.stringify(result.error);
-          throw new Error(errorMessage);
-        }
-        throw new Error(result.error || result.details || "Failed to create episodes");
-      }
-
-      toast.success(`Successfully logged ${newEpisodes.length} episode(s)`);
-
-      // Reset form
-      setSelectedSource("");
-      setNewEpisodes([
-        {
-          episode_number: 1,
-          file: null,
-          additional_info: "",
-        },
-      ]);
-
-      // Small delay to ensure database writes are committed, then refresh
-      await new Promise(resolve => setTimeout(resolve, 300));
-      await fetchEpisodesAndStatus();
-      setActiveTab("list");
-    } catch (error: any) {
-      console.error("Error creating episodes:", error);
-      toast.error(error.message || "Failed to log episodes");
-    } finally {
-      setLogLoading(false);
-    }
-  };
-
   // Episodes are already filtered server-side when search is active
   const filteredEpisodes = episodes;
 
-  // Group episodes by project (call_report or story), tracking evaluation progress
+  // Group episodes by project (call_report or story)
   const groupEpisodesByProject = (episodeList: EpisodeWithDetails[]): ProjectGroup[] => {
     const projectsMap = new Map<string, ProjectGroup>();
 
@@ -727,211 +291,12 @@ export default function EvaluatorEpisodesPage() {
     [filteredEpisodes, evaluationStatus]
   );
 
-  // Group my evaluations by project for collapsible UI in My Evaluations tab
-  const groupMyEvaluationsByProject = (
-    evalList: EpisodicEvaluationWithDetails[]
-  ): EvaluationProjectGroup[] => {
-    const map = new Map<string, EvaluationProjectGroup>();
-    evalList.forEach((e) => {
-      const ep = e.episode;
-      if (!ep) return;
-      let projectId: string;
-      let projectName: string;
-      let projectType: "call_report" | "story";
-      let writerName: string | undefined;
-      let projectStatus: string | undefined;
-
-      if (ep.call_report_id && ep.call_report) {
-        const callReport = ep.call_report as any;
-        projectId = `call_report_${ep.call_report_id}`;
-        projectName = callReport.working_title;
-        const crWriters = callReport.call_report_writers;
-        if (crWriters && crWriters.length > 0) {
-          const sorted = [...crWriters].sort((a: any, b: any) => (a.display_order ?? 0) - (b.display_order ?? 0));
-          writerName = sorted.map((w: any) => w.writer?.name).filter(Boolean).join(", ");
-        }
-        if (!writerName) writerName = callReport.writer_name;
-        projectType = "call_report";
-      } else if (ep.story_id && ep.story) {
-        projectId = `story_${ep.story_id}`;
-        projectName = ep.story.title;
-        projectStatus = ep.story.status;
-        projectType = "story";
-      } else {
-        projectId = `episode_${ep.id}`;
-        projectName = ep.title || "Untitled Episode";
-        projectType = "call_report";
-      }
-
-      if (!map.has(projectId)) {
-        map.set(projectId, {
-          projectId,
-          projectName,
-          projectType,
-          writerName,
-          projectStatus,
-          evaluations: [],
-          totalCount: 0,
-        });
-      }
-      const group = map.get(projectId)!;
-      group.evaluations.push(e);
-      group.totalCount++;
-    });
-
-    return Array.from(map.values()).sort((a, b) => a.projectName.localeCompare(b.projectName));
-  };
-
-  const evalProjects = groupMyEvaluationsByProject(myEvaluations);
-
   const toggleProject = (projectId: string) => {
     const next = new Set(expandedProjects);
     if (next.has(projectId)) next.delete(projectId); else next.add(projectId);
     setExpandedProjects(next);
   };
 
-  const toggleEvalProject = (projectId: string) => {
-    const next = new Set(expandedEvalProjects);
-    if (next.has(projectId)) next.delete(projectId); else next.add(projectId);
-    setExpandedEvalProjects(next);
-  };
-
-  const handleContinueEpisodes = (project: ProjectGroup) => {
-    if (project.projectType !== "call_report" || !project.sourceId) {
-      toast.error("Episodes can only be logged for one-liner reports.");
-      return;
-    }
-
-    const existingNumbers = project.episodes
-      .map((ep) => ep.episode_number)
-      .filter((num): num is number => typeof num === "number");
-
-    const nextNumber =
-      existingNumbers.length > 0 ? Math.max(...existingNumbers) + 1 : 1;
-
-    setSelectedSource(project.sourceId);
-    setNewEpisodes([
-      {
-        episode_number: nextNumber,
-        file: null,
-        additional_info: "",
-      },
-    ]);
-    setActiveTab("log");
-    logSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-    focusEpisodeInput(nextNumber);
-  };
-
-  const updateExistingEpisode = (episodeId: string, updates: Partial<ExistingEpisodeEdit>) => {
-    setExistingEpisodesForSource((prev) =>
-      prev.map((episode) => (episode.id === episodeId ? { ...episode, ...updates } : episode))
-    );
-  };
-
-  const hasEpisodeChanges = (episode: ExistingEpisodeEdit) => {
-    return (
-      episode._newFile ||
-      (episode.episode_number ?? null) !== (episode._originalEpisodeNumber ?? null) ||
-      (episode.additional_info ?? "") !== (episode._originalAdditionalInfo ?? "") ||
-      (episode.attachment_url ?? null) !== (episode._originalAttachmentUrl ?? null) ||
-      (episode.attachment_name ?? null) !== (episode._originalAttachmentName ?? null)
-    );
-  };
-
-  const handleSaveExistingEpisode = async (episodeId: string) => {
-    const episode = existingEpisodesForSource.find((ep) => ep.id === episodeId);
-    if (!episode) {
-      return;
-    }
-
-    if (!hasEpisodeChanges(episode)) {
-      toast.info("No changes to save for this episode.");
-      return;
-    }
-
-    updateExistingEpisode(episodeId, { _isSaving: true, _error: null });
-
-    try {
-      const payload: Record<string, any> = {};
-      let attachmentUpdated = false;
-
-      if (
-        (episode.episode_number ?? null) !== (episode._originalEpisodeNumber ?? null)
-      ) {
-        payload.episode_number = episode.episode_number ?? 1;
-      }
-
-      if (
-        (episode.additional_info ?? "") !== (episode._originalAdditionalInfo ?? "")
-      ) {
-        payload.additional_info = episode.additional_info ?? null;
-      }
-
-      if (episode._newFile) {
-        const fileExt = episode._newFile.name.split(".").pop();
-        const safeExt = fileExt ? `.${fileExt}` : "";
-        const storagePath = `${episode.call_report_id || episode.story_id || "episode"
-          }/${episode.id}-${Date.now()}${safeExt}`;
-
-        payload.attachment_url = await uploadAndVerify(supabase, "episodes", storagePath, episode._newFile, { upsert: true });
-        payload.attachment_name = episode._newFile.name;
-        payload.attachment_type =
-          episode._newFile.type || safeExt || "application/octet-stream";
-        attachmentUpdated = true;
-      } else if (
-        (episode.attachment_url ?? null) !== (episode._originalAttachmentUrl ?? null)
-      ) {
-        payload.attachment_url = episode.attachment_url ?? null;
-        payload.attachment_name = episode.attachment_name ?? null;
-        payload.attachment_type = episode.attachment_type ?? null;
-        attachmentUpdated = true;
-      }
-
-      if (Object.keys(payload).length === 0 && !attachmentUpdated) {
-        updateExistingEpisode(episodeId, { _isSaving: false });
-        toast.info("No changes to save for this episode.");
-        return;
-      }
-
-      const response = await fetch(`/api/episodes/${episodeId}`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(payload),
-      });
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.error || result.details || "Failed to update episode");
-      }
-
-      const updatedEpisode: EpisodeWithDetails = result.episode;
-      updateExistingEpisode(episodeId, {
-        ...updatedEpisode,
-        _newFile: null,
-        _isSaving: false,
-        _error: null,
-        _originalEpisodeNumber: updatedEpisode.episode_number ?? null,
-        _originalAttachmentName: updatedEpisode.attachment_name ?? null,
-        _originalAttachmentUrl: updatedEpisode.attachment_url ?? null,
-        _originalAttachmentType: updatedEpisode.attachment_type ?? null,
-        _originalAdditionalInfo: updatedEpisode.additional_info ?? null,
-      });
-
-      toast.success(`Episode ${updatedEpisode.episode_number ?? ""} updated.`);
-      // Fetch updates - only call fetchEpisodesAndStatus to avoid cascading updates
-      fetchEpisodesAndStatus();
-    } catch (error: any) {
-      console.error("Error updating episode:", error);
-      updateExistingEpisode(episodeId, {
-        _isSaving: false,
-        _error: error.message || "Failed to save episode changes",
-      });
-      toast.error(error.message || "Failed to save episode changes");
-    }
-  };
 
   const canEditEpisode = (episode: EpisodeWithDetails): boolean => {
     if (!currentUserId || !currentUserRole) return false;
@@ -942,27 +307,23 @@ export default function EvaluatorEpisodesPage() {
     <div className="mobile-container mobile-section">
       <div className="flex flex-col gap-4 sm:gap-6 mb-8">
         <BackButton fallbackHref="/evaluator" variant="outline" size="sm" className="w-fit" />
-        <div className="space-y-1">
-          <h1 className="text-xl sm:text-2xl font-bold whitespace-nowrap">Episodes</h1>
-          <p className="text-muted-foreground text-sm sm:text-base">
-            View, log, and evaluate episodes
-          </p>
+        <div className="flex items-center justify-between">
+          <div className="space-y-1">
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Scripts & Episodes</h1>
+            <p className="text-muted-foreground text-sm sm:text-base">
+              View episodes, upload revisions, and evaluate
+            </p>
+          </div>
+          <Button asChild className="bg-[#224794] hover:bg-[#1a3670] shrink-0">
+            <Link href="/evaluator/log-episodes">
+              <Plus className="h-4 w-4 mr-2" />
+              Log New Script
+            </Link>
+          </Button>
         </div>
       </div>
 
-      <Tabs
-        value={activeTab}
-        onValueChange={handleTabChange}
-        className="space-y-4 sm:space-y-6"
-      >
-        <TabsList className="grid w-full max-w-md grid-cols-3">
-          <TabsTrigger value="list">Episodes List</TabsTrigger>
-          <TabsTrigger value="log">Log Episodes</TabsTrigger>
-          <TabsTrigger value="evaluations">My Evaluations</TabsTrigger>
-        </TabsList>
-
-        {/* Episodes List Tab */}
-        <TabsContent value="list" className="space-y-6">
+      <div className="space-y-6">
           {/* Search */}
           <div className="relative max-w-md">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
@@ -995,19 +356,15 @@ export default function EvaluatorEpisodesPage() {
             <div className="space-y-3">
               {projects.map((project) => {
                 const isExpanded = expandedProjects.has(project.projectId);
-                const progressPct = (project.evaluatedCount / project.totalCount) * 100;
-                let progressClass = "bg-gray-100 text-gray-800 border-gray-300";
-                if (progressPct === 100) progressClass = "bg-green-100 text-green-800 border-green-300";
-                else if (progressPct > 0) progressClass = "bg-yellow-100 text-yellow-800 border-yellow-300";
 
                 return (
                   <div key={project.projectId} className="bg-white rounded-lg border shadow-sm overflow-hidden">
                     {/* Project Header */}
                     <div
-                      className="p-3 sm:p-4 flex items-center justify-between bg-slate-50 cursor-pointer hover:bg-slate-100 transition-colors"
+                      className="px-4 py-3 sm:px-5 sm:py-4 flex items-center justify-between bg-slate-50 hover:bg-slate-100 cursor-pointer"
                       onClick={() => toggleProject(project.projectId)}
                     >
-                      <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                      <div className="flex items-center gap-3 min-w-0">
                         {isExpanded ? (
                           <ChevronDown className="h-5 w-5 text-slate-600 flex-shrink-0" />
                         ) : (
@@ -1015,7 +372,7 @@ export default function EvaluatorEpisodesPage() {
                         )}
                         <div className="min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
-                            <span className="font-semibold text-base truncate">{project.projectName}</span>
+                            <span className="font-semibold text-base">{project.projectName}</span>
                             {project.writerName && (
                               <span className="text-sm text-muted-foreground font-normal">by {project.writerName}</span>
                             )}
@@ -1025,115 +382,137 @@ export default function EvaluatorEpisodesPage() {
                           )}
                         </div>
                       </div>
-                      <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
-                        <Badge className={`${progressClass} border`}>
+                      <div className="flex items-center gap-3 flex-shrink-0">
+                        <span className="text-sm text-muted-foreground hidden sm:inline">
                           {project.evaluatedCount}/{project.totalCount} Evaluated
-                        </Badge>
+                        </span>
+                        <span className="text-xs text-muted-foreground sm:hidden">
+                          {project.evaluatedCount}/{project.totalCount}
+                        </span>
                         <Button
                           size="sm"
                           variant="secondary"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleContinueEpisodes(project);
-                          }}
-                          disabled={project.projectType !== "call_report" || !project.sourceId}
+                          asChild
+                          disabled={
+                            project.projectType !== "call_report" || !project.sourceId
+                          }
                         >
-                          <Plus className="h-3 w-3 mr-1" />
-                          <span className="hidden sm:inline">Add Episode</span>
-                          <span className="sm:hidden">Add</span>
+                          <Link href="/evaluator/log-episodes" onClick={(e) => e.stopPropagation()}>
+                            <Plus className="h-3 w-3 mr-1" />
+                            <span className="hidden sm:inline">Add Episode</span>
+                            <span className="sm:hidden">Add</span>
+                          </Link>
                         </Button>
                       </div>
                     </div>
 
-                    {/* Episode Cards */}
+                    {/* Expanded Episode Cards */}
                     {isExpanded && (
                       <div className="p-3 sm:p-4 space-y-3 bg-slate-50/50">
-                        {project.episodes.map((episode) => {
-                          const isEvaluated = evaluationStatus[episode.id];
-                          return (
-                            <Card key={episode.id} className="border-slate-200">
-                              <CardContent className="p-4 space-y-3">
-                                {/* Row 1: Badges */}
-                                <div className="flex items-center justify-between flex-wrap gap-2">
-                                  <div className="flex items-center gap-2 flex-wrap">
-                                    <Badge variant="outline" className="font-semibold">EP {episode.episode_number}</Badge>
-                                    {episode.version > 1 && (
-                                      <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-700">
-                                        v{episode.version}
-                                      </Badge>
+                        {project.episodes.map((episode) => (
+                          <div key={episode.id} className="bg-white rounded-lg border border-slate-200 overflow-hidden">
+                            {/* Card Header: badges + date + actions */}
+                            <div className="px-4 py-3 sm:px-5 sm:py-3.5 flex items-center gap-2 flex-wrap">
+                                <Badge variant="outline" className="font-semibold">EP {episode.episode_number}</Badge>
+                                {episode.version > 1 && (
+                                  <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-5 bg-blue-50 text-blue-700">
+                                    v{episode.version}
+                                  </Badge>
+                                )}
+                                {episode.approval_status && (
+                                  <Badge className={
+                                    episode.approval_status === "approved" ? "bg-emerald-50 text-emerald-700 text-xs" :
+                                    episode.approval_status === "needs_revision" ? "bg-amber-50 text-amber-700 text-xs" :
+                                    "bg-rose-50 text-rose-700 text-xs"
+                                  }>
+                                    {episode.approval_status === "approved" ? "Approved" : episode.approval_status === "needs_revision" ? "Needs Revision" : "Rejected"}
+                                  </Badge>
+                                )}
+                              <div className="ml-auto flex items-center gap-2">
+                                <span className="text-xs text-muted-foreground">
+                                  {episode.original_submission_date ? formatDate(episode.original_submission_date) : formatDate(episode.created_at)}
+                                </span>
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button variant="ghost" size="sm" className="h-7 w-7 p-0">
+                                      <MoreVertical className="h-4 w-4" />
+                                    </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end" side="bottom" collisionPadding={10} className="z-50">
+                                    {canEditEpisode(episode) && (
+                                      <DropdownMenuItem onClick={() => router.push(`/evaluator/episodes/${episode.id}/edit`)}>
+                                        <Pencil className="mr-2 h-4 w-4" />
+                                        Edit Episode
+                                      </DropdownMenuItem>
                                     )}
-                                    {episode.approval_status && (
-                                      <Badge className={
-                                        episode.approval_status === "approved" ? "bg-emerald-100 text-emerald-700 text-xs" :
-                                          episode.approval_status === "needs_revision" ? "bg-amber-100 text-amber-700 text-xs" :
-                                            "bg-rose-100 text-rose-700 text-xs"
-                                      }>
-                                        {episode.approval_status === "approved" ? "Approved" : episode.approval_status === "needs_revision" ? "Needs Revision" : "Rejected"}
-                                      </Badge>
+                                    {episode.attachment_url && (
+                                      <DropdownMenuItem onClick={() => handleDownload(episode)}>
+                                        <Download className="mr-2 h-4 w-4" />
+                                        Download
+                                      </DropdownMenuItem>
                                     )}
-                                  </div>
-                                </div>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                              </div>
+                            </div>
 
-                                {/* Row 2: Info */}
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1 text-sm">
-                                  {episode.initial_assessment != null && currentUserRole && ["content_manager", "content_creator", "admin", "management"].includes(currentUserRole) && (
-                                    <div className="flex items-center gap-2">
-                                      <span className="text-muted-foreground">Initial Assessment:</span>
-                                      <span className="font-semibold text-blue-700">{episode.initial_assessment}/10</span>
-                                      <span className="text-muted-foreground">by {episode.logged_by_user?.name || "Unknown"}</span>
-                                    </div>
-                                  )}
-                                  <div className="flex items-center gap-2">
-                                    <span className="text-muted-foreground">Logged by:</span>
-                                    <span>{episode.logged_by_user?.name || "Unknown"}</span>
-                                    <span className="text-muted-foreground">&middot;</span>
-                                    <span className="text-muted-foreground">
-                                      {episode.original_submission_date ? (
-                                        <>Original: {formatDate(episode.original_submission_date)}</>
-                                      ) : (
-                                        formatDate(episode.created_at)
-                                      )}
-                                    </span>
-                                  </div>
-                                </div>
+                            {/* Card Meta: logged by + initial assessment */}
+                            <div className="px-4 sm:px-5 pb-3 flex items-center gap-4 text-sm text-muted-foreground flex-wrap">
+                              <span>Logged by: <span className="text-foreground font-medium">{episode.logged_by_user?.name || "Unknown"}</span></span>
+                              {episode.initial_assessment != null && currentUserRole && ["content_manager", "content_creator", "content_head", "admin", "management", "programmer", "gcm", "evaluator"].includes(currentUserRole) && (
+                                <span>Initial Assessment: <span className="font-semibold text-blue-700">{episode.initial_assessment}/10</span> <span className="text-muted-foreground font-normal">by {episode.logged_by_user?.name || "Unknown"}</span></span>
+                              )}
+                            </div>
 
-                                {/* Revision Evaluate List */}
-                                <RevisionEvaluateList
-                                  entityId={episode.id}
-                                  entityType="episode"
-                                  revisionCount={(episode as any).revision_count || 0}
-                                  portalPrefix="evaluator"
-                                  originalFileName={episode.attachment_name}
-                                  originalDate={episode.original_submission_date || episode.created_at}
+                            {/* Card Body: RevisionEvaluateList — full width */}
+                            <div className="px-4 sm:px-5 pb-3">
+                              <RevisionEvaluateList
+                                entityId={episode.id}
+                                entityType="episode"
+                                revisionCount={(episode as any).revision_count || 0}
+                                portalPrefix="evaluator"
+                                originalFileName={episode.attachment_name}
+                                originalDate={episode.original_submission_date || episode.created_at}
+                              />
+                            </div>
+
+                            {/* Card Footer: action buttons */}
+                            <div className="px-4 sm:px-5 py-3 border-t border-slate-100 bg-slate-50/50 flex items-center justify-end gap-2 flex-wrap">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => setRevisionOpenEpisodeId(revisionOpenEpisodeId === episode.id ? null : episode.id)}
+                              >
+                                <Upload className="h-4 w-4 mr-1.5" />
+                                Upload Revision
+                              </Button>
+                              {canEditEpisode(episode) && (
+                                <Button size="sm" variant="outline" onClick={() => router.push(`/evaluator/episodes/${episode.id}/edit`)}>
+                                  <Pencil className="h-4 w-4 mr-1.5" />
+                                  Edit
+                                </Button>
+                              )}
+                              {episode.attachment_url && (
+                                <Button size="sm" variant="outline" onClick={() => handleDownload(episode)}>
+                                  <Download className="h-4 w-4 mr-1.5" />
+                                  Download
+                                </Button>
+                              )}
+                            </div>
+
+                            {/* Inline revision panel */}
+                            {revisionOpenEpisodeId === episode.id && (
+                              <div className="px-4 sm:px-5 py-4 border-t border-slate-200 bg-slate-50">
+                                <EpisodeRevisions
+                                  episodeId={episode.id}
+                                  canEdit={true}
+                                  userRole={currentUserRole || undefined}
+                                  evaluateUrl="/evaluator/episodes"
                                 />
-
-                                {/* Row 4: Actions */}
-                                <div className="flex items-center justify-end gap-2 pt-2 border-t flex-wrap">
-                                  {isTeamHead && (
-                                    <ShareCrossTeamButton
-                                      callReportId={episode.call_report_id || ""}
-                                      currentTeamId={currentTeamId || undefined}
-                                      episodeId={episode.id}
-                                      callReportTitle={project.projectName}
-                                    />
-                                  )}
-                                  {canEditEpisode(episode) && (
-                                    <Button size="sm" variant="outline" onClick={() => router.push(`/evaluator/episodes/${episode.id}/edit`)}>
-                                      <Pencil className="h-4 w-4 mr-1" />
-                                      Edit
-                                    </Button>
-                                  )}
-                                  {episode.attachment_url && (
-                                    <Button size="sm" variant="outline" onClick={() => handleDownload(episode)}>
-                                      <Download className="h-4 w-4 mr-1" />
-                                      Download
-                                    </Button>
-                                  )}
-                                </div>
-                              </CardContent>
-                            </Card>
-                          );
-                        })}
+                              </div>
+                            )}
+                          </div>
+                        ))}
                       </div>
                     )}
                   </div>
@@ -1171,385 +550,7 @@ export default function EvaluatorEpisodesPage() {
               </p>
             </div>
           )}
-        </TabsContent>
-
-        {/* Log Episodes Tab */}
-        <TabsContent value="log">
-          <div ref={logSectionRef}>
-            <form onSubmit={handleLogEpisodes} className="space-y-8">
-              {/* Select a story (backed by logged call reports) */}
-              <div className="space-y-6 bg-white p-6 rounded-lg border shadow-sm">
-                <div className="space-y-2">
-                  <Label htmlFor="source-select">
-                    Select a story <span className="text-red-500">*</span>
-                  </Label>
-                  <Select
-                    value={selectedSource}
-                    onValueChange={setSelectedSource}
-                    disabled={logLoading}
-                  >
-                    <SelectTrigger id="source-select">
-                      <SelectValue placeholder="Select a story" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {callReports.map((cr) => {
-                        const writerDisplay =
-                          cr.writer_names && cr.writer_names.length > 0
-                            ? cr.writer_names.join(", ")
-                            : cr.writer_name;
-                        return (
-                          <SelectItem key={cr.id} value={cr.id}>
-                            {cr.working_title} - {writerDisplay}
-                          </SelectItem>
-                        );
-                      })}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              {selectedSource && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-base">
-                      Existing Episodes ({existingEpisodesForSource.length})
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    {existingEpisodesLoading ? (
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                        Loading existing episodes...
-                      </div>
-                    ) : existingEpisodesForSource.length === 0 ? (
-                      <p className="text-sm text-muted-foreground">
-                        No episodes logged yet for this story.
-                      </p>
-                    ) : (
-                      <div className="space-y-4">
-                        <Card className="bg-slate-50 border-dashed">
-                          <CardHeader className="flex flex-row items-center justify-between py-3">
-                            <div>
-                              <CardTitle className="text-sm font-semibold">
-                                Info & edit existing episodes
-                              </CardTitle>
-                              <p className="text-xs text-muted-foreground">
-                                Update numbers or re-upload files below. Add-ons appear at the bottom.
-                              </p>
-                            </div>
-                            <Info className="h-4 w-4 text-muted-foreground" />
-                          </CardHeader>
-                        </Card>
-
-                        <div className="space-y-3 max-h-[420px] overflow-y-auto pr-1">
-                          {existingEpisodesForSource.map((episode, idx) => (
-                            <Card key={episode.id}>
-                              <CardHeader className="pb-2">
-                                <div className="flex items-center justify-between flex-wrap gap-2">
-                                  <CardTitle className="text-base font-semibold">
-                                    Episode {episode.episode_number ?? "—"}
-                                  </CardTitle>
-                                  <Badge variant="secondary">
-                                    Logged by {episode.logged_by_user?.name || "Unknown"}
-                                  </Badge>
-                                </div>
-                              </CardHeader>
-                              <CardContent className="space-y-3">
-                                <div className="space-y-2">
-                                  <Label htmlFor={`existing-episode-${episode.id}-number`}>
-                                    Episode Number
-                                  </Label>
-                                  <Input
-                                    id={`existing-episode-${episode.id}-number`}
-                                    type="number"
-                                    value={episode.episode_number ?? idx + 1}
-                                    onChange={(e) => {
-                                      const value = e.target.value;
-                                      const numValue = parseInt(value);
-                                      updateExistingEpisode(episode.id, {
-                                        episode_number: value === "" ? undefined : (isNaN(numValue) ? undefined : numValue),
-                                      });
-                                    }}
-                                    onBlur={(e) => {
-                                      const value = parseInt(e.target.value);
-                                      if (!value || value < 1) {
-                                        updateExistingEpisode(episode.id, {
-                                          episode_number: episode._originalEpisodeNumber ?? 1,
-                                        });
-                                      }
-                                    }}
-                                    data-episode-number={episode.episode_number ?? idx + 1}
-                                  />
-                                </div>
-
-                                <div className="space-y-2">
-                                  <Label>Attachment</Label>
-                                  <EpisodeFileUpload
-                                    file={episode._newFile || null}
-                                    existingFileName={episode.attachment_name || undefined}
-                                    existingFileUrl={episode.attachment_url || undefined}
-                                    onExistingFileDownload={() => handleDownload(episode)}
-                                    onFileSelect={(file) =>
-                                      updateExistingEpisode(episode.id, { _newFile: file })
-                                    }
-                                    onFileRemove={() =>
-                                      updateExistingEpisode(episode.id, {
-                                        _newFile: null,
-                                        attachment_url: null,
-                                        attachment_name: null,
-                                        attachment_type: null,
-                                      })
-                                    }
-                                    disabled={episode._isSaving}
-                                  />
-                                </div>
-
-                                <div className="space-y-2">
-                                  <Label htmlFor={`existing-episode-${episode.id}-info`}>
-                                    Additional Information
-                                  </Label>
-                                  <Textarea
-                                    id={`existing-episode-${episode.id}-info`}
-                                    rows={3}
-                                    value={episode.additional_info || ""}
-                                    onChange={(e) =>
-                                      updateExistingEpisode(episode.id, {
-                                        additional_info: e.target.value,
-                                      })
-                                    }
-                                  />
-                                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                    {episode.additional_info?.length || 0}/5000 characters
-                                  </div>
-                                </div>
-
-                                <div className="flex items-center justify-between gap-3 pt-2 border-t border-slate-100 flex-wrap">
-                                  {episode._error && (
-                                    <p className="text-xs text-destructive">{episode._error}</p>
-                                  )}
-                                  <div className="ml-auto">
-                                    <Button
-                                      size="sm"
-                                      variant="outline"
-                                      disabled={!hasEpisodeChanges(episode) || episode._isSaving}
-                                      onClick={() => handleSaveExistingEpisode(episode.id)}
-                                    >
-                                      {episode._isSaving ? (
-                                        <>
-                                          <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                                          Saving...
-                                        </>
-                                      ) : (
-                                        "Save Changes"
-                                      )}
-                                    </Button>
-                                  </div>
-                                </div>
-                              </CardContent>
-                            </Card>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* Episodes Form */}
-              {selectedSource && (
-                <div className="space-y-6">
-                  <h2 className="text-xl font-semibold">Episodes</h2>
-                  <EpisodeUploadForm
-                    episodes={newEpisodes}
-                    onEpisodesChange={setNewEpisodes}
-                    disabled={logLoading}
-                    existingEpisodeNumbers={existingEpisodeNumbers}
-                  />
-                </div>
-              )}
-
-              {/* Submit Button */}
-              <div className="flex gap-4">
-                <Button
-                  type="submit"
-                  disabled={logLoading || !selectedSource || newEpisodes.length === 0}
-                  className="flex-1"
-                >
-                  {logLoading ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Logging Episodes...
-                    </>
-                  ) : (
-                    <>
-                      <Plus className="mr-2 h-4 w-4" />
-                      {newEpisodes.length === 1 ? "Log Episode" : `Log ${newEpisodes.length} Episodes`}
-                    </>
-                  )}
-                </Button>
-              </div>
-            </form>
-          </div>
-        </TabsContent>
-
-        {/* My Evaluations Tab */}
-        <TabsContent value="evaluations">
-          {evaluationsLoading ? (
-            <div className="flex items-center justify-center h-64">
-              <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
-            </div>
-          ) : myEvaluations.length === 0 ? (
-            <div className="text-center py-12 bg-white rounded-lg border">
-              <ClipboardCheck className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-              <h3 className="text-lg font-semibold mb-2">No evaluations yet</h3>
-              <p className="text-muted-foreground">
-                Start evaluating episodes to see your submissions here
-              </p>
-            </div>
-          ) : (
-            <div className="bg-white rounded-lg border shadow-sm">
-              {/* Desktop grouped table */}
-              <div className="hidden md:block">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Episode #</TableHead>
-                      <TableHead>Project</TableHead>
-                      <TableHead>Score</TableHead>
-                      <TableHead>Submitted</TableHead>
-                      <TableHead className="text-right">Action</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {evalProjects.map((project) => (
-                      <Fragment key={project.projectId}>
-                        <TableRow
-                          className="bg-slate-50 hover:bg-slate-100 cursor-pointer border-t-2 border-slate-200"
-                          onClick={() => toggleEvalProject(project.projectId)}
-                        >
-                          <TableCell colSpan={5} className="font-semibold py-4">
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-3">
-                                {expandedEvalProjects.has(project.projectId) ? (
-                                  <ChevronDown className="h-5 w-5 text-slate-600 flex-shrink-0" />
-                                ) : (
-                                  <ChevronRight className="h-5 w-5 text-slate-600 flex-shrink-0" />
-                                )}
-                                <div>
-                                  <div className="flex items-center gap-2">
-                                    <span className="text-base">{project.projectName}</span>
-                                    {project.writerName && (
-                                      <span className="text-sm text-muted-foreground font-normal">by {project.writerName}</span>
-                                    )}
-                                  </div>
-                                  {project.projectStatus && (
-                                    <Badge variant="secondary" className="text-xs mt-1">{project.projectStatus}</Badge>
-                                  )}
-                                </div>
-                              </div>
-                              <span className="text-sm text-muted-foreground">
-                                {project.totalCount} {project.totalCount === 1 ? "Evaluation" : "Evaluations"}
-                              </span>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-
-                        {expandedEvalProjects.has(project.projectId) &&
-                          project.evaluations.map((evaluation) => (
-                            <TableRow key={evaluation.id} className="hover:bg-slate-50">
-                              <TableCell className="pl-12">
-                                <Badge variant="outline">EP {evaluation.episode?.episode_number}</Badge>
-                              </TableCell>
-                              <TableCell>{/* Project in header */}</TableCell>
-                              <TableCell>
-                                <span className="font-bold text-lg">{evaluation.overall_average.toFixed(2)}</span>
-                                <span className="text-sm text-muted-foreground">/10</span>
-                              </TableCell>
-                              <TableCell className="text-sm text-muted-foreground">
-                                {formatDate(evaluation.submitted_at)}
-                              </TableCell>
-                              <TableCell className="text-right">
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => router.push(`/evaluator/episodes/${evaluation.episode_id}`)}
-                                >
-                                  <Eye className="h-4 w-4 mr-1" />
-                                  View
-                                </Button>
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                      </Fragment>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-
-              {/* Mobile grouped cards */}
-              <div className="md:hidden divide-y">
-                {evalProjects.map((project) => (
-                  <div key={project.projectId}>
-                    <div
-                      className="p-4 flex items-center justify-between bg-slate-50"
-                      onClick={() => toggleEvalProject(project.projectId)}
-                    >
-                      <div className="flex items-center gap-2">
-                        {expandedEvalProjects.has(project.projectId) ? (
-                          <ChevronDown className="h-5 w-5 text-slate-600" />
-                        ) : (
-                          <ChevronRight className="h-5 w-5 text-slate-600" />
-                        )}
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <span className="font-medium">{project.projectName}</span>
-                            {project.writerName && (
-                              <span className="text-sm text-muted-foreground">by {project.writerName}</span>
-                            )}
-                          </div>
-                          {project.projectStatus && (
-                            <Badge variant="secondary" className="text-xs mt-1">{project.projectStatus}</Badge>
-                          )}
-                        </div>
-                      </div>
-                      <span className="text-sm text-muted-foreground">{project.totalCount}</span>
-                    </div>
-
-                    {expandedEvalProjects.has(project.projectId) && (
-                      <div className="divide-y divide-slate-200">
-                        {project.evaluations.map((evaluation) => (
-                          <div key={evaluation.id} className="p-4 flex flex-col gap-3 items-center text-center bg-white">
-                            <div className="flex flex-col items-center gap-2 w-full">
-                              <Badge variant="outline" className="text-sm">EP {evaluation.episode?.episode_number}</Badge>
-                              <span className="font-medium text-base">
-                                {evaluation.episode?.title || (
-                                  <span className="text-muted-foreground italic">Untitled</span>
-                                )}
-                              </span>
-                            </div>
-                            <div className="text-lg font-bold">
-                              {evaluation.overall_average.toFixed(2)}<span className="text-muted-foreground text-base">/10</span>
-                            </div>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => router.push(`/evaluator/episodes/${evaluation.episode_id}`)}
-                              className="touch-target w-full max-w-xs"
-                            >
-                              <Eye className="h-4 w-4 mr-1" />
-                              View
-                            </Button>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </TabsContent>
-      </Tabs>
+      </div>
     </div>
   );
 }

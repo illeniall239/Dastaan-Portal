@@ -88,7 +88,7 @@ export async function GET(
     // Query all evaluations for this episode (no revision filter) with scoping
     let query = supabase
       .from("episodic_evaluations")
-      .select("id, revision_id, evaluator_id, evaluator:users!evaluator_id(name, role)")
+      .select("id, revision_id, evaluator_id, overall_average, overall_grade, decision, evaluator:users!evaluator_id(name, role)")
       .eq("episode_id", episodeId)
       .is("cross_team_share_id", null);
 
@@ -110,8 +110,8 @@ export async function GET(
     }
 
     // Build status map
-    const original: { hasEvaluated: boolean; evaluatorName?: string } = { hasEvaluated: false };
-    const revisions: Record<string, { hasEvaluated: boolean; evaluatorName?: string }> = {};
+    const original: { hasEvaluated: boolean; evaluatorName?: string; averageScore?: number; decision?: string; grade?: string; evaluationId?: string } = { hasEvaluated: false };
+    const revisions: Record<string, { hasEvaluated: boolean; evaluatorName?: string; averageScore?: number; decision?: string; grade?: string; evaluationId?: string }> = {};
 
     for (const ev of evaluations || []) {
       const evaluatorName = (ev.evaluator as any)?.name || undefined;
@@ -126,8 +126,19 @@ export async function GET(
       if (ev.revision_id === null) {
         original.hasEvaluated = true;
         if (evaluatorName) original.evaluatorName = evaluatorName;
+        original.averageScore = ev.overall_average;
+        original.decision = ev.decision;
+        original.grade = ev.overall_grade;
+        original.evaluationId = ev.id;
       } else {
-        revisions[ev.revision_id] = { hasEvaluated: true, evaluatorName };
+        revisions[ev.revision_id] = {
+          hasEvaluated: true,
+          evaluatorName,
+          averageScore: ev.overall_average,
+          decision: ev.decision,
+          grade: ev.overall_grade,
+          evaluationId: ev.id,
+        };
       }
     }
 

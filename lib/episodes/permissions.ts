@@ -29,7 +29,7 @@ export function canEditEpisode(
 
   // Privileged roles
   if (
-    ["content_creator", "content_manager", "programmer", "gcm", "admin", "management"].includes(userRole)
+    ["content_creator", "content_manager", "programmer", "gcm", "evaluator", "admin", "management"].includes(userRole)
   )
     return true;
 

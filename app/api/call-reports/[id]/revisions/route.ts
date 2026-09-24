@@ -17,6 +17,7 @@ const createRevisionSchema = z.object({
   attachment_type: z.string().max(100).optional().nullable(),
   comment: z.string().max(5000).optional().nullable(),
   original_submission_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().nullable(),
+  initial_assessment: z.number().int().min(1).max(10).optional().nullable(),
 });
 
 /**
@@ -63,7 +64,8 @@ export async function GET(
       .select(
         `
         *,
-        uploaded_by_user:users!uploaded_by(name, email)
+        uploaded_by_user:users!uploaded_by(name, email),
+        assessed_by_user:users!assessed_by(name)
       `
       )
       .eq("call_report_id", id)
@@ -233,11 +235,17 @@ export async function POST(
         comment: validation.data.comment || null,
         original_submission_date: validation.data.original_submission_date || null,
         uploaded_by: user.id,
+        ...(validation.data.initial_assessment != null ? {
+          initial_assessment: validation.data.initial_assessment,
+          assessed_by: user.id,
+          assessed_at: new Date().toISOString(),
+        } : {}),
       })
       .select(
         `
         *,
-        uploaded_by_user:users!uploaded_by(name, email)
+        uploaded_by_user:users!uploaded_by(name, email),
+        assessed_by_user:users!assessed_by(name)
       `
       )
       .single();

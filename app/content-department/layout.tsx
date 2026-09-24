@@ -57,34 +57,21 @@ export default async function ContentDepartmentLayout({
       icon: "home",
     },
     {
-      title: "AI Assistant",
-      href: "/content-department/ai-assistant",
-      icon: "sparkles",
+      title: "One-Liners",
+      href: "/content-department/one-liners",
+      icon: "fileText",
+      highlight: true,
+    },
+    {
+      title: "Scripts & Episodes",
+      href: "/content-department/episodes",
+      icon: "film",
+      highlight: true,
     },
     {
       title: "Calendar",
       href: "/content-department/calendar",
       icon: "calendar",
-    },
-    {
-      title: "One-Liner Reports",
-      href: "/content-department/call-reports",
-      icon: "fileText",
-    },
-    {
-      title: "Episodes",
-      href: "/content-department/episodes",
-      icon: "film",
-    },
-    {
-      title: "Evaluations",
-      href: "/content-department/evaluations",
-      icon: "clipboardList",
-    },
-    {
-      title: "Notifications",
-      href: "/content-department/notifications",
-      icon: "bell",
     },
   ];
 

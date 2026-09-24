@@ -33,7 +33,6 @@ import {
 } from "lucide-react";
 import { EvaluationProgressBar } from "@/components/evaluations/evaluation-progress-bar";
 import { IndividualEvaluationProgress } from "@/components/evaluations/individual-evaluation-progress";
-import { ShareCrossTeamButton } from "@/components/call-report/share-cross-team-button";
 import { MANDATORY_APPROVERS } from "@/lib/approvals/config";
 import { CallReportDiscussion } from "@/components/call-reports/call-report-discussion";
 import { RevisionEvaluateList } from "@/components/episodes/revision-evaluate-list";
@@ -460,14 +459,6 @@ export function EvaluationCard({
                 originalFileName={report.working_title}
                 originalDate={report.original_submission_date || report.logged_at || report.created_at}
               />
-              {isTeamHead && (
-                <div className="flex justify-end">
-                  <ShareCrossTeamButton
-                    callReportId={report.id}
-                    currentTeamId={currentTeamId}
-                  />
-                </div>
-              )}
             </div>
 
             {/* Discussion thread — visible on completed evaluations for logged-in users */}
