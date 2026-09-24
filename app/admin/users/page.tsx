@@ -170,8 +170,10 @@ export default function AdminUsersPage() {
         throw new Error("Failed to update status");
       }
 
-      toast.success("Status updated", {
-        description: `User is now ${newStatus}`,
+      toast.success(newStatus === "inactive" ? "User deactivated" : "User reactivated", {
+        description: newStatus === "inactive"
+          ? "User can no longer log in."
+          : "User can now log in again.",
       });
 
       fetchUsers();
@@ -314,14 +316,14 @@ export default function AdminUsersPage() {
               </td>
               <td className="px-6 py-4 whitespace-nowrap">
                 <Badge
-                  variant={user.status === "active" ? "default" : "secondary"}
+                  variant={user.status === "active" ? "default" : "destructive"}
                   className={
                     user.status === "active"
                       ? "bg-green-100 text-green-800 border-green-300"
-                      : "bg-gray-100 text-gray-800 border-gray-300"
+                      : "bg-red-100 text-red-800 border-red-300"
                   }
                 >
-                  {user.status}
+                  {user.status === "active" ? "active" : "deactivated"}
                 </Badge>
               </td>
               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
@@ -349,11 +351,15 @@ export default function AdminUsersPage() {
                   Edit
                 </Button>
                 <Button
-                  variant="outline"
+                  variant={user.status === "active" ? "outline" : "default"}
                   size="sm"
+                  className={user.status === "active"
+                    ? "border-orange-300 text-orange-700 hover:bg-orange-50"
+                    : "bg-green-600 text-white hover:bg-green-700"
+                  }
                   onClick={() => handleToggleStatus(user.id, user.status)}
                 >
-                  {user.status === "active" ? "Deactivate" : "Activate"}
+                  {user.status === "active" ? "Deactivate" : "Reactivate"}
                 </Button>
                 <Button
                   variant="destructive"
@@ -380,14 +386,14 @@ export default function AdminUsersPage() {
                     <div>
                       <h3 className="font-semibold text-base">{user.name}</h3>
                       <Badge
-                        variant={user.status === "active" ? "default" : "secondary"}
+                        variant={user.status === "active" ? "default" : "destructive"}
                         className={`mt-1 text-xs ${
                           user.status === "active"
                             ? "bg-green-100 text-green-800 border-green-300"
-                            : "bg-gray-100 text-gray-800 border-gray-300"
+                            : "bg-red-100 text-red-800 border-red-300"
                         }`}
                       >
-                        {user.status}
+                        {user.status === "active" ? "active" : "deactivated"}
                       </Badge>
                     </div>
                   </div>
@@ -461,12 +467,15 @@ export default function AdminUsersPage() {
                     Edit
                   </Button>
                   <Button
-                    variant="outline"
+                    variant={user.status === "active" ? "outline" : "default"}
                     size="sm"
-                    className="touch-target"
+                    className={`touch-target ${user.status === "active"
+                      ? "border-orange-300 text-orange-700 hover:bg-orange-50"
+                      : "bg-green-600 text-white hover:bg-green-700"
+                    }`}
                     onClick={() => handleToggleStatus(user.id, user.status)}
                   >
-                    {user.status === "active" ? "Deactivate" : "Activate"}
+                    {user.status === "active" ? "Deactivate" : "Reactivate"}
                   </Button>
                   <Button
                     variant="destructive"

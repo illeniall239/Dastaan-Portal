@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { logger } from "@/lib/logger";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { z } from "zod";
 import { applyRateLimit, addRateLimitHeaders, withCors } from "@/lib/api-middleware";
 import { RateLimitPresets } from "@/lib/rate-limit-redis";
@@ -38,9 +39,10 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 
   const { status } = validation.data;
 
-  // There is no status field in auth.users, so we only update the public.users table
+  // Use admin client to bypass RLS (consistent with other admin mutation routes)
+  const adminClient = createAdminClient();
 
-  const { error } = await supabase
+  const { error } = await adminClient
     .from('users')
     .update({ status })
     .eq('id', id);

@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useState, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -16,9 +16,27 @@ import { Mail, Lock, BarChart3 } from "lucide-react";
 import Link from "next/link";
 
 export default function LoginPage() {
+  return (
+    <Suspense>
+      <LoginPageContent />
+    </Suspense>
+  );
+}
+
+function LoginPageContent() {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
+  const searchParams = useSearchParams();
   const supabase = createClient();
+
+  useEffect(() => {
+    if (searchParams.get('error') === 'account_deactivated') {
+      toast.error("Account deactivated", {
+        description: "Your account has been deactivated. Please contact your administrator.",
+        duration: 8000,
+      });
+    }
+  }, [searchParams]);
 
   const {
     register,
@@ -62,6 +80,23 @@ export default function LoginPage() {
       }
 
       if (authResult.user) {
+        // Check if account is active before allowing login
+        const { data: profile } = await supabase
+          .from('users')
+          .select('status')
+          .eq('id', authResult.user.id)
+          .single();
+
+        if (profile?.status === 'inactive') {
+          await supabase.auth.signOut();
+          toast.error("Account deactivated", {
+            description: "Your account has been deactivated. Please contact your administrator.",
+            duration: 8000,
+          });
+          setLoading(false);
+          return;
+        }
+
         try {
           // Also add timeout for session API call
           const sessionTimeout = new Promise((_, reject) =>

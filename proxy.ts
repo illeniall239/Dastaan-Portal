@@ -103,13 +103,15 @@ export async function proxy(request: NextRequest) {
 
   if (user) {
     let userRole: string | undefined;
+    let userStatus: string | undefined;
 
     // Try session cookie first (fast path) — HMAC-signed to prevent tampering
     const sessionCookie = request.cookies.get('user_session');
     if (sessionCookie) {
       const sessionData = verifySessionPayload(sessionCookie.value);
-      if (sessionData && sessionData.id === user.id) {
+      if (sessionData && sessionData.id === user.id && 'status' in sessionData) {
         userRole = sessionData.role as string;
+        userStatus = sessionData.status as string | undefined;
         logger.dev(`✅ [Proxy] Using verified session cookie for role: ${userRole}`);
       } else if (sessionCookie.value) {
         logger.error('❌ [Proxy] Session cookie verification failed (tampered or expired format)');
@@ -122,7 +124,7 @@ export async function proxy(request: NextRequest) {
       try {
         const { data: userData, error } = await supabase
           .from('users')
-          .select('id, email, name, role, position, department')
+          .select('id, email, name, role, position, department, status')
           .eq('id', user.id)
           .single();
 
@@ -131,6 +133,7 @@ export async function proxy(request: NextRequest) {
           userRole = undefined;
         } else {
           userRole = userData?.role;
+          userStatus = userData?.status;
           logger.dev(`🔍 [Proxy] DB query returned role: ${userRole}`);
 
           // Set session cookie for future requests (performance optimization)
@@ -142,6 +145,7 @@ export async function proxy(request: NextRequest) {
               role: userData.role,
               position: userData.position,
               department: userData.department,
+              status: userData.status,
             };
             supabaseResponse.cookies.set('user_session', signSessionPayload(sessionPayload), {
               httpOnly: true,
@@ -157,6 +161,16 @@ export async function proxy(request: NextRequest) {
         logger.error('❌ [Proxy] Exception querying user role:', error);
         userRole = undefined;
       }
+    }
+
+    // Block inactive users — clear session and redirect to login
+    if (userStatus === 'inactive') {
+      logger.dev(`🚫 [Proxy] Inactive user ${user.id} blocked`);
+      const loginUrl = new URL('/login', request.url);
+      loginUrl.searchParams.set('error', 'account_deactivated');
+      const res = NextResponse.redirect(loginUrl);
+      res.cookies.delete('user_session');
+      return res;
     }
 
     // Check protected routes
