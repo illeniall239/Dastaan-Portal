@@ -397,7 +397,7 @@ export default function GcmEpisodesPage() {
                             project.projectType !== "call_report" || !project.sourceId
                           }
                         >
-                          <Link href="/gcm/log-episodes" onClick={(e) => e.stopPropagation()}>
+                          <Link href={`/gcm/log-episodes?source=${project.sourceId}`} onClick={(e) => e.stopPropagation()}>
                             <Plus className="h-3 w-3 mr-1" />
                             <span className="hidden sm:inline">Add Episode</span>
                             <span className="sm:hidden">Add</span>

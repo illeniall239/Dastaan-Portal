@@ -14,7 +14,8 @@ export async function uploadEpisodeFile(
   filePath: string,
   supabaseUrl: string,
   supabaseAnonKey: string,
-  onProgress?: (progress: number) => void
+  onProgress?: (progress: number) => void,
+  accessToken?: string
 ): Promise<EpisodeUploadResult> {
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
@@ -66,7 +67,7 @@ export async function uploadEpisodeFile(
     // Prepare request
     const url = `${supabaseUrl}/storage/v1/object/${bucket}/${filePath}`;
     xhr.open('POST', url);
-    xhr.setRequestHeader('Authorization', `Bearer ${supabaseAnonKey}`);
+    xhr.setRequestHeader('Authorization', `Bearer ${accessToken || supabaseAnonKey}`);
     xhr.setRequestHeader('apikey', supabaseAnonKey);
 
     // Send file
