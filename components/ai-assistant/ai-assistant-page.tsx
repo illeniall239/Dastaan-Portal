@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useCallback, type ComponentPropsWithoutRef } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, useCallback, type ComponentPropsWithoutRef } from "react";
 import { Bot, Send, Trash2, Loader2 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -95,6 +95,7 @@ export function AIAssistantPage({
   const [initialLoading, setInitialLoading] = useState(true);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -124,8 +125,36 @@ export function AIAssistantPage({
   }, [messages, loading]);
 
   useEffect(() => {
-    if (!initialLoading) inputRef.current?.focus();
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const onResize = () => {
+      bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    };
+    vv.addEventListener("resize", onResize);
+    return () => vv.removeEventListener("resize", onResize);
+  }, []);
+
+  useEffect(() => {
+    if (!initialLoading && window.innerWidth >= 640) inputRef.current?.focus();
   }, [initialLoading]);
+
+  useLayoutEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const setHeight = () => {
+      const top = el.getBoundingClientRect().top;
+      el.style.height = `${window.innerHeight - top}px`;
+    };
+    setHeight();
+    const vv = window.visualViewport;
+    if (vv) {
+      vv.addEventListener("resize", setHeight);
+      return () => vv.removeEventListener("resize", setHeight);
+    }
+    window.addEventListener("resize", setHeight);
+    return () => window.removeEventListener("resize", setHeight);
+  }, [initialLoading]);
+
 
   const send = useCallback(async (text?: string) => {
     const msg = (text ?? input).trim();
@@ -186,7 +215,7 @@ export function AIAssistantPage({
 
   if (initialLoading) {
     return (
-      <div className="flex items-center justify-center h-[calc(100vh-4rem)]">
+      <div className="flex items-center justify-center h-full">
         <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
       </div>
     );
@@ -195,9 +224,9 @@ export function AIAssistantPage({
   const isEmpty = messages.length === 0;
 
   return (
-    <div className="flex flex-col h-[calc(100vh-4rem)]">
+    <div ref={containerRef} className="flex flex-col overflow-hidden">
       {messages.length > 0 && (
-        <div className="flex justify-end px-6 py-2">
+        <div className="flex justify-end px-4 sm:px-6 py-2 shrink-0">
           <button
             onClick={clearChat}
             className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors px-3 py-1.5 rounded-lg hover:bg-muted"
@@ -208,22 +237,22 @@ export function AIAssistantPage({
         </div>
       )}
 
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 min-h-0 overflow-y-auto">
         {isEmpty ? (
-          <div className="flex flex-col items-center justify-center h-full px-6">
-            <div className="flex items-center justify-center w-16 h-16 rounded-2xl bg-primary/10 mb-4">
+          <div className="flex flex-col items-center px-4 sm:px-6 pt-6 sm:pt-0 sm:justify-center sm:min-h-full">
+            <div className="hidden sm:flex items-center justify-center w-16 h-16 rounded-2xl bg-primary/10 mb-4">
               <Bot className="w-8 h-8 text-primary" />
             </div>
-            <h2 className="text-xl font-semibold mb-1">How can I help?</h2>
-            <p className="text-sm text-muted-foreground mb-8 text-center max-w-md">
+            <h2 className="text-lg sm:text-xl font-semibold mb-0.5 sm:mb-1">How can I help?</h2>
+            <p className="text-xs sm:text-sm text-muted-foreground mb-4 sm:mb-8 text-center max-w-md">
               {description}
             </p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 max-w-3xl w-full">
-              {suggestions.map((s) => (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-1.5 sm:gap-2 max-w-3xl w-full">
+              {suggestions.map((s, i) => (
                 <button
                   key={s}
                   onClick={() => send(s)}
-                  className="text-left text-sm px-4 py-3 rounded-xl border border-border hover:bg-muted hover:border-primary/20 transition-colors"
+                  className={`text-left text-sm px-3 sm:px-4 py-2 sm:py-3 rounded-xl border border-border hover:bg-muted hover:border-primary/20 transition-colors${i >= 4 ? " hidden sm:block" : ""}`}
                 >
                   {s}
                 </button>
@@ -231,7 +260,7 @@ export function AIAssistantPage({
             </div>
           </div>
         ) : (
-          <div className="max-w-3xl mx-auto px-6 py-6 space-y-6">
+          <div className="max-w-3xl mx-auto px-4 sm:px-6 py-4 sm:py-6 space-y-5 sm:space-y-6">
             {messages.map((msg, i) =>
               msg.role === "assistant" ? (
                 <div key={i} className="flex items-start gap-3">
@@ -277,8 +306,8 @@ export function AIAssistantPage({
         )}
       </div>
 
-      <div className="border-t border-border bg-background px-6 py-4">
-        <div className="max-w-3xl mx-auto flex items-end gap-3">
+      <div className="shrink-0 border-t border-border bg-background px-4 sm:px-6 py-2.5 sm:py-4" style={{ paddingBottom: "max(0.625rem, env(safe-area-inset-bottom, 0px))" }}>
+        <div className="max-w-3xl mx-auto flex items-end gap-2">
           <div className="flex-1 relative">
             <textarea
               ref={inputRef}
@@ -288,11 +317,11 @@ export function AIAssistantPage({
               placeholder={placeholder}
               disabled={loading}
               rows={1}
-              className="w-full text-sm bg-muted rounded-xl px-4 py-3 pr-12 outline-none placeholder:text-muted-foreground disabled:opacity-50 resize-none min-h-[44px] max-h-[120px]"
-              style={{ height: "44px" }}
+              className="w-full text-sm bg-muted rounded-xl px-4 py-2.5 sm:py-3 outline-none placeholder:text-muted-foreground disabled:opacity-50 resize-none min-h-[40px] sm:min-h-[44px] max-h-[120px]"
+              style={{ height: "40px" }}
               onInput={(e) => {
                 const target = e.target as HTMLTextAreaElement;
-                target.style.height = "44px";
+                target.style.height = "40px";
                 target.style.height = Math.min(target.scrollHeight, 120) + "px";
               }}
             />
@@ -300,7 +329,7 @@ export function AIAssistantPage({
           <button
             onClick={() => send()}
             disabled={!input.trim() || loading}
-            className="flex items-center justify-center w-11 h-11 rounded-xl bg-primary text-primary-foreground disabled:opacity-40 hover:bg-primary/90 transition-colors shrink-0"
+            className="flex items-center justify-center w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-primary text-primary-foreground disabled:opacity-40 hover:bg-primary/90 transition-colors shrink-0"
           >
             <Send className="w-4 h-4" />
           </button>

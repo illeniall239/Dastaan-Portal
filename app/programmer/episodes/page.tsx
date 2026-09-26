@@ -63,6 +63,7 @@ export default function ProgrammerEpisodesPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
   const [expandedProjects, setExpandedProjects] = useState<Set<string>>(new Set());
+  const [expandedEpisodes, setExpandedEpisodes] = useState<Set<string>>(new Set());
 
   // Project-based pagination state
   const [projectPage, setProjectPage] = useState(1);
@@ -297,6 +298,12 @@ export default function ProgrammerEpisodesPage() {
     setExpandedProjects(next);
   };
 
+  const toggleEpisode = (episodeId: string) => {
+    const next = new Set(expandedEpisodes);
+    if (next.has(episodeId)) next.delete(episodeId); else next.add(episodeId);
+    setExpandedEpisodes(next);
+  };
+
 
   const canEditEpisode = (episode: EpisodeWithDetails): boolean => {
     if (!currentUserId || !currentUserRole) return false;
@@ -305,19 +312,14 @@ export default function ProgrammerEpisodesPage() {
 
   return (
     <div className="mobile-container mobile-section">
-      <div className="flex flex-col gap-4 sm:gap-6 mb-8">
+      <div className="flex flex-col gap-3 sm:gap-6 mb-4 sm:mb-8">
         <BackButton fallbackHref="/programmer" variant="outline" size="sm" className="w-fit" />
-        <div className="flex items-center justify-between">
-          <div className="space-y-1">
-            <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Scripts & Episodes</h1>
-            <p className="text-muted-foreground text-sm sm:text-base">
-              View episodes, upload revisions, and evaluate
-            </p>
-          </div>
-          <Button asChild className="bg-[#224794] hover:bg-[#1a3670] shrink-0">
+        <div className="flex items-center justify-between gap-3">
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Scripts & Episodes</h1>
+          <Button asChild className="bg-[#224794] hover:bg-[#1a3670] shrink-0" size="sm">
             <Link href="/programmer/log-episodes">
-              <Plus className="h-4 w-4 mr-2" />
-              Log New Script
+              <Plus className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">Log New Script</span>
             </Link>
           </Button>
         </div>
@@ -411,8 +413,16 @@ export default function ProgrammerEpisodesPage() {
                       <div className="p-3 sm:p-4 space-y-3 bg-slate-50/50">
                         {project.episodes.map((episode) => (
                           <div key={episode.id} className="bg-white rounded-lg border border-slate-200 overflow-hidden">
-                            {/* Card Header: badges + date + actions */}
-                            <div className="px-4 py-3 sm:px-5 sm:py-3.5 flex items-center gap-2 flex-wrap">
+                            {/* Card Header: clickable to expand submissions */}
+                            <div
+                              className="px-4 py-3 sm:px-5 sm:py-3.5 flex items-center gap-2 flex-wrap cursor-pointer hover:bg-slate-50/50"
+                              onClick={() => toggleEpisode(episode.id)}
+                            >
+                                {expandedEpisodes.has(episode.id) ? (
+                                  <ChevronDown className="h-4 w-4 text-slate-400 shrink-0" />
+                                ) : (
+                                  <ChevronRight className="h-4 w-4 text-slate-400 shrink-0" />
+                                )}
                                 <Badge variant="outline" className="font-semibold">EP {episode.episode_number}</Badge>
                                 {episode.version > 1 && (
                                   <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-5 bg-blue-50 text-blue-700">
@@ -434,7 +444,7 @@ export default function ProgrammerEpisodesPage() {
                                 </span>
                                 <DropdownMenu>
                                   <DropdownMenuTrigger asChild>
-                                    <Button variant="ghost" size="sm" className="h-7 w-7 p-0">
+                                    <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={(e) => e.stopPropagation()}>
                                       <MoreVertical className="h-4 w-4" />
                                     </Button>
                                   </DropdownMenuTrigger>
@@ -457,59 +467,61 @@ export default function ProgrammerEpisodesPage() {
                             </div>
 
                             {/* Card Meta: logged by + initial assessment */}
-                            <div className="px-4 sm:px-5 pb-3 flex items-center gap-4 text-sm text-muted-foreground flex-wrap">
+                            <div className="px-4 sm:px-5 pb-3 flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4 text-sm text-muted-foreground">
                               <span>Logged by: <span className="text-foreground font-medium">{episode.logged_by_user?.name || "Unknown"}</span></span>
                               {episode.initial_assessment != null && currentUserRole && ["content_manager", "content_creator", "content_head", "admin", "management", "programmer", "gcm", "evaluator"].includes(currentUserRole) && (
-                                <span>Initial Assessment: <span className="font-semibold text-blue-700">{episode.initial_assessment}/10</span> <span className="text-muted-foreground font-normal">by {episode.logged_by_user?.name || "Unknown"}</span></span>
+                                <span>Assessment: <span className="font-semibold text-blue-700">{episode.initial_assessment}/10</span></span>
                               )}
                             </div>
 
-                            {/* Card Body: RevisionEvaluateList — full width */}
-                            <div className="px-4 sm:px-5 pb-3">
-                              <RevisionEvaluateList
-                                entityId={episode.id}
-                                entityType="episode"
-                                revisionCount={(episode as any).revision_count || 0}
-                                portalPrefix="programmer"
-                                originalFileName={episode.attachment_name}
-                                originalDate={episode.original_submission_date || episode.created_at}
-                              />
-                            </div>
+                            {/* Card Body + Footer: only shown when episode is expanded */}
+                            {expandedEpisodes.has(episode.id) && (
+                              <>
+                                <div className="px-4 sm:px-5 pb-3">
+                                  <RevisionEvaluateList
+                                    entityId={episode.id}
+                                    entityType="episode"
+                                    revisionCount={(episode as any).revision_count || 0}
+                                    portalPrefix="programmer"
+                                    originalFileName={episode.attachment_name}
+                                    originalDate={episode.original_submission_date || episode.created_at}
+                                  />
+                                </div>
 
-                            {/* Card Footer: action buttons */}
-                            <div className="px-4 sm:px-5 py-3 border-t border-slate-100 bg-slate-50/50 flex items-center justify-end gap-2 flex-wrap">
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => setRevisionOpenEpisodeId(revisionOpenEpisodeId === episode.id ? null : episode.id)}
-                              >
-                                <Upload className="h-4 w-4 mr-1.5" />
-                                Upload Revision
-                              </Button>
-                              {canEditEpisode(episode) && (
-                                <Button size="sm" variant="outline" onClick={() => router.push(`/programmer/episodes/${episode.id}/edit`)}>
-                                  <Pencil className="h-4 w-4 mr-1.5" />
-                                  Edit
-                                </Button>
-                              )}
-                              {episode.attachment_url && (
-                                <Button size="sm" variant="outline" onClick={() => handleDownload(episode)}>
-                                  <Download className="h-4 w-4 mr-1.5" />
-                                  Download
-                                </Button>
-                              )}
-                            </div>
+                                <div className="px-4 sm:px-5 py-2.5 sm:py-3 border-t border-slate-100 bg-slate-50/50 flex items-center justify-end gap-1.5 sm:gap-2">
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => setRevisionOpenEpisodeId(revisionOpenEpisodeId === episode.id ? null : episode.id)}
+                                  >
+                                    <Upload className="h-4 w-4 sm:mr-1.5" />
+                                    <span className="hidden sm:inline">Upload Revision</span>
+                                  </Button>
+                                  {canEditEpisode(episode) && (
+                                    <Button size="sm" variant="outline" onClick={() => router.push(`/programmer/episodes/${episode.id}/edit`)}>
+                                      <Pencil className="h-4 w-4 sm:mr-1.5" />
+                                      <span className="hidden sm:inline">Edit</span>
+                                    </Button>
+                                  )}
+                                  {episode.attachment_url && (
+                                    <Button size="sm" variant="outline" onClick={() => handleDownload(episode)}>
+                                      <Download className="h-4 w-4 sm:mr-1.5" />
+                                      <span className="hidden sm:inline">Download</span>
+                                    </Button>
+                                  )}
+                                </div>
 
-                            {/* Inline revision panel */}
-                            {revisionOpenEpisodeId === episode.id && (
-                              <div className="px-4 sm:px-5 py-4 border-t border-slate-200 bg-slate-50">
-                                <EpisodeRevisions
-                                  episodeId={episode.id}
-                                  canEdit={true}
-                                  userRole={currentUserRole || undefined}
-                                  evaluateUrl="/programmer/episodes"
-                                />
-                              </div>
+                                {revisionOpenEpisodeId === episode.id && (
+                                  <div className="px-4 sm:px-5 py-4 border-t border-slate-200 bg-slate-50">
+                                    <EpisodeRevisions
+                                      episodeId={episode.id}
+                                      canEdit={true}
+                                      userRole={currentUserRole || undefined}
+                                      evaluateUrl="/programmer/episodes"
+                                    />
+                                  </div>
+                                )}
+                              </>
                             )}
                           </div>
                         ))}

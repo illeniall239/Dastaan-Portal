@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { EyeIcon, TrendingUp, TrendingDown, Minus, CheckCircle2, XCircle, Upload } from "lucide-react";
+import { EyeIcon, TrendingUp, TrendingDown, Minus, CheckCircle2, XCircle, Upload, ChevronRight, ChevronDown } from "lucide-react";
 import Link from "next/link";
 import { EvaluationProgressBar } from "@/components/evaluations/evaluation-progress-bar";
 import { TeamBadge } from "@/components/shared/team-badge";
@@ -22,6 +22,7 @@ interface CallReportCardProps {
 
 export function CallReportCard({ report, portalPrefix = "evaluator", isTeamHead = false, currentTeamId, readOnly, userRole }: CallReportCardProps) {
   const [showRevisions, setShowRevisions] = useState(false);
+  const [showSubmissions, setShowSubmissions] = useState(false);
 
   // Format timestamp — original_submission_date is DATE-only (no time component)
   const isDateOnly = !!report.original_submission_date;
@@ -302,16 +303,34 @@ export function CallReportCard({ report, portalPrefix = "evaluator", isTeamHead 
                 </div>
               </div>
             )}
-            {/* Revisions & Evaluate */}
-            <RevisionEvaluateList
-              entityId={report.id}
-              entityType="call-report"
-              revisionCount={report.revision_count || 0}
-              portalPrefix={portalPrefix}
-              readOnly={readOnly}
-              originalFileName={report.working_title}
-              originalDate={report.original_submission_date || report.logged_at || report.created_at}
-            />
+            {/* Revisions & Evaluate — load on demand */}
+            <div>
+              <button
+                type="button"
+                className="flex items-center gap-1.5 text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors"
+                onClick={() => setShowSubmissions(!showSubmissions)}
+              >
+                {showSubmissions ? (
+                  <ChevronDown className="h-4 w-4" />
+                ) : (
+                  <ChevronRight className="h-4 w-4" />
+                )}
+                Submissions{report.revision_count > 0 ? ` (${1 + report.revision_count})` : ""}
+              </button>
+              {showSubmissions && (
+                <div className="mt-2">
+                  <RevisionEvaluateList
+                    entityId={report.id}
+                    entityType="call-report"
+                    revisionCount={report.revision_count || 0}
+                    portalPrefix={portalPrefix}
+                    readOnly={readOnly}
+                    originalFileName={report.working_title}
+                    originalDate={report.original_submission_date || report.logged_at || report.created_at}
+                  />
+                </div>
+              )}
+            </div>
           </div>
           <div className="mt-4 pt-4 border-t flex justify-end gap-2">
             <Button variant="outline" size="sm" onClick={() => setShowRevisions(!showRevisions)}>

@@ -40,41 +40,33 @@ function LoginPageContent() {
     }
   }, [searchParams]);
 
-  useEffect(() => {
-    const isStandalone = window.matchMedia('(display-mode: standalone)').matches;
-    if (isStandalone) return;
+  // PWA install banner disabled — re-enable when mobile app is polished
+  // useEffect(() => {
+  //   const isStandalone = window.matchMedia('(display-mode: standalone)').matches;
+  //   if (isStandalone) return;
+  //   const isMobile = /Android|iPhone|iPad|iPod|webOS|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+  //   if (isMobile) {
+  //     const handler = (e: Event) => { e.preventDefault(); setInstallPrompt(e); setShowInstallBanner(true); };
+  //     window.addEventListener('beforeinstallprompt', handler);
+  //     const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
+  //     if (isIOS) setShowInstallBanner(true);
+  //     return () => window.removeEventListener('beforeinstallprompt', handler);
+  //   } else { setShowInstallBanner(true); }
+  // }, []);
 
-    const isMobile = /Android|iPhone|iPad|iPod|webOS|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-
-    if (isMobile) {
-      const handler = (e: Event) => {
-        e.preventDefault();
-        setInstallPrompt(e);
-        setShowInstallBanner(true);
-      };
-      window.addEventListener('beforeinstallprompt', handler);
-
-      const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
-      if (isIOS) setShowInstallBanner(true);
-
-      return () => window.removeEventListener('beforeinstallprompt', handler);
-    } else {
-      setShowInstallBanner(true);
-    }
-  }, []);
-
-  const {
-    register,
-    handleSubmit,
-    formState: { errors, isValid },
-  } = useForm<LoginFormData>({
+  const mobileForm = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
     mode: "onChange",
-    defaultValues: {
-      email: "",
-      password: "",
-    },
+    defaultValues: { email: "", password: "" },
   });
+  const { errors: mobileErrors, isValid: mobileIsValid } = mobileForm.formState;
+
+  const desktopForm = useForm<LoginFormData>({
+    resolver: zodResolver(loginSchema),
+    mode: "onChange",
+    defaultValues: { email: "", password: "" },
+  });
+  const { errors: desktopErrors, isValid: desktopIsValid } = desktopForm.formState;
 
   const onSubmit = async (data: LoginFormData) => {
     setLoading(true);
@@ -212,11 +204,158 @@ function LoginPageContent() {
         .support-link:hover {
           color: #f79224;
         }
+
+        /* Mobile v3 input styling */
+        .v3-input {
+          transition: all 0.2s ease;
+          border: 1.5px solid #224794;
+          box-shadow: 0 0 0 3px rgba(34, 71, 148, 0.08);
+        }
+
+        .v3-input:focus-within {
+          border-color: #224794;
+          box-shadow: 0 0 0 4px rgba(34, 71, 148, 0.12);
+        }
       `}</style>
 
-      <main className="flex min-h-screen w-full font-body">
+      {/* ===== MOBILE: v3 design — white, navy stroked inputs ===== */}
+      <main className="lg:hidden min-h-screen flex flex-col justify-center font-body bg-white px-7 py-10 relative overflow-hidden">
+        {/* Background watermark */}
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0" aria-hidden="true">
+          <Image
+            src="/Geo-Logo1.png"
+            alt=""
+            width={400}
+            height={400}
+            className="w-[70vw] h-[70vw] max-w-[400px] max-h-[400px] object-contain opacity-[0.04] pointer-events-none"
+          />
+        </div>
+        {/* Heading */}
+        <div className="mb-7 text-center relative z-10">
+          <h1 className="text-[30px] font-bold text-[#0A0D14] leading-tight tracking-tight mb-1.5 flex flex-wrap items-baseline justify-center gap-2">
+            <span>Welcome to</span>
+            <span lang="ur" className="font-urdu text-[#F2A33C] text-[34px]">داستان</span>
+          </h1>
+          <p className="text-[15px] text-[#667085]">Sign in to access your production workspace.</p>
+        </div>
+
+        {/* Install App Banner */}
+        {showInstallBanner && (
+          <div className="mb-5 p-3.5 bg-[#f5f7ff] border border-[#e0e5f0] rounded-xl relative z-10">
+            <button
+              onClick={() => setShowInstallBanner(false)}
+              className="absolute top-2.5 right-2.5 text-gray-400 hover:text-gray-600"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+            <div className="flex items-start gap-3 pr-4">
+              {installPrompt ? (
+                <>
+                  <Download className="w-5 h-5 text-[#224794] mt-0.5 shrink-0" />
+                  <div>
+                    <p className="font-semibold text-gray-900 text-sm">Install Dastaan Portal</p>
+                    <p className="text-xs text-gray-500 mt-1">Install the app for quick access and stay logged in.</p>
+                    <button
+                      onClick={async () => {
+                        installPrompt.prompt();
+                        const { outcome } = await installPrompt.userChoice;
+                        if (outcome === 'accepted') setShowInstallBanner(false);
+                      }}
+                      className="mt-2 px-3 py-1.5 bg-[#224794] text-white text-xs font-semibold rounded-lg hover:bg-[#1e3f7f] transition-colors"
+                    >
+                      Install App
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <Download className="w-5 h-5 text-[#224794] mt-0.5 shrink-0" />
+                  <div>
+                    <p className="font-semibold text-gray-900 text-sm">Install Dastaan Portal</p>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Tap <span className="font-semibold">Share</span> then <span className="font-semibold">&quot;Add to Home Screen&quot;</span> to install.
+                    </p>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Form */}
+        <form onSubmit={mobileForm.handleSubmit(onSubmit)} className="flex flex-col gap-[18px] relative z-10">
+          {/* Email */}
+          <div className="space-y-1.5">
+            <label htmlFor="mobile-email" className="text-[13px] font-medium text-[#344054]">Email address</label>
+            <div className={`v3-input rounded-[12px] ${mobileErrors.email ? '!border-red-500 !shadow-none' : ''}`}>
+              <Input
+                id="mobile-email"
+                type="email"
+                placeholder="yourname@geo.com"
+                {...mobileForm.register("email")}
+                disabled={loading}
+                className="h-[54px] text-[15px] bg-white border-0 focus-visible:ring-0 focus-visible:ring-offset-0 rounded-[12px] placeholder:text-[#98A2B3]"
+              />
+            </div>
+            {mobileErrors.email && (
+              <p className="text-xs text-red-600 font-medium">{mobileErrors.email.message}</p>
+            )}
+          </div>
+
+          {/* Password */}
+          <div className="space-y-1.5">
+            <label htmlFor="mobile-password" className="text-[13px] font-medium text-[#344054]">Password</label>
+            <div className={`v3-input rounded-[12px] ${mobileErrors.password ? '!border-red-500 !shadow-none' : ''}`}>
+              <PasswordInput
+                id="mobile-password"
+                placeholder="Enter your password"
+                {...mobileForm.register("password")}
+                disabled={loading}
+                error={!!mobileErrors.password}
+                className="h-[54px] text-[15px] bg-white border-0 focus-visible:ring-0 focus-visible:ring-offset-0 rounded-[12px] placeholder:text-[#98A2B3]"
+              />
+            </div>
+            {mobileErrors.password && (
+              <p className="text-xs text-red-600 font-medium">{mobileErrors.password.message}</p>
+            )}
+          </div>
+
+          {/* Remember me + Forgot password */}
+          <div className="flex items-center justify-between">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" className="w-4 h-4 rounded border-[#D0D5DD] text-[#224794] focus:ring-[#224794]" />
+              <span className="text-[13px] text-[#344054]">Remember me</span>
+            </label>
+            <button
+              type="button"
+              onClick={() => toast.info("Contact your administrator to reset your password.")}
+              className="text-[13px] font-semibold text-[#224794]"
+            >
+              Forgot password?
+            </button>
+          </div>
+
+          {/* Sign in button */}
+          <Button
+            type="submit"
+            className="w-full h-[54px] text-[15.5px] font-semibold text-white bg-[#224794] hover:bg-[#1e3f7f] rounded-[12px] disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={loading || !mobileIsValid}
+          >
+            {loading ? "Signing in..." : "Sign in"}
+          </Button>
+
+        </form>
+
+        {/* Footer */}
+        <div className="mt-8 text-center relative z-10">
+          <p className="text-[13px] text-[#667085]">Need help? <a href="mailto:rao.muhammad@geo.tv" className="font-semibold text-[#224794]">rao.muhammad@geo.tv</a></p>
+        </div>
+      </main>
+
+      {/* ===== DESKTOP: Original side-by-side layout ===== */}
+      <main className="hidden lg:flex min-h-screen w-full font-body">
         {/* Left Panel - Branding */}
-        <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-[#1a3a6b] via-[#224794] to-[#2a5cb8] p-8 lg:p-10 xl:p-12 2xl:p-16 flex-col justify-between">
+        <div className="lg:w-1/2 bg-gradient-to-br from-[#1a3a6b] via-[#224794] to-[#2a5cb8] p-8 lg:p-10 xl:p-12 2xl:p-16 flex flex-col justify-between">
           {/* Logo at top */}
           <div>
             <Image
@@ -249,79 +388,26 @@ function LoginPageContent() {
         </div>
 
         {/* Right Panel - Login Form */}
-        <div className="flex-1 lg:w-1/2 flex items-center justify-center p-8 sm:p-12 bg-gradient-to-br from-[#1a3a6b] via-[#224794] to-[#2a5cb8] lg:bg-none lg:bg-white">
+        <div className="flex-1 lg:w-1/2 flex items-center justify-center p-8 sm:p-12 bg-white">
           <div className="w-full max-w-md">
-            {/* Mobile logo */}
-            <div className="lg:hidden mb-8 text-center">
-              <Image
-                src="/Geo-Logo1.png"
-                alt="Dastaan Portal Logo"
-                width={64}
-                height={64}
-                priority
-                className="w-auto h-14 object-contain mx-auto mb-3"
-              />
-              <h1 className="font-heading text-2xl font-bold text-white flex flex-wrap items-baseline justify-center gap-2">
-                <span>Welcome to</span>
-                <span lang="ur" className="font-urdu text-orange-300 text-2xl">
-                  داستان
-                </span>
-              </h1>
-            </div>
-
             {/* Install App Banner */}
             {showInstallBanner && (
-              <div className="mb-6 p-4 bg-white/10 lg:bg-blue-50 border border-white/20 lg:border-blue-200 rounded-lg relative">
+              <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg relative">
                 <button
                   onClick={() => setShowInstallBanner(false)}
-                  className="absolute top-2 right-2 text-white/60 lg:text-gray-400 hover:text-white lg:hover:text-gray-600"
+                  className="absolute top-2 right-2 text-gray-400 hover:text-gray-600"
                 >
                   <X className="w-4 h-4" />
                 </button>
                 <div className="flex items-start gap-3 pr-4">
-                  {installPrompt ? (
-                    <>
-                      <Download className="w-5 h-5 text-white lg:text-blue-600 mt-0.5 shrink-0" />
-                      <div>
-                        <p className="font-semibold text-white lg:text-gray-900 text-sm">Install Dastaan Portal</p>
-                        <p className="text-xs text-blue-100 lg:text-gray-600 mt-1">Install the app for quick access and stay logged in.</p>
-                        <button
-                          onClick={async () => {
-                            installPrompt.prompt();
-                            const { outcome } = await installPrompt.userChoice;
-                            if (outcome === 'accepted') setShowInstallBanner(false);
-                          }}
-                          className="mt-2 px-3 py-1.5 bg-white text-blue-700 lg:bg-blue-600 lg:text-white text-xs font-semibold rounded-md hover:bg-blue-50 lg:hover:bg-blue-700 transition-colors"
-                        >
-                          Install App
-                        </button>
-                      </div>
-                    </>
-                  ) : /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) ? (
-                    <>
-                      <Download className="w-5 h-5 text-white lg:text-blue-600 mt-0.5 shrink-0" />
-                      <div>
-                        <p className="font-semibold text-white lg:text-gray-900 text-sm">Install Dastaan Portal</p>
-                        <p className="text-xs text-blue-100 lg:text-gray-600 mt-1">
-                          Tap <span className="font-semibold">Share</span> then <span className="font-semibold">&quot;Add to Home Screen&quot;</span> to install.
-                        </p>
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      <Smartphone className="w-5 h-5 text-white lg:text-blue-600 mt-0.5 shrink-0" />
-                      <div>
-                        <p className="font-semibold text-white lg:text-gray-900 text-sm">Dastaan is now on mobile!</p>
-                        <p className="text-xs text-blue-100 lg:text-gray-600 mt-1">Open this page on your phone to install the app.</p>
-                      </div>
-                    </>
-                  )}
+                  <Smartphone className="w-5 h-5 text-blue-600 mt-0.5 shrink-0" />
+                  <div>
+                    <p className="font-semibold text-gray-900 text-sm">Dastaan is now on mobile!</p>
+                    <p className="text-xs text-gray-600 mt-1">Open this page on your phone to install the app.</p>
+                  </div>
                 </div>
               </div>
             )}
-
-            {/* Form card - white on mobile, flat on desktop */}
-            <div className="bg-white rounded-2xl p-6 lg:p-0 lg:bg-transparent lg:rounded-none shadow-lg lg:shadow-none">
 
             {/* Form header */}
             <div className="mb-8">
@@ -334,7 +420,7 @@ function LoginPageContent() {
             </div>
 
             {/* Login form */}
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+            <form onSubmit={desktopForm.handleSubmit(onSubmit)} className="space-y-6">
               {/* Email field */}
               <div className="space-y-2">
                 <Label
@@ -345,20 +431,20 @@ function LoginPageContent() {
                   Email Address
                   <span className="text-orange-500">*</span>
                 </Label>
-                <div className={`input-field rounded-lg ${errors.email ? 'border-2 border-red-500' : 'border border-gray-200'}`}>
+                <div className={`input-field rounded-lg ${desktopErrors.email ? 'border-2 border-red-500' : 'border border-gray-200'}`}>
                   <Input
                     id="email"
                     type="email"
                     placeholder="yourname@geo.com"
-                    {...register("email")}
+                    {...desktopForm.register("email")}
                     disabled={loading}
                     className="h-12 text-base bg-gray-50/50 border-0 focus-visible:ring-0 focus-visible:ring-offset-0"
                   />
                 </div>
-                {errors.email && (
+                {desktopErrors.email && (
                   <p className="text-sm text-red-600 font-medium flex items-center gap-1.5">
                     <span className="w-1 h-1 rounded-full bg-red-600" />
-                    {errors.email.message}
+                    {desktopErrors.email.message}
                   </p>
                 )}
               </div>
@@ -373,20 +459,20 @@ function LoginPageContent() {
                   Password
                   <span className="text-orange-500">*</span>
                 </Label>
-                <div className={`input-field rounded-lg ${errors.password ? 'border-2 border-red-500' : 'border border-gray-200'}`}>
+                <div className={`input-field rounded-lg ${desktopErrors.password ? 'border-2 border-red-500' : 'border border-gray-200'}`}>
                   <PasswordInput
                     id="password"
                     placeholder="Enter your password"
-                    {...register("password")}
+                    {...desktopForm.register("password")}
                     disabled={loading}
-                    error={!!errors.password}
+                    error={!!desktopErrors.password}
                     className="h-12 text-base bg-gray-50/50 border-0 focus-visible:ring-0 focus-visible:ring-offset-0"
                   />
                 </div>
-                {errors.password && (
+                {desktopErrors.password && (
                   <p className="text-sm text-red-600 font-medium flex items-center gap-1.5">
                     <span className="w-1 h-1 rounded-full bg-red-600" />
-                    {errors.password.message}
+                    {desktopErrors.password.message}
                   </p>
                 )}
               </div>
@@ -396,7 +482,7 @@ function LoginPageContent() {
                 <Button
                   type="submit"
                   className="btn-primary w-full h-12 text-base font-semibold text-white rounded-lg shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
-                  disabled={loading || !isValid}
+                  disabled={loading || !desktopIsValid}
                 >
                   {loading ? "Signing in..." : "Sign In"}
                 </Button>
@@ -416,24 +502,6 @@ function LoginPageContent() {
                 </p>
               </div>
             </form>
-
-            </div>{/* End form card */}
-
-            {/* Demo Dashboard Link */}
-            <div className="hidden mt-8 pt-6 border-t border-gray-200">
-              <Link href="/demo-management">
-                <Button
-                  variant="outline"
-                  className="w-full h-11 flex items-center justify-center gap-2 text-base font-medium text-orange-600 border-orange-200 hover:bg-orange-50 hover:border-orange-300 transition-colors"
-                >
-                  <BarChart3 className="h-5 w-5" />
-                  View Demo Management Dashboard
-                </Button>
-              </Link>
-              <p className="text-xs text-center text-gray-500 mt-2">
-                Preview the management portal with sample data
-              </p>
-            </div>
           </div>
         </div>
       </main>
