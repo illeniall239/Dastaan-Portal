@@ -249,7 +249,7 @@ function LoginPageContent() {
         </div>
 
         {/* Right Panel - Login Form */}
-        <div className="flex-1 lg:w-1/2 flex items-center justify-center p-8 sm:p-12 bg-white">
+        <div className="flex-1 lg:w-1/2 flex items-center justify-center p-8 sm:p-12 bg-gradient-to-br from-[#1a3a6b] via-[#224794] to-[#2a5cb8] lg:bg-none lg:bg-white">
           <div className="w-full max-w-md">
             {/* Mobile logo */}
             <div className="lg:hidden mb-8 text-center">
@@ -261,9 +261,9 @@ function LoginPageContent() {
                 priority
                 className="w-auto h-14 object-contain mx-auto mb-3"
               />
-              <h1 className="font-heading text-2xl font-bold text-gray-900 flex flex-wrap items-baseline justify-center gap-2">
+              <h1 className="font-heading text-2xl font-bold text-white flex flex-wrap items-baseline justify-center gap-2">
                 <span>Welcome to</span>
-                <span lang="ur" className="font-urdu text-orange-500 text-2xl">
+                <span lang="ur" className="font-urdu text-orange-300 text-2xl">
                   داستان
                 </span>
               </h1>
@@ -271,27 +271,27 @@ function LoginPageContent() {
 
             {/* Install App Banner */}
             {showInstallBanner && (
-              <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg relative">
+              <div className="mb-6 p-4 bg-white/10 lg:bg-blue-50 border border-white/20 lg:border-blue-200 rounded-lg relative">
                 <button
                   onClick={() => setShowInstallBanner(false)}
-                  className="absolute top-2 right-2 text-gray-400 hover:text-gray-600"
+                  className="absolute top-2 right-2 text-white/60 lg:text-gray-400 hover:text-white lg:hover:text-gray-600"
                 >
                   <X className="w-4 h-4" />
                 </button>
                 <div className="flex items-start gap-3 pr-4">
                   {installPrompt ? (
                     <>
-                      <Download className="w-5 h-5 text-blue-600 mt-0.5 shrink-0" />
+                      <Download className="w-5 h-5 text-white lg:text-blue-600 mt-0.5 shrink-0" />
                       <div>
-                        <p className="font-semibold text-gray-900 text-sm">Install Dastaan Portal</p>
-                        <p className="text-xs text-gray-600 mt-1">Install the app for quick access and stay logged in.</p>
+                        <p className="font-semibold text-white lg:text-gray-900 text-sm">Install Dastaan Portal</p>
+                        <p className="text-xs text-blue-100 lg:text-gray-600 mt-1">Install the app for quick access and stay logged in.</p>
                         <button
                           onClick={async () => {
                             installPrompt.prompt();
                             const { outcome } = await installPrompt.userChoice;
                             if (outcome === 'accepted') setShowInstallBanner(false);
                           }}
-                          className="mt-2 px-3 py-1.5 bg-blue-600 text-white text-xs font-semibold rounded-md hover:bg-blue-700 transition-colors"
+                          className="mt-2 px-3 py-1.5 bg-white text-blue-700 lg:bg-blue-600 lg:text-white text-xs font-semibold rounded-md hover:bg-blue-50 lg:hover:bg-blue-700 transition-colors"
                         >
                           Install App
                         </button>
@@ -299,26 +299,29 @@ function LoginPageContent() {
                     </>
                   ) : /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) ? (
                     <>
-                      <Download className="w-5 h-5 text-blue-600 mt-0.5 shrink-0" />
+                      <Download className="w-5 h-5 text-white lg:text-blue-600 mt-0.5 shrink-0" />
                       <div>
-                        <p className="font-semibold text-gray-900 text-sm">Install Dastaan Portal</p>
-                        <p className="text-xs text-gray-600 mt-1">
+                        <p className="font-semibold text-white lg:text-gray-900 text-sm">Install Dastaan Portal</p>
+                        <p className="text-xs text-blue-100 lg:text-gray-600 mt-1">
                           Tap <span className="font-semibold">Share</span> then <span className="font-semibold">&quot;Add to Home Screen&quot;</span> to install.
                         </p>
                       </div>
                     </>
                   ) : (
                     <>
-                      <Smartphone className="w-5 h-5 text-blue-600 mt-0.5 shrink-0" />
+                      <Smartphone className="w-5 h-5 text-white lg:text-blue-600 mt-0.5 shrink-0" />
                       <div>
-                        <p className="font-semibold text-gray-900 text-sm">Dastaan is now on mobile!</p>
-                        <p className="text-xs text-gray-600 mt-1">Open this page on your phone to install the app.</p>
+                        <p className="font-semibold text-white lg:text-gray-900 text-sm">Dastaan is now on mobile!</p>
+                        <p className="text-xs text-blue-100 lg:text-gray-600 mt-1">Open this page on your phone to install the app.</p>
                       </div>
                     </>
                   )}
                 </div>
               </div>
             )}
+
+            {/* Form card - white on mobile, flat on desktop */}
+            <div className="bg-white rounded-2xl p-6 lg:p-0 lg:bg-transparent lg:rounded-none shadow-lg lg:shadow-none">
 
             {/* Form header */}
             <div className="mb-8">
@@ -413,6 +416,8 @@ function LoginPageContent() {
                 </p>
               </div>
             </form>
+
+            </div>{/* End form card */}
 
             {/* Demo Dashboard Link */}
             <div className="hidden mt-8 pt-6 border-t border-gray-200">
