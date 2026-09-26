@@ -12,7 +12,7 @@ import { Label } from "@/components/ui/label";
 import { PasswordInput } from "@/components/auth/password-input";
 import { loginSchema, type LoginFormData } from "@/lib/validations/auth";
 import { toast } from "sonner";
-import { Mail, Lock, BarChart3 } from "lucide-react";
+import { Mail, Lock, BarChart3, Download, X } from "lucide-react";
 import Link from "next/link";
 
 export default function LoginPage() {
@@ -25,6 +25,8 @@ export default function LoginPage() {
 
 function LoginPageContent() {
   const [loading, setLoading] = useState(false);
+  const [installPrompt, setInstallPrompt] = useState<any>(null);
+  const [showInstallBanner, setShowInstallBanner] = useState(false);
   const router = useRouter();
   const searchParams = useSearchParams();
   const supabase = createClient();
@@ -37,6 +39,23 @@ function LoginPageContent() {
       });
     }
   }, [searchParams]);
+
+  useEffect(() => {
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches;
+    if (isStandalone) return;
+
+    const handler = (e: Event) => {
+      e.preventDefault();
+      setInstallPrompt(e);
+      setShowInstallBanner(true);
+    };
+    window.addEventListener('beforeinstallprompt', handler);
+
+    const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
+    if (isIOS) setShowInstallBanner(true);
+
+    return () => window.removeEventListener('beforeinstallprompt', handler);
+  }, []);
 
   const {
     register,
@@ -243,6 +262,43 @@ function LoginPageContent() {
                 </span>
               </h1>
             </div>
+
+            {/* Install App Banner */}
+            {showInstallBanner && (
+              <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg relative">
+                <button
+                  onClick={() => setShowInstallBanner(false)}
+                  className="absolute top-2 right-2 text-gray-400 hover:text-gray-600"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+                <div className="flex items-start gap-3 pr-4">
+                  <Download className="w-5 h-5 text-blue-600 mt-0.5 shrink-0" />
+                  <div>
+                    <p className="font-semibold text-gray-900 text-sm">Install Dastaan Portal</p>
+                    {installPrompt ? (
+                      <>
+                        <p className="text-xs text-gray-600 mt-1">Install the app for quick access and stay logged in.</p>
+                        <button
+                          onClick={async () => {
+                            installPrompt.prompt();
+                            const { outcome } = await installPrompt.userChoice;
+                            if (outcome === 'accepted') setShowInstallBanner(false);
+                          }}
+                          className="mt-2 px-3 py-1.5 bg-blue-600 text-white text-xs font-semibold rounded-md hover:bg-blue-700 transition-colors"
+                        >
+                          Install App
+                        </button>
+                      </>
+                    ) : (
+                      <p className="text-xs text-gray-600 mt-1">
+                        Tap <span className="font-semibold">Share</span> then <span className="font-semibold">&quot;Add to Home Screen&quot;</span> to install.
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Form header */}
             <div className="mb-8">

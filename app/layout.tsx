@@ -51,6 +51,9 @@ export default function RootLayout({
     <html lang="en" className={`${inter.variable} ${plusJakarta.variable}`}>
       <head>
         {/* Preconnect to Supabase project for faster TTFB */}
+        <meta name="theme-color" content="#0f172a" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <link rel="preconnect" href="https://dbqf.supabase.co" crossOrigin="anonymous" />
         <link rel="dns-prefetch" href="https://dbqf.supabase.co" />
       </head>
