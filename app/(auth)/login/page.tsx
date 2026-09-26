@@ -44,6 +44,9 @@ function LoginPageContent() {
     const isStandalone = window.matchMedia('(display-mode: standalone)').matches;
     if (isStandalone) return;
 
+    const isMobile = /Android|iPhone|iPad|iPod|webOS|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    if (!isMobile) return;
+
     const handler = (e: Event) => {
       e.preventDefault();
       setInstallPrompt(e);
