@@ -12,7 +12,7 @@ import { Label } from "@/components/ui/label";
 import { PasswordInput } from "@/components/auth/password-input";
 import { loginSchema, type LoginFormData } from "@/lib/validations/auth";
 import { toast } from "sonner";
-import { Mail, Lock, BarChart3, Download, X } from "lucide-react";
+import { Mail, Lock, BarChart3, Download, Smartphone, X } from "lucide-react";
 import Link from "next/link";
 
 export default function LoginPage() {
@@ -45,19 +45,22 @@ function LoginPageContent() {
     if (isStandalone) return;
 
     const isMobile = /Android|iPhone|iPad|iPod|webOS|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-    if (!isMobile) return;
 
-    const handler = (e: Event) => {
-      e.preventDefault();
-      setInstallPrompt(e);
+    if (isMobile) {
+      const handler = (e: Event) => {
+        e.preventDefault();
+        setInstallPrompt(e);
+        setShowInstallBanner(true);
+      };
+      window.addEventListener('beforeinstallprompt', handler);
+
+      const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
+      if (isIOS) setShowInstallBanner(true);
+
+      return () => window.removeEventListener('beforeinstallprompt', handler);
+    } else {
       setShowInstallBanner(true);
-    };
-    window.addEventListener('beforeinstallprompt', handler);
-
-    const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
-    if (isIOS) setShowInstallBanner(true);
-
-    return () => window.removeEventListener('beforeinstallprompt', handler);
+    }
   }, []);
 
   const {
@@ -276,11 +279,11 @@ function LoginPageContent() {
                   <X className="w-4 h-4" />
                 </button>
                 <div className="flex items-start gap-3 pr-4">
-                  <Download className="w-5 h-5 text-blue-600 mt-0.5 shrink-0" />
-                  <div>
-                    <p className="font-semibold text-gray-900 text-sm">Install Dastaan Portal</p>
-                    {installPrompt ? (
-                      <>
+                  {installPrompt ? (
+                    <>
+                      <Download className="w-5 h-5 text-blue-600 mt-0.5 shrink-0" />
+                      <div>
+                        <p className="font-semibold text-gray-900 text-sm">Install Dastaan Portal</p>
                         <p className="text-xs text-gray-600 mt-1">Install the app for quick access and stay logged in.</p>
                         <button
                           onClick={async () => {
@@ -292,13 +295,27 @@ function LoginPageContent() {
                         >
                           Install App
                         </button>
-                      </>
-                    ) : (
-                      <p className="text-xs text-gray-600 mt-1">
-                        Tap <span className="font-semibold">Share</span> then <span className="font-semibold">&quot;Add to Home Screen&quot;</span> to install.
-                      </p>
-                    )}
-                  </div>
+                      </div>
+                    </>
+                  ) : /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) ? (
+                    <>
+                      <Download className="w-5 h-5 text-blue-600 mt-0.5 shrink-0" />
+                      <div>
+                        <p className="font-semibold text-gray-900 text-sm">Install Dastaan Portal</p>
+                        <p className="text-xs text-gray-600 mt-1">
+                          Tap <span className="font-semibold">Share</span> then <span className="font-semibold">&quot;Add to Home Screen&quot;</span> to install.
+                        </p>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <Smartphone className="w-5 h-5 text-blue-600 mt-0.5 shrink-0" />
+                      <div>
+                        <p className="font-semibold text-gray-900 text-sm">Dastaan is now on mobile!</p>
+                        <p className="text-xs text-gray-600 mt-1">Open this page on your phone to install the app.</p>
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
             )}
