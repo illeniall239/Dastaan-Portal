@@ -40,19 +40,18 @@ function LoginPageContent() {
     }
   }, [searchParams]);
 
-  // PWA install banner disabled — re-enable when mobile app is polished
-  // useEffect(() => {
-  //   const isStandalone = window.matchMedia('(display-mode: standalone)').matches;
-  //   if (isStandalone) return;
-  //   const isMobile = /Android|iPhone|iPad|iPod|webOS|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-  //   if (isMobile) {
-  //     const handler = (e: Event) => { e.preventDefault(); setInstallPrompt(e); setShowInstallBanner(true); };
-  //     window.addEventListener('beforeinstallprompt', handler);
-  //     const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
-  //     if (isIOS) setShowInstallBanner(true);
-  //     return () => window.removeEventListener('beforeinstallprompt', handler);
-  //   } else { setShowInstallBanner(true); }
-  // }, []);
+  useEffect(() => {
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches;
+    if (isStandalone) return;
+    const isMobile = /Android|iPhone|iPad|iPod|webOS|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    if (isMobile) {
+      const handler = (e: Event) => { e.preventDefault(); setInstallPrompt(e); setShowInstallBanner(true); };
+      window.addEventListener('beforeinstallprompt', handler);
+      const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
+      if (isIOS) setShowInstallBanner(true);
+      return () => window.removeEventListener('beforeinstallprompt', handler);
+    } else { setShowInstallBanner(true); }
+  }, []);
 
   const mobileForm = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
