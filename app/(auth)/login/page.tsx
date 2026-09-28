@@ -27,6 +27,7 @@ function LoginPageContent() {
   const [loading, setLoading] = useState(false);
   const [installPrompt, setInstallPrompt] = useState<any>(null);
   const [showInstallBanner, setShowInstallBanner] = useState(false);
+  const [isIOSNonSafari, setIsIOSNonSafari] = useState(false);
   const router = useRouter();
   const searchParams = useSearchParams();
   const supabase = createClient();
@@ -48,7 +49,11 @@ function LoginPageContent() {
       const handler = (e: Event) => { e.preventDefault(); setInstallPrompt(e); setShowInstallBanner(true); };
       window.addEventListener('beforeinstallprompt', handler);
       const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
-      if (isIOS) setShowInstallBanner(true);
+      if (isIOS) {
+        setShowInstallBanner(true);
+        const isSafari = /Safari/.test(navigator.userAgent) && !/CriOS|FxiOS|OPiOS|EdgiOS/.test(navigator.userAgent);
+        if (!isSafari) setIsIOSNonSafari(true);
+      }
       return () => window.removeEventListener('beforeinstallprompt', handler);
     } else { setShowInstallBanner(true); }
   }, []);
@@ -272,7 +277,10 @@ function LoginPageContent() {
                   <div>
                     <p className="font-semibold text-gray-900 text-sm">Install Dastaan Portal</p>
                     <p className="text-xs text-gray-500 mt-1">
-                      Tap <span className="font-semibold">Share</span> then <span className="font-semibold">&quot;Add to Home Screen&quot;</span> to install.
+                      {isIOSNonSafari
+                        ? <>Open this page in <span className="font-semibold">Safari</span>, then tap <span className="font-semibold">Share</span> → <span className="font-semibold">&quot;Add to Home Screen&quot;</span>.</>
+                        : <>Tap <span className="font-semibold">Share</span> then <span className="font-semibold">&quot;Add to Home Screen&quot;</span> to install.</>
+                      }
                     </p>
                   </div>
                 </>
