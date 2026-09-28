@@ -51,7 +51,7 @@ export function SidebarWrapper({
           showAIButton={showAIButton}
         />
       )}
-      <div className={`flex flex-col flex-1 min-w-0 transition-all duration-300 ${isCollapsed ? 'lg:ml-16' : 'lg:ml-70'} pt-16`}>
+      <div className={`flex flex-col flex-1 min-w-0 transition-all duration-300 ${isCollapsed ? 'lg:ml-16' : 'lg:ml-70'}`} style={{ paddingTop: "calc(4rem + env(safe-area-inset-top, 0px))" }}>
         <main className="flex-1">{children}</main>
       </div>
     </div>

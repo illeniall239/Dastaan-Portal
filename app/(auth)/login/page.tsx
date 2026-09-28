@@ -223,7 +223,7 @@ function LoginPageContent() {
       `}</style>
 
       {/* ===== MOBILE: v3 design — white, navy stroked inputs ===== */}
-      <main className="lg:hidden min-h-screen flex flex-col justify-center font-body bg-white px-7 py-10 relative overflow-hidden">
+      <main className="lg:hidden min-h-screen flex flex-col justify-center font-body bg-white px-7 relative overflow-hidden" style={{ paddingTop: "calc(2.5rem + env(safe-area-inset-top, 0px))", paddingBottom: "calc(2.5rem + env(safe-area-inset-bottom, 0px))" }}>
         {/* Background watermark */}
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0" aria-hidden="true">
           <Image

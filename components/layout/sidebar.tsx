@@ -119,7 +119,7 @@ export const Sidebar = memo(function Sidebar({
         )}
       >
         {/* Header Section */}
-        <div className="h-14 flex items-center justify-between px-3 border-b border-gray-200 bg-white flex-shrink-0">
+        <div className="flex items-center justify-between px-3 border-b border-gray-200 bg-white flex-shrink-0" style={{ paddingTop: "env(safe-area-inset-top, 0px)", height: "calc(3.5rem + env(safe-area-inset-top, 0px))" }}>
           {/* Desktop: Logo + toggle */}
           {!isCollapsed && (
             <Link

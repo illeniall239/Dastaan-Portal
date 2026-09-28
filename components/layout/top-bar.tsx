@@ -97,7 +97,7 @@ export const TopBar = memo(function TopBar({
       {isLoggingOut && <LoadingSpinner text="Logging out..." />}
 
       {/* Fixed top bar spanning the full width on mobile, starting after sidebar on desktop */}
-      <div className={cn("fixed top-0 right-0 left-0 h-14 bg-white border-b border-gray-200 z-[60] flex items-center justify-between px-4 lg:px-8 transition-all duration-300", isCollapsed ? "lg:left-16" : "lg:left-70")}>
+      <div className={cn("fixed top-0 right-0 left-0 bg-white border-b border-gray-200 z-[60] flex items-center justify-between px-4 lg:px-8 transition-all duration-300", isCollapsed ? "lg:left-16" : "lg:left-70")} style={{ paddingTop: "env(safe-area-inset-top, 0px)", height: "calc(3.5rem + env(safe-area-inset-top, 0px))" }}>
         {/* Left side: Hamburger menu (mobile only) */}
         <Button
           variant="ghost"
