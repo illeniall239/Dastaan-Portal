@@ -983,7 +983,7 @@ export default function ContentAgingPage() {
 
       {/* Table */}
       <div className="flex-1 min-h-0 overflow-hidden">
-      <div ref={freezeRef} className="overflow-auto h-full py-4">
+      <div ref={freezeRef} className="overflow-auto h-full px-6 py-4">
         {activeTab === "tracking" ? (
           trackingLoading ? (
             <div className="flex items-center justify-center h-64 gap-2">
@@ -1813,7 +1813,7 @@ function TrackingTable({
   const divider = "border-r border-border/40";
 
   return (
-    <div className="rounded-xl border border-border/60 overflow-hidden shadow-sm bg-white">
+    <div className="rounded-xl border border-border/60 shadow-sm bg-white w-fit min-w-full">
       <table className="w-full text-xs border-separate border-spacing-0" style={{ minWidth }}>
         <thead className="sticky top-0 z-10">
           <tr className="bg-gradient-to-r from-slate-50 to-slate-100">
