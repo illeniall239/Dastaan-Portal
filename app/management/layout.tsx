@@ -28,6 +28,7 @@ export default async function ManagementLayout({
   let navItems = [...baseNavItems];
 
   if (user.role === "management_viewer") {
+    navItems = navItems.filter(item => item.title !== "Evaluations" && item.title !== "Teams");
     navItems.push({ title: "Writer Contracts", href: "/management/contract-terms", icon: "fileText" });
   }
 
