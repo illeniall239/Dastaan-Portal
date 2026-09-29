@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { FileText, Mail, Phone, MapPin, Target, Lightbulb, Eye, Paperclip, Film, Loader2, ClipboardCheck, ChevronDown, ChevronRight, CalendarDays } from "lucide-react";
 import { format } from "date-fns";
 import { ContentRevisions } from "@/components/ui/content-revisions";
+import { createClient } from "@/lib/supabase/client";
 
 interface CallReportDetailDialogProps {
   report: any | null;
@@ -151,6 +152,16 @@ export function CallReportDetailDialog({ report, isOpen, onClose }: CallReportDe
   const [crRevisions, setCrRevisions] = useState<any[]>([]);
   const [epRevisionsMap, setEpRevisionsMap] = useState<Record<string, any[]>>({});
   const [loadingEvals, setLoadingEvals] = useState(false);
+  const [userRole, setUserRole] = useState<string>("");
+
+  useEffect(() => {
+    const supabase = createClient();
+    supabase.auth.getUser().then(({ data }) => {
+      if (!data?.user?.id) return;
+      supabase.from("users").select("role").eq("id", data.user.id).single()
+        .then(({ data: u }) => { if (u?.role) setUserRole(u.role); });
+    });
+  }, []);
 
   useEffect(() => {
     if (!isOpen || !report?.id) {
@@ -500,14 +511,16 @@ export function CallReportDetailDialog({ report, isOpen, onClose }: CallReportDe
                             </div>
                           </div>
                         </div>
-                        <a
-                          href={`/api/attachments/download?path=${encodeURIComponent(attachment.file_path)}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-xs text-blue-600 hover:text-blue-800 hover:underline ml-3 whitespace-nowrap"
-                        >
-                          Download
-                        </a>
+                        {userRole !== "management_viewer" && (
+                          <a
+                            href={`/api/attachments/download?path=${encodeURIComponent(attachment.file_path)}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-xs text-blue-600 hover:text-blue-800 hover:underline ml-3 whitespace-nowrap"
+                          >
+                            Download
+                          </a>
+                        )}
                       </div>
                     );
                   })}
@@ -588,7 +601,7 @@ export function CallReportDetailDialog({ report, isOpen, onClose }: CallReportDe
             apiBasePath="/api/call-reports"
             storageBucket="attachments"
             canEdit={false}
-            userRole="management"
+            userRole={userRole || "management"}
             entityType="call-report"
           />
 
@@ -666,7 +679,7 @@ export function CallReportDetailDialog({ report, isOpen, onClose }: CallReportDe
                           storageBucket="episodes"
                           canEdit={false}
                           compact={true}
-                          userRole="management"
+                          userRole={userRole || "management"}
                           entityType="episode"
                         />
                       </div>
@@ -682,12 +695,14 @@ export function CallReportDetailDialog({ report, isOpen, onClose }: CallReportDe
                               <FileText className="h-3.5 w-3.5 text-blue-600 flex-shrink-0" />
                               <span className="truncate font-medium">{ep.attachment_name}</span>
                             </div>
-                            <button
-                              onClick={() => window.open(`/api/episodes/download/${ep.id}`, "_blank")}
-                              className="text-blue-600 hover:text-blue-800 hover:underline flex-shrink-0"
-                            >
-                              Download
-                            </button>
+                            {userRole !== "management_viewer" && (
+                              <button
+                                onClick={() => window.open(`/api/episodes/download/${ep.id}`, "_blank")}
+                                className="text-blue-600 hover:text-blue-800 hover:underline flex-shrink-0"
+                              >
+                                Download
+                              </button>
+                            )}
                           </div>
                         </div>
                       )}

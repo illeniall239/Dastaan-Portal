@@ -510,15 +510,22 @@ export function ContentRevisions({
 
           <div className="flex-1 min-w-0 space-y-1">
             {revision.attachment_name && (
-              <button
-                onClick={() => handleDownload(revision)}
-                className={`text-blue-600 hover:underline flex items-center gap-1 ${
-                  isCompact ? "text-xs" : "text-sm"
-                }`}
-              >
-                <FileText className={isCompact ? "h-3 w-3" : "h-4 w-4 flex-shrink-0"} />
-                <span className="truncate">{revision.attachment_name}</span>
-              </button>
+              userRole === "management_viewer" ? (
+                <span className={`flex items-center gap-1 text-muted-foreground ${isCompact ? "text-xs" : "text-sm"}`}>
+                  <FileText className={isCompact ? "h-3 w-3" : "h-4 w-4 flex-shrink-0"} />
+                  <span className="truncate">{revision.attachment_name}</span>
+                </span>
+              ) : (
+                <button
+                  onClick={() => handleDownload(revision)}
+                  className={`text-blue-600 hover:underline flex items-center gap-1 ${
+                    isCompact ? "text-xs" : "text-sm"
+                  }`}
+                >
+                  <FileText className={isCompact ? "h-3 w-3" : "h-4 w-4 flex-shrink-0"} />
+                  <span className="truncate">{revision.attachment_name}</span>
+                </button>
+              )
             )}
             {revision.comment && (
               <p className={`text-muted-foreground ${isCompact ? "text-xs line-clamp-2" : "text-sm"}`}>
@@ -579,7 +586,7 @@ export function ContentRevisions({
                 {revision.average_evaluation_score != null && ` · ${revision.average_evaluation_score}/10`}
               </Badge>
             )}
-            {!isCompact && revision.attachment_url && (
+            {!isCompact && revision.attachment_url && userRole !== "management_viewer" && (
               <Button size="sm" variant="ghost" onClick={() => handleDownload(revision)}>
                 <Download className="h-4 w-4" />
               </Button>
