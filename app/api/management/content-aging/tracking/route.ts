@@ -10,6 +10,17 @@ export const dynamic = "force-dynamic";
 const ALLOWED_ROLES = ["admin", "management", "executive", "programmer", "management_viewer"];
 const WRITE_ROLES = ["admin", "management", "programmer"];
 
+const decisionLabels: Record<string, string> = {
+  approve: "Approved", approved: "Approved",
+  reject: "Rejected", rejected: "Rejected",
+  needs_revision: "Needs Revision", needs_improvement: "Needs Improvement",
+  need_info: "Need Info",
+};
+function fmtDecision(d: string | null): string | null {
+  if (!d) return null;
+  return decisionLabels[d] || d.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+}
+
 function fmt(d: string | null): string | null {
   if (!d) return null;
   try {
@@ -82,7 +93,7 @@ export async function GET(request: NextRequest) {
     // 2b. Fetch call report (one-liner) evaluations for team-wise feedback
     const { data: crEvals, error: crEvalsErr } = await admin
       .from("evaluator_forms")
-      .select("call_report_id, evaluator_id, submitted_at, created_at, average_score")
+      .select("call_report_id, evaluator_id, submitted_at, created_at, average_score, decision")
       .in("call_report_id", reportIds)
       .not("submitted_at", "is", null);
 
@@ -127,7 +138,7 @@ export async function GET(request: NextRequest) {
     const feedbackTeamSet = new Set<string>();
 
     // Build one-liner (call report) team-wise feedback: crId → Map<teamLabel, {date, score}>
-    type FbEntry = { date: string; score: number | null };
+    type FbEntry = { date: string; score: number | null; decision: string | null };
     const crTeamFeedback = new Map<string, Map<string, FbEntry>>();
     const crLoggedDate = new Map<string, string>();
     for (const cr of callReports) {
@@ -141,7 +152,7 @@ export async function GET(request: NextRequest) {
       const existing = teamMap.get(teamLabel);
       const date = ev.submitted_at || ev.created_at;
       if (date && (!existing || date > existing.date)) {
-        teamMap.set(teamLabel, { date, score: (ev as any).average_score ?? null });
+        teamMap.set(teamLabel, { date, score: (ev as any).average_score ?? null, decision: (ev as any).decision ?? null });
       }
     }
 
@@ -153,7 +164,7 @@ export async function GET(request: NextRequest) {
           const crFbMap = crTeamFeedback.get(cr.id);
           const olFb: Record<string, string | null> = {};
           const olScores: Record<string, string | null> = {};
-          if (crFbMap) { for (const [team, entry] of crFbMap) { olFb[team] = fmt(entry.date); olScores[team] = entry.score != null ? String(entry.score) : null; } }
+          if (crFbMap) { for (const [team, entry] of crFbMap) { olFb[team] = fmt(entry.date); { const s = entry.score != null ? String(parseFloat(entry.score.toFixed(1))) : null; const d = fmtDecision(entry.decision); olScores[team] = s ? (d ? `${s} · ${d}` : s) : (d || null); } } }
           return {
             id: cr.id, workingTitle: cr.working_title, writerName: cr.writer_name,
             trackingNotes: cr.tracking_notes, targetSlot: cr.target_slot || null,
@@ -186,7 +197,7 @@ export async function GET(request: NextRequest) {
           const crFbMap = crTeamFeedback.get(cr.id);
           const olFb: Record<string, string | null> = {};
           const olScores: Record<string, string | null> = {};
-          if (crFbMap) { for (const [team, entry] of crFbMap) { olFb[team] = fmt(entry.date); olScores[team] = entry.score != null ? String(entry.score) : null; } }
+          if (crFbMap) { for (const [team, entry] of crFbMap) { olFb[team] = fmt(entry.date); { const s = entry.score != null ? String(parseFloat(entry.score.toFixed(1))) : null; const d = fmtDecision(entry.decision); olScores[team] = s ? (d ? `${s} · ${d}` : s) : (d || null); } } }
           return {
             id: cr.id, workingTitle: cr.working_title, writerName: cr.writer_name,
             trackingNotes: cr.tracking_notes, targetSlot: cr.target_slot || null,
@@ -248,7 +259,7 @@ export async function GET(request: NextRequest) {
           const teamMap = revEvalByTeam.get(ev.revision_id)!;
           const existingTeam = teamMap.get(teamLabel);
           if (!existingTeam || ev.submitted_at > existingTeam.date) {
-            teamMap.set(teamLabel, { date: ev.submitted_at, score: ev.overall_average ?? null, grade: ev.overall_grade ?? null });
+            teamMap.set(teamLabel, { date: ev.submitted_at, score: ev.overall_average ?? null, grade: ev.overall_grade ?? null, decision: ev.decision ?? null });
           }
         } else {
           const existing = baseEvalByEpisode.get(currentEpId);
@@ -259,7 +270,7 @@ export async function GET(request: NextRequest) {
           const teamMap = baseEvalByTeam.get(currentEpId)!;
           const existingTeam = teamMap.get(teamLabel);
           if (!existingTeam || ev.submitted_at > existingTeam.date) {
-            teamMap.set(teamLabel, { date: ev.submitted_at, score: ev.overall_average ?? null, grade: ev.overall_grade ?? null });
+            teamMap.set(teamLabel, { date: ev.submitted_at, score: ev.overall_average ?? null, grade: ev.overall_grade ?? null, decision: ev.decision ?? null });
           }
         }
       }
@@ -317,7 +328,9 @@ export async function GET(request: NextRequest) {
           baseTeamDays[team] = entry
             ? daysBetween(rawFirstCopy, entry.date)
             : daysBetween(rawFirstCopy, now);
-          baseTeamScores[team] = entry?.score != null ? String(entry.score) : null;
+          const s = entry?.score != null ? String(parseFloat(entry.score.toFixed(1))) : null;
+          const d = fmtDecision(entry?.decision ?? null);
+          baseTeamScores[team] = s ? (d ? `${s} · ${d}` : s) : (d || null);
         }
 
         return {
@@ -351,7 +364,9 @@ export async function GET(request: NextRequest) {
               revTeamDays[team] = entry
                 ? daysBetween(rawRevDate, entry.date)
                 : daysBetween(rawRevDate, now);
-              revTeamScores[team] = entry?.score != null ? String(entry.score) : null;
+              const s = entry?.score != null ? String(parseFloat(entry.score.toFixed(1))) : null;
+              const d = fmtDecision(entry?.decision ?? null);
+              revTeamScores[team] = s ? (d ? `${s} · ${d}` : s) : (d || null);
             }
 
             return {
@@ -397,7 +412,9 @@ export async function GET(request: NextRequest) {
         oneLinerTeamDays[team] = rawCrLogged
           ? (entry ? daysBetween(rawCrLogged, entry.date) : daysBetween(rawCrLogged, now))
           : null;
-        oneLinerTeamScores[team] = entry?.score != null ? String(entry.score) : null;
+        const s = entry?.score != null ? String(parseFloat(entry.score.toFixed(1))) : null;
+        const d = fmtDecision(entry?.decision ?? null);
+        oneLinerTeamScores[team] = s ? (d ? `${s} · ${d}` : s) : (d || null);
       }
 
       return {
