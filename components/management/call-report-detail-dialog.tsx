@@ -646,19 +646,17 @@ export function CallReportDetailDialog({ report, isOpen, onClose }: CallReportDe
                             Logged: {formatDate(ep.created_at)}
                           </span>
                         )}
-                        {epEvalsMap[ep.id]?.length > 0 && (() => {
-                          const dates = epEvalsMap[ep.id]
-                            .map((ev: any) => ev.submitted_at || ev.created_at)
-                            .filter(Boolean)
-                            .sort();
-                          const latest = dates[dates.length - 1];
-                          return latest ? (
-                            <span className="flex items-center gap-1">
-                              <ClipboardCheck className="h-3 w-3" />
-                              Evaluated: {formatDate(latest)}
-                            </span>
-                          ) : null;
-                        })()}
+                        <span className="flex items-center gap-1">
+                          <ClipboardCheck className="h-3 w-3" />
+                          {epEvalsMap[ep.id]?.length > 0 ? (() => {
+                            const dates = epEvalsMap[ep.id]
+                              .map((ev: any) => ev.submitted_at || ev.created_at)
+                              .filter(Boolean)
+                              .sort();
+                            const latest = dates[dates.length - 1];
+                            return latest ? `Evaluated: ${formatDate(latest)}` : "Evaluated: Not evaluated";
+                          })() : "Evaluated: Not evaluated"}
+                        </span>
                       </div>
                       {/* Episode revisions */}
                       <div className="px-4 py-3">
