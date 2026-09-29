@@ -71,7 +71,7 @@ export async function GET(request: NextRequest) {
       .select(`
         id, call_report_id, episode_number, created_at, original_submission_date, is_current,
         episode_revisions(id, revision_number, created_at, original_submission_date),
-        episodic_evaluations(episode_id, revision_id, submitted_at, decision, evaluator_id),
+        episodic_evaluations(episode_id, revision_id, submitted_at, decision, evaluator_id, overall_average, overall_grade),
         episode_tracking(payment_request_date, payment_date, tracking_status)
       `)
       .in("call_report_id", reportIds)
@@ -82,7 +82,7 @@ export async function GET(request: NextRequest) {
     // 2b. Fetch call report (one-liner) evaluations for team-wise feedback
     const { data: crEvals, error: crEvalsErr } = await admin
       .from("evaluator_forms")
-      .select("call_report_id, evaluator_id, submitted_at, created_at")
+      .select("call_report_id, evaluator_id, submitted_at, created_at, average_score")
       .in("call_report_id", reportIds)
       .not("submitted_at", "is", null);
 
@@ -126,8 +126,9 @@ export async function GET(request: NextRequest) {
     // Collect distinct feedback team labels from actual evaluations
     const feedbackTeamSet = new Set<string>();
 
-    // Build one-liner (call report) team-wise feedback: crId → Map<teamLabel, latestDate>
-    const crTeamFeedback = new Map<string, Map<string, string>>();
+    // Build one-liner (call report) team-wise feedback: crId → Map<teamLabel, {date, score}>
+    type FbEntry = { date: string; score: number | null };
+    const crTeamFeedback = new Map<string, Map<string, FbEntry>>();
     const crLoggedDate = new Map<string, string>();
     for (const cr of callReports) {
       crLoggedDate.set(cr.id, cr.meeting_date || cr.created_at);
@@ -139,8 +140,8 @@ export async function GET(request: NextRequest) {
       const teamMap = crTeamFeedback.get(ev.call_report_id)!;
       const existing = teamMap.get(teamLabel);
       const date = ev.submitted_at || ev.created_at;
-      if (date && (!existing || date > existing)) {
-        teamMap.set(teamLabel, date);
+      if (date && (!existing || date > existing.date)) {
+        teamMap.set(teamLabel, { date, score: (ev as any).average_score ?? null });
       }
     }
 
@@ -151,13 +152,14 @@ export async function GET(request: NextRequest) {
           const th = td?.team_head ? (Array.isArray(td.team_head) ? td.team_head[0] : td.team_head) : null;
           const crFbMap = crTeamFeedback.get(cr.id);
           const olFb: Record<string, string | null> = {};
-          if (crFbMap) { for (const [team, date] of crFbMap) olFb[team] = fmt(date); }
+          const olScores: Record<string, string | null> = {};
+          if (crFbMap) { for (const [team, entry] of crFbMap) { olFb[team] = fmt(entry.date); olScores[team] = entry.score != null ? String(entry.score) : null; } }
           return {
             id: cr.id, workingTitle: cr.working_title, writerName: cr.writer_name,
             trackingNotes: cr.tracking_notes, targetSlot: cr.target_slot || null,
             teamName: formatTeamDisplayName(td?.name || "", th?.name),
             avgScore: cr.average_initial_assessment ?? null,
-            oneLiner: { loggedDate: fmt(cr.meeting_date || cr.created_at), teamFeedback: olFb },
+            oneLiner: { loggedDate: fmt(cr.meeting_date || cr.created_at), teamFeedback: olFb, teamScores: olScores },
             episodes: [], maxRevisions: 0, monthlySummary: [],
           };
         }),
@@ -183,13 +185,14 @@ export async function GET(request: NextRequest) {
           const th = td?.team_head ? (Array.isArray(td.team_head) ? td.team_head[0] : td.team_head) : null;
           const crFbMap = crTeamFeedback.get(cr.id);
           const olFb: Record<string, string | null> = {};
-          if (crFbMap) { for (const [team, date] of crFbMap) olFb[team] = fmt(date); }
+          const olScores: Record<string, string | null> = {};
+          if (crFbMap) { for (const [team, entry] of crFbMap) { olFb[team] = fmt(entry.date); olScores[team] = entry.score != null ? String(entry.score) : null; } }
           return {
             id: cr.id, workingTitle: cr.working_title, writerName: cr.writer_name,
             trackingNotes: cr.tracking_notes, targetSlot: cr.target_slot || null,
             teamName: formatTeamDisplayName(td?.name || "", th?.name),
             avgScore: cr.average_initial_assessment ?? null,
-            oneLiner: { loggedDate: fmt(cr.meeting_date || cr.created_at), teamFeedback: olFb },
+            oneLiner: { loggedDate: fmt(cr.meeting_date || cr.created_at), teamFeedback: olFb, teamScores: olScores },
             episodes: [], maxRevisions: 0, monthlySummary: [],
           };
         }),
@@ -221,12 +224,12 @@ export async function GET(request: NextRequest) {
 
     // Collect evals from ALL episodes, remap to current episode IDs
     // Store per-team feedback dates: Map<episodeId|revisionId, Map<teamLabel, latestDate>>
-    type EvalRow = { episode_id: string; revision_id: string | null; submitted_at: string | null; decision: string | null; evaluator_id: string };
+    type EvalRow = { episode_id: string; revision_id: string | null; submitted_at: string | null; decision: string | null; evaluator_id: string; overall_average: number | null; overall_grade: string | null };
     const baseEvalByEpisode = new Map<string, string>();
     const revEvalMap = new Map<string, string>();
-    // Team-wise feedback maps
-    const baseEvalByTeam = new Map<string, Map<string, string>>(); // episodeId → Map<teamLabel, latestDate>
-    const revEvalByTeam = new Map<string, Map<string, string>>();  // revisionId → Map<teamLabel, latestDate>
+    // Team-wise feedback maps: key → Map<teamLabel, {date, score, grade}>
+    const baseEvalByTeam = new Map<string, Map<string, FbEntry & { grade: string | null }>>();
+    const revEvalByTeam = new Map<string, Map<string, FbEntry & { grade: string | null }>>();
 
     for (const ep of allEpisodes) {
       const currentEpId = oldToCurrentEpId.get(ep.id) || ep.id;
@@ -241,24 +244,22 @@ export async function GET(request: NextRequest) {
           if (!existing || ev.submitted_at > existing) {
             revEvalMap.set(ev.revision_id, ev.submitted_at);
           }
-          // Team-wise
           if (!revEvalByTeam.has(ev.revision_id)) revEvalByTeam.set(ev.revision_id, new Map());
           const teamMap = revEvalByTeam.get(ev.revision_id)!;
           const existingTeam = teamMap.get(teamLabel);
-          if (!existingTeam || ev.submitted_at > existingTeam) {
-            teamMap.set(teamLabel, ev.submitted_at);
+          if (!existingTeam || ev.submitted_at > existingTeam.date) {
+            teamMap.set(teamLabel, { date: ev.submitted_at, score: ev.overall_average ?? null, grade: ev.overall_grade ?? null });
           }
         } else {
           const existing = baseEvalByEpisode.get(currentEpId);
           if (!existing || ev.submitted_at > existing) {
             baseEvalByEpisode.set(currentEpId, ev.submitted_at);
           }
-          // Team-wise
           if (!baseEvalByTeam.has(currentEpId)) baseEvalByTeam.set(currentEpId, new Map());
           const teamMap = baseEvalByTeam.get(currentEpId)!;
           const existingTeam = teamMap.get(teamLabel);
-          if (!existingTeam || ev.submitted_at > existingTeam) {
-            teamMap.set(teamLabel, ev.submitted_at);
+          if (!existingTeam || ev.submitted_at > existingTeam.date) {
+            teamMap.set(teamLabel, { date: ev.submitted_at, score: ev.overall_average ?? null, grade: ev.overall_grade ?? null });
           }
         }
       }
@@ -305,16 +306,18 @@ export async function GET(request: NextRequest) {
           monthBuckets.get(mk)!.freshEps++;
         }
 
-        // Build team-wise feedback + per-team days for first copy
+        // Build team-wise feedback + per-team days + scores for first copy
         const baseTeamFeedback: Record<string, string | null> = {};
         const baseTeamDays: Record<string, number | null> = {};
+        const baseTeamScores: Record<string, string | null> = {};
         const baseTeamMap = baseEvalByTeam.get(ep.id);
         for (const team of feedbackTeamSet) {
-          const fbDate = baseTeamMap?.get(team) ?? null;
-          baseTeamFeedback[team] = fbDate ? fmt(fbDate) : null;
-          baseTeamDays[team] = fbDate
-            ? daysBetween(rawFirstCopy, fbDate)
+          const entry = baseTeamMap?.get(team) ?? null;
+          baseTeamFeedback[team] = entry ? fmt(entry.date) : null;
+          baseTeamDays[team] = entry
+            ? daysBetween(rawFirstCopy, entry.date)
             : daysBetween(rawFirstCopy, now);
+          baseTeamScores[team] = entry?.score != null ? String(entry.score) : null;
         }
 
         return {
@@ -325,6 +328,7 @@ export async function GET(request: NextRequest) {
           firstCopyFeedbackDays: daysBetween(rawFirstCopy, rawFirstFeedback),
           firstCopyTeamFeedback: baseTeamFeedback,
           firstCopyTeamDays: baseTeamDays,
+          firstCopyTeamScores: baseTeamScores,
           revisions: epRevs.map((rev) => {
             const rawRevDate = rev.original_submission_date ?? rev.created_at;
             const rawRevFeedback = revEvalMap.get(rev.id) ?? null;
@@ -336,16 +340,18 @@ export async function GET(request: NextRequest) {
               monthBuckets.get(rmk)!.revEps++;
             }
 
-            // Build team-wise feedback + per-team days for revision
+            // Build team-wise feedback + per-team days + scores for revision
             const revTeamFeedback: Record<string, string | null> = {};
             const revTeamDays: Record<string, number | null> = {};
+            const revTeamScores: Record<string, string | null> = {};
             const revTeamMap = revEvalByTeam.get(rev.id);
             for (const team of feedbackTeamSet) {
-              const fbDate = revTeamMap?.get(team) ?? null;
-              revTeamFeedback[team] = fbDate ? fmt(fbDate) : null;
-              revTeamDays[team] = fbDate
-                ? daysBetween(rawRevDate, fbDate)
+              const entry = revTeamMap?.get(team) ?? null;
+              revTeamFeedback[team] = entry ? fmt(entry.date) : null;
+              revTeamDays[team] = entry
+                ? daysBetween(rawRevDate, entry.date)
                 : daysBetween(rawRevDate, now);
+              revTeamScores[team] = entry?.score != null ? String(entry.score) : null;
             }
 
             return {
@@ -355,6 +361,7 @@ export async function GET(request: NextRequest) {
               feedbackDays: daysBetween(rawRevDate, rawRevFeedback),
               teamFeedback: revTeamFeedback,
               teamDays: revTeamDays,
+              teamScores: revTeamScores,
             };
           }),
           paymentRequestDate: tr?.payment_request_date ?? null,
@@ -378,17 +385,19 @@ export async function GET(request: NextRequest) {
       const teamData = Array.isArray(cr.team) ? cr.team[0] : cr.team;
       const teamHead = teamData?.team_head ? (Array.isArray(teamData.team_head) ? teamData.team_head[0] : teamData.team_head) : null;
 
-      // Build one-liner team feedback + per-team days for this project
+      // Build one-liner team feedback + per-team days + scores for this project
       const crFbMap = crTeamFeedback.get(cr.id);
       const rawCrLogged = crLoggedDate.get(cr.id) ?? null;
       const oneLinerTeamFeedback: Record<string, string | null> = {};
       const oneLinerTeamDays: Record<string, number | null> = {};
+      const oneLinerTeamScores: Record<string, string | null> = {};
       for (const team of feedbackTeamSet) {
-        const fbDate = crFbMap?.get(team) ?? null;
-        oneLinerTeamFeedback[team] = fbDate ? fmt(fbDate) : null;
+        const entry = crFbMap?.get(team) ?? null;
+        oneLinerTeamFeedback[team] = entry ? fmt(entry.date) : null;
         oneLinerTeamDays[team] = rawCrLogged
-          ? (fbDate ? daysBetween(rawCrLogged, fbDate) : daysBetween(rawCrLogged, now))
+          ? (entry ? daysBetween(rawCrLogged, entry.date) : daysBetween(rawCrLogged, now))
           : null;
+        oneLinerTeamScores[team] = entry?.score != null ? String(entry.score) : null;
       }
 
       return {
@@ -403,6 +412,7 @@ export async function GET(request: NextRequest) {
           loggedDate: fmt(rawCrLogged),
           teamFeedback: oneLinerTeamFeedback,
           teamDays: oneLinerTeamDays,
+          teamScores: oneLinerTeamScores,
         },
         episodes: mappedEpisodes,
         maxRevisions,

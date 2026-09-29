@@ -98,6 +98,7 @@ interface TrackingRevision {
   feedbackDays: number | null;
   teamFeedback?: Record<string, string | null>;
   teamDays?: Record<string, number | null>;
+  teamScores?: Record<string, string | null>;
 }
 
 interface TrackingEpisode {
@@ -108,6 +109,7 @@ interface TrackingEpisode {
   firstCopyFeedbackDays: number | null;
   firstCopyTeamFeedback?: Record<string, string | null>;
   firstCopyTeamDays?: Record<string, number | null>;
+  firstCopyTeamScores?: Record<string, string | null>;
   revisions: TrackingRevision[];
   paymentRequestDate: string | null;
   paymentDate: string | null;
@@ -126,6 +128,7 @@ interface TrackingProject {
     loggedDate: string | null;
     teamFeedback: Record<string, string | null>;
     teamDays?: Record<string, number | null>;
+    teamScores?: Record<string, string | null>;
   };
   episodes: TrackingEpisode[];
   maxRevisions: number;
@@ -696,7 +699,7 @@ export default function ContentAgingPage() {
     const hasFbTeamsExport = feedbackTeams.length > 0;
     // Per-team headers: "Team Name", "Days" for each team
     const perTeamHeaders = hasFbTeamsExport
-      ? feedbackTeams.map((team) => [team, "Days"]).flat()
+      ? feedbackTeams.map((team) => [team, "Score", "Days"]).flat()
       : ["Feedback"];
     const revHeaders = Array.from({ length: trackingMaxRevisions }, (_, i) => [
       `${i + 1}${i === 0 ? "st" : i === 1 ? "nd" : i === 2 ? "rd" : "th"} Revised`,
@@ -708,7 +711,7 @@ export default function ContentAgingPage() {
       // One-liner row
       if (p.oneLiner) {
         const olFbCells = hasFbTeamsExport
-          ? feedbackTeams.map((team) => [p.oneLiner!.teamFeedback?.[team] ?? "", p.oneLiner!.teamDays?.[team] != null ? `${p.oneLiner!.teamDays![team]}d` : ""]).flat()
+          ? feedbackTeams.map((team) => [p.oneLiner!.teamFeedback?.[team] ?? "", p.oneLiner!.teamScores?.[team] ?? "", p.oneLiner!.teamDays?.[team] != null ? `${p.oneLiner!.teamDays![team]}d` : ""]).flat()
           : [""];
         const emptyRevCells = Array.from({ length: trackingMaxRevisions * (1 + perTeamHeaders.length) }, () => "");
         rows.push([
@@ -718,7 +721,7 @@ export default function ContentAgingPage() {
       }
       for (const ep of p.episodes) {
         const firstCopyFbCells = hasFbTeamsExport
-          ? feedbackTeams.map((team) => [ep.firstCopyTeamFeedback?.[team] ?? "", ep.firstCopyTeamDays?.[team] != null ? `${ep.firstCopyTeamDays![team]}d` : ""]).flat()
+          ? feedbackTeams.map((team) => [ep.firstCopyTeamFeedback?.[team] ?? "", ep.firstCopyTeamScores?.[team] ?? "", ep.firstCopyTeamDays?.[team] != null ? `${ep.firstCopyTeamDays![team]}d` : ""]).flat()
           : [ep.firstCopyFeedbackDate ?? ""];
         const revCells: (string | number | null)[] = [];
         for (let i = 0; i < trackingMaxRevisions; i++) {
@@ -727,6 +730,7 @@ export default function ContentAgingPage() {
           if (hasFbTeamsExport) {
             for (const team of feedbackTeams) {
               revCells.push(rev?.teamFeedback?.[team] ?? "");
+              revCells.push(rev?.teamScores?.[team] ?? "");
               revCells.push(rev?.teamDays?.[team] != null ? `${rev!.teamDays![team]}d` : "");
             }
           } else {
@@ -1872,7 +1876,10 @@ function TrackingTable({
                     const pending = !project.oneLiner!.teamFeedback?.[team];
                     return [
                       <td key={`ol-fb-${team}`} className={`${tdBase} ${divider} text-violet-600 text-[10px]`}>
-                        {project.oneLiner!.teamFeedback?.[team] ?? ""}
+                        <div>{project.oneLiner!.teamFeedback?.[team] ?? ""}</div>
+                        {project.oneLiner!.teamScores?.[team] && (
+                          <div className="mt-0.5 font-bold text-violet-700 text-[9px]">{project.oneLiner!.teamScores[team]}</div>
+                        )}
                       </td>,
                       ...(!hideDays ? [<td key={`ol-days-${team}`} className={`px-2 py-2 ${divider} text-center font-semibold text-[10px] ${pending ? "text-red-600 bg-red-50/50 italic" : daysColor(d)}`}>
                         {d != null ? `${d}d` : ""}
@@ -1903,7 +1910,10 @@ function TrackingTable({
                     const pending = !ep.firstCopyTeamFeedback?.[team];
                     return [
                       <td key={`fb-0-${team}`} className={`${tdBase} ${divider} text-slate-600 text-[10px]`}>
-                        {ep.firstCopyTeamFeedback?.[team] ?? ""}
+                        <div>{ep.firstCopyTeamFeedback?.[team] ?? ""}</div>
+                        {ep.firstCopyTeamScores?.[team] && (
+                          <div className="mt-0.5 font-bold text-emerald-700 text-[9px]">{ep.firstCopyTeamScores[team]}</div>
+                        )}
                       </td>,
                       ...(!hideDays ? [<td key={`days-0-${team}`} className={`px-2 py-2 ${divider} text-center font-semibold text-[10px] ${pending ? "text-red-600 bg-red-50/50 italic" : daysColor(d)}`}>
                         {d != null ? `${d}d` : ""}
@@ -1921,7 +1931,10 @@ function TrackingTable({
                         const pending = !rev?.teamFeedback?.[team];
                         return [
                           <td key={`fb-${i}-${team}`} className={`${tdBase} ${divider} text-slate-600 text-[10px]`}>
-                            {rev?.teamFeedback?.[team] ?? ""}
+                            <div>{rev?.teamFeedback?.[team] ?? ""}</div>
+                            {rev?.teamScores?.[team] && (
+                              <div className="mt-0.5 font-bold text-emerald-700 text-[9px]">{rev.teamScores[team]}</div>
+                            )}
                           </td>,
                           ...(!hideDays ? [<td key={`days-${i}-${team}`} className={`px-2 py-2 ${divider} text-center font-semibold text-[10px] ${rev ? (pending ? "text-red-600 bg-red-50/50 italic" : daysColor(d)) : ""}`}>
                             {rev && d != null ? `${d}d` : ""}
