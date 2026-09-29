@@ -1784,9 +1784,7 @@ function TrackingTable({
 
   const daysColor = (d: number | null) => {
     if (d === null) return "";
-    if (d <= 7) return "text-green-700 bg-green-50";
-    if (d <= 14) return "text-amber-700 bg-amber-50";
-    return "text-red-700 bg-red-50";
+    return "text-green-700 bg-green-50";
   };
 
   const saveEpisodeField = async (episodeId: string, field: string, value: string) => {
@@ -1810,158 +1808,168 @@ function TrackingTable({
 
   const ordinal = (n: number) => n === 1 ? "1st" : n === 2 ? "2nd" : n === 3 ? "3rd" : `${n}th`;
 
+  const thBase = "px-3 py-2.5 text-[11px] font-semibold text-center border-b-2 whitespace-nowrap";
+  const tdBase = "px-3 py-2 text-center text-[11px]";
+  const divider = "border-r border-border/40";
+
   return (
-    <table className="w-full text-xs border-separate border-spacing-0" style={{ minWidth }}>
-      <thead className="sticky top-0 z-10">
-        <tr className="bg-muted/80">
-          <th className="px-2 py-2 text-left text-xs font-semibold border-b border-r border-border whitespace-nowrap" style={{ width: 50 }}>Ep #</th>
-          <th className="px-2 py-2 text-center text-xs font-semibold border-b border-r border-border whitespace-nowrap bg-blue-50 text-blue-700" style={{ width: 110 }}>1st Copy Received</th>
-          {hasFbTeams ? effectiveFbTeams.map((team) => [
-            <th key={`fb-0-${team}`} className="px-2 py-2 text-center text-xs font-semibold border-b border-r border-border bg-amber-50 text-amber-700" style={{ width: fbColWidth, whiteSpace: "normal", lineHeight: "1.2" }}>
-              {team}
-            </th>,
-            ...(!hideDays ? [<th key={`days-0-${team}`} className="px-1 py-2 text-center text-xs font-semibold border-b border-r border-border whitespace-nowrap bg-slate-100 text-slate-600" style={{ width: daysWidth }}>Days</th>] : []),
-          ]).flat() : !hideFeedback ? (
-            <th className="px-2 py-2 text-center text-xs font-semibold border-b border-r border-border whitespace-nowrap bg-amber-50 text-amber-700" style={{ width: 110 }}>Feedback</th>
-          ) : null}
-          {Array.from({ length: globalMaxRevisions }, (_, i) => [
-            <th key={`rev-${i}`} className="px-2 py-2 text-center text-xs font-semibold border-b border-r border-border whitespace-nowrap bg-blue-50 text-blue-700" style={{ width: 110 }}>
-              {ordinal(i + 1)} Revised
-            </th>,
-            ...(hasFbTeams ? effectiveFbTeams.map((team) => [
-              <th key={`fb-${i}-${team}`} className="px-2 py-2 text-center text-xs font-semibold border-b border-r border-border bg-amber-50 text-amber-700" style={{ width: fbColWidth, whiteSpace: "normal", lineHeight: "1.2" }}>
+    <div className="rounded-xl border border-border/60 overflow-hidden shadow-sm bg-white">
+      <table className="w-full text-xs border-separate border-spacing-0" style={{ minWidth }}>
+        <thead className="sticky top-0 z-10">
+          <tr className="bg-gradient-to-r from-slate-50 to-slate-100">
+            <th className={`${thBase} ${divider} text-left`} style={{ width: 50 }}>Ep #</th>
+            <th className={`${thBase} ${divider} bg-blue-50/80 text-blue-700`} style={{ width: 120 }}>1st Copy Received</th>
+            {hasFbTeams ? effectiveFbTeams.map((team) => [
+              <th key={`fb-0-${team}`} className={`${thBase} ${divider} bg-amber-50/80 text-amber-700`} style={{ width: fbColWidth, whiteSpace: "normal", lineHeight: "1.3" }}>
                 {team}
               </th>,
-              ...(!hideDays ? [<th key={`days-${i}-${team}`} className="px-1 py-2 text-center text-xs font-semibold border-b border-r border-border whitespace-nowrap bg-slate-100 text-slate-600" style={{ width: daysWidth }}>Days</th>] : []),
-            ]).flat() : !hideFeedback ? [
-              <th key={`fb-${i}`} className="px-2 py-2 text-center text-xs font-semibold border-b border-r border-border whitespace-nowrap bg-amber-50 text-amber-700" style={{ width: 110 }}>
-                Feedback
+              ...(!hideDays ? [<th key={`days-0-${team}`} className={`${thBase} ${divider} bg-slate-50 text-slate-500`} style={{ width: daysWidth }}>Days</th>] : []),
+            ]).flat() : !hideFeedback ? (
+              <th className={`${thBase} ${divider} bg-amber-50/80 text-amber-700`} style={{ width: 120 }}>Feedback</th>
+            ) : null}
+            {Array.from({ length: globalMaxRevisions }, (_, i) => [
+              <th key={`rev-${i}`} className={`${thBase} ${divider} bg-blue-50/80 text-blue-700`} style={{ width: 120 }}>
+                {ordinal(i + 1)} Revised
               </th>,
-            ] : []),
-          ]).flat()}
-          <th className="px-2 py-2 text-center text-xs font-semibold border-b border-r border-border whitespace-nowrap bg-green-50 text-green-700" style={{ width: 120 }}>Payment Request</th>
-          <th className="px-2 py-2 text-center text-xs font-semibold border-b border-r border-border whitespace-nowrap bg-green-50 text-green-700" style={{ width: 120 }}>Payment Date</th>
-          <th className="px-2 py-2 text-center text-xs font-semibold border-b border-r border-border whitespace-nowrap bg-orange-50 text-orange-700" style={{ width: 180 }}>Writer&apos;s Commitment</th>
-          <th className="px-2 py-2 text-center text-xs font-semibold border-b border-r border-border whitespace-nowrap bg-purple-50 text-purple-700" style={{ width: 140 }}>Status</th>
-        </tr>
-      </thead>
-      <tbody>
-        {projects.map((project) => (
-          <Fragment key={project.id}>
-            <tr className="bg-slate-100 border-b border-border">
-              <td colSpan={totalCols} className="px-3 py-2 border-b border-r border-border">
-                <div className="flex items-center gap-3">
-                  <span className="font-bold text-sm">{project.workingTitle}</span>
-                  {project.writerName && <span className="text-muted-foreground">— {project.writerName}</span>}
-                </div>
-              </td>
-            </tr>
-            {/* One-Liner feedback row */}
-            {project.oneLiner && (
-              <tr className="border-b bg-violet-50/40">
-                <td className="px-2 py-1.5 border-r border-border/60 text-center font-semibold text-violet-700 text-[10px] whitespace-nowrap">OL</td>
-                <td className="px-2 py-1.5 border-r border-border/60 text-center text-violet-700">{project.oneLiner.loggedDate ?? ""}</td>
-                {hasFbTeams ? effectiveFbTeams.map((team) => {
-                  const d = project.oneLiner!.teamDays?.[team] ?? null;
-                  const pending = !project.oneLiner!.teamFeedback?.[team];
-                  return [
-                    <td key={`ol-fb-${team}`} className="px-2 py-1.5 border-r border-border/60 text-center text-violet-700 text-[10px]">
-                      {project.oneLiner!.teamFeedback?.[team] ?? ""}
-                    </td>,
-                    ...(!hideDays ? [<td key={`ol-days-${team}`} className={`px-1 py-1.5 border-r border-border/60 text-center font-medium text-[10px] ${pending ? "text-orange-600 bg-orange-50/50 italic" : daysColor(d)}`}>
-                      {d != null ? `${d}d` : ""}
-                    </td>] : []),
-                  ];
-                }).flat() : !hideFeedback ? (
-                  <td className="px-2 py-1.5 border-r border-border/60 text-center text-violet-700"></td>
-                ) : null}
-                {Array.from({ length: globalMaxRevisions }, (_, i) => [
-                  <td key={`ol-rev-${i}`} className="px-2 py-1.5 border-r border-border/60"></td>,
-                  ...(hasFbTeams ? effectiveFbTeams.map((team) => [
-                    <td key={`ol-rfb-${i}-${team}`} className="px-2 py-1.5 border-r border-border/60"></td>,
-                    ...(!hideDays ? [<td key={`ol-rdays-${i}-${team}`} className="px-2 py-1.5 border-r border-border/60"></td>] : []),
-                  ]).flat() : !hideFeedback ? [
-                    <td key={`ol-rfb-${i}`} className="px-2 py-1.5 border-r border-border/60"></td>,
-                  ] : []),
-                ]).flat()}
-                <td className="px-2 py-1.5 border-r border-border/60" colSpan={4}></td>
-              </tr>
-            )}
-            {project.episodes.map((ep, epIdx) => (
-              <tr key={ep.id} className="border-b hover:bg-muted/30">
-                <td className="px-2 py-1.5 border-r border-border/60 text-center font-medium">{ep.episodeNumber}</td>
-                <td className="px-2 py-1.5 border-r border-border/60 text-center text-blue-700">{ep.firstCopyDate ?? ""}</td>
-                {hasFbTeams ? effectiveFbTeams.map((team) => {
-                  const d = ep.firstCopyTeamDays?.[team] ?? null;
-                  const pending = !ep.firstCopyTeamFeedback?.[team];
-                  return [
-                    <td key={`fb-0-${team}`} className="px-2 py-1.5 border-r border-border/60 text-center text-amber-700 text-[10px]">
-                      {ep.firstCopyTeamFeedback?.[team] ?? ""}
-                    </td>,
-                    ...(!hideDays ? [<td key={`days-0-${team}`} className={`px-1 py-1.5 border-r border-border/60 text-center font-medium text-[10px] ${pending ? "text-orange-600 bg-orange-50/50 italic" : daysColor(d)}`}>
-                      {d != null ? `${d}d` : ""}
-                    </td>] : []),
-                  ];
-                }).flat() : !hideFeedback ? (
-                  <td className="px-2 py-1.5 border-r border-border/60 text-center text-amber-700">{ep.firstCopyFeedbackDate ?? ""}</td>
-                ) : null}
-                {Array.from({ length: globalMaxRevisions }, (_, i) => {
-                  const rev = ep.revisions[i];
-                  return [
-                    <td key={`rev-${i}`} className="px-2 py-1.5 border-r border-border/60 text-center text-blue-700">{rev?.receivedDate ?? ""}</td>,
-                    ...(hasFbTeams ? effectiveFbTeams.map((team) => {
-                      const d = rev?.teamDays?.[team] ?? null;
-                      const pending = !rev?.teamFeedback?.[team];
-                      return [
-                        <td key={`fb-${i}-${team}`} className="px-2 py-1.5 border-r border-border/60 text-center text-amber-700 text-[10px]">
-                          {rev?.teamFeedback?.[team] ?? ""}
-                        </td>,
-                        ...(!hideDays ? [<td key={`days-${i}-${team}`} className={`px-1 py-1.5 border-r border-border/60 text-center font-medium text-[10px] ${rev ? (pending ? "text-orange-600 bg-orange-50/50 italic" : daysColor(d)) : ""}`}>
-                          {rev && d != null ? `${d}d` : ""}
-                        </td>] : []),
-                      ];
-                    }).flat() : !hideFeedback ? [
-                      <td key={`fb-${i}`} className="px-2 py-1.5 border-r border-border/60 text-center text-amber-700">{rev?.feedbackDate ?? ""}</td>,
-                    ] : []),
-                  ];
-                }).flat()}
-                <td className="px-1 py-0.5 border-r border-border/60">
-                  <EditableCell value={ep.paymentRequestDate} onSave={(v) => saveEpisodeField(ep.id, "payment_request_date", v)} />
-                </td>
-                <td className="px-1 py-0.5 border-r border-border/60">
-                  <EditableCell value={ep.paymentDate} onSave={(v) => saveEpisodeField(ep.id, "payment_date", v)} />
-                </td>
-                {epIdx === 0 ? (
-                  <td className="px-1 py-0.5 border-r border-border/60 align-top" rowSpan={project.episodes.length}>
-                    <EditableCell value={project.trackingNotes} onSave={(v) => saveProjectNotes(project.id, v)} />
-                  </td>
-                ) : null}
-                <td className="px-1 py-0.5 border-r border-border/60">
-                  <EditableCell value={ep.trackingStatus} onSave={(v) => saveEpisodeField(ep.id, "tracking_status", v)} />
-                </td>
-              </tr>
-            ))}
-            {/* Monthly delivery summary row */}
-            {project.monthlySummary && project.monthlySummary.length > 0 && (
-              <tr className="bg-indigo-50/50 border-b border-border">
-                <td colSpan={totalCols} className="px-3 py-1.5 border-b border-r border-border">
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    <span className="text-[10px] font-semibold text-slate-500 uppercase mr-1">Monthly:</span>
-                    {project.monthlySummary.map((ms) => (
-                      <span key={ms.month} className="inline-flex items-center gap-0.5 text-[10px]">
-                        <span className="font-medium text-slate-600">{ms.month}:</span>
-                        {ms.freshEps > 0 && <span className="bg-blue-100 text-blue-700 px-1 rounded font-medium">{ms.freshEps}F</span>}
-                        {ms.revEps > 0 && <span className="bg-amber-100 text-amber-700 px-1 rounded font-medium">{ms.revEps}R</span>}
-                        {ms.freshEps === 0 && ms.revEps === 0 && <span className="text-slate-400">0</span>}
-                      </span>
-                    ))}
+              ...(hasFbTeams ? effectiveFbTeams.map((team) => [
+                <th key={`fb-${i}-${team}`} className={`${thBase} ${divider} bg-amber-50/80 text-amber-700`} style={{ width: fbColWidth, whiteSpace: "normal", lineHeight: "1.3" }}>
+                  {team}
+                </th>,
+                ...(!hideDays ? [<th key={`days-${i}-${team}`} className={`${thBase} ${divider} bg-slate-50 text-slate-500`} style={{ width: daysWidth }}>Days</th>] : []),
+              ]).flat() : !hideFeedback ? [
+                <th key={`fb-${i}`} className={`${thBase} ${divider} bg-amber-50/80 text-amber-700`} style={{ width: 120 }}>
+                  Feedback
+                </th>,
+              ] : []),
+            ]).flat()}
+            <th className={`${thBase} ${divider} bg-emerald-50/80 text-emerald-700`} style={{ width: 130 }}>Payment Request</th>
+            <th className={`${thBase} ${divider} bg-emerald-50/80 text-emerald-700`} style={{ width: 130 }}>Payment Date</th>
+            <th className={`${thBase} ${divider} bg-orange-50/80 text-orange-700`} style={{ width: 180 }}>Writer&apos;s Commitment</th>
+            <th className={`${thBase} bg-purple-50/80 text-purple-700`} style={{ width: 140 }}>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {projects.map((project, pIdx) => (
+            <Fragment key={project.id}>
+              {/* Spacer between projects */}
+              {pIdx > 0 && <tr><td colSpan={totalCols} className="h-2 bg-slate-50/50" /></tr>}
+              {/* Project header */}
+              <tr className="bg-gradient-to-r from-slate-100 to-slate-50">
+                <td colSpan={totalCols} className="px-4 py-3">
+                  <div className="flex items-center gap-3">
+                    <span className="font-bold text-sm text-slate-800">{project.workingTitle}</span>
+                    {project.writerName && <span className="text-xs text-slate-500">— {project.writerName}</span>}
                   </div>
                 </td>
               </tr>
-            )}
-          </Fragment>
-        ))}
-      </tbody>
-    </table>
+              {/* One-Liner feedback row */}
+              {project.oneLiner && (
+                <tr className="bg-violet-50/30 border-b border-violet-100/60">
+                  <td className={`${tdBase} ${divider} font-semibold text-violet-600`}>OL</td>
+                  <td className={`${tdBase} ${divider} text-violet-600`}>{project.oneLiner.loggedDate ?? ""}</td>
+                  {hasFbTeams ? effectiveFbTeams.map((team) => {
+                    const d = project.oneLiner!.teamDays?.[team] ?? null;
+                    const pending = !project.oneLiner!.teamFeedback?.[team];
+                    return [
+                      <td key={`ol-fb-${team}`} className={`${tdBase} ${divider} text-violet-600 text-[10px]`}>
+                        {project.oneLiner!.teamFeedback?.[team] ?? ""}
+                      </td>,
+                      ...(!hideDays ? [<td key={`ol-days-${team}`} className={`px-2 py-2 ${divider} text-center font-semibold text-[10px] ${pending ? "text-red-600 bg-red-50/50 italic" : daysColor(d)}`}>
+                        {d != null ? `${d}d` : ""}
+                      </td>] : []),
+                    ];
+                  }).flat() : !hideFeedback ? (
+                    <td className={`${tdBase} ${divider} text-violet-600`}></td>
+                  ) : null}
+                  {Array.from({ length: globalMaxRevisions }, (_, i) => [
+                    <td key={`ol-rev-${i}`} className={`${tdBase} ${divider}`}></td>,
+                    ...(hasFbTeams ? effectiveFbTeams.map((team) => [
+                      <td key={`ol-rfb-${i}-${team}`} className={`${tdBase} ${divider}`}></td>,
+                      ...(!hideDays ? [<td key={`ol-rdays-${i}-${team}`} className={`${tdBase} ${divider}`}></td>] : []),
+                    ]).flat() : !hideFeedback ? [
+                      <td key={`ol-rfb-${i}`} className={`${tdBase} ${divider}`}></td>,
+                    ] : []),
+                  ]).flat()}
+                  <td className={`${tdBase} ${divider}`} colSpan={4}></td>
+                </tr>
+              )}
+              {/* Episode rows */}
+              {project.episodes.map((ep, epIdx) => (
+                <tr key={ep.id} className={`border-b border-border/20 transition-colors hover:bg-blue-50/20 ${epIdx % 2 === 1 ? "bg-slate-50/30" : "bg-white"}`}>
+                  <td className={`${tdBase} ${divider} font-semibold text-slate-700`}>{ep.episodeNumber}</td>
+                  <td className={`${tdBase} ${divider} text-blue-700 font-medium`}>{ep.firstCopyDate ?? ""}</td>
+                  {hasFbTeams ? effectiveFbTeams.map((team) => {
+                    const d = ep.firstCopyTeamDays?.[team] ?? null;
+                    const pending = !ep.firstCopyTeamFeedback?.[team];
+                    return [
+                      <td key={`fb-0-${team}`} className={`${tdBase} ${divider} text-slate-600 text-[10px]`}>
+                        {ep.firstCopyTeamFeedback?.[team] ?? ""}
+                      </td>,
+                      ...(!hideDays ? [<td key={`days-0-${team}`} className={`px-2 py-2 ${divider} text-center font-semibold text-[10px] ${pending ? "text-red-600 bg-red-50/50 italic" : daysColor(d)}`}>
+                        {d != null ? `${d}d` : ""}
+                      </td>] : []),
+                    ];
+                  }).flat() : !hideFeedback ? (
+                    <td className={`${tdBase} ${divider} text-slate-600`}>{ep.firstCopyFeedbackDate ?? ""}</td>
+                  ) : null}
+                  {Array.from({ length: globalMaxRevisions }, (_, i) => {
+                    const rev = ep.revisions[i];
+                    return [
+                      <td key={`rev-${i}`} className={`${tdBase} ${divider} text-blue-700 font-medium`}>{rev?.receivedDate ?? ""}</td>,
+                      ...(hasFbTeams ? effectiveFbTeams.map((team) => {
+                        const d = rev?.teamDays?.[team] ?? null;
+                        const pending = !rev?.teamFeedback?.[team];
+                        return [
+                          <td key={`fb-${i}-${team}`} className={`${tdBase} ${divider} text-slate-600 text-[10px]`}>
+                            {rev?.teamFeedback?.[team] ?? ""}
+                          </td>,
+                          ...(!hideDays ? [<td key={`days-${i}-${team}`} className={`px-2 py-2 ${divider} text-center font-semibold text-[10px] ${rev ? (pending ? "text-red-600 bg-red-50/50 italic" : daysColor(d)) : ""}`}>
+                            {rev && d != null ? `${d}d` : ""}
+                          </td>] : []),
+                        ];
+                      }).flat() : !hideFeedback ? [
+                        <td key={`fb-${i}`} className={`${tdBase} ${divider} text-slate-600`}>{rev?.feedbackDate ?? ""}</td>,
+                      ] : []),
+                    ];
+                  }).flat()}
+                  <td className={`px-2 py-1 ${divider}`}>
+                    <EditableCell value={ep.paymentRequestDate} onSave={(v) => saveEpisodeField(ep.id, "payment_request_date", v)} />
+                  </td>
+                  <td className={`px-2 py-1 ${divider}`}>
+                    <EditableCell value={ep.paymentDate} onSave={(v) => saveEpisodeField(ep.id, "payment_date", v)} />
+                  </td>
+                  {epIdx === 0 ? (
+                    <td className={`px-2 py-1 ${divider} align-top`} rowSpan={project.episodes.length}>
+                      <EditableCell value={project.trackingNotes} onSave={(v) => saveProjectNotes(project.id, v)} />
+                    </td>
+                  ) : null}
+                  <td className="px-2 py-1">
+                    <EditableCell value={ep.trackingStatus} onSave={(v) => saveEpisodeField(ep.id, "tracking_status", v)} />
+                  </td>
+                </tr>
+              ))}
+              {/* Monthly delivery summary row */}
+              {project.monthlySummary && project.monthlySummary.length > 0 && (
+                <tr className="bg-indigo-50/30 border-b border-indigo-100/40">
+                  <td colSpan={totalCols} className="px-4 py-2">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mr-1">Monthly</span>
+                      {project.monthlySummary.map((ms) => (
+                        <span key={ms.month} className="inline-flex items-center gap-1 text-[10px]">
+                          <span className="font-medium text-slate-500">{ms.month}:</span>
+                          {ms.freshEps > 0 && <span className="bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded-full font-semibold">{ms.freshEps}F</span>}
+                          {ms.revEps > 0 && <span className="bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full font-semibold">{ms.revEps}R</span>}
+                          {ms.freshEps === 0 && ms.revEps === 0 && <span className="text-slate-300">0</span>}
+                        </span>
+                      ))}
+                    </div>
+                  </td>
+                </tr>
+              )}
+            </Fragment>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 }

@@ -326,11 +326,11 @@ export async function GET(request: NextRequest) {
     .eq("id", user.id)
     .single();
 
-  if (!userData || !["content_creator", "content_manager", "gcm", "evaluator", "programmer", "executive", "management", "admin"].includes(userData.role)) {
+  if (!userData || !["content_creator", "content_manager", "gcm", "evaluator", "programmer", "executive", "management", "management_viewer", "admin"].includes(userData.role)) {
     return forbiddenError();
   }
 
-  const hasGlobalAccess = userData.role && ['admin', 'management', 'programmer'].includes(userData.role);
+  const hasGlobalAccess = userData.role && ['admin', 'management', 'management_viewer', 'programmer'].includes(userData.role);
 
   try {
     // Parse pagination parameters (page, limit, sortBy, sortOrder)
