@@ -11,12 +11,6 @@ interface StoryBankProps {
 }
 
 export function StoryBank({ callReports, episodes, userRole }: StoryBankProps) {
-  const isViewerOnly = userRole === "management_viewer";
-
-  if (isViewerOnly) {
-    return <ManagementCallReportsCards callReports={callReports} userRole={userRole} />;
-  }
-
   return (
     <Tabs defaultValue="call-reports" className="w-full">
       <TabsList className="grid w-full grid-cols-2 max-w-md">
@@ -29,7 +23,7 @@ export function StoryBank({ callReports, episodes, userRole }: StoryBankProps) {
       </TabsList>
 
       <TabsContent value="call-reports" className="mt-6">
-        <ManagementCallReportsCards callReports={callReports} />
+        <ManagementCallReportsCards callReports={callReports} userRole={userRole} />
       </TabsContent>
 
       <TabsContent value="episodes" className="mt-6">

@@ -24,7 +24,6 @@ interface ManagementCallReportsCardsProps {
 }
 
 export function ManagementCallReportsCards({ callReports, userRole }: ManagementCallReportsCardsProps) {
-  const isViewerOnly = userRole === "management_viewer";
   const [selectedReport, setSelectedReport] = useState<any>(null);
   const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
   const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
@@ -179,14 +178,14 @@ export function ManagementCallReportsCards({ callReports, userRole }: Management
               </CardHeader>
 
               <CardContent className="flex-1 space-y-4">
-                {!isViewerOnly && report.logline && (
+                {report.logline && (
                   <div className="space-y-1">
                     <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Logline</p>
                     <p className="text-sm leading-relaxed">{report.logline}</p>
                   </div>
                 )}
 
-                {!isViewerOnly && report.meeting_notes && (
+                {report.meeting_notes && (
                   <div className="space-y-1">
                     <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Meeting Notes</p>
                     <p className="text-sm text-muted-foreground line-clamp-3">{report.meeting_notes}</p>
@@ -214,7 +213,7 @@ export function ManagementCallReportsCards({ callReports, userRole }: Management
                   </div>
                 )}
 
-                {!isViewerOnly && report.next_steps && (
+                {report.next_steps && (
                   <div className="space-y-1">
                     <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Next Steps</p>
                     <p className="text-sm text-muted-foreground line-clamp-2">{report.next_steps}</p>
@@ -222,34 +221,32 @@ export function ManagementCallReportsCards({ callReports, userRole }: Management
                 )}
               </CardContent>
 
-              {!isViewerOnly && (
-                <CardFooter className="pt-4 border-t">
-                  <div className="flex items-center gap-2 w-full flex-wrap">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleViewDetails(report);
-                      }}
-                    >
-                      <Eye className="h-3 w-3 mr-1" />
-                      View Details
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleShare(report);
-                      }}
-                    >
-                      <Share2 className="h-3 w-3 mr-1" />
-                      Share
-                    </Button>
-                  </div>
-                </CardFooter>
-              )}
+              <CardFooter className="pt-4 border-t">
+                <div className="flex items-center gap-2 w-full flex-wrap">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleViewDetails(report);
+                    }}
+                  >
+                    <Eye className="h-3 w-3 mr-1" />
+                    View Details
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleShare(report);
+                    }}
+                  >
+                    <Share2 className="h-3 w-3 mr-1" />
+                    Share
+                  </Button>
+                </div>
+              </CardFooter>
             </Card>
           );
         })}

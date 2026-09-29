@@ -112,10 +112,10 @@ export default async function WhatsCookingPage() {
       </div>
 
       {/* Charts Section */}
-      <div className={`grid grid-cols-1 gap-4 ${userData.role !== "management_viewer" ? "md:grid-cols-3" : "md:grid-cols-2"}`}>
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         <GenreDonut ideas={activeIdeasDetails.details} />
         <SlotBars ideas={activeIdeasDetails.details} />
-        {userData.role !== "management_viewer" && <RatingBars ideas={activeIdeasDetails.details} />}
+        <RatingBars ideas={activeIdeasDetails.details} />
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -124,20 +124,16 @@ export default async function WhatsCookingPage() {
       </div>
 
       {/* Top Picks - What's Hot */}
-      {userData.role !== "management_viewer" && <TopPicks ideas={activeIdeasDetails.details} />}
+      <TopPicks ideas={activeIdeasDetails.details} />
 
       {/* Pipeline by Stage */}
       <StageSummary ideas={activeIdeasDetails.details} />
 
       {/* Two column layout for Theme and Rating */}
-      {userData.role !== "management_viewer" ? (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <ThemeGroups ideas={activeIdeasDetails.details} />
-          <RatingTiers ideas={activeIdeasDetails.details} />
-        </div>
-      ) : (
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <ThemeGroups ideas={activeIdeasDetails.details} />
-      )}
+        <RatingTiers ideas={activeIdeasDetails.details} />
+      </div>
 
     </div>
   );

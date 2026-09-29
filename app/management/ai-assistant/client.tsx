@@ -2,15 +2,6 @@
 
 import { AIAssistantPage } from "@/components/ai-assistant/ai-assistant-page";
 
-const VIEWER_SUGGESTIONS = [
-  "Give me a full portal summary",
-  "Which projects are behind on episode delivery?",
-  "How many episodes received for Double Wala Love?",
-  "List all writers and their project counts",
-  "Show me active contracts and payment status",
-  "What ideas were logged last month?",
-];
-
 const MANAGEMENT_SUGGESTIONS = [
   "Give me a full portal summary",
   "What are the highest rated projects?",
@@ -27,22 +18,12 @@ const MANAGEMENT_SUGGESTIONS = [
 ];
 
 export function ManagementAIAssistantClient({ role }: { role: string }) {
-  const isViewer = role === "management_viewer";
-
   return (
     <AIAssistantPage
       portalKey="management"
-      suggestions={isViewer ? VIEWER_SUGGESTIONS : MANAGEMENT_SUGGESTIONS}
-      description={
-        isViewer
-          ? "I can look up projects, track episode deliveries, check content aging, and answer questions about portal data."
-          : "I can look up evaluations, track deliveries, check team performance, and answer any question about your portal data."
-      }
-      placeholder={
-        isViewer
-          ? "Ask about projects, episode deliveries, content aging..."
-          : "Ask about evaluations, projects, teams, deliveries..."
-      }
+      suggestions={MANAGEMENT_SUGGESTIONS}
+      description="I can look up evaluations, track deliveries, check team performance, and answer any question about your portal data."
+      placeholder="Ask about evaluations, projects, teams, deliveries..."
     />
   );
 }

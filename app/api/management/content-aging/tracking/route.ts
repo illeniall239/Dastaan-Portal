@@ -51,7 +51,7 @@ export async function GET(request: NextRequest) {
     // 1. Fetch active call reports with team + slot info
     const { data: callReports, error: crErr } = await admin
       .from("call_reports")
-      .select(`id, working_title, writer_name, tracking_notes, target_slot, average_initial_assessment,
+      .select(`id, working_title, writer_name, tracking_notes, target_slot, average_initial_assessment, meeting_date, created_at,
         team:teams!call_reports_team_id_fkey(id, name, team_head:users!teams_team_head_id_fkey(name))`)
       .eq("meeting_type", "call_report")
       .is("archived_at", null)
@@ -79,6 +79,15 @@ export async function GET(request: NextRequest) {
 
     if (epErr) throw new Error(`episodes: ${epErr.message}`);
 
+    // 2b. Fetch call report (one-liner) evaluations for team-wise feedback
+    const { data: crEvals, error: crEvalsErr } = await admin
+      .from("evaluator_forms")
+      .select("call_report_id, evaluator_id, submitted_at, created_at")
+      .in("call_report_id", reportIds)
+      .not("submitted_at", "is", null);
+
+    if (crEvalsErr) throw new Error(`cr_evals: ${crEvalsErr.message}`);
+
     // 3. Fetch evaluator→team mapping for team-wise feedback columns
     const [{ data: allTeams }, { data: allUsers }] = await Promise.all([
       admin.from("teams").select("id, name, team_type, team_head:users!teams_team_head_id_fkey(name)"),
@@ -99,11 +108,11 @@ export async function GET(request: NextRequest) {
       const head = t.team_head ? (Array.isArray(t.team_head) ? t.team_head[0] : t.team_head) : null;
       let label: string;
       if (t.team_type === "programmer" || (head?.name && programmerHeadIds.has(head.name))) {
-        label = "Programming";
+        label = "Programming's Feedback";
       } else if (t.team_type === "evaluator") {
-        label = "Content";
+        label = "Content Head's Feedback";
       } else if (head?.name) {
-        label = `${head.name.split(" ")[0]}'s Team`;
+        label = `${head.name.split(" ")[0]}'s Team Feedback`;
       } else {
         label = t.name;
       }
@@ -117,16 +126,38 @@ export async function GET(request: NextRequest) {
     // Collect distinct feedback team labels from actual evaluations
     const feedbackTeamSet = new Set<string>();
 
+    // Build one-liner (call report) team-wise feedback: crId → Map<teamLabel, latestDate>
+    const crTeamFeedback = new Map<string, Map<string, string>>();
+    const crLoggedDate = new Map<string, string>();
+    for (const cr of callReports) {
+      crLoggedDate.set(cr.id, cr.meeting_date || cr.created_at);
+    }
+    for (const ev of (crEvals || [])) {
+      const teamLabel = userTeamMap.get(ev.evaluator_id) || "Other";
+      feedbackTeamSet.add(teamLabel);
+      if (!crTeamFeedback.has(ev.call_report_id)) crTeamFeedback.set(ev.call_report_id, new Map());
+      const teamMap = crTeamFeedback.get(ev.call_report_id)!;
+      const existing = teamMap.get(teamLabel);
+      const date = ev.submitted_at || ev.created_at;
+      if (date && (!existing || date > existing)) {
+        teamMap.set(teamLabel, date);
+      }
+    }
+
     if (!allEpisodes?.length) {
       return NextResponse.json({
         projects: callReports.map((cr) => {
           const td = Array.isArray(cr.team) ? cr.team[0] : cr.team;
           const th = td?.team_head ? (Array.isArray(td.team_head) ? td.team_head[0] : td.team_head) : null;
+          const crFbMap = crTeamFeedback.get(cr.id);
+          const olFb: Record<string, string | null> = {};
+          if (crFbMap) { for (const [team, date] of crFbMap) olFb[team] = fmt(date); }
           return {
             id: cr.id, workingTitle: cr.working_title, writerName: cr.writer_name,
             trackingNotes: cr.tracking_notes, targetSlot: cr.target_slot || null,
             teamName: formatTeamDisplayName(td?.name || "", th?.name),
             avgScore: cr.average_initial_assessment ?? null,
+            oneLiner: { loggedDate: fmt(cr.meeting_date || cr.created_at), teamFeedback: olFb },
             episodes: [], maxRevisions: 0, monthlySummary: [],
           };
         }),
@@ -150,11 +181,15 @@ export async function GET(request: NextRequest) {
         projects: callReports.map((cr) => {
           const td = Array.isArray(cr.team) ? cr.team[0] : cr.team;
           const th = td?.team_head ? (Array.isArray(td.team_head) ? td.team_head[0] : td.team_head) : null;
+          const crFbMap = crTeamFeedback.get(cr.id);
+          const olFb: Record<string, string | null> = {};
+          if (crFbMap) { for (const [team, date] of crFbMap) olFb[team] = fmt(date); }
           return {
             id: cr.id, workingTitle: cr.working_title, writerName: cr.writer_name,
             trackingNotes: cr.tracking_notes, targetSlot: cr.target_slot || null,
             teamName: formatTeamDisplayName(td?.name || "", th?.name),
             avgScore: cr.average_initial_assessment ?? null,
+            oneLiner: { loggedDate: fmt(cr.meeting_date || cr.created_at), teamFeedback: olFb },
             episodes: [], maxRevisions: 0, monthlySummary: [],
           };
         }),
@@ -245,6 +280,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Build response
+    const now = new Date().toISOString();
     const projects = callReports.map((cr) => {
       const crEps = epsByReport.get(cr.id) || [];
       let maxRevisions = 0;
@@ -269,13 +305,16 @@ export async function GET(request: NextRequest) {
           monthBuckets.get(mk)!.freshEps++;
         }
 
-        // Build team-wise feedback for first copy
+        // Build team-wise feedback + per-team days for first copy
         const baseTeamFeedback: Record<string, string | null> = {};
+        const baseTeamDays: Record<string, number | null> = {};
         const baseTeamMap = baseEvalByTeam.get(ep.id);
-        if (baseTeamMap) {
-          for (const [team, date] of baseTeamMap) {
-            baseTeamFeedback[team] = fmt(date);
-          }
+        for (const team of feedbackTeamSet) {
+          const fbDate = baseTeamMap?.get(team) ?? null;
+          baseTeamFeedback[team] = fbDate ? fmt(fbDate) : null;
+          baseTeamDays[team] = fbDate
+            ? daysBetween(rawFirstCopy, fbDate)
+            : daysBetween(rawFirstCopy, now);
         }
 
         return {
@@ -285,6 +324,7 @@ export async function GET(request: NextRequest) {
           firstCopyFeedbackDate: fmt(rawFirstFeedback),
           firstCopyFeedbackDays: daysBetween(rawFirstCopy, rawFirstFeedback),
           firstCopyTeamFeedback: baseTeamFeedback,
+          firstCopyTeamDays: baseTeamDays,
           revisions: epRevs.map((rev) => {
             const rawRevDate = rev.original_submission_date ?? rev.created_at;
             const rawRevFeedback = revEvalMap.get(rev.id) ?? null;
@@ -296,13 +336,16 @@ export async function GET(request: NextRequest) {
               monthBuckets.get(rmk)!.revEps++;
             }
 
-            // Build team-wise feedback for revision
+            // Build team-wise feedback + per-team days for revision
             const revTeamFeedback: Record<string, string | null> = {};
+            const revTeamDays: Record<string, number | null> = {};
             const revTeamMap = revEvalByTeam.get(rev.id);
-            if (revTeamMap) {
-              for (const [team, date] of revTeamMap) {
-                revTeamFeedback[team] = fmt(date);
-              }
+            for (const team of feedbackTeamSet) {
+              const fbDate = revTeamMap?.get(team) ?? null;
+              revTeamFeedback[team] = fbDate ? fmt(fbDate) : null;
+              revTeamDays[team] = fbDate
+                ? daysBetween(rawRevDate, fbDate)
+                : daysBetween(rawRevDate, now);
             }
 
             return {
@@ -311,6 +354,7 @@ export async function GET(request: NextRequest) {
               feedbackDate: fmt(rawRevFeedback),
               feedbackDays: daysBetween(rawRevDate, rawRevFeedback),
               teamFeedback: revTeamFeedback,
+              teamDays: revTeamDays,
             };
           }),
           paymentRequestDate: tr?.payment_request_date ?? null,
@@ -334,6 +378,19 @@ export async function GET(request: NextRequest) {
       const teamData = Array.isArray(cr.team) ? cr.team[0] : cr.team;
       const teamHead = teamData?.team_head ? (Array.isArray(teamData.team_head) ? teamData.team_head[0] : teamData.team_head) : null;
 
+      // Build one-liner team feedback + per-team days for this project
+      const crFbMap = crTeamFeedback.get(cr.id);
+      const rawCrLogged = crLoggedDate.get(cr.id) ?? null;
+      const oneLinerTeamFeedback: Record<string, string | null> = {};
+      const oneLinerTeamDays: Record<string, number | null> = {};
+      for (const team of feedbackTeamSet) {
+        const fbDate = crFbMap?.get(team) ?? null;
+        oneLinerTeamFeedback[team] = fbDate ? fmt(fbDate) : null;
+        oneLinerTeamDays[team] = rawCrLogged
+          ? (fbDate ? daysBetween(rawCrLogged, fbDate) : daysBetween(rawCrLogged, now))
+          : null;
+      }
+
       return {
         id: cr.id,
         workingTitle: cr.working_title || "Untitled",
@@ -342,19 +399,24 @@ export async function GET(request: NextRequest) {
         targetSlot: cr.target_slot || null,
         teamName: formatTeamDisplayName(teamData?.name || "", teamHead?.name),
         avgScore: cr.average_initial_assessment ?? null,
+        oneLiner: {
+          loggedDate: fmt(rawCrLogged),
+          teamFeedback: oneLinerTeamFeedback,
+          teamDays: oneLinerTeamDays,
+        },
         episodes: mappedEpisodes,
         maxRevisions,
         monthlySummary,
       };
-    }).filter((p) => p.episodes.length > 0);
+    });
 
     // Compute global max revisions
     const globalMaxRevisions = Math.max(0, ...projects.map((p) => p.maxRevisions));
 
     // Sort feedback teams: Programming first, then alphabetically
     const feedbackTeams = Array.from(feedbackTeamSet).sort((a, b) => {
-      if (a === "Programming") return -1;
-      if (b === "Programming") return 1;
+      if (a === "Programming's Feedback") return -1;
+      if (b === "Programming's Feedback") return 1;
       return a.localeCompare(b);
     });
 

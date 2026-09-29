@@ -46,7 +46,7 @@ interface StatusUpdaterTableProps {
 }
 
 export function StatusUpdaterTable({ ideas, role, readOnly = false }: StatusUpdaterTableProps) {
-  const showManagementColumns = role !== "evaluator" && role !== "management_viewer";
+  const showManagementColumns = role !== "evaluator";
   const showStageStatusRemarks = true;
   const [freezePanes, setFreezePanes] = useState(false);
   const freezeRef = useFreezeColumns(freezePanes);

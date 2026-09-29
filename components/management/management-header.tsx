@@ -12,7 +12,6 @@ interface ManagementHeaderProps {
 }
 
 export function ManagementHeader({ userName, userRole }: ManagementHeaderProps) {
-  const isViewerOnly = userRole === "management_viewer";
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -74,27 +73,25 @@ export function ManagementHeader({ userName, userRole }: ManagementHeaderProps) 
           Complete oversight of content production pipeline
         </p>
       </div>
-      {!isViewerOnly && (
-        <div className="flex items-center gap-2 sm:gap-3 flex-wrap sm:flex-nowrap">
-          <DateRangeSelector onChange={handleDateRangeChange} />
-          <Button
-            onClick={handlePrintDashboard}
-            variant="outline"
-            className="hidden md:flex items-center gap-2 no-print"
-          >
-            <Printer className="h-4 w-4" />
-            <span className="hidden lg:inline">Print</span>
-          </Button>
-          <Button
-            onClick={handleExportDashboard}
-            variant="outline"
-            className="hidden md:flex items-center gap-2 no-print"
-          >
-            <Download className="h-4 w-4" />
-            <span className="hidden lg:inline">Export Report</span>
-          </Button>
-        </div>
-      )}
+      <div className="flex items-center gap-2 sm:gap-3 flex-wrap sm:flex-nowrap">
+        <DateRangeSelector onChange={handleDateRangeChange} />
+        <Button
+          onClick={handlePrintDashboard}
+          variant="outline"
+          className="hidden md:flex items-center gap-2 no-print"
+        >
+          <Printer className="h-4 w-4" />
+          <span className="hidden lg:inline">Print</span>
+        </Button>
+        <Button
+          onClick={handleExportDashboard}
+          variant="outline"
+          className="hidden md:flex items-center gap-2 no-print"
+        >
+          <Download className="h-4 w-4" />
+          <span className="hidden lg:inline">Export Report</span>
+        </Button>
+      </div>
     </div>
   );
 }

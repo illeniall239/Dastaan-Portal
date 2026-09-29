@@ -97,6 +97,7 @@ interface TrackingRevision {
   feedbackDate: string | null;
   feedbackDays: number | null;
   teamFeedback?: Record<string, string | null>;
+  teamDays?: Record<string, number | null>;
 }
 
 interface TrackingEpisode {
@@ -106,6 +107,7 @@ interface TrackingEpisode {
   firstCopyFeedbackDate: string | null;
   firstCopyFeedbackDays: number | null;
   firstCopyTeamFeedback?: Record<string, string | null>;
+  firstCopyTeamDays?: Record<string, number | null>;
   revisions: TrackingRevision[];
   paymentRequestDate: string | null;
   paymentDate: string | null;
@@ -120,6 +122,11 @@ interface TrackingProject {
   targetSlot: string | null;
   teamName: string | null;
   avgScore: number | null;
+  oneLiner?: {
+    loggedDate: string | null;
+    teamFeedback: Record<string, string | null>;
+    teamDays?: Record<string, number | null>;
+  };
   episodes: TrackingEpisode[];
   maxRevisions: number;
   monthlySummary: { month: string; freshEps: number; revEps: number }[];
@@ -293,7 +300,6 @@ const STICKY_TOTAL = W_NUM + W_TITLE + W_WRITER;
 
 export default function ContentAgingPage() {
   const [userRole, setUserRole] = useState<string>("");
-  const isViewerOnly = userRole === "management_viewer";
   const [activeTab, setActiveTab] = useState<"aging" | "target" | "tracking">("aging");
   const [projects, setProjects] = useState<Project[]>([]);
   const [weeks, setWeeks] = useState<Week[]>([]);
@@ -306,6 +312,7 @@ export default function ContentAgingPage() {
   const [trackingLoading, setTrackingLoading] = useState(false);
   const trackingLoaded = useRef(false);
   const [trackingTeamFilter, setTrackingTeamFilter] = useState<string>("all");
+  const [trackingSearch, setTrackingSearch] = useState<string>("");
   const [selectedOneLinerIds, setSelectedOneLinerIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -375,19 +382,26 @@ export default function ContentAgingPage() {
   }, [trackingProjects]);
 
   const filteredTrackingProjects = useMemo(() => {
-    if (trackingTeamFilter === "all") return trackingProjects;
-    return trackingProjects.filter(p => p.teamName === trackingTeamFilter);
-  }, [trackingProjects, trackingTeamFilter]);
+    let result = trackingProjects;
+    if (trackingTeamFilter !== "all") {
+      result = result.filter(p => p.teamName === trackingTeamFilter);
+    }
+    if (trackingSearch.trim()) {
+      const q = trackingSearch.trim().toLowerCase();
+      result = result.filter(p => p.workingTitle.toLowerCase().includes(q));
+    }
+    return result;
+  }, [trackingProjects, trackingTeamFilter, trackingSearch]);
 
   const monthGroups = useMemo(() => groupWeeksByMonth(weeks), [weeks]);
   const visibleEvaluators = useMemo(
-    () => isViewerOnly ? [] : evaluators.filter((e) => selectedEvaluatorIds.has(e.id)),
-    [evaluators, selectedEvaluatorIds, isViewerOnly]
+    () => evaluators.filter((e) => selectedEvaluatorIds.has(e.id)),
+    [evaluators, selectedEvaluatorIds]
   );
 
   const visibleOneLinerAssessors = useMemo(
-    () => isViewerOnly ? [] : oneLinerAssessors.filter((a) => selectedOneLinerIds.has(a.id)),
-    [oneLinerAssessors, selectedOneLinerIds, isViewerOnly]
+    () => oneLinerAssessors.filter((a) => selectedOneLinerIds.has(a.id)),
+    [oneLinerAssessors, selectedOneLinerIds]
   );
 
   const cumulativeData = useMemo(() => {
@@ -679,40 +693,48 @@ export default function ContentAgingPage() {
 
   const exportTrackingToExcel = () => {
     if (trackingProjects.length === 0) { toast.error("No data to export"); return; }
-    const showFb = !isViewerOnly;
-    const showDays = !isViewerOnly;
-    const fbTeamHeaders = showFb ? (feedbackTeams.length > 0 ? feedbackTeams : ["Feedback"]) : [];
+    const hasFbTeamsExport = feedbackTeams.length > 0;
+    // Per-team headers: "Team Name", "Days" for each team
+    const perTeamHeaders = hasFbTeamsExport
+      ? feedbackTeams.map((team) => [team, "Days"]).flat()
+      : ["Feedback"];
     const revHeaders = Array.from({ length: trackingMaxRevisions }, (_, i) => [
       `${i + 1}${i === 0 ? "st" : i === 1 ? "nd" : i === 2 ? "rd" : "th"} Revised`,
-      ...fbTeamHeaders,
-      ...(showDays ? ["Days"] : []),
+      ...perTeamHeaders,
     ]).flat();
-    const headers = ["Project", "Episode #", "1st Copy Received", ...fbTeamHeaders, ...(showDays ? ["Days"] : []), ...revHeaders, "Payment Request Date", "Payment Date", "Writer's Commitment", "Status"];
+    const headers = ["Project", "Episode #", "1st Copy Received", ...perTeamHeaders, ...revHeaders, "Payment Request Date", "Payment Date", "Writer's Commitment", "Status"];
     const rows: (string | number | null)[][] = [];
     for (const p of trackingProjects) {
+      // One-liner row
+      if (p.oneLiner) {
+        const olFbCells = hasFbTeamsExport
+          ? feedbackTeams.map((team) => [p.oneLiner!.teamFeedback?.[team] ?? "", p.oneLiner!.teamDays?.[team] != null ? `${p.oneLiner!.teamDays![team]}d` : ""]).flat()
+          : [""];
+        const emptyRevCells = Array.from({ length: trackingMaxRevisions * (1 + perTeamHeaders.length) }, () => "");
+        rows.push([
+          p.workingTitle, "OL", p.oneLiner.loggedDate ?? "", ...olFbCells,
+          ...emptyRevCells, "", "", "", "",
+        ]);
+      }
       for (const ep of p.episodes) {
-        const firstCopyFbCells = showFb
-          ? (feedbackTeams.length > 0
-            ? feedbackTeams.map((team) => ep.firstCopyTeamFeedback?.[team] ?? "")
-            : [ep.firstCopyFeedbackDate ?? ""])
-          : [];
+        const firstCopyFbCells = hasFbTeamsExport
+          ? feedbackTeams.map((team) => [ep.firstCopyTeamFeedback?.[team] ?? "", ep.firstCopyTeamDays?.[team] != null ? `${ep.firstCopyTeamDays![team]}d` : ""]).flat()
+          : [ep.firstCopyFeedbackDate ?? ""];
         const revCells: (string | number | null)[] = [];
         for (let i = 0; i < trackingMaxRevisions; i++) {
           const rev = ep.revisions[i];
           revCells.push(rev?.receivedDate ?? "");
-          if (showFb) {
-            if (feedbackTeams.length > 0) {
-              for (const team of feedbackTeams) {
-                revCells.push(rev?.teamFeedback?.[team] ?? "");
-              }
-            } else {
-              revCells.push(rev?.feedbackDate ?? "");
+          if (hasFbTeamsExport) {
+            for (const team of feedbackTeams) {
+              revCells.push(rev?.teamFeedback?.[team] ?? "");
+              revCells.push(rev?.teamDays?.[team] != null ? `${rev!.teamDays![team]}d` : "");
             }
+          } else {
+            revCells.push(rev?.feedbackDate ?? "");
           }
-          if (showDays) revCells.push(rev?.feedbackDays ?? "");
         }
         rows.push([
-          p.workingTitle, ep.episodeNumber, ep.firstCopyDate, ...firstCopyFbCells, ...(showDays ? [ep.firstCopyFeedbackDays ?? ""] : []),
+          p.workingTitle, ep.episodeNumber, ep.firstCopyDate, ...firstCopyFbCells,
           ...revCells, ep.paymentRequestDate ?? "", ep.paymentDate ?? "", p.trackingNotes ?? "", ep.trackingStatus ?? "",
         ]);
       }
@@ -887,57 +909,53 @@ export default function ContentAgingPage() {
                 ))}
               </SelectContent>
             </Select>
-            {!isViewerOnly && (
-              <>
-                <Select value={oneLinerRatingFilter} onValueChange={setOneLinerRatingFilter}>
-                  <SelectTrigger className="h-9 text-xs">
-                    <SelectValue placeholder="One-liner Rating" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All One-liner Ratings</SelectItem>
-                    <SelectItem value="high">High (8+)</SelectItem>
-                    <SelectItem value="mid">Medium (6–8)</SelectItem>
-                    <SelectItem value="low">Low (&lt;6)</SelectItem>
-                    <SelectItem value="unrated">Unrated</SelectItem>
-                  </SelectContent>
-                </Select>
-                <Select value={episodicRatingFilter} onValueChange={setEpisodicRatingFilter}>
-                  <SelectTrigger className="h-9 text-xs">
-                    <SelectValue placeholder="Episodic Rating" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Episodic Ratings</SelectItem>
-                    <SelectItem value="high">High (8+)</SelectItem>
-                    <SelectItem value="mid">Medium (6–8)</SelectItem>
-                    <SelectItem value="low">Low (&lt;6)</SelectItem>
-                    <SelectItem value="unrated">Unrated</SelectItem>
-                  </SelectContent>
-                </Select>
-                <Select value={feedbackDelayFilter} onValueChange={setFeedbackDelayFilter}>
-                  <SelectTrigger className="h-9 text-xs">
-                    <SelectValue placeholder="Eval Delay" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Eval Delays</SelectItem>
-                    <SelectItem value="ontime">On Time (≤7d)</SelectItem>
-                    <SelectItem value="7plus">Delayed (7+ days)</SelectItem>
-                    <SelectItem value="14plus">Very Delayed (14+ days)</SelectItem>
-                    <SelectItem value="pending">Pending Feedback</SelectItem>
-                  </SelectContent>
-                </Select>
-                <Select value={crossTeamFilter} onValueChange={setCrossTeamFilter}>
-                  <SelectTrigger className="h-9 text-xs">
-                    <SelectValue placeholder="Cross-Team Grade" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Cross-Team</SelectItem>
-                    <SelectItem value="all_7">All 3 Teams ≥ 7</SelectItem>
-                    <SelectItem value="all_8">All 3 Teams ≥ 8</SelectItem>
-                    <SelectItem value="any_below_7">Any Team &lt; 7</SelectItem>
-                  </SelectContent>
-                </Select>
-              </>
-            )}
+            <Select value={oneLinerRatingFilter} onValueChange={setOneLinerRatingFilter}>
+              <SelectTrigger className="h-9 text-xs">
+                <SelectValue placeholder="One-liner Rating" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All One-liner Ratings</SelectItem>
+                <SelectItem value="high">High (8+)</SelectItem>
+                <SelectItem value="mid">Medium (6–8)</SelectItem>
+                <SelectItem value="low">Low (&lt;6)</SelectItem>
+                <SelectItem value="unrated">Unrated</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={episodicRatingFilter} onValueChange={setEpisodicRatingFilter}>
+              <SelectTrigger className="h-9 text-xs">
+                <SelectValue placeholder="Episodic Rating" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Episodic Ratings</SelectItem>
+                <SelectItem value="high">High (8+)</SelectItem>
+                <SelectItem value="mid">Medium (6–8)</SelectItem>
+                <SelectItem value="low">Low (&lt;6)</SelectItem>
+                <SelectItem value="unrated">Unrated</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={feedbackDelayFilter} onValueChange={setFeedbackDelayFilter}>
+              <SelectTrigger className="h-9 text-xs">
+                <SelectValue placeholder="Eval Delay" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Eval Delays</SelectItem>
+                <SelectItem value="ontime">On Time (≤7d)</SelectItem>
+                <SelectItem value="7plus">Delayed (7+ days)</SelectItem>
+                <SelectItem value="14plus">Very Delayed (14+ days)</SelectItem>
+                <SelectItem value="pending">Pending Feedback</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={crossTeamFilter} onValueChange={setCrossTeamFilter}>
+              <SelectTrigger className="h-9 text-xs">
+                <SelectValue placeholder="Cross-Team Grade" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Cross-Team</SelectItem>
+                <SelectItem value="all_7">All 3 Teams ≥ 7</SelectItem>
+                <SelectItem value="all_8">All 3 Teams ≥ 8</SelectItem>
+                <SelectItem value="any_below_7">Any Team &lt; 7</SelectItem>
+              </SelectContent>
+            </Select>
             <Select value={deliveryPeriod} onValueChange={(v) => setDeliveryPeriod(v as typeof deliveryPeriod)}>
               <SelectTrigger className="h-9 text-xs">
                 <SelectValue placeholder="Delivery Period" />
@@ -979,6 +997,15 @@ export default function ContentAgingPage() {
           ) : (
             <div className="space-y-4">
               <div className="flex items-center gap-3 flex-wrap">
+                <div className="relative">
+                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                  <Input
+                    placeholder="Search projects..."
+                    value={trackingSearch}
+                    onChange={(e) => setTrackingSearch(e.target.value)}
+                    className="h-8 text-xs pl-8 w-[220px]"
+                  />
+                </div>
                 <Select value={trackingTeamFilter} onValueChange={setTrackingTeamFilter}>
                   <SelectTrigger className="h-8 text-xs w-[180px]"><SelectValue placeholder="Team" /></SelectTrigger>
                   <SelectContent>
@@ -988,7 +1015,7 @@ export default function ContentAgingPage() {
                 </Select>
                 <span className="text-xs text-muted-foreground">{filteredTrackingProjects.length} project{filteredTrackingProjects.length !== 1 ? "s" : ""}</span>
               </div>
-              <TrackingTable projects={filteredTrackingProjects} globalMaxRevisions={trackingMaxRevisions} feedbackTeams={isViewerOnly ? [] : feedbackTeams} hideDays={isViewerOnly} hideFeedback={isViewerOnly} onUpdate={(projects) => setTrackingProjects(projects)} />
+              <TrackingTable projects={filteredTrackingProjects} globalMaxRevisions={trackingMaxRevisions} feedbackTeams={feedbackTeams} hideDays={false} hideFeedback={false} onUpdate={(projects) => setTrackingProjects(projects)} />
             </div>
           )
         ) : loading ? (
@@ -1742,17 +1769,18 @@ function TrackingTable({
   onUpdate: (projects: TrackingProject[]) => void;
 }) {
   const effectiveFbTeams = hideFeedback ? [] : feedbackTeams;
-  const fbTeamCount = hideFeedback ? 0 : Math.max(effectiveFbTeams.length, 1);
   const hasFbTeams = effectiveFbTeams.length > 0;
-  const daysColCount = hideDays ? 0 : 1;
-  // Per copy block: 1st Copy + N team feedback cols + Days (if shown)
-  // Per revision block: Revised + N team feedback cols + Days (if shown)
-  const copyBlockCols = 1 + fbTeamCount + daysColCount; // received + team feedbacks + days
+  // Per team: feedback date + days (if days shown)
+  const colsPerTeam = hideDays ? 1 : 2; // feedback + days
+  const fbBlockCols = hasFbTeams ? effectiveFbTeams.length * colsPerTeam : (hideFeedback ? 0 : 1);
+  // Per copy block: received + team feedback/days pairs
+  const copyBlockCols = 1 + fbBlockCols;
   const revColCount = globalMaxRevisions * copyBlockCols;
   const totalCols = 1 + copyBlockCols + revColCount + 4; // ep# + first copy block + rev blocks + payment/commitment/status
   const fbColWidth = 100;
-  const daysWidth = hideDays ? 0 : 55;
-  const minWidth = 50 + 110 + fbTeamCount * fbColWidth + daysWidth + globalMaxRevisions * (110 + fbTeamCount * fbColWidth + daysWidth) + 120 * 2 + 180 + 140;
+  const daysWidth = 50;
+  const teamBlockWidth = fbColWidth + (hideDays ? 0 : daysWidth);
+  const minWidth = 50 + 110 + (hasFbTeams ? effectiveFbTeams.length * teamBlockWidth : (hideFeedback ? 0 : 110)) + globalMaxRevisions * (110 + (hasFbTeams ? effectiveFbTeams.length * teamBlockWidth : (hideFeedback ? 0 : 110))) + 120 * 2 + 180 + 140;
 
   const daysColor = (d: number | null) => {
     if (d === null) return "";
@@ -1788,30 +1816,28 @@ function TrackingTable({
         <tr className="bg-muted/80">
           <th className="px-2 py-2 text-left text-xs font-semibold border-b border-r border-border whitespace-nowrap" style={{ width: 50 }}>Ep #</th>
           <th className="px-2 py-2 text-center text-xs font-semibold border-b border-r border-border whitespace-nowrap bg-blue-50 text-blue-700" style={{ width: 110 }}>1st Copy Received</th>
-          {hasFbTeams ? effectiveFbTeams.map((team) => (
-            <th key={`fb-0-${team}`} className="px-2 py-2 text-center text-xs font-semibold border-b border-r border-border whitespace-nowrap bg-amber-50 text-amber-700" style={{ width: fbColWidth }}>
+          {hasFbTeams ? effectiveFbTeams.map((team) => [
+            <th key={`fb-0-${team}`} className="px-2 py-2 text-center text-xs font-semibold border-b border-r border-border bg-amber-50 text-amber-700" style={{ width: fbColWidth, whiteSpace: "normal", lineHeight: "1.2" }}>
               {team}
-            </th>
-          )) : !hideFeedback ? (
+            </th>,
+            ...(!hideDays ? [<th key={`days-0-${team}`} className="px-1 py-2 text-center text-xs font-semibold border-b border-r border-border whitespace-nowrap bg-slate-100 text-slate-600" style={{ width: daysWidth }}>Days</th>] : []),
+          ]).flat() : !hideFeedback ? (
             <th className="px-2 py-2 text-center text-xs font-semibold border-b border-r border-border whitespace-nowrap bg-amber-50 text-amber-700" style={{ width: 110 }}>Feedback</th>
           ) : null}
-          {!hideDays && <th className="px-2 py-2 text-center text-xs font-semibold border-b border-r border-border whitespace-nowrap bg-slate-100 text-slate-600" style={{ width: 55 }}>Days</th>}
           {Array.from({ length: globalMaxRevisions }, (_, i) => [
             <th key={`rev-${i}`} className="px-2 py-2 text-center text-xs font-semibold border-b border-r border-border whitespace-nowrap bg-blue-50 text-blue-700" style={{ width: 110 }}>
               {ordinal(i + 1)} Revised
             </th>,
-            ...(hasFbTeams ? effectiveFbTeams.map((team) => (
-              <th key={`fb-${i}-${team}`} className="px-2 py-2 text-center text-xs font-semibold border-b border-r border-border whitespace-nowrap bg-amber-50 text-amber-700" style={{ width: fbColWidth }}>
+            ...(hasFbTeams ? effectiveFbTeams.map((team) => [
+              <th key={`fb-${i}-${team}`} className="px-2 py-2 text-center text-xs font-semibold border-b border-r border-border bg-amber-50 text-amber-700" style={{ width: fbColWidth, whiteSpace: "normal", lineHeight: "1.2" }}>
                 {team}
-              </th>
-            )) : !hideFeedback ? [
+              </th>,
+              ...(!hideDays ? [<th key={`days-${i}-${team}`} className="px-1 py-2 text-center text-xs font-semibold border-b border-r border-border whitespace-nowrap bg-slate-100 text-slate-600" style={{ width: daysWidth }}>Days</th>] : []),
+            ]).flat() : !hideFeedback ? [
               <th key={`fb-${i}`} className="px-2 py-2 text-center text-xs font-semibold border-b border-r border-border whitespace-nowrap bg-amber-50 text-amber-700" style={{ width: 110 }}>
                 Feedback
               </th>,
             ] : []),
-            ...(!hideDays ? [<th key={`days-${i}`} className="px-2 py-2 text-center text-xs font-semibold border-b border-r border-border whitespace-nowrap bg-slate-100 text-slate-600" style={{ width: 55 }}>
-              Days
-            </th>] : []),
           ]).flat()}
           <th className="px-2 py-2 text-center text-xs font-semibold border-b border-r border-border whitespace-nowrap bg-green-50 text-green-700" style={{ width: 120 }}>Payment Request</th>
           <th className="px-2 py-2 text-center text-xs font-semibold border-b border-r border-border whitespace-nowrap bg-green-50 text-green-700" style={{ width: 120 }}>Payment Date</th>
@@ -1830,36 +1856,73 @@ function TrackingTable({
                 </div>
               </td>
             </tr>
+            {/* One-Liner feedback row */}
+            {project.oneLiner && (
+              <tr className="border-b bg-violet-50/40">
+                <td className="px-2 py-1.5 border-r border-border/60 text-center font-semibold text-violet-700 text-[10px] whitespace-nowrap">OL</td>
+                <td className="px-2 py-1.5 border-r border-border/60 text-center text-violet-700">{project.oneLiner.loggedDate ?? ""}</td>
+                {hasFbTeams ? effectiveFbTeams.map((team) => {
+                  const d = project.oneLiner!.teamDays?.[team] ?? null;
+                  const pending = !project.oneLiner!.teamFeedback?.[team];
+                  return [
+                    <td key={`ol-fb-${team}`} className="px-2 py-1.5 border-r border-border/60 text-center text-violet-700 text-[10px]">
+                      {project.oneLiner!.teamFeedback?.[team] ?? ""}
+                    </td>,
+                    ...(!hideDays ? [<td key={`ol-days-${team}`} className={`px-1 py-1.5 border-r border-border/60 text-center font-medium text-[10px] ${pending ? "text-orange-600 bg-orange-50/50 italic" : daysColor(d)}`}>
+                      {d != null ? `${d}d` : ""}
+                    </td>] : []),
+                  ];
+                }).flat() : !hideFeedback ? (
+                  <td className="px-2 py-1.5 border-r border-border/60 text-center text-violet-700"></td>
+                ) : null}
+                {Array.from({ length: globalMaxRevisions }, (_, i) => [
+                  <td key={`ol-rev-${i}`} className="px-2 py-1.5 border-r border-border/60"></td>,
+                  ...(hasFbTeams ? effectiveFbTeams.map((team) => [
+                    <td key={`ol-rfb-${i}-${team}`} className="px-2 py-1.5 border-r border-border/60"></td>,
+                    ...(!hideDays ? [<td key={`ol-rdays-${i}-${team}`} className="px-2 py-1.5 border-r border-border/60"></td>] : []),
+                  ]).flat() : !hideFeedback ? [
+                    <td key={`ol-rfb-${i}`} className="px-2 py-1.5 border-r border-border/60"></td>,
+                  ] : []),
+                ]).flat()}
+                <td className="px-2 py-1.5 border-r border-border/60" colSpan={4}></td>
+              </tr>
+            )}
             {project.episodes.map((ep, epIdx) => (
               <tr key={ep.id} className="border-b hover:bg-muted/30">
                 <td className="px-2 py-1.5 border-r border-border/60 text-center font-medium">{ep.episodeNumber}</td>
                 <td className="px-2 py-1.5 border-r border-border/60 text-center text-blue-700">{ep.firstCopyDate ?? ""}</td>
-                {hasFbTeams ? effectiveFbTeams.map((team) => (
-                  <td key={`fb-0-${team}`} className="px-2 py-1.5 border-r border-border/60 text-center text-amber-700 text-[10px]">
-                    {ep.firstCopyTeamFeedback?.[team] ?? ""}
-                  </td>
-                )) : !hideFeedback ? (
+                {hasFbTeams ? effectiveFbTeams.map((team) => {
+                  const d = ep.firstCopyTeamDays?.[team] ?? null;
+                  const pending = !ep.firstCopyTeamFeedback?.[team];
+                  return [
+                    <td key={`fb-0-${team}`} className="px-2 py-1.5 border-r border-border/60 text-center text-amber-700 text-[10px]">
+                      {ep.firstCopyTeamFeedback?.[team] ?? ""}
+                    </td>,
+                    ...(!hideDays ? [<td key={`days-0-${team}`} className={`px-1 py-1.5 border-r border-border/60 text-center font-medium text-[10px] ${pending ? "text-orange-600 bg-orange-50/50 italic" : daysColor(d)}`}>
+                      {d != null ? `${d}d` : ""}
+                    </td>] : []),
+                  ];
+                }).flat() : !hideFeedback ? (
                   <td className="px-2 py-1.5 border-r border-border/60 text-center text-amber-700">{ep.firstCopyFeedbackDate ?? ""}</td>
                 ) : null}
-                {!hideDays && (
-                  <td className={`px-2 py-1.5 border-r border-border/60 text-center font-medium ${daysColor(ep.firstCopyFeedbackDays)}`}>
-                    {ep.firstCopyFeedbackDays != null ? `${ep.firstCopyFeedbackDays}d` : ""}
-                  </td>
-                )}
                 {Array.from({ length: globalMaxRevisions }, (_, i) => {
                   const rev = ep.revisions[i];
                   return [
                     <td key={`rev-${i}`} className="px-2 py-1.5 border-r border-border/60 text-center text-blue-700">{rev?.receivedDate ?? ""}</td>,
-                    ...(hasFbTeams ? effectiveFbTeams.map((team) => (
-                      <td key={`fb-${i}-${team}`} className="px-2 py-1.5 border-r border-border/60 text-center text-amber-700 text-[10px]">
-                        {rev?.teamFeedback?.[team] ?? ""}
-                      </td>
-                    )) : !hideFeedback ? [
+                    ...(hasFbTeams ? effectiveFbTeams.map((team) => {
+                      const d = rev?.teamDays?.[team] ?? null;
+                      const pending = !rev?.teamFeedback?.[team];
+                      return [
+                        <td key={`fb-${i}-${team}`} className="px-2 py-1.5 border-r border-border/60 text-center text-amber-700 text-[10px]">
+                          {rev?.teamFeedback?.[team] ?? ""}
+                        </td>,
+                        ...(!hideDays ? [<td key={`days-${i}-${team}`} className={`px-1 py-1.5 border-r border-border/60 text-center font-medium text-[10px] ${rev ? (pending ? "text-orange-600 bg-orange-50/50 italic" : daysColor(d)) : ""}`}>
+                          {rev && d != null ? `${d}d` : ""}
+                        </td>] : []),
+                      ];
+                    }).flat() : !hideFeedback ? [
                       <td key={`fb-${i}`} className="px-2 py-1.5 border-r border-border/60 text-center text-amber-700">{rev?.feedbackDate ?? ""}</td>,
                     ] : []),
-                    ...(!hideDays ? [<td key={`days-${i}`} className={`px-2 py-1.5 border-r border-border/60 text-center font-medium ${daysColor(rev?.feedbackDays ?? null)}`}>
-                      {rev?.feedbackDays != null ? `${rev.feedbackDays}d` : ""}
-                    </td>] : []),
                   ];
                 }).flat()}
                 <td className="px-1 py-0.5 border-r border-border/60">
