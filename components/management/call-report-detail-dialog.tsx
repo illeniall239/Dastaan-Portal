@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { FileText, Mail, Phone, MapPin, Target, Lightbulb, Eye, Paperclip, Film, Loader2, ClipboardCheck, ChevronDown, ChevronRight } from "lucide-react";
+import { FileText, Mail, Phone, MapPin, Target, Lightbulb, Eye, Paperclip, Film, Loader2, ClipboardCheck, ChevronDown, ChevronRight, CalendarDays } from "lucide-react";
 import { format } from "date-fns";
 import { ContentRevisions } from "@/components/ui/content-revisions";
 
@@ -637,6 +637,28 @@ export function CallReportDetailDialog({ report, isOpen, onClose }: CallReportDe
                             </Badge>
                           )}
                         </div>
+                      </div>
+                      {/* Episode dates */}
+                      <div className="flex items-center gap-4 px-4 py-1.5 text-xs text-muted-foreground bg-slate-50/50">
+                        {ep.created_at && (
+                          <span className="flex items-center gap-1">
+                            <CalendarDays className="h-3 w-3" />
+                            Logged: {formatDate(ep.created_at)}
+                          </span>
+                        )}
+                        {epEvalsMap[ep.id]?.length > 0 && (() => {
+                          const dates = epEvalsMap[ep.id]
+                            .map((ev: any) => ev.submitted_at || ev.created_at)
+                            .filter(Boolean)
+                            .sort();
+                          const latest = dates[dates.length - 1];
+                          return latest ? (
+                            <span className="flex items-center gap-1">
+                              <ClipboardCheck className="h-3 w-3" />
+                              Evaluated: {formatDate(latest)}
+                            </span>
+                          ) : null;
+                        })()}
                       </div>
                       {/* Episode revisions */}
                       <div className="px-4 py-3">
