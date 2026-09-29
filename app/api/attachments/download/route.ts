@@ -26,6 +26,14 @@ export async function GET(request: NextRequest) {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
 
+    // Block management_viewer from downloading script files
+    if (user) {
+      const { data: profile } = await supabase.from("users").select("role").eq("id", user.id).single();
+      if (profile?.role === "management_viewer") {
+        return NextResponse.json({ error: "Download not permitted for this role" }, { status: 403 });
+      }
+    }
+
     // Validate access: must be authenticated or have external token
     const access = validateDownloadAccess({
       userId: user?.id ?? null,

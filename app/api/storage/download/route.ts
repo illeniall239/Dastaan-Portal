@@ -10,6 +10,12 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    // Block management_viewer from downloading script files
+    const { data: profile } = await supabase.from("users").select("role").eq("id", user.id).single();
+    if (profile?.role === "management_viewer") {
+      return NextResponse.json({ error: "Download not permitted for this role" }, { status: 403 });
+    }
+
     const url = request.nextUrl.searchParams.get("url");
     const bucket = request.nextUrl.searchParams.get("bucket");
 

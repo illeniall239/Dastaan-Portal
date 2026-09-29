@@ -27,17 +27,11 @@ export default async function ManagementLayout({
 
   let navItems = [...baseNavItems];
 
-  // management_viewer: data/quantity reports only — no scripts, evaluations, or one-liners
   if (user.role === "management_viewer") {
-    const blockedHrefs = [
-      "/management/evaluations",
-      "/management/teams",
-    ];
-    navItems = navItems.filter((item) => !blockedHrefs.includes(item.href));
     navItems.push({ title: "Writer Contracts", href: "/management/contract-terms", icon: "fileText" });
   }
 
-  const showAI = user.role !== "management_viewer";
+  const showAI = true;
 
   return (
     <SidebarWrapper

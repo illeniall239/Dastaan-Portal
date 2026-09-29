@@ -25,6 +25,12 @@ export async function GET(
       );
     }
 
+    // Block management_viewer from downloading script files
+    const { data: profile } = await supabase.from("users").select("role").eq("id", user.id).single();
+    if (profile?.role === "management_viewer") {
+      return NextResponse.json({ error: "Download not permitted for this role" }, { status: 403 });
+    }
+
     const rate = await applyRateLimit(request, RateLimitPresets.relaxed, user.id);
     if (!rate.success) return rate.response!;
 

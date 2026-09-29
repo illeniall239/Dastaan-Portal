@@ -1359,13 +1359,7 @@ async function toolQueryTeamFeedback(
   };
 }
 
-const VIEWER_BLOCKED_TOOLS = new Set(["query_evaluations", "query_meetings", "query_team_stats", "query_pending", "query_approvals", "query_team_feedback"]);
-
 async function executeTool(name: string, args: any, admin: AdminClient, scope: TeamScope = null, userRole = ""): Promise<any> {
-  // Hard block: refuse execution of tools management_viewer shouldn't access
-  if (userRole === "management_viewer" && VIEWER_BLOCKED_TOOLS.has(name)) {
-    return { message: "This data is not available for your role." };
-  }
 
   // Pre-populate team CR IDs once for scoped access (cached across multiple tool calls)
   if (scope && !scope.crIds) {
@@ -1376,32 +1370,11 @@ async function executeTool(name: string, args: any, admin: AdminClient, scope: T
   switch (name) {
     case "query_evaluations":        return toolQueryEvaluations(args, admin, scope);
     case "query_content":            return toolQueryContent(args, admin, scope);
-    case "query_person_activity": {
-      const result = await toolQueryPersonActivity(args, admin, scope);
-      if (userRole === "management_viewer") {
-        const strip = (item: any) => {
-          const { one_liner_evaluations_submitted, episodic_evaluations_submitted, total_evaluations, ...rest } = item;
-          return rest;
-        };
-        return Array.isArray(result) ? result.map(strip) : (result as any).name ? strip(result) : result;
-      }
-      return result;
-    }
+    case "query_person_activity":    return toolQueryPersonActivity(args, admin, scope);
     case "query_episode_delivery":   return toolQueryEpisodeDelivery(args, admin, scope);
     case "query_pending":            return toolQueryPending(args, admin, scope);
     case "query_team_stats":         return toolQueryTeamStats(args, admin, scope);
-    case "query_overview": {
-      const result = await toolQueryOverview(args, admin, scope);
-      if (userRole === "management_viewer") {
-        // Strip fields management_viewer doesn't need
-        const { total_one_liner_evaluations, total_episodic_evaluations, total_teams, total_meetings, ...rest } = result.all_time;
-        return {
-          all_time: { total_projects: rest.total_projects, total_episodes_received: rest.total_episodes_received, total_writers: rest.total_writers, total_contracts: rest.total_contracts },
-          this_month: { ideas_logged: result.this_month.ideas_logged },
-        };
-      }
-      return result;
-    }
+    case "query_overview":           return toolQueryOverview(args, admin, scope);
     case "query_contracts_payments": return toolQueryContractsPayments(args, admin, scope);
     case "query_writers":            return toolQueryWriters(args, admin, scope);
     case "query_meetings":           return toolQueryMeetings(args, admin, scope);
@@ -1624,30 +1597,36 @@ Team Performance Analytics: overview stats, charts, detailed comparison, Team Ac
 
   management_viewer: {
     name: "Management Portal (Viewer)",
-    role: "Management Viewers have read-only access to content tracking and project data across all teams. They focus on monitoring episode delivery timelines, project status, and content aging.",
-    overview: "Your portal gives you a read-only view of content production. Use Content Aging to track which episodes arrived when and their revision dates. Project Status shows all active ideas. Script Bank lets you browse Writer Engagement Reports. The Dashboard shows Production Phases, Active Projects, and Genre & Theme charts.",
+    role: "Management Viewers have read-only access to all management portal data across all teams, including evaluations, teams, and approvals. The only restriction is they cannot download or view actual script files.",
+    overview: "Your portal gives you a full read-only view of content production. You can see the Dashboard, Script Bank, Project Status, Evaluations, Content Aging, Teams, and Writer Contracts. You cannot download script files.",
     features: `
 SIDEBAR SECTIONS — EXACT DETAILS:
 
 ━━ DASHBOARD ━━
-Production Phases chart, Active Projects charts, Genre & Theme Breakdown. No executive summary, no delivery performance, no evaluator stats, no financial data.
+Full management dashboard: Production Phases, Active Projects, Genre & Theme, delivery performance, evaluator stats.
 
 ━━ SCRIPT BANK ━━
-Two tabs: Writer Engagement Reports (all as cards) and Episodes (all linked episodes). Browse only.
+Two tabs: Writer Engagement Reports (all as cards) and Episodes (all linked episodes). Browse and view details, but cannot download script files.
 
 ━━ PROJECT STATUS ━━
 Live table of active ideas with status, rating, episodes, completion. Read-only.
 
+━━ EVALUATIONS ━━
+View all evaluations, scores, and evaluation progress across teams.
+
 ━━ CONTENT AGING ━━
-Two tabs: Content Aging (weekly delivery grid) and Tracking (episode delivery dates — 1st Revised, Episode Received, etc., per project). Export to Excel. Team filter dropdown to narrow by team.
+Two tabs: Content Aging (weekly delivery grid) and Tracking (episode delivery dates per project). Export to Excel. Team filter.
+
+━━ TEAMS ━━
+Team Performance Analytics: overview stats, charts, detailed comparison.
 
 ━━ CONTRACT TERMS ━━
 View contract terms and pricing for projects.
 
 ━━ AI ASSISTANT ━━
-Ask questions about projects, episode delivery, and content data across all teams.
+Full AI assistant access — ask questions about any data across all teams.
 
-NOTE: You do NOT have access to Evaluations, Teams, Calendar, What's Cooking, Idea Roadmap, Approval Tracking, or Writer Engagement sections.`,
+NOTE: You cannot download or view actual script/episode files.`,
   },
 };
 
@@ -1770,9 +1749,7 @@ export async function POST(request: NextRequest) {
       gcm:              ["query_approvals"],
       programmer:       ["query_approvals"],
     };
-    const blockedToolNames = role === "management_viewer"
-      ? ["query_approvals", "query_evaluations", "query_meetings", "query_team_stats", "query_pending", "query_team_feedback"]
-      : isUnrestricted ? [] : (ROLE_BLOCKED_TOOLS[role] || ["query_approvals"]);
+    const blockedToolNames = isUnrestricted ? [] : (ROLE_BLOCKED_TOOLS[role] || ["query_approvals"]);
     const availableTools = DATA_TOOLS.filter(t => !blockedToolNames.includes(t.function.name));
 
     // ── Data-access agent — native function calling ──────────────────────────
@@ -1797,11 +1774,7 @@ export async function POST(request: NextRequest) {
       ? `\n\nIMPORTANT: The current user is ${userName} (${profile?.email || "unknown"}, designation: ${userDesignation}).${teamContext}\nYou are serving a team member, NOT an executive. All data returned is scoped to their team only. If the user asks "who am I", tell them their name and designation. If the user asks about their team or team members, use the info above. If the user asks about another team's data, other teams' performance, or people outside their team, do NOT call any tools — instead respond with a short message explaining that you can only access data for their own team. Respond: "I can only access data for your team. For information about other teams, please contact management."`
       : `\n\nThe current user is ${userName} (${profile?.email || "unknown"}, designation: ${userDesignation}).`;
 
-    const viewerRestriction = role === "management_viewer"
-      ? `\n\nROLE RESTRICTION: This user is a Management Viewer. They do NOT have access to evaluations, team performance, meetings, or approval data. If they ask about evaluations, scores, evaluator activity, team stats, meetings, or approvals, respond: "That information isn't available in your portal view. You can ask about projects, episode deliveries, writers, contracts, and content aging." Do NOT surface evaluation data even if it appears in conversation history.`
-      : "";
-
-    const DATA_SYSTEM = `You are a data assistant for Dastaan Portal at GEO TV.${scopeNote}${viewerRestriction}
+    const DATA_SYSTEM = `You are a data assistant for Dastaan Portal at GEO TV.${scopeNote}
 
 WHEN TO CALL TOOLS:
 - Call tools when the user asks a NEW question that requires fresh data from the database.
