@@ -391,7 +391,7 @@ export default function ContentAgingPage() {
     }
     if (trackingSearch.trim()) {
       const q = trackingSearch.trim().toLowerCase();
-      result = result.filter(p => p.workingTitle.toLowerCase().includes(q));
+      result = result.filter(p => p.workingTitle.toLowerCase().includes(q) || (p.writerName && p.writerName.toLowerCase().includes(q)));
     }
     return result;
   }, [trackingProjects, trackingTeamFilter, trackingSearch]);
@@ -695,7 +695,7 @@ export default function ContentAgingPage() {
   };
 
   const exportTrackingToExcel = () => {
-    if (trackingProjects.length === 0) { toast.error("No data to export"); return; }
+    if (filteredTrackingProjects.length === 0) { toast.error("No data to export"); return; }
     const hasFbTeamsExport = feedbackTeams.length > 0;
     // Per-team headers: "Team Name", "Days" for each team
     const perTeamHeaders = hasFbTeamsExport
@@ -705,9 +705,9 @@ export default function ContentAgingPage() {
       `${i + 1}${i === 0 ? "st" : i === 1 ? "nd" : i === 2 ? "rd" : "th"} Revised`,
       ...perTeamHeaders,
     ]).flat();
-    const headers = ["Project", "Episode #", "1st Copy Received", ...perTeamHeaders, ...revHeaders, "Payment Request Date", "Payment Date", "Writer's Commitment", "Status"];
+    const headers = ["Project", "Episode #", "Writer", "1st Copy Received", ...perTeamHeaders, ...revHeaders, "Payment Request Date", "Payment Date", "Writer's Commitment", "Status"];
     const rows: (string | number | null)[][] = [];
-    for (const p of trackingProjects) {
+    for (const p of filteredTrackingProjects) {
       // One-liner row
       if (p.oneLiner) {
         const olFbCells = hasFbTeamsExport
@@ -715,7 +715,7 @@ export default function ContentAgingPage() {
           : [""];
         const emptyRevCells = Array.from({ length: trackingMaxRevisions * (1 + perTeamHeaders.length) }, () => "");
         rows.push([
-          p.workingTitle, "OL", p.oneLiner.loggedDate ?? "", ...olFbCells,
+          p.workingTitle, "OL", p.writerName ?? "", p.oneLiner.loggedDate ?? "", ...olFbCells,
           ...emptyRevCells, "", "", "", "",
         ]);
       }
@@ -738,7 +738,7 @@ export default function ContentAgingPage() {
           }
         }
         rows.push([
-          p.workingTitle, ep.episodeNumber, ep.firstCopyDate, ...firstCopyFbCells,
+          p.workingTitle, ep.episodeNumber, p.writerName ?? "", ep.firstCopyDate, ...firstCopyFbCells,
           ...revCells, ep.paymentRequestDate ?? "", ep.paymentDate ?? "", p.trackingNotes ?? "", ep.trackingStatus ?? "",
         ]);
       }
@@ -1004,7 +1004,7 @@ export default function ContentAgingPage() {
                 <div className="relative">
                   <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
                   <Input
-                    placeholder="Search projects..."
+                    placeholder="Search projects or writers..."
                     value={trackingSearch}
                     onChange={(e) => setTrackingSearch(e.target.value)}
                     className="h-8 text-xs pl-8 w-[220px]"
@@ -1019,7 +1019,7 @@ export default function ContentAgingPage() {
                 </Select>
                 <span className="text-xs text-muted-foreground">{filteredTrackingProjects.length} project{filteredTrackingProjects.length !== 1 ? "s" : ""}</span>
               </div>
-              <TrackingTable projects={filteredTrackingProjects} globalMaxRevisions={trackingMaxRevisions} feedbackTeams={feedbackTeams} hideDays={false} hideFeedback={false} onUpdate={(projects) => setTrackingProjects(projects)} />
+              <TrackingTable projects={filteredTrackingProjects} globalMaxRevisions={trackingMaxRevisions} feedbackTeams={feedbackTeams} hideDays={userRole === "management_viewer"} hideFeedback={false} onUpdate={(projects) => setTrackingProjects(projects)} />
             </div>
           )
         ) : loading ? (
@@ -1780,11 +1780,11 @@ function TrackingTable({
   // Per copy block: received + team feedback/days pairs
   const copyBlockCols = 1 + fbBlockCols;
   const revColCount = globalMaxRevisions * copyBlockCols;
-  const totalCols = 1 + copyBlockCols + revColCount + 4; // ep# + first copy block + rev blocks + payment/commitment/status
+  const totalCols = 2 + copyBlockCols + revColCount + 4; // ep# + writer + first copy block + rev blocks + payment/commitment/status
   const fbColWidth = 100;
   const daysWidth = 50;
   const teamBlockWidth = fbColWidth + (hideDays ? 0 : daysWidth);
-  const minWidth = 50 + 110 + (hasFbTeams ? effectiveFbTeams.length * teamBlockWidth : (hideFeedback ? 0 : 110)) + globalMaxRevisions * (110 + (hasFbTeams ? effectiveFbTeams.length * teamBlockWidth : (hideFeedback ? 0 : 110))) + 120 * 2 + 180 + 140;
+  const minWidth = 50 + 180 + 110 + (hasFbTeams ? effectiveFbTeams.length * teamBlockWidth : (hideFeedback ? 0 : 110)) + globalMaxRevisions * (110 + (hasFbTeams ? effectiveFbTeams.length * teamBlockWidth : (hideFeedback ? 0 : 110))) + 120 * 2 + 180 + 140;
 
   const daysColor = (d: number | null) => {
     if (d === null) return "";
@@ -1822,6 +1822,7 @@ function TrackingTable({
         <thead className="sticky top-0 z-10">
           <tr className="bg-gradient-to-r from-slate-50 to-slate-100">
             <th className={`${thBase} ${divider} text-left`} style={{ width: 50 }}>Ep #</th>
+            <th className={`${thBase} ${divider} text-left bg-slate-50/80 text-slate-600`} style={{ width: 180 }}>Writer</th>
             <th className={`${thBase} ${divider} bg-blue-50/80 text-blue-700`} style={{ width: 120 }}>1st Copy Received</th>
             {hasFbTeams ? effectiveFbTeams.map((team) => [
               <th key={`fb-0-${team}`} className={`${thBase} ${divider} bg-amber-50/80 text-amber-700`} style={{ width: fbColWidth, whiteSpace: "normal", lineHeight: "1.3" }}>
@@ -1862,7 +1863,6 @@ function TrackingTable({
                 <td colSpan={totalCols} className="px-4 py-3">
                   <div className="flex items-center gap-3">
                     <span className="font-bold text-sm text-slate-800">{project.workingTitle}</span>
-                    {project.writerName && <span className="text-xs text-slate-500">— {project.writerName}</span>}
                   </div>
                 </td>
               </tr>
@@ -1870,6 +1870,7 @@ function TrackingTable({
               {project.oneLiner && (
                 <tr className="bg-violet-50/30 border-b border-violet-100/60">
                   <td className={`${tdBase} ${divider} font-semibold text-violet-600`}>OL</td>
+                  <td className={`${tdBase} ${divider} text-slate-500`}>{project.writerName ?? ""}</td>
                   <td className={`${tdBase} ${divider} text-violet-600`}>{project.oneLiner.loggedDate ?? ""}</td>
                   {hasFbTeams ? effectiveFbTeams.map((team) => {
                     const d = project.oneLiner!.teamDays?.[team] ?? null;
@@ -1904,6 +1905,7 @@ function TrackingTable({
               {project.episodes.map((ep, epIdx) => (
                 <tr key={ep.id} className={`border-b border-border/20 transition-colors hover:bg-blue-50/20 ${epIdx % 2 === 1 ? "bg-slate-50/30" : "bg-white"}`}>
                   <td className={`${tdBase} ${divider} font-semibold text-slate-700`}>{ep.episodeNumber}</td>
+                  <td className={`${tdBase} ${divider} text-slate-500`}>{project.writerName ?? ""}</td>
                   <td className={`${tdBase} ${divider} text-blue-700 font-medium`}>{ep.firstCopyDate ?? ""}</td>
                   {hasFbTeams ? effectiveFbTeams.map((team) => {
                     const d = ep.firstCopyTeamDays?.[team] ?? null;
