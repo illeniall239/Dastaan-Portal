@@ -711,7 +711,7 @@ export default function ContentAgingPage() {
       // One-liner row
       if (p.oneLiner) {
         const olFbCells = hasFbTeamsExport
-          ? feedbackTeams.map((team) => [p.oneLiner!.teamFeedback?.[team] ?? "", p.oneLiner!.teamScores?.[team] ?? "", p.oneLiner!.teamDays?.[team] != null ? `${p.oneLiner!.teamDays![team]}d` : ""]).flat()
+          ? feedbackTeams.map((team) => [p.oneLiner!.teamFeedback?.[team] ?? "", p.oneLiner!.teamScores?.[team] ?? "", p.oneLiner!.teamDays?.[team] != null ? p.oneLiner!.teamDays![team] : ""]).flat()
           : [""];
         const emptyRevCells = Array.from({ length: trackingMaxRevisions * (1 + perTeamHeaders.length) }, () => "");
         rows.push([
@@ -721,7 +721,7 @@ export default function ContentAgingPage() {
       }
       for (const ep of p.episodes) {
         const firstCopyFbCells = hasFbTeamsExport
-          ? feedbackTeams.map((team) => [ep.firstCopyTeamFeedback?.[team] ?? "", ep.firstCopyTeamScores?.[team] ?? "", ep.firstCopyTeamDays?.[team] != null ? `${ep.firstCopyTeamDays![team]}d` : ""]).flat()
+          ? feedbackTeams.map((team) => [ep.firstCopyTeamFeedback?.[team] ?? "", ep.firstCopyTeamScores?.[team] ?? "", ep.firstCopyTeamDays?.[team] != null ? ep.firstCopyTeamDays![team] : ""]).flat()
           : [ep.firstCopyFeedbackDate ?? ""];
         const revCells: (string | number | null)[] = [];
         for (let i = 0; i < trackingMaxRevisions; i++) {
@@ -731,7 +731,7 @@ export default function ContentAgingPage() {
             for (const team of feedbackTeams) {
               revCells.push(rev?.teamFeedback?.[team] ?? "");
               revCells.push(rev?.teamScores?.[team] ?? "");
-              revCells.push(rev?.teamDays?.[team] != null ? `${rev!.teamDays![team]}d` : "");
+              revCells.push(rev?.teamDays?.[team] != null ? rev!.teamDays![team] : "");
             }
           } else {
             revCells.push(rev?.feedbackDate ?? "");
@@ -1019,7 +1019,7 @@ export default function ContentAgingPage() {
                 </Select>
                 <span className="text-xs text-muted-foreground">{filteredTrackingProjects.length} project{filteredTrackingProjects.length !== 1 ? "s" : ""}</span>
               </div>
-              <TrackingTable projects={filteredTrackingProjects} globalMaxRevisions={trackingMaxRevisions} feedbackTeams={feedbackTeams} hideDays={userRole === "management_viewer"} hideFeedback={false} onUpdate={(projects) => setTrackingProjects(projects)} />
+              <TrackingTable projects={filteredTrackingProjects} globalMaxRevisions={trackingMaxRevisions} feedbackTeams={feedbackTeams} hideDays={false} hideFeedback={false} onUpdate={(projects) => setTrackingProjects(projects)} />
             </div>
           )
         ) : loading ? (
@@ -1883,7 +1883,7 @@ function TrackingTable({
                         )}
                       </td>,
                       ...(!hideDays ? [<td key={`ol-days-${team}`} className={`px-2 py-2 ${divider} text-center font-semibold text-[10px] ${pending ? "text-red-600 bg-red-50/50 italic" : daysColor(d)}`}>
-                        {d != null ? `${d}d` : ""}
+                        {d != null ? d : ""}
                       </td>] : []),
                     ];
                   }).flat() : !hideFeedback ? (
@@ -1918,7 +1918,7 @@ function TrackingTable({
                         )}
                       </td>,
                       ...(!hideDays ? [<td key={`days-0-${team}`} className={`px-2 py-2 ${divider} text-center font-semibold text-[10px] ${pending ? "text-red-600 bg-red-50/50 italic" : daysColor(d)}`}>
-                        {d != null ? `${d}d` : ""}
+                        {d != null ? d : ""}
                       </td>] : []),
                     ];
                   }).flat() : !hideFeedback ? (
@@ -1939,7 +1939,7 @@ function TrackingTable({
                             )}
                           </td>,
                           ...(!hideDays ? [<td key={`days-${i}-${team}`} className={`px-2 py-2 ${divider} text-center font-semibold text-[10px] ${rev ? (pending ? "text-red-600 bg-red-50/50 italic" : daysColor(d)) : ""}`}>
-                            {rev && d != null ? `${d}d` : ""}
+                            {rev && d != null ? d : ""}
                           </td>] : []),
                         ];
                       }).flat() : !hideFeedback ? [
