@@ -702,12 +702,12 @@ export default function ContentAgingPage() {
 
   // Total dynamic cols for minWidth calculation
   const exportTrackingToExcel = () => {
-    if (trackingProjects.length === 0) { toast.error("No data to export"); return; }
+    if (filteredTrackingProjects.length === 0) { toast.error("No data to export"); return; }
     const fbTeamHeaders = feedbackTeams.length > 0 ? feedbackTeams : ["Feedback"];
     const revHeaders = Array.from({ length: trackingMaxRevisions }, (_, i) => [`${i + 1}${i === 0 ? "st" : i === 1 ? "nd" : i === 2 ? "rd" : "th"} Revised`, ...fbTeamHeaders, "Days"]).flat();
-    const headers = ["Project", "Episode #", "1st Copy Received", ...fbTeamHeaders, "Days", ...revHeaders, "Payment Request Date", "Payment Date", "Writer's Commitment", "Status"];
+    const headers = ["Project", "Episode #", "Writer", "1st Copy Received", ...fbTeamHeaders, "Days", ...revHeaders, "Payment Request Date", "Payment Date", "Writer's Commitment", "Status"];
     const rows: (string | number | null)[][] = [];
-    for (const p of trackingProjects) {
+    for (const p of filteredTrackingProjects) {
       for (const ep of p.episodes) {
         const firstCopyFbCells = feedbackTeams.length > 0
           ? feedbackTeams.map((team) => ep.firstCopyTeamFeedback?.[team] ?? "")
@@ -726,7 +726,7 @@ export default function ContentAgingPage() {
           revCells.push(rev?.feedbackDays ?? "");
         }
         rows.push([
-          p.workingTitle, ep.episodeNumber, ep.firstCopyDate, ...firstCopyFbCells, ep.firstCopyFeedbackDays ?? "",
+          p.workingTitle, ep.episodeNumber, p.writerName ?? "", ep.firstCopyDate, ...firstCopyFbCells, ep.firstCopyFeedbackDays ?? "",
           ...revCells, ep.paymentRequestDate ?? "", ep.paymentDate ?? "", p.trackingNotes ?? "", ep.trackingStatus ?? "",
         ]);
       }
@@ -1774,7 +1774,7 @@ function TrackingTable({
   const hasFbTeams = feedbackTeams.length > 0;
   const copyBlockCols = 1 + fbTeamCount + 1;
   const revColCount = globalMaxRevisions * copyBlockCols;
-  const totalCols = 1 + copyBlockCols + revColCount + 4;
+  const totalCols = 2 + copyBlockCols + revColCount + 4;
   const fbColWidth = 100;
   const minWidth = 50 + 110 + fbTeamCount * fbColWidth + 55 + globalMaxRevisions * (110 + fbTeamCount * fbColWidth + 55) + 120 * 2 + 180 + 140;
 
@@ -1811,6 +1811,7 @@ function TrackingTable({
       <thead className="sticky top-0 z-10">
         <tr className="bg-muted/80">
           <th className="px-2 py-2 text-left text-xs font-semibold border-b border-r border-border whitespace-nowrap" style={{ width: 50 }}>Ep #</th>
+          <th className="px-2 py-2 text-left text-xs font-semibold border-b border-r border-border whitespace-nowrap bg-slate-50 text-slate-600" style={{ width: 180 }}>Writer</th>
           <th className="px-2 py-2 text-center text-xs font-semibold border-b border-r border-border whitespace-nowrap bg-blue-50 text-blue-700" style={{ width: 110 }}>1st Copy Received</th>
           {hasFbTeams ? feedbackTeams.map((team) => (
             <th key={`fb-0-${team}`} className="px-2 py-2 text-center text-xs font-semibold border-b border-r border-border whitespace-nowrap bg-amber-50 text-amber-700" style={{ width: fbColWidth }}>
@@ -1850,13 +1851,13 @@ function TrackingTable({
               <td colSpan={totalCols} className="px-3 py-2 border-b border-r border-border">
                 <div className="flex items-center gap-3">
                   <span className="font-bold text-sm">{project.workingTitle}</span>
-                  {project.writerName && <span className="text-muted-foreground">— {project.writerName}</span>}
                 </div>
               </td>
             </tr>
             {project.episodes.map((ep, epIdx) => (
               <tr key={ep.id} className="border-b hover:bg-muted/30">
                 <td className="px-2 py-1.5 border-r border-border/60 text-center font-medium">{ep.episodeNumber}</td>
+                <td className="px-2 py-1.5 border-r border-border/60 text-slate-500">{project.writerName ?? ""}</td>
                 <td className="px-2 py-1.5 border-r border-border/60 text-center text-blue-700">{ep.firstCopyDate ?? ""}</td>
                 {hasFbTeams ? feedbackTeams.map((team) => (
                   <td key={`fb-0-${team}`} className="px-2 py-1.5 border-r border-border/60 text-center text-amber-700 text-[10px]">
@@ -1866,7 +1867,7 @@ function TrackingTable({
                   <td className="px-2 py-1.5 border-r border-border/60 text-center text-amber-700">{ep.firstCopyFeedbackDate ?? ""}</td>
                 )}
                 <td className={`px-2 py-1.5 border-r border-border/60 text-center font-medium ${daysColor(ep.firstCopyFeedbackDays)}`}>
-                  {ep.firstCopyFeedbackDays != null ? `${ep.firstCopyFeedbackDays}d` : ""}
+                  {ep.firstCopyFeedbackDays != null ? ep.firstCopyFeedbackDays : ""}
                 </td>
                 {Array.from({ length: globalMaxRevisions }, (_, i) => {
                   const rev = ep.revisions[i];
@@ -1880,7 +1881,7 @@ function TrackingTable({
                       <td key={`fb-${i}`} className="px-2 py-1.5 border-r border-border/60 text-center text-amber-700">{rev?.feedbackDate ?? ""}</td>,
                     ]),
                     <td key={`days-${i}`} className={`px-2 py-1.5 border-r border-border/60 text-center font-medium ${daysColor(rev?.feedbackDays ?? null)}`}>
-                      {rev?.feedbackDays != null ? `${rev.feedbackDays}d` : ""}
+                      {rev?.feedbackDays != null ? rev.feedbackDays : ""}
                     </td>,
                   ];
                 }).flat()}
