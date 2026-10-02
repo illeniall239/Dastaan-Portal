@@ -312,6 +312,7 @@ export default function ContentAgingPage() {
   const [trackingProjects, setTrackingProjects] = useState<TrackingProject[]>([]);
   const [trackingMaxRevisions, setTrackingMaxRevisions] = useState(0);
   const [feedbackTeams, setFeedbackTeams] = useState<string[]>([]);
+  const [trackingFormat, setTrackingFormat] = useState<"table" | "flat">("table");
   const [trackingLoading, setTrackingLoading] = useState(false);
   const trackingLoaded = useRef(false);
   const [trackingTeamFilter, setTrackingTeamFilter] = useState<string>("all");
@@ -696,6 +697,12 @@ export default function ContentAgingPage() {
 
   const exportTrackingToExcel = () => {
     if (filteredTrackingProjects.length === 0) { toast.error("No data to export"); return; }
+
+    if (trackingFormat === "flat") {
+      exportFlatTrackingToExcel();
+      return;
+    }
+
     const hasFbTeamsExport = feedbackTeams.length > 0;
     // Per-team headers: "Team Name", "Days" for each team
     const perTeamHeaders = hasFbTeamsExport
@@ -755,6 +762,50 @@ export default function ContentAgingPage() {
       const link = document.createElement("a");
       link.href = URL.createObjectURL(blob);
       link.download = `tracking_${new Date().toISOString().split("T")[0]}.xlsx`;
+      link.click();
+      toast.success("Exported successfully");
+    });
+  };
+
+  const exportFlatTrackingToExcel = () => {
+    const headers = ["Project", "Episode", "Script Version", "Writer", "Content Head", "Reviewer", "Status", "Avg Rating", "In Review (Date)", "Review Complete (Date)", "Days in Review"];
+    const rows: (string | number | null)[][] = [];
+    for (const project of filteredTrackingProjects) {
+      for (const ep of project.episodes) {
+        for (const team of feedbackTeams) {
+          const fb = ep.firstCopyTeamFeedback?.[team] ?? null;
+          const score = extractScore(ep.firstCopyTeamScores?.[team] ?? null);
+          const decision = extractDecision(ep.firstCopyTeamScores?.[team] ?? null);
+          rows.push([
+            project.workingTitle, String(ep.episodeNumber), 1, project.writerName ?? "", project.teamName?.replace(/'s Team$/i, "") ?? "",
+            team, decision ?? "Pending", score, ep.firstCopyDate ?? "", fb ?? "", calcDaysBetween(ep.firstCopyDate, fb),
+          ]);
+        }
+        for (const rev of ep.revisions) {
+          for (const team of feedbackTeams) {
+            const fb = rev.teamFeedback?.[team] ?? null;
+            const score = extractScore(rev.teamScores?.[team] ?? null);
+            const decision = extractDecision(rev.teamScores?.[team] ?? null);
+            rows.push([
+              project.workingTitle, `${ep.episodeNumber} revised`, rev.revisionNumber + 1, project.writerName ?? "", project.teamName?.replace(/'s Team$/i, "") ?? "",
+              team, decision ?? "Pending", score, rev.receivedDate ?? "", fb ?? "", calcDaysBetween(rev.receivedDate, fb),
+            ]);
+          }
+        }
+      }
+    }
+    import("exceljs").then(async (ExcelJS) => {
+      const wb = new ExcelJS.Workbook();
+      const ws = wb.addWorksheet("Script Review");
+      const headerRow = ws.addRow(headers);
+      headerRow.eachCell((cell) => { cell.font = { bold: true }; cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFE2E8F0" } }; });
+      for (const r of rows) ws.addRow(r);
+      ws.columns.forEach((col) => { col.width = 18; });
+      const buffer = await wb.xlsx.writeBuffer();
+      const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = `script_review_${new Date().toISOString().split("T")[0]}.xlsx`;
       link.click();
       toast.success("Exported successfully");
     });
@@ -822,6 +873,16 @@ export default function ContentAgingPage() {
 
         {/* Export button — always visible */}
         <div className="flex gap-2 justify-end mt-3">
+          {activeTab === "tracking" && (
+            <Button
+              variant={trackingFormat === "flat" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setTrackingFormat(f => f === "table" ? "flat" : "table")}
+              className="gap-1.5 h-9 text-xs"
+            >
+              Change Format
+            </Button>
+          )}
           <Button variant="outline" size="sm" onClick={activeTab === "aging" ? exportToExcel : activeTab === "target" ? exportTargetAgingToExcel : exportTrackingToExcel} disabled={activeTab === "tracking" ? trackingLoading || trackingProjects.length === 0 : loading || filtered.length === 0} className="gap-1.5 h-9 text-xs">
             <Download className="h-3.5 w-3.5" />
             Export Excel
@@ -1019,7 +1080,11 @@ export default function ContentAgingPage() {
                 </Select>
                 <span className="text-xs text-muted-foreground">{filteredTrackingProjects.length} project{filteredTrackingProjects.length !== 1 ? "s" : ""}</span>
               </div>
-              <TrackingTable projects={filteredTrackingProjects} globalMaxRevisions={trackingMaxRevisions} feedbackTeams={feedbackTeams} hideDays={false} hideFeedback={false} onUpdate={(projects) => setTrackingProjects(projects)} />
+              {trackingFormat === "flat" ? (
+                <FlatTrackingTable projects={filteredTrackingProjects} feedbackTeams={feedbackTeams} />
+              ) : (
+                <TrackingTable projects={filteredTrackingProjects} globalMaxRevisions={trackingMaxRevisions} feedbackTeams={feedbackTeams} hideDays={false} hideFeedback={false} onUpdate={(projects) => setTrackingProjects(projects)} />
+              )}
             </div>
           )
         ) : loading ? (
@@ -1607,6 +1672,175 @@ function EditableCell({ value, onSave, placeholder = "—" }: { value: string | 
       title="Click to edit"
     >
       {saved || <span className="text-muted-foreground/40">{placeholder}</span>}
+    </div>
+  );
+}
+
+// ============================================================
+// Flat Tracking Table (Script Review View)
+// ============================================================
+interface FlatRow {
+  projectTitle: string;
+  episode: string;
+  scriptVersion: number;
+  writer: string | null;
+  contentHead: string | null;
+  reviewers: string;
+  status: string | null;
+  avgRating: number | null;
+  inReviewDate: string | null;
+  reviewCompleteDate: string | null;
+  daysInReview: number | null;
+}
+
+function calcDaysBetween(start: string | null, end: string | null): number | null {
+  if (!start) return null;
+  const d1 = new Date(start);
+  const d2 = end ? new Date(end) : new Date();
+  if (isNaN(d1.getTime())) return null;
+  if (isNaN(d2.getTime())) return null;
+  return Math.round((d2.getTime() - d1.getTime()) / (1000 * 60 * 60 * 24));
+}
+
+function extractScore(teamScore: string | null): number | null {
+  if (!teamScore) return null;
+  const num = parseFloat(teamScore.split("·")[0].trim());
+  return isNaN(num) ? null : num;
+}
+
+function extractDecision(teamScore: string | null): string | null {
+  if (!teamScore) return null;
+  const parts = teamScore.split("·");
+  return parts.length > 1 ? parts[1].trim() : null;
+}
+
+function FlatTrackingTable({ projects, feedbackTeams }: { projects: TrackingProject[]; feedbackTeams: string[] }) {
+  const [statusFilter, setFlatStatusFilter] = useState<string>("all");
+
+  const rows = useMemo(() => {
+    const result: FlatRow[] = [];
+    for (const project of projects) {
+      for (const ep of project.episodes) {
+        for (const team of feedbackTeams) {
+          const fb = ep.firstCopyTeamFeedback?.[team] ?? null;
+          const score = extractScore(ep.firstCopyTeamScores?.[team] ?? null);
+          const decision = extractDecision(ep.firstCopyTeamScores?.[team] ?? null);
+          result.push({
+            projectTitle: project.workingTitle,
+            episode: String(ep.episodeNumber),
+            scriptVersion: 1,
+            writer: project.writerName,
+            contentHead: project.teamName,
+            reviewers: team,
+            status: decision,
+            avgRating: score,
+            inReviewDate: ep.firstCopyDate,
+            reviewCompleteDate: fb,
+            daysInReview: calcDaysBetween(ep.firstCopyDate, fb),
+          });
+        }
+        for (const rev of ep.revisions) {
+          for (const team of feedbackTeams) {
+            const fb = rev.teamFeedback?.[team] ?? null;
+            const score = extractScore(rev.teamScores?.[team] ?? null);
+            const decision = extractDecision(rev.teamScores?.[team] ?? null);
+            result.push({
+              projectTitle: project.workingTitle,
+              episode: `${ep.episodeNumber} revised`,
+              scriptVersion: rev.revisionNumber + 1,
+              writer: project.writerName,
+              contentHead: project.teamName,
+              reviewers: team,
+              status: decision,
+              avgRating: score,
+              inReviewDate: rev.receivedDate,
+              reviewCompleteDate: fb,
+              daysInReview: calcDaysBetween(rev.receivedDate, fb),
+            });
+          }
+        }
+      }
+    }
+    return result;
+  }, [projects, feedbackTeams]);
+
+  const filtered = useMemo(() => {
+    if (statusFilter === "all") return rows;
+    if (statusFilter === "pending") return rows.filter(r => !r.status);
+    if (statusFilter === "completed") return rows.filter(r => !!r.status);
+    return rows;
+  }, [rows, statusFilter]);
+
+  const thBase = "px-3 py-2.5 text-[11px] font-semibold text-center border-b-2 whitespace-nowrap";
+  const tdBase = "px-3 py-2 text-center text-[11px]";
+  const divider = "border-r border-border/40";
+
+  const statusColor = (s: string | null) => {
+    if (!s) return "bg-slate-100 text-slate-500";
+    const lower = s.toLowerCase();
+    if (lower.includes("revision") || lower.includes("reject")) return "bg-red-100 text-red-700";
+    if (lower.includes("approv")) return "bg-green-100 text-green-700";
+    if (lower.includes("need")) return "bg-amber-100 text-amber-700";
+    return "bg-slate-100 text-slate-700";
+  };
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center gap-2">
+        <Select value={statusFilter} onValueChange={setFlatStatusFilter}>
+          <SelectTrigger className="h-8 text-xs w-[160px]"><SelectValue placeholder="Status" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Statuses</SelectItem>
+            <SelectItem value="pending">Pending / In Review</SelectItem>
+            <SelectItem value="completed">Reviewed</SelectItem>
+          </SelectContent>
+        </Select>
+        <span className="text-xs text-muted-foreground">{filtered.length} row{filtered.length !== 1 ? "s" : ""}</span>
+      </div>
+      <div className="rounded-xl border border-border/60 shadow-sm bg-white w-fit min-w-full">
+        <table className="w-full text-xs border-separate border-spacing-0" style={{ minWidth: 1200 }}>
+          <thead className="sticky top-0 z-10">
+            <tr className="bg-gradient-to-r from-slate-50 to-slate-100">
+              <th className={`${thBase} ${divider} text-left`} style={{ width: 180 }}>Project</th>
+              <th className={`${thBase} ${divider}`} style={{ width: 90 }}>Episode</th>
+              <th className={`${thBase} ${divider}`} style={{ width: 90 }}>Script Version</th>
+              <th className={`${thBase} ${divider} text-left`} style={{ width: 140 }}>Writer</th>
+              <th className={`${thBase} ${divider} text-left`} style={{ width: 140 }}>Content Head</th>
+              <th className={`${thBase} ${divider} text-left`} style={{ width: 180 }}>Reviewer</th>
+              <th className={`${thBase} ${divider}`} style={{ width: 130 }}>Status</th>
+              <th className={`${thBase} ${divider}`} style={{ width: 80 }}>Avg Rating</th>
+              <th className={`${thBase} ${divider}`} style={{ width: 120 }}>In Review</th>
+              <th className={`${thBase} ${divider}`} style={{ width: 120 }}>Review Complete</th>
+              <th className={`${thBase}`} style={{ width: 90 }}>Days in Review</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filtered.map((row, i) => (
+              <tr key={i} className={`border-b border-border/20 hover:bg-blue-50/20 ${i % 2 === 1 ? "bg-slate-50/30" : "bg-white"}`}>
+                <td className={`${tdBase} ${divider} text-left font-medium text-slate-800`}>
+                  <span className="block truncate max-w-[170px]" title={row.projectTitle}>{row.projectTitle}</span>
+                </td>
+                <td className={`${tdBase} ${divider} font-semibold text-slate-700`}>{row.episode}</td>
+                <td className={`${tdBase} ${divider} text-slate-600`}>{row.scriptVersion}</td>
+                <td className={`${tdBase} ${divider} text-left text-slate-600`}>{row.writer ?? "—"}</td>
+                <td className={`${tdBase} ${divider} text-left text-slate-600`}>{row.contentHead?.replace(/'s Team$/i, "") ?? "—"}</td>
+                <td className={`${tdBase} ${divider} text-left text-slate-600 text-[10px]`}>{row.reviewers}</td>
+                <td className={`${tdBase} ${divider}`}>
+                  <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-semibold ${statusColor(row.status)}`}>
+                    {row.status || "Pending"}
+                  </span>
+                </td>
+                <td className={`${tdBase} ${divider}`}>{row.avgRating !== null ? scoreBadge(row.avgRating) : <span className="text-muted-foreground">—</span>}</td>
+                <td className={`${tdBase} ${divider} text-blue-700`}>{row.inReviewDate ?? "—"}</td>
+                <td className={`${tdBase} ${divider} text-emerald-700`}>{row.reviewCompleteDate ?? "—"}</td>
+                <td className={`${tdBase} font-semibold ${row.daysInReview != null && row.daysInReview > 7 ? "text-red-600" : "text-green-700"}`}>
+                  {row.daysInReview != null ? row.daysInReview : <span className="text-muted-foreground font-normal">—</span>}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
