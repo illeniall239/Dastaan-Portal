@@ -22,7 +22,9 @@ export async function applyRateLimit(
   config: RateLimitConfig,
   userId?: string
 ): Promise<{ success: boolean; response?: NextResponse; result: RateLimitResult }> {
-  const identifier = userId ? `user:${userId}` : getClientIdentifier(request);
+  const url = new URL(request.url);
+  const baseIdentifier = userId ? `user:${userId}` : getClientIdentifier(request);
+  const identifier = `${baseIdentifier}:${url.pathname}`;
   const result = await rateLimit(identifier, config);
 
   if (!result.success) {

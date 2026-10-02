@@ -406,7 +406,7 @@ export function EvaluationCard({
                     </Badge>
                     <span className="text-purple-600">{ep.logged_by_name}</span>
                   </div>
-                  {currentUserRole && ["content_manager", "content_creator", "admin", "management"].includes(currentUserRole) && (ep.average_initial_assessment ?? ep.initial_assessment) != null && (
+                  {(ep.average_initial_assessment ?? ep.initial_assessment) != null && (
                     <Badge variant="secondary" className="text-[10px] px-1 py-0 h-4 bg-blue-50 text-blue-700">
                       Initial Assessment {(ep.average_initial_assessment ?? ep.initial_assessment)}/10
                     </Badge>

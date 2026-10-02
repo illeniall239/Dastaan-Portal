@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -78,6 +78,12 @@ export default function ExternalEvaluatePage({ params }: ExternalEvaluatePagePro
   const [crStoryProgressionComment, setCrStoryProgressionComment] = useState("");
   const [crWhatsNextComment, setCrWhatsNextComment] = useState("");
   const [crOverallComment, setCrOverallComment] = useState("");
+
+  const EP_SCORE_KEYS = ["conflictScore", "characterizationScore", "storyProgressionScore", "mainEventScore", "smallEventScore", "dragnessScore", "freezesScore", "whatsNextScore", "epOverallAssessmentScore"] as const;
+  const CR_SCORE_KEYS = ["premiseConflictScore", "storylinePlotScore", "episodicProgressionScore", "charactersScore", "crOverallAssessmentScore"] as const;
+  const EP_SCORE_LABELS: Record<string, string> = { conflictScore: "Conflict of Content", characterizationScore: "Characterization", storyProgressionScore: "Story Progression", mainEventScore: "Main Event", smallEventScore: "Small Event", dragnessScore: "Dragness", freezesScore: "Freezes", whatsNextScore: "What's Next Element", epOverallAssessmentScore: "Overall Assessment" };
+  const CR_SCORE_LABELS: Record<string, string> = { premiseConflictScore: "Conflict of Content", storylinePlotScore: "Characterization", episodicProgressionScore: "Story Progression", charactersScore: "What's Next Element", crOverallAssessmentScore: "Overall One-liner Grade" };
+  const touchedScores = useRef(new Set<string>());
 
   // --- One-Liner Evaluation State ---
   const [olComments, setOlComments] = useState("");
@@ -165,6 +171,7 @@ export default function ExternalEvaluatePage({ params }: ExternalEvaluatePagePro
     if (!data) return;
 
     if (contentItem.type === "episode") {
+      EP_SCORE_KEYS.forEach(k => touchedScores.current.add(k));
       setConflictScore(data.conflict_of_content_score || 5);
       setConflictComment(data.conflict_of_content_comment || "");
       setCharacterizationScore(data.characterization_score || 5);
@@ -184,6 +191,7 @@ export default function ExternalEvaluatePage({ params }: ExternalEvaluatePagePro
       setEpOverallAssessmentScore(data.overall_assessment_score || 5);
       setOverallAssessmentComment(data.overall_assessment_comment || "");
     } else if (contentItem.type === "call_report") {
+      CR_SCORE_KEYS.forEach(k => touchedScores.current.add(k));
       setPremiseConflictScore(data.conflict_of_content_score || 5);
       setCrConflictComment(data.conflict_of_content_comment || "");
       setStorylinePlotScore(data.characterization_score || 5);
@@ -311,6 +319,24 @@ export default function ExternalEvaluatePage({ params }: ExternalEvaluatePagePro
         toast.error("Please enter your name");
         setSubmitting(false);
         return;
+      }
+
+      // Validate scores have been intentionally set
+      const contentType = contents.length > 1 ? content?.type : linkData?.content_type;
+      if (contentType === "episode") {
+        const untouched = EP_SCORE_KEYS.filter(k => !touchedScores.current.has(k));
+        if (untouched.length > 0) {
+          toast.error(`Please set scores for: ${untouched.map(k => EP_SCORE_LABELS[k]).join(", ")}`);
+          setSubmitting(false);
+          return;
+        }
+      } else if (contentType === "call_report") {
+        const untouched = CR_SCORE_KEYS.filter(k => !touchedScores.current.has(k));
+        if (untouched.length > 0) {
+          toast.error(`Please set scores for: ${untouched.map(k => CR_SCORE_LABELS[k]).join(", ")}`);
+          setSubmitting(false);
+          return;
+        }
       }
 
       // Save current step's evaluation before submitting
@@ -795,7 +821,7 @@ export default function ExternalEvaluatePage({ params }: ExternalEvaluatePagePro
                       label="Conflict of Content"
                       description="How engaging and well-developed is the central conflict?"
                       score={conflictScore}
-                      onChange={setConflictScore}
+                      onChange={(v: number) => { touchedScores.current.add("conflictScore"); setConflictScore(v); }}
                       disabled={submitting}
                     />
                     <div className="ml-4">
@@ -815,7 +841,7 @@ export default function ExternalEvaluatePage({ params }: ExternalEvaluatePagePro
                       label="Characterization"
                       description="How compelling and relatable are the characters?"
                       score={characterizationScore}
-                      onChange={setCharacterizationScore}
+                      onChange={(v: number) => { touchedScores.current.add("characterizationScore"); setCharacterizationScore(v); }}
                       disabled={submitting}
                     />
                     <div className="ml-4">
@@ -835,7 +861,7 @@ export default function ExternalEvaluatePage({ params }: ExternalEvaluatePagePro
                       label="Story Progression"
                       description="How effectively does the narrative move the story forward?"
                       score={storyProgressionScore}
-                      onChange={setStoryProgressionScore}
+                      onChange={(v: number) => { touchedScores.current.add("storyProgressionScore"); setStoryProgressionScore(v); }}
                       disabled={submitting}
                     />
                     <div className="ml-4">
@@ -855,7 +881,7 @@ export default function ExternalEvaluatePage({ params }: ExternalEvaluatePagePro
                       label="Main Event"
                       description="How impactful and well-executed is the main event of the episode?"
                       score={mainEventScore}
-                      onChange={setMainEventScore}
+                      onChange={(v: number) => { touchedScores.current.add("mainEventScore"); setMainEventScore(v); }}
                       disabled={submitting}
                     />
                     <div className="ml-4">
@@ -875,7 +901,7 @@ export default function ExternalEvaluatePage({ params }: ExternalEvaluatePagePro
                       label="Small Event"
                       description="How effective are the supporting events in building the narrative?"
                       score={smallEventScore}
-                      onChange={setSmallEventScore}
+                      onChange={(v: number) => { touchedScores.current.add("smallEventScore"); setSmallEventScore(v); }}
                       disabled={submitting}
                     />
                     <div className="ml-4">
@@ -895,7 +921,7 @@ export default function ExternalEvaluatePage({ params }: ExternalEvaluatePagePro
                       label="Dragness"
                       description="How well does the episode maintain pacing and avoid unnecessary drag?"
                       score={dragnessScore}
-                      onChange={setDragnessScore}
+                      onChange={(v: number) => { touchedScores.current.add("dragnessScore"); setDragnessScore(v); }}
                       disabled={submitting}
                     />
                     <div className="ml-4">
@@ -915,7 +941,7 @@ export default function ExternalEvaluatePage({ params }: ExternalEvaluatePagePro
                       label="Freeze"
                       description="How effective are the cliffhangers/freeze moments in creating suspense?"
                       score={freezesScore}
-                      onChange={setFreezesScore}
+                      onChange={(v: number) => { touchedScores.current.add("freezesScore"); setFreezesScore(v); }}
                       disabled={submitting}
                     />
                     <div className="ml-4">
@@ -935,7 +961,7 @@ export default function ExternalEvaluatePage({ params }: ExternalEvaluatePagePro
                       label="What's Next Element"
                       description="How strong is the anticipation for the next episode?"
                       score={whatsNextScore}
-                      onChange={setWhatsNextScore}
+                      onChange={(v: number) => { touchedScores.current.add("whatsNextScore"); setWhatsNextScore(v); }}
                       disabled={submitting}
                     />
                     <div className="ml-4">
@@ -955,7 +981,7 @@ export default function ExternalEvaluatePage({ params }: ExternalEvaluatePagePro
                       label="Overall Assessment"
                       description="What is your overall impression of this episode?"
                       score={epOverallAssessmentScore}
-                      onChange={setEpOverallAssessmentScore}
+                      onChange={(v: number) => { touchedScores.current.add("epOverallAssessmentScore"); setEpOverallAssessmentScore(v); }}
                       disabled={submitting}
                     />
                     <div className="ml-4">
@@ -1036,7 +1062,7 @@ export default function ExternalEvaluatePage({ params }: ExternalEvaluatePagePro
                       label="Conflict of Content"
                       description="How compelling and engaging is the core conflict driving the content?"
                       score={premiseConflictScore}
-                      onChange={setPremiseConflictScore}
+                      onChange={(v: number) => { touchedScores.current.add("premiseConflictScore"); setPremiseConflictScore(v); }}
                       disabled={submitting}
                     />
                     <div className="ml-4">
@@ -1056,7 +1082,7 @@ export default function ExternalEvaluatePage({ params }: ExternalEvaluatePagePro
                       label="Characterization"
                       description="How well-developed, relatable, and distinct are the characters?"
                       score={storylinePlotScore}
-                      onChange={setStorylinePlotScore}
+                      onChange={(v: number) => { touchedScores.current.add("storylinePlotScore"); setStorylinePlotScore(v); }}
                       disabled={submitting}
                     />
                     <div className="ml-4">
@@ -1076,7 +1102,7 @@ export default function ExternalEvaluatePage({ params }: ExternalEvaluatePagePro
                       label="Story Progression"
                       description="How well does the story flow and progress across the narrative?"
                       score={episodicProgressionScore}
-                      onChange={setEpisodicProgressionScore}
+                      onChange={(v: number) => { touchedScores.current.add("episodicProgressionScore"); setEpisodicProgressionScore(v); }}
                       disabled={submitting}
                     />
                     <div className="ml-4">
@@ -1096,7 +1122,7 @@ export default function ExternalEvaluatePage({ params }: ExternalEvaluatePagePro
                       label="What's Next Element"
                       description="How effectively does the story create curiosity about what happens next?"
                       score={charactersScore}
-                      onChange={setCharactersScore}
+                      onChange={(v: number) => { touchedScores.current.add("charactersScore"); setCharactersScore(v); }}
                       disabled={submitting}
                     />
                     <div className="ml-4">
@@ -1116,7 +1142,7 @@ export default function ExternalEvaluatePage({ params }: ExternalEvaluatePagePro
                       label="Overall Oneliner Grade"
                       description="What is your overall grade for this oneliner as a complete package?"
                       score={crOverallAssessmentScore}
-                      onChange={setCrOverallAssessmentScore}
+                      onChange={(v: number) => { touchedScores.current.add("crOverallAssessmentScore"); setCrOverallAssessmentScore(v); }}
                       disabled={submitting}
                     />
                     <div className="ml-4">

@@ -23,7 +23,6 @@ const upsertSchema = z.object({
 
 const ALLOWED_ROLES = [
     "content_manager", "content_creator", "admin",
-    "management", "programmer", "gcm", "evaluator",
 ];
 
 /**

@@ -25,6 +25,7 @@ interface EpisodeUploadFormProps {
   disabled?: boolean;
   existingEpisodeNumbers?: number[];
   uploadProgress?: Record<number, number>; // episode number to progress percentage
+  onAssessmentTouch?: (episodeNumber: number) => void;
 }
 
 export function EpisodeUploadForm({
@@ -33,6 +34,7 @@ export function EpisodeUploadForm({
   disabled = false,
   existingEpisodeNumbers = [],
   uploadProgress = {},
+  onAssessmentTouch,
 }: EpisodeUploadFormProps) {
   const updateEpisodes = (list: EpisodeFormEntry[]) => {
     // Sort episodes by episode_number before updating parent
@@ -189,7 +191,7 @@ export function EpisodeUploadForm({
                 label="Initial Assessment"
                 description="Your initial rating of this episode (1-10)"
                 score={episode.initial_assessment}
-                onChange={(score) => updateEpisode(index, "initial_assessment", score)}
+                onChange={(score) => { onAssessmentTouch?.(episode.episode_number); updateEpisode(index, "initial_assessment", score); }}
                 disabled={disabled}
                 showGrade={true}
               />

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -130,6 +130,16 @@ export function EvaluatorEvaluationForm({
     }
   }, [searchParams, existingEvaluation]);
 
+  const SCORE_KEYS = ["conflictOfContentScore", "characterizationScore", "storyProgressionScore", "whatsNextElementScore", "overallOnelinerGradeScore"] as const;
+  const SCORE_LABELS: Record<string, string> = {
+    conflictOfContentScore: "Conflict of Content",
+    characterizationScore: "Characterization",
+    storyProgressionScore: "Story Progression",
+    whatsNextElementScore: "What's Next Element",
+    overallOnelinerGradeScore: "Overall One-liner Grade",
+  };
+  const touchedScores = useRef(new Set<string>());
+
   // Form state
   const [formData, setFormData] = useState({
     // New criteria scores
@@ -247,6 +257,13 @@ export function EvaluatorEvaluationForm({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Validate all scores have been intentionally set
+    const untouchedScores = SCORE_KEYS.filter(k => !touchedScores.current.has(k));
+    if (untouchedScores.length > 0) {
+      toast.error(`Please set scores for: ${untouchedScores.map(k => SCORE_LABELS[k]).join(", ")}`);
+      return;
+    }
 
     // Validate decision field
     if (!formData.decision) {
@@ -452,6 +469,7 @@ export function EvaluatorEvaluationForm({
 
   const handleLoadDraft = () => {
     if (pendingDraftData) {
+      touchedScores.current = new Set(SCORE_KEYS);
       setFormData({
         conflictOfContentScore: pendingDraftData.conflictOfContentScore ?? pendingDraftData.premiseConflictScore ?? 5,
         characterizationScore: pendingDraftData.characterizationScore ?? pendingDraftData.charactersScore ?? 5,
@@ -496,6 +514,7 @@ export function EvaluatorEvaluationForm({
   useEffect(() => {
     if (propExistingEvaluation) {
       setExistingEvaluation(propExistingEvaluation);
+      touchedScores.current = new Set(SCORE_KEYS);
       setFormData((prev) => ({
         ...prev,
         conflictOfContentScore: propExistingEvaluation.conflict_of_content_score ?? propExistingEvaluation.premise_conflict_score ?? 5,
@@ -534,6 +553,7 @@ export function EvaluatorEvaluationForm({
           const json = await res.json();
           if (json.evaluation) {
             setExistingEvaluation(json.evaluation);
+            touchedScores.current = new Set(SCORE_KEYS);
             setFormData((prev) => ({
               ...prev,
               conflictOfContentScore: json.evaluation.conflict_of_content_score ?? json.evaluation.premise_conflict_score ?? 5,
@@ -810,7 +830,7 @@ export function EvaluatorEvaluationForm({
                 label="Conflict of Content"
                 description="How compelling and engaging is the core conflict driving the content?"
                 score={formData.conflictOfContentScore}
-                onChange={(value) => setFormData((prev) => ({ ...prev, conflictOfContentScore: value }))}
+                onChange={(value) => { touchedScores.current.add("conflictOfContentScore"); setFormData((prev) => ({ ...prev, conflictOfContentScore: value })); }}
                 gradeFn={calculateOneLinerGrade}
                 gradeColorFn={getOneLinerGradeColorClasses}
               />
@@ -832,7 +852,7 @@ export function EvaluatorEvaluationForm({
                 label="Characterization"
                 description="How well-developed, relatable, and distinct are the characters?"
                 score={formData.characterizationScore}
-                onChange={(value) => setFormData((prev) => ({ ...prev, characterizationScore: value }))}
+                onChange={(value) => { touchedScores.current.add("characterizationScore"); setFormData((prev) => ({ ...prev, characterizationScore: value })); }}
                 gradeFn={calculateOneLinerGrade}
                 gradeColorFn={getOneLinerGradeColorClasses}
               />
@@ -854,7 +874,7 @@ export function EvaluatorEvaluationForm({
                 label="Story Progression"
                 description="How well does the story flow and progress across the narrative?"
                 score={formData.storyProgressionScore}
-                onChange={(value) => setFormData((prev) => ({ ...prev, storyProgressionScore: value }))}
+                onChange={(value) => { touchedScores.current.add("storyProgressionScore"); setFormData((prev) => ({ ...prev, storyProgressionScore: value })); }}
                 gradeFn={calculateOneLinerGrade}
                 gradeColorFn={getOneLinerGradeColorClasses}
               />
@@ -876,7 +896,7 @@ export function EvaluatorEvaluationForm({
                 label="What Next Element"
                 description="How effectively does the story create curiosity about what happens next?"
                 score={formData.whatsNextElementScore}
-                onChange={(value) => setFormData((prev) => ({ ...prev, whatsNextElementScore: value }))}
+                onChange={(value) => { touchedScores.current.add("whatsNextElementScore"); setFormData((prev) => ({ ...prev, whatsNextElementScore: value })); }}
                 gradeFn={calculateOneLinerGrade}
                 gradeColorFn={getOneLinerGradeColorClasses}
               />
@@ -898,7 +918,7 @@ export function EvaluatorEvaluationForm({
                 label="Overall Oneliner Grade"
                 description="What is your overall grade for this oneliner as a complete package?"
                 score={formData.overallOnelinerGradeScore}
-                onChange={(value) => setFormData((prev) => ({ ...prev, overallOnelinerGradeScore: value }))}
+                onChange={(value) => { touchedScores.current.add("overallOnelinerGradeScore"); setFormData((prev) => ({ ...prev, overallOnelinerGradeScore: value })); }}
                 gradeFn={calculateOneLinerGrade}
                 gradeColorFn={getOneLinerGradeColorClasses}
               />

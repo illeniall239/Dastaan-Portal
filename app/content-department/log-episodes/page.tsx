@@ -92,6 +92,7 @@ export default function LogEpisodesPage() {
   // Upload progress tracking
   const [uploadProgress, setUploadProgress] = useState<Record<number, number>>({});
   const newEpisodesSectionRef = useRef<HTMLDivElement | null>(null);
+  const touchedAssessments = useRef(new Set<string>());
 
   // Autosave
   const { hasDraft, draftLoaded, draftUpdatedAt, saveDraft, loadDraft, clearDraft } = useFormAutosave({
@@ -115,7 +116,11 @@ export default function LogEpisodesPage() {
       const d = data as Record<string, any>;
       if (d.selectedSource) setSelectedSource(d.selectedSource);
       if (d.episodes) {
-        setNewEpisodes(d.episodes.map((ep: any) => ({ ...ep, file: null })));
+        const restored = d.episodes.map((ep: any) => ({ ...ep, file: null }));
+        setNewEpisodes(restored);
+        restored.forEach((ep: any) => {
+          if (ep.initial_assessment != null) touchedAssessments.current.add(`new-${ep.episode_number}`);
+        });
       }
       setDraftDismissed(true);
       toast.success("Draft restored (files must be re-selected)");
@@ -287,6 +292,9 @@ export default function LogEpisodesPage() {
         }));
 
       setExistingEpisodesForSource(episodesList);
+      episodesList.forEach((ep: ExistingEpisodeEdit) => {
+        if (ep.initial_assessment != null) touchedAssessments.current.add(ep.id);
+      });
     } catch (error) {
       console.error("Error fetching existing episodes:", error);
       toast.error("Failed to fetch existing episodes");
@@ -355,6 +363,11 @@ export default function LogEpisodesPage() {
 
     if (!hasEpisodeChanges(episode)) {
       toast.info("No changes to save for this episode.");
+      return;
+    }
+
+    if (!touchedAssessments.current.has(episodeId)) {
+      toast.error("Please set the Initial Assessment score before saving");
       return;
     }
 
@@ -445,6 +458,14 @@ export default function LogEpisodesPage() {
 
     if (newEpisodes.length === 0) {
       toast.error("Please add at least one episode");
+      return;
+    }
+
+    const untouchedNew = newEpisodes.filter(ep =>
+      ep.initial_assessment !== undefined && !touchedAssessments.current.has(`new-${ep.episode_number}`)
+    );
+    if (untouchedNew.length > 0) {
+      toast.error(`Please set the Initial Assessment for Episode ${untouchedNew.map(e => e.episode_number).join(", ")}`);
       return;
     }
 
@@ -746,11 +767,12 @@ export default function LogEpisodesPage() {
                               label="Initial Assessment"
                               description="Your initial rating of this episode (1-10)"
                               score={episode.initial_assessment ?? 5}
-                              onChange={(score) =>
+                              onChange={(score) => {
+                                touchedAssessments.current.add(episode.id);
                                 updateExistingEpisode(episode.id, {
                                   initial_assessment: score,
-                                })
-                              }
+                                });
+                              }}
                               disabled={episode._isSaving}
                             />
                           </div>
@@ -807,6 +829,7 @@ export default function LogEpisodesPage() {
               disabled={loading}
               existingEpisodeNumbers={existingEpisodeNumbers}
               uploadProgress={uploadProgress}
+              onAssessmentTouch={(epNum) => touchedAssessments.current.add(`new-${epNum}`)}
             />
           </div>
         )}

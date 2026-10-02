@@ -18,7 +18,7 @@ import { Badge } from "@/components/ui/badge";
 import { EpisodeUploadForm, type EpisodeFormEntry } from "@/components/episodes/episode-upload-form";
 import { EpisodeFileUpload } from "@/components/episodes/episode-file-upload";
 import { EpisodeRevisions } from "@/components/episodes/episode-revisions";
-import { ScoreCard } from "@/components/episodic-evaluations/score-card";
+
 import { createClient } from "@/lib/supabase/client";
 import { uploadAndVerify } from "@/lib/storage/verify-upload";
 import { uploadEpisodeFile } from "@/lib/episodes/upload-client";
@@ -76,7 +76,7 @@ export default function LogEpisodesPage() {
   const [currentUserRole, setCurrentUserRole] = useState<string | null>(null);
 
   const [newEpisodes, setNewEpisodes] = useState<EpisodeFormEntry[]>([
-    { episode_number: 1, file: null, additional_info: "", initial_assessment: 5 },
+    { episode_number: 1, file: null, additional_info: "" },
   ]);
 
   const [uploadProgress, setUploadProgress] = useState<Record<number, number>>({});
@@ -166,14 +166,14 @@ export default function LogEpisodesPage() {
       return numbers;
     });
     const nextEpisodeNumber = numbers.length > 0 ? Math.max(...numbers) + 1 : 1;
-    setNewEpisodes([{ episode_number: nextEpisodeNumber, file: null, additional_info: "", initial_assessment: 5 }]);
+    setNewEpisodes([{ episode_number: nextEpisodeNumber, file: null, additional_info: "" }]);
   }, [existingEpisodesForSource]);
 
   const loadExistingEpisodes = useCallback(async () => {
     if (!selectedSource) {
       setExistingEpisodesForSource([]);
       setExistingEpisodeNumbers([]);
-      setNewEpisodes([{ episode_number: 1, file: null, additional_info: "", initial_assessment: 5 }]);
+      setNewEpisodes([{ episode_number: 1, file: null, additional_info: "" }]);
       return;
     }
     setExistingEpisodesLoading(true);
@@ -190,14 +190,13 @@ export default function LogEpisodesPage() {
           _originalAttachmentUrl: episode.attachment_url ?? null,
           _originalAttachmentType: episode.attachment_type ?? null,
           _originalAdditionalInfo: episode.additional_info ?? null,
-          _originalInitialAssessment: episode.initial_assessment ?? null,
         }));
       setExistingEpisodesForSource(episodesList);
     } catch (error) {
       console.error("Error fetching existing episodes:", error);
       toast.error("Failed to fetch existing episodes");
       setExistingEpisodesForSource([]); setExistingEpisodeNumbers([]);
-      setNewEpisodes([{ episode_number: 1, file: null, additional_info: "", initial_assessment: 5 }]);
+      setNewEpisodes([{ episode_number: 1, file: null, additional_info: "" }]);
     } finally { setExistingEpisodesLoading(false); }
   }, [selectedSource]);
 
@@ -221,8 +220,7 @@ export default function LogEpisodesPage() {
       (episode.episode_number ?? null) !== (episode._originalEpisodeNumber ?? null) ||
       (episode.additional_info ?? "") !== (episode._originalAdditionalInfo ?? "") ||
       (episode.attachment_url ?? null) !== (episode._originalAttachmentUrl ?? null) ||
-      (episode.attachment_name ?? null) !== (episode._originalAttachmentName ?? null) ||
-      (episode.initial_assessment ?? null) !== (episode._originalInitialAssessment ?? null)
+      (episode.attachment_name ?? null) !== (episode._originalAttachmentName ?? null)
     );
   };
 
@@ -242,7 +240,6 @@ export default function LogEpisodesPage() {
       let attachmentUpdated = false;
       if ((episode.episode_number ?? null) !== (episode._originalEpisodeNumber ?? null)) payload.episode_number = episode.episode_number ?? 1;
       if ((episode.additional_info ?? "") !== (episode._originalAdditionalInfo ?? "")) payload.additional_info = episode.additional_info ?? null;
-      if ((episode.initial_assessment ?? null) !== (episode._originalInitialAssessment ?? null)) payload.initial_assessment = episode.initial_assessment ?? null;
       if (episode._newFile) {
         const fileExt = episode._newFile.name.split(".").pop();
         const safeExt = fileExt ? `.${fileExt}` : "";
@@ -269,7 +266,6 @@ export default function LogEpisodesPage() {
         _originalAttachmentUrl: updatedEpisode.attachment_url ?? null,
         _originalAttachmentType: updatedEpisode.attachment_type ?? null,
         _originalAdditionalInfo: updatedEpisode.additional_info ?? null,
-        _originalInitialAssessment: updatedEpisode.initial_assessment ?? null,
       });
       toast.success(`Episode ${updatedEpisode.episode_number ?? ""} updated.`);
     } catch (error: any) {
@@ -314,7 +310,7 @@ export default function LogEpisodesPage() {
             }
           }
           return { episode_number: episode.episode_number, attachment_url, attachment_name, attachment_type,
-            additional_info: episode.additional_info || null, initial_assessment: episode.initial_assessment || null,
+            additional_info: episode.additional_info || null,
             original_submission_date: episode.original_submission_date || null };
         })
       );
@@ -325,7 +321,7 @@ export default function LogEpisodesPage() {
       await clearDraft();
       toast.success(`Successfully logged ${newEpisodes.length} episode(s)`);
       setSelectedSource("");
-      setNewEpisodes([{ episode_number: 1, file: null, additional_info: "", initial_assessment: 5 }]);
+      setNewEpisodes([{ episode_number: 1, file: null, additional_info: "" }]);
       router.push("/gcm/episodes");
       router.refresh();
     } catch (error: any) { console.error("Error creating episodes:", error); toast.error(error.message || "Failed to log episodes"); }
@@ -414,11 +410,6 @@ export default function LogEpisodesPage() {
                             <Textarea id={`existing-episode-${episode.id}-info`} rows={3} value={episode.additional_info || ""}
                               onChange={(e) => updateExistingEpisode(episode.id, { additional_info: e.target.value })} />
                             <div className="flex items-center gap-2 text-xs text-muted-foreground">{episode.additional_info?.length || 0}/5000 characters</div>
-                          </div>
-                          <div className="space-y-2">
-                            <Label>Initial Assessment</Label>
-                            <ScoreCard label="Initial Assessment" description="Your initial rating of this episode (1-10)" score={episode.initial_assessment ?? 5}
-                              onChange={(score) => updateExistingEpisode(episode.id, { initial_assessment: score })} disabled={episode._isSaving} />
                           </div>
                           <EpisodeRevisions episodeId={episode.id} sourceId={selectedSource} canEdit={true} userRole={currentUserRole || undefined} evaluateUrl="/evaluator/episodes" />
                           <div className="flex items-center justify-between gap-3 pt-2 border-t border-slate-100 flex-wrap">

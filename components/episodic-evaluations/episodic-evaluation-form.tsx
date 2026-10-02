@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -70,6 +70,20 @@ export function EpisodicEvaluationForm({
     enabled: !isReadOnly,
     initialTime: initialTimeFromDraft,
   });
+
+  const EP_SCORE_KEYS = ["conflictScore", "characterizationScore", "progressionScore", "mainEventScore", "smallEventScore", "dragnessScore", "freezesScore", "whatsNextScore", "overallAssessmentScore"] as const;
+  const EP_SCORE_LABELS: Record<string, string> = {
+    conflictScore: "Conflict of Content",
+    characterizationScore: "Characterization",
+    progressionScore: "Story Progression",
+    mainEventScore: "Main Event",
+    smallEventScore: "Small Event",
+    dragnessScore: "Dragness",
+    freezesScore: "Freezes",
+    whatsNextScore: "What's Next Element",
+    overallAssessmentScore: "Overall Assessment",
+  };
+  const touchedScores = useRef(new Set<string>(existingEvaluation ? EP_SCORE_KEYS : []));
 
   // Form state - Episode metrics
   const [noOfPages, setNoOfPages] = useState(existingEvaluation?.no_of_pages || 45);
@@ -275,6 +289,7 @@ export function EpisodicEvaluationForm({
 
   const handleLoadDraft = () => {
     if (pendingDraftData) {
+      touchedScores.current = new Set(EP_SCORE_KEYS);
       setNoOfPages(pendingDraftData.noOfPages ?? 45);
       setNoOfScenes(pendingDraftData.noOfScenes ?? 22);
       setFreezeEndingScene(pendingDraftData.freezeEndingScene || "");
@@ -351,6 +366,14 @@ export function EpisodicEvaluationForm({
     if (isReadOnly) {
       toast.error("Cannot modify submitted evaluation");
       return;
+    }
+
+    if (!isFeedbackOnly) {
+      const untouchedScores = EP_SCORE_KEYS.filter(k => !touchedScores.current.has(k));
+      if (untouchedScores.length > 0) {
+        toast.error(`Please set scores for: ${untouchedScores.map(k => EP_SCORE_LABELS[k]).join(", ")}`);
+        return;
+      }
     }
 
     if (!decision) {
@@ -435,75 +458,84 @@ export function EpisodicEvaluationForm({
   // Score criteria definitions with comments
   const scoreCriteria = [
     {
+      key: "conflictScore",
       label: "Conflict of Content",
       description: "How engaging and well-developed is the central conflict?",
       score: conflictScore,
-      setScore: setConflictScore,
+      setScore: (v: number) => { touchedScores.current.add("conflictScore"); setConflictScore(v); },
       comment: conflictComment,
       setComment: setConflictComment,
     },
     {
+      key: "characterizationScore",
       label: "Characterization",
       description: "How compelling and relatable are the characters?",
       score: characterizationScore,
-      setScore: setCharacterizationScore,
+      setScore: (v: number) => { touchedScores.current.add("characterizationScore"); setCharacterizationScore(v); },
       comment: characterizationComment,
       setComment: setCharacterizationComment,
     },
     {
+      key: "progressionScore",
       label: "Story Progression",
       description: "How effectively does the narrative move the story forward?",
       score: progressionScore,
-      setScore: setProgressionScore,
+      setScore: (v: number) => { touchedScores.current.add("progressionScore"); setProgressionScore(v); },
       comment: progressionComment,
       setComment: setProgressionComment,
     },
     {
+      key: "mainEventScore",
       label: "Main Event",
       description: "How impactful and well-executed is the main event of the episode?",
       score: mainEventScore,
-      setScore: setMainEventScore,
+      setScore: (v: number) => { touchedScores.current.add("mainEventScore"); setMainEventScore(v); },
       comment: mainEventComment,
       setComment: setMainEventComment,
     },
     {
+      key: "smallEventScore",
       label: "Small Event",
       description: "How effective are the supporting events in building the narrative?",
       score: smallEventScore,
-      setScore: setSmallEventScore,
+      setScore: (v: number) => { touchedScores.current.add("smallEventScore"); setSmallEventScore(v); },
       comment: smallEventComment,
       setComment: setSmallEventComment,
     },
     {
+      key: "dragnessScore",
       label: "Dragness",
       description: "How draggy is the episode? (1 = no drag, 10 = very draggy) — lower score is better.",
       score: dragnessScore,
-      setScore: setDragnessScore,
+      setScore: (v: number) => { touchedScores.current.add("dragnessScore"); setDragnessScore(v); },
       comment: dragnessComment,
       setComment: setDragnessComment,
       reversed: true,
     },
     {
+      key: "freezesScore",
       label: "Freeze",
       description: "How effective are the cliffhangers/freeze moments in creating suspense?",
       score: freezesScore,
-      setScore: setFreezesScore,
+      setScore: (v: number) => { touchedScores.current.add("freezesScore"); setFreezesScore(v); },
       comment: freezesComment,
       setComment: setFreezesComment,
     },
     {
+      key: "whatsNextScore",
       label: "What Next Element",
       description: "How strong is the anticipation for the next episode?",
       score: whatsNextScore,
-      setScore: setWhatsNextScore,
+      setScore: (v: number) => { touchedScores.current.add("whatsNextScore"); setWhatsNextScore(v); },
       comment: whatsNextComment,
       setComment: setWhatsNextComment,
     },
     {
+      key: "overallAssessmentScore",
       label: "Overall Episode Grade",
       description: "What is your overall impression of this episode?",
       score: overallAssessmentScore,
-      setScore: setOverallAssessmentScore,
+      setScore: (v: number) => { touchedScores.current.add("overallAssessmentScore"); setOverallAssessmentScore(v); },
       comment: overallAssessmentComment,
       setComment: setOverallAssessmentComment,
     },

@@ -230,14 +230,16 @@ export function EpisodeEditForm({ episode, onSuccess }: EpisodeEditFormProps) {
             </p>
           </div>
 
-          {/* Initial Assessment */}
-          <ScoreCard
-            label="Initial Assessment"
-            description="Your initial rating of this episode (1-10)"
-            score={initialAssessment}
-            onChange={setInitialAssessment}
-            disabled={loading}
-          />
+          {/* Initial Assessment - content department only */}
+          {(userRole === "content_manager" || userRole === "content_creator" || userRole === "admin") && (
+            <ScoreCard
+              label="Initial Assessment"
+              description="Your initial rating of this episode (1-10)"
+              score={initialAssessment}
+              onChange={setInitialAssessment}
+              disabled={loading}
+            />
+          )}
         </div>
       </Card>
 
