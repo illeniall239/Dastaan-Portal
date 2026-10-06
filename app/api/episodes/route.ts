@@ -37,8 +37,7 @@ export async function POST(request: Request) {
     return unauthorizedError();
   }
 
-  // Rate limit POSTs (creation)
-  const rate = await applyRateLimit(request, RateLimitPresets.standard, user.id);
+  const rate = await applyRateLimit(request, RateLimitPresets.bulk, user.id);
   if (!rate.success) return rate.response!;
 
   // Get user data including team_id for team isolation

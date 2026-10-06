@@ -1,0 +1,406 @@
+import { NextRequest, NextResponse } from "next/server";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { createClient } from "@/lib/supabase/server";
+import { applyRateLimit } from "@/lib/api-middleware";
+import { RateLimitPresets } from "@/lib/rate-limit-redis";
+import { formatTeamDisplayName } from "@/lib/management/team-display";
+
+export const dynamic = "force-dynamic";
+
+const decisionLabels: Record<string, string> = {
+  approve: "Approved", approved: "Approved",
+  reject: "Rejected", rejected: "Rejected",
+  needs_revision: "Needs Revision", needs_improvement: "Needs Improvement",
+  need_info: "Need Info",
+};
+function fmtDecision(d: string | null): string | null {
+  if (!d) return null;
+  return decisionLabels[d] || d.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+}
+
+function fmt(d: string | null): string | null {
+  if (!d) return null;
+  try {
+    const date = new Date(d);
+    return date.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "2-digit" });
+  } catch { return d; }
+}
+
+function daysBetween(d1: string | null, d2: string | null): number | null {
+  if (!d1 || !d2) return null;
+  const ms = new Date(d2).getTime() - new Date(d1).getTime();
+  return Math.round(ms / 86400000);
+}
+
+function monthKey(d: string | null): string | null {
+  if (!d) return null;
+  try {
+    const date = new Date(d);
+    return date.toLocaleDateString("en-GB", { month: "short", year: "2-digit" });
+  } catch { return null; }
+}
+
+export async function GET(request: NextRequest) {
+  try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+    const rate = await applyRateLimit(request, RateLimitPresets.relaxed, user.id);
+    if (!rate.success) return rate.response!;
+
+    const { data: profile } = await supabase.from("users").select("role, team_id").eq("id", user.id).single();
+    if (!profile || profile.role !== "evaluator") {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+    if (!profile.team_id) {
+      return NextResponse.json({ projects: [], globalMaxRevisions: 0, feedbackTeams: [] });
+    }
+
+    const admin = createAdminClient();
+
+    const { data: callReports, error: crErr } = await admin
+      .from("call_reports")
+      .select(`id, working_title, writer_name, tracking_notes, target_slot, average_initial_assessment, meeting_date, created_at,
+        team:teams!call_reports_team_id_fkey(id, name, team_head:users!teams_team_head_id_fkey(name))`)
+      .eq("meeting_type", "call_report")
+      .eq("team_id", profile.team_id)
+      .is("archived_at", null)
+      .order("working_title", { ascending: true });
+
+    if (crErr) throw new Error(`call_reports: ${crErr.message}`);
+    if (!callReports?.length) return NextResponse.json({ projects: [], globalMaxRevisions: 0, feedbackTeams: [] });
+
+    const reportIds = callReports.map((r) => r.id);
+
+    const { data: allEpisodes, error: epErr } = await admin
+      .from("episodes")
+      .select(`
+        id, call_report_id, episode_number, created_at, original_submission_date, is_current,
+        episode_revisions(id, revision_number, created_at, original_submission_date),
+        episodic_evaluations(episode_id, revision_id, submitted_at, decision, evaluator_id, overall_average, overall_grade),
+        episode_tracking(payment_request_date, payment_date, tracking_status)
+      `)
+      .in("call_report_id", reportIds)
+      .order("episode_number", { ascending: true });
+
+    if (epErr) throw new Error(`episodes: ${epErr.message}`);
+
+    const { data: crEvals, error: crEvalsErr } = await admin
+      .from("evaluator_forms")
+      .select("call_report_id, evaluator_id, submitted_at, created_at, average_score, decision")
+      .in("call_report_id", reportIds)
+      .not("submitted_at", "is", null);
+
+    if (crEvalsErr) throw new Error(`cr_evals: ${crEvalsErr.message}`);
+
+    const [{ data: allTeams }, { data: allUsers }] = await Promise.all([
+      admin.from("teams").select("id, name, team_type, team_head:users!teams_team_head_id_fkey(name)"),
+      admin.from("users").select("id, team_id"),
+    ]);
+
+    const programmerHeadIds = new Set(
+      (allTeams || []).filter((t: any) => t.team_type === "programmer")
+        .map((t: any) => {
+          const head = t.team_head ? (Array.isArray(t.team_head) ? t.team_head[0] : t.team_head) : null;
+          return head?.name;
+        }).filter(Boolean)
+    );
+    const teamLabelMap = new Map<string, string>();
+    for (const t of allTeams || []) {
+      const head = t.team_head ? (Array.isArray(t.team_head) ? t.team_head[0] : t.team_head) : null;
+      let label: string;
+      if (t.team_type === "programmer" || (head?.name && programmerHeadIds.has(head.name))) {
+        label = "Programming's Feedback";
+      } else if (t.team_type === "evaluator") {
+        label = "Content Head's Feedback";
+      } else if (head?.name) {
+        label = `${head.name.split(" ")[0]}'s Team Feedback`;
+      } else {
+        label = t.name;
+      }
+      teamLabelMap.set(t.id, label);
+    }
+    const userTeamMap = new Map<string, string>();
+    for (const u of allUsers || []) {
+      if (u.team_id) userTeamMap.set(u.id, teamLabelMap.get(u.team_id) || "Other");
+    }
+
+    const feedbackTeamSet = new Set<string>();
+
+    type FbEntry = { date: string; score: number | null; decision: string | null };
+    const crTeamFeedback = new Map<string, Map<string, FbEntry>>();
+    const crLoggedDate = new Map<string, string>();
+    for (const cr of callReports) {
+      crLoggedDate.set(cr.id, cr.meeting_date || cr.created_at);
+    }
+    for (const ev of (crEvals || [])) {
+      const teamLabel = userTeamMap.get(ev.evaluator_id) || "Other";
+      feedbackTeamSet.add(teamLabel);
+      if (!crTeamFeedback.has(ev.call_report_id)) crTeamFeedback.set(ev.call_report_id, new Map());
+      const teamMap = crTeamFeedback.get(ev.call_report_id)!;
+      const existing = teamMap.get(teamLabel);
+      const date = ev.submitted_at || ev.created_at;
+      if (date && (!existing || date > existing.date)) {
+        teamMap.set(teamLabel, { date, score: (ev as any).average_score ?? null, decision: (ev as any).decision ?? null });
+      }
+    }
+
+    const emptyProjects = (crs: typeof callReports) => crs.map((cr) => {
+      const td = Array.isArray(cr.team) ? cr.team[0] : cr.team;
+      const th = td?.team_head ? (Array.isArray(td.team_head) ? td.team_head[0] : td.team_head) : null;
+      const crFbMap = crTeamFeedback.get(cr.id);
+      const olFb: Record<string, string | null> = {};
+      const olScores: Record<string, string | null> = {};
+      if (crFbMap) { for (const [team, entry] of crFbMap) { olFb[team] = fmt(entry.date); { const s = entry.score != null ? String(parseFloat(entry.score.toFixed(1))) : null; const d = fmtDecision(entry.decision); olScores[team] = s ? (d ? `${s} · ${d}` : s) : (d || null); } } }
+      return {
+        id: cr.id, workingTitle: cr.working_title, writerName: cr.writer_name,
+        trackingNotes: cr.tracking_notes, targetSlot: cr.target_slot || null,
+        teamName: formatTeamDisplayName(td?.name || "", th?.name),
+        avgScore: cr.average_initial_assessment ?? null,
+        oneLiner: { loggedDate: fmt(cr.meeting_date || cr.created_at), teamFeedback: olFb, teamScores: olScores },
+        episodes: [], maxRevisions: 0, monthlySummary: [],
+      };
+    });
+
+    if (!allEpisodes?.length) {
+      return NextResponse.json({ projects: emptyProjects(callReports), globalMaxRevisions: 0, feedbackTeams: Array.from(feedbackTeamSet) });
+    }
+
+    type EpRow = (typeof allEpisodes)[0];
+    const currentEpisodes: EpRow[] = [];
+    const currentEpLookup = new Map<string, string>();
+
+    for (const ep of allEpisodes) {
+      if (ep.is_current) {
+        currentEpisodes.push(ep);
+        currentEpLookup.set(`${ep.call_report_id}:${ep.episode_number}`, ep.id);
+      }
+    }
+
+    if (!currentEpisodes.length) {
+      return NextResponse.json({ projects: emptyProjects(callReports), globalMaxRevisions: 0, feedbackTeams: Array.from(feedbackTeamSet) });
+    }
+
+    const oldToCurrentEpId = new Map<string, string>();
+    for (const ep of allEpisodes) {
+      const currentId = currentEpLookup.get(`${ep.call_report_id}:${ep.episode_number}`);
+      if (currentId) oldToCurrentEpId.set(ep.id, currentId);
+    }
+
+    type RevRow = { id: string; revision_number: number; created_at: string; original_submission_date: string | null };
+    const revsByEpisode = new Map<string, RevRow[]>();
+    for (const ep of allEpisodes) {
+      const currentEpId = oldToCurrentEpId.get(ep.id) || ep.id;
+      const epRevs = (ep.episode_revisions || []) as RevRow[];
+      for (const rev of epRevs) {
+        if (!revsByEpisode.has(currentEpId)) revsByEpisode.set(currentEpId, []);
+        revsByEpisode.get(currentEpId)!.push(rev);
+      }
+    }
+    for (const [, revs] of revsByEpisode) {
+      revs.sort((a, b) => a.revision_number - b.revision_number);
+    }
+
+    type EvalRow = { episode_id: string; revision_id: string | null; submitted_at: string | null; decision: string | null; evaluator_id: string; overall_average: number | null; overall_grade: string | null };
+    const baseEvalByEpisode = new Map<string, string>();
+    const revEvalMap = new Map<string, string>();
+    const baseEvalByTeam = new Map<string, Map<string, FbEntry & { grade: string | null }>>();
+    const revEvalByTeam = new Map<string, Map<string, FbEntry & { grade: string | null }>>();
+
+    for (const ep of allEpisodes) {
+      const currentEpId = oldToCurrentEpId.get(ep.id) || ep.id;
+      const epEvals = (ep.episodic_evaluations || []) as EvalRow[];
+      for (const ev of epEvals) {
+        if (!ev.submitted_at) continue;
+        const teamLabel = userTeamMap.get(ev.evaluator_id) || "Other";
+        feedbackTeamSet.add(teamLabel);
+
+        if (ev.revision_id) {
+          const existing = revEvalMap.get(ev.revision_id);
+          if (!existing || ev.submitted_at > existing) {
+            revEvalMap.set(ev.revision_id, ev.submitted_at);
+          }
+          if (!revEvalByTeam.has(ev.revision_id)) revEvalByTeam.set(ev.revision_id, new Map());
+          const teamMap = revEvalByTeam.get(ev.revision_id)!;
+          const existingTeam = teamMap.get(teamLabel);
+          if (!existingTeam || ev.submitted_at > existingTeam.date) {
+            teamMap.set(teamLabel, { date: ev.submitted_at, score: ev.overall_average ?? null, grade: ev.overall_grade ?? null, decision: ev.decision ?? null });
+          }
+        } else {
+          const existing = baseEvalByEpisode.get(currentEpId);
+          if (!existing || ev.submitted_at > existing) {
+            baseEvalByEpisode.set(currentEpId, ev.submitted_at);
+          }
+          if (!baseEvalByTeam.has(currentEpId)) baseEvalByTeam.set(currentEpId, new Map());
+          const teamMap = baseEvalByTeam.get(currentEpId)!;
+          const existingTeam = teamMap.get(teamLabel);
+          if (!existingTeam || ev.submitted_at > existingTeam.date) {
+            teamMap.set(teamLabel, { date: ev.submitted_at, score: ev.overall_average ?? null, grade: ev.overall_grade ?? null, decision: ev.decision ?? null });
+          }
+        }
+      }
+    }
+
+    type TrackRow = { payment_request_date: string | null; payment_date: string | null; tracking_status: string | null };
+    const trackingByEpisode = new Map<string, TrackRow>();
+    for (const ep of currentEpisodes) {
+      const trArr = (ep.episode_tracking || []) as TrackRow[];
+      if (trArr.length > 0) trackingByEpisode.set(ep.id, trArr[0]);
+    }
+
+    const epsByReport = new Map<string, EpRow[]>();
+    for (const ep of currentEpisodes) {
+      if (!epsByReport.has(ep.call_report_id)) epsByReport.set(ep.call_report_id, []);
+      epsByReport.get(ep.call_report_id)!.push(ep);
+    }
+
+    const now = new Date().toISOString();
+    const projects = callReports.map((cr) => {
+      const crEps = epsByReport.get(cr.id) || [];
+      let maxRevisions = 0;
+      const monthBuckets = new Map<string, { freshEps: number; revEps: number }>();
+
+      const mappedEpisodes = crEps.map((ep) => {
+        const epRevs = revsByEpisode.get(ep.id) || [];
+        if (epRevs.length > maxRevisions) maxRevisions = epRevs.length;
+
+        const tr = trackingByEpisode.get(ep.id);
+        const rawFirstCopy = ep.original_submission_date ?? ep.created_at;
+        const rawFirstFeedback = baseEvalByEpisode.get(ep.id) ?? null;
+
+        const mk = monthKey(rawFirstCopy);
+        if (mk) {
+          if (!monthBuckets.has(mk)) monthBuckets.set(mk, { freshEps: 0, revEps: 0 });
+          monthBuckets.get(mk)!.freshEps++;
+        }
+
+        const baseTeamFeedback: Record<string, string | null> = {};
+        const baseTeamDays: Record<string, number | null> = {};
+        const baseTeamScores: Record<string, string | null> = {};
+        const baseTeamMap = baseEvalByTeam.get(ep.id);
+        for (const team of feedbackTeamSet) {
+          const entry = baseTeamMap?.get(team) ?? null;
+          baseTeamFeedback[team] = entry ? fmt(entry.date) : null;
+          baseTeamDays[team] = entry
+            ? daysBetween(rawFirstCopy, entry.date)
+            : daysBetween(rawFirstCopy, now);
+          const s = entry?.score != null ? String(parseFloat(entry.score.toFixed(1))) : null;
+          const d = fmtDecision(entry?.decision ?? null);
+          baseTeamScores[team] = s ? (d ? `${s} · ${d}` : s) : (d || null);
+        }
+
+        return {
+          id: ep.id,
+          episodeNumber: ep.episode_number,
+          firstCopyDate: fmt(rawFirstCopy),
+          firstCopyFeedbackDate: fmt(rawFirstFeedback),
+          firstCopyFeedbackDays: daysBetween(rawFirstCopy, rawFirstFeedback),
+          firstCopyTeamFeedback: baseTeamFeedback,
+          firstCopyTeamDays: baseTeamDays,
+          firstCopyTeamScores: baseTeamScores,
+          revisions: epRevs.map((rev) => {
+            const rawRevDate = rev.original_submission_date ?? rev.created_at;
+            const rawRevFeedback = revEvalMap.get(rev.id) ?? null;
+
+            const rmk = monthKey(rawRevDate);
+            if (rmk) {
+              if (!monthBuckets.has(rmk)) monthBuckets.set(rmk, { freshEps: 0, revEps: 0 });
+              monthBuckets.get(rmk)!.revEps++;
+            }
+
+            const revTeamFeedback: Record<string, string | null> = {};
+            const revTeamDays: Record<string, number | null> = {};
+            const revTeamScores: Record<string, string | null> = {};
+            const revTeamMap = revEvalByTeam.get(rev.id);
+            for (const team of feedbackTeamSet) {
+              const entry = revTeamMap?.get(team) ?? null;
+              revTeamFeedback[team] = entry ? fmt(entry.date) : null;
+              revTeamDays[team] = entry
+                ? daysBetween(rawRevDate, entry.date)
+                : daysBetween(rawRevDate, now);
+              const s = entry?.score != null ? String(parseFloat(entry.score.toFixed(1))) : null;
+              const d = fmtDecision(entry?.decision ?? null);
+              revTeamScores[team] = s ? (d ? `${s} · ${d}` : s) : (d || null);
+            }
+
+            return {
+              revisionNumber: rev.revision_number,
+              receivedDate: fmt(rawRevDate),
+              feedbackDate: fmt(rawRevFeedback),
+              feedbackDays: daysBetween(rawRevDate, rawRevFeedback),
+              teamFeedback: revTeamFeedback,
+              teamDays: revTeamDays,
+              teamScores: revTeamScores,
+            };
+          }),
+          paymentRequestDate: tr?.payment_request_date ?? null,
+          paymentDate: tr?.payment_date ?? null,
+          trackingStatus: tr?.tracking_status ?? null,
+        };
+      });
+
+      const monthlySummary = Array.from(monthBuckets.entries())
+        .sort((a, b) => {
+          const parseMonthKey = (k: string) => {
+            const [mon, yr] = k.split(" ");
+            const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+            return (2000 + parseInt(yr)) * 100 + months.indexOf(mon);
+          };
+          return parseMonthKey(a[0]) - parseMonthKey(b[0]);
+        })
+        .map(([month, counts]) => ({ month, ...counts }));
+
+      const teamData = Array.isArray(cr.team) ? cr.team[0] : cr.team;
+      const teamHead = teamData?.team_head ? (Array.isArray(teamData.team_head) ? teamData.team_head[0] : teamData.team_head) : null;
+
+      const crFbMap = crTeamFeedback.get(cr.id);
+      const rawCrLogged = crLoggedDate.get(cr.id) ?? null;
+      const oneLinerTeamFeedback: Record<string, string | null> = {};
+      const oneLinerTeamDays: Record<string, number | null> = {};
+      const oneLinerTeamScores: Record<string, string | null> = {};
+      for (const team of feedbackTeamSet) {
+        const entry = crFbMap?.get(team) ?? null;
+        oneLinerTeamFeedback[team] = entry ? fmt(entry.date) : null;
+        oneLinerTeamDays[team] = rawCrLogged
+          ? (entry ? daysBetween(rawCrLogged, entry.date) : daysBetween(rawCrLogged, now))
+          : null;
+        const s = entry?.score != null ? String(parseFloat(entry.score.toFixed(1))) : null;
+        const d = fmtDecision(entry?.decision ?? null);
+        oneLinerTeamScores[team] = s ? (d ? `${s} · ${d}` : s) : (d || null);
+      }
+
+      return {
+        id: cr.id,
+        workingTitle: cr.working_title || "Untitled",
+        writerName: cr.writer_name || null,
+        trackingNotes: cr.tracking_notes || null,
+        targetSlot: cr.target_slot || null,
+        teamName: formatTeamDisplayName(teamData?.name || "", teamHead?.name),
+        avgScore: cr.average_initial_assessment ?? null,
+        oneLiner: {
+          loggedDate: fmt(rawCrLogged),
+          teamFeedback: oneLinerTeamFeedback,
+          teamDays: oneLinerTeamDays,
+          teamScores: oneLinerTeamScores,
+        },
+        episodes: mappedEpisodes,
+        maxRevisions,
+        monthlySummary,
+      };
+    });
+
+    const globalMaxRevisions = Math.max(0, ...projects.map((p) => p.maxRevisions));
+
+    const feedbackTeams = Array.from(feedbackTeamSet).sort((a, b) => {
+      if (a === "Programming's Feedback") return -1;
+      if (b === "Programming's Feedback") return 1;
+      return a.localeCompare(b);
+    });
+
+    return NextResponse.json({ projects, globalMaxRevisions, feedbackTeams });
+  } catch (error) {
+    console.error("Evaluator Tracking API error:", error);
+    return NextResponse.json({ error: "An unexpected error occurred" }, { status: 500 });
+  }
+}

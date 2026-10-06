@@ -32,6 +32,11 @@ const evaluatorNavItems = [
     icon: "users",
   },
   {
+    title: "Tracker",
+    href: "/evaluator/tracker",
+    icon: "activity",
+  },
+  {
     title: "Writer Contracts",
     href: "/evaluator/contract-terms",
     icon: "handshake",

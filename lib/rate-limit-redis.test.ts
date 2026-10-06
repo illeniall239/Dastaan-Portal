@@ -1,150 +1,148 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { getClientIdentifier } from './rate-limit-redis';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
-// Mock Next.js server
 vi.mock('next/server', () => ({
   NextResponse: {
-    json: vi.fn((data, init) => ({
-      json: () => Promise.resolve(data),
-      ...init,
-    })),
+    json: vi.fn((data, init) => ({ json: () => Promise.resolve(data), ...init })),
   },
 }));
 
-describe('Rate Limit Utilities', () => {
-  describe('getClientIdentifier', () => {
-    beforeEach(() => {
-      vi.clearAllMocks();
+// Force Redis unavailable so rateLimit uses in-memory fallback instantly
+vi.mock('@upstash/redis', () => ({ Redis: vi.fn(() => { throw new Error('no redis in test'); }) }));
+vi.mock('@upstash/ratelimit', () => ({ Ratelimit: vi.fn(() => { throw new Error('no redis in test'); }) }));
+
+import { getClientIdentifier, rateLimit, RateLimitPresets, createRateLimitHeaders } from './rate-limit-redis';
+
+describe('getClientIdentifier', () => {
+  it('extracts first IP from x-forwarded-for', () => {
+    const req = new Request('http://localhost/api/test', {
+      headers: { 'x-forwarded-for': '203.0.113.1, 198.51.100.1' },
     });
-
-    it('should extract IP from x-forwarded-for header', () => {
-      const request = new Request('http://localhost:3000/api/test', {
-        headers: {
-          'x-forwarded-for': '192.168.1.100, 10.0.0.1',
-        },
-      });
-
-      const identifier = getClientIdentifier(request);
-      expect(identifier).toBe('192.168.1.100');
-    });
-
-    it('should extract IP from x-real-ip header when x-forwarded-for is missing', () => {
-      const request = new Request('http://localhost:3000/api/test', {
-        headers: {
-          'x-real-ip': '192.168.1.200',
-        },
-      });
-
-      const identifier = getClientIdentifier(request);
-      expect(identifier).toBe('192.168.1.200');
-    });
-
-    it('should use fallback when no IP headers present', () => {
-      const request = new Request('http://localhost:3000/api/test', {
-        headers: {},
-      });
-
-      const identifier = getClientIdentifier(request);
-      expect(identifier).toBe('anonymous');
-    });
-
-    it('should handle multiple IPs in x-forwarded-for (use first)', () => {
-      const request = new Request('http://localhost:3000/api/test', {
-        headers: {
-          'x-forwarded-for': '203.0.113.1, 198.51.100.1, 192.0.2.1',
-        },
-      });
-
-      const identifier = getClientIdentifier(request);
-      expect(identifier).toBe('203.0.113.1');
-    });
-
-    it('should trim whitespace from IP addresses', () => {
-      const request = new Request('http://localhost:3000/api/test', {
-        headers: {
-          'x-forwarded-for': '  192.168.1.100  , 10.0.0.1',
-        },
-      });
-
-      const identifier = getClientIdentifier(request);
-      expect(identifier).toBe('192.168.1.100');
-    });
-
-    it('should handle empty x-forwarded-for header', () => {
-      const request = new Request('http://localhost:3000/api/test', {
-        headers: {
-          'x-forwarded-for': '',
-          'x-real-ip': '192.168.1.100',
-        },
-      });
-
-      const identifier = getClientIdentifier(request);
-      expect(identifier).toBe('192.168.1.100');
-    });
-
-    it('should handle IPv6 addresses', () => {
-      const request = new Request('http://localhost:3000/api/test', {
-        headers: {
-          'x-forwarded-for': '2001:0db8:85a3:0000:0000:8a2e:0370:7334',
-        },
-      });
-
-      const identifier = getClientIdentifier(request);
-      expect(identifier).toBe('2001:0db8:85a3:0000:0000:8a2e:0370:7334');
-    });
+    expect(getClientIdentifier(req)).toBe('203.0.113.1');
   });
 
-  describe('Rate Limit Configuration', () => {
-    it('should validate rate limit config structure', () => {
-      const config = {
-        limit: 10,
-        window: 60000, // 1 minute
-      };
-
-      expect(config.limit).toBeGreaterThan(0);
-      expect(config.window).toBeGreaterThan(0);
+  it('falls back to x-real-ip', () => {
+    const req = new Request('http://localhost/api/test', {
+      headers: { 'x-real-ip': '192.168.1.200' },
     });
-
-    it('should handle different time windows', () => {
-      const configs = [
-        { limit: 5, window: 60000 },      // 1 minute
-        { limit: 100, window: 3600000 },  // 1 hour
-        { limit: 1000, window: 86400000 }, // 1 day
-      ];
-
-      configs.forEach(config => {
-        expect(config.limit).toBeGreaterThan(0);
-        expect(config.window).toBeGreaterThan(0);
-      });
-    });
+    expect(getClientIdentifier(req)).toBe('192.168.1.200');
   });
 
-  describe('Rate Limit Result', () => {
-    it('should have correct structure for successful request', () => {
-      const result = {
-        success: true,
-        limit: 10,
-        remaining: 5,
-        reset: Date.now() + 60000,
-      };
+  it('returns anonymous when no IP headers', () => {
+    const req = new Request('http://localhost/api/test');
+    expect(getClientIdentifier(req)).toBe('anonymous');
+  });
 
-      expect(result.success).toBe(true);
-      expect(result.limit).toBe(10);
-      expect(result.remaining).toBeLessThan(result.limit);
-      expect(result.reset).toBeGreaterThan(Date.now());
+  it('trims whitespace from IPs', () => {
+    const req = new Request('http://localhost/api/test', {
+      headers: { 'x-forwarded-for': '  10.0.0.1  , 10.0.0.2' },
     });
+    expect(getClientIdentifier(req)).toBe('10.0.0.1');
+  });
+});
 
-    it('should have correct structure for rate-limited request', () => {
-      const result = {
-        success: false,
-        limit: 10,
-        remaining: 0,
-        reset: Date.now() + 60000,
-      };
+describe('rateLimit (in-memory fallback, no Redis configured)', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
 
-      expect(result.success).toBe(false);
-      expect(result.remaining).toBe(0);
-      expect(result.reset).toBeGreaterThan(Date.now());
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('allows requests up to the limit', async () => {
+    const config = { limit: 3, window: 60_000 };
+    const id = `test-allow-${Date.now()}`;
+
+    const r1 = await rateLimit(id, config);
+    const r2 = await rateLimit(id, config);
+    const r3 = await rateLimit(id, config);
+
+    expect(r1.success).toBe(true);
+    expect(r1.remaining).toBe(2);
+    expect(r2.success).toBe(true);
+    expect(r2.remaining).toBe(1);
+    expect(r3.success).toBe(true);
+    expect(r3.remaining).toBe(0);
+  });
+
+  it('blocks the request after the limit is exceeded', async () => {
+    const config = { limit: 2, window: 60_000 };
+    const id = `test-block-${Date.now()}`;
+
+    await rateLimit(id, config);
+    await rateLimit(id, config);
+    const r3 = await rateLimit(id, config);
+
+    expect(r3.success).toBe(false);
+    expect(r3.remaining).toBe(0);
+  });
+
+  it('resets after the window expires', async () => {
+    const config = { limit: 1, window: 10_000 };
+    const id = `test-reset-${Date.now()}`;
+
+    const r1 = await rateLimit(id, config);
+    expect(r1.success).toBe(true);
+
+    const r2 = await rateLimit(id, config);
+    expect(r2.success).toBe(false);
+
+    vi.advanceTimersByTime(10_001);
+
+    const r3 = await rateLimit(id, config);
+    expect(r3.success).toBe(true);
+    expect(r3.remaining).toBe(0);
+  });
+
+  it('tracks different identifiers independently', async () => {
+    const config = { limit: 1, window: 60_000 };
+    const idA = `test-independent-a-${Date.now()}`;
+    const idB = `test-independent-b-${Date.now()}`;
+
+    const a1 = await rateLimit(idA, config);
+    const b1 = await rateLimit(idB, config);
+
+    expect(a1.success).toBe(true);
+    expect(b1.success).toBe(true);
+
+    const a2 = await rateLimit(idA, config);
+    const b2 = await rateLimit(idB, config);
+
+    expect(a2.success).toBe(false);
+    expect(b2.success).toBe(false);
+  });
+});
+
+describe('RateLimitPresets', () => {
+  it('bulk preset is generous enough for heavy upload sessions', () => {
+    expect(RateLimitPresets.bulk).toEqual({ limit: 100, window: 5 * 60 * 1000 });
+  });
+
+  it('strict < standard < relaxed in requests per minute', () => {
+    const rpm = (p: { limit: number; window: number }) => p.limit / (p.window / 60_000);
+    expect(rpm(RateLimitPresets.strict)).toBeLessThan(rpm(RateLimitPresets.standard));
+    expect(rpm(RateLimitPresets.standard)).toBeLessThan(rpm(RateLimitPresets.relaxed));
+  });
+
+  it('veryStrict is the most restrictive preset per minute', () => {
+    const rpm = (p: { limit: number; window: number }) => p.limit / (p.window / 60_000);
+    const presets = Object.values(RateLimitPresets);
+    const veryStrictRpm = rpm(RateLimitPresets.veryStrict);
+    for (const preset of presets) {
+      if (preset === RateLimitPresets.veryStrict) continue;
+      expect(veryStrictRpm).toBeLessThanOrEqual(rpm(preset));
+    }
+  });
+});
+
+describe('createRateLimitHeaders', () => {
+  it('returns standard rate limit headers', () => {
+    const headers = createRateLimitHeaders({
+      success: true, limit: 60, remaining: 42, reset: 1700000000,
     });
+    expect(headers['X-RateLimit-Limit']).toBe('60');
+    expect(headers['X-RateLimit-Remaining']).toBe('42');
+    expect(headers['X-RateLimit-Reset']).toBe('1700000000');
+    expect(headers['RateLimit-Limit']).toBe('60');
   });
 });

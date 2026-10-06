@@ -103,7 +103,7 @@ export async function PATCH(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const rate = await applyRateLimit(request, RateLimitPresets.strict, user.id);
+  const rate = await applyRateLimit(request, RateLimitPresets.standard, user.id);
   if (!rate.success) return rate.response!;
 
   // Check user role and team

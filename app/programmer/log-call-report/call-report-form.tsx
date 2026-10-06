@@ -31,6 +31,7 @@ import type { Writer, CallReportWriter } from "@/types";
 import { useFormAutosave } from "@/lib/hooks/useFormAutosave";
 import { DraftRestoreBanner } from "@/components/ui/draft-restore-banner";
 import { createClient } from "@/lib/supabase/client";
+import { linkDraftAttachments } from "@/lib/attachments/link-draft-attachments";
 import { uploadAndVerify } from "@/lib/storage/verify-upload";
 
 interface User {
@@ -530,35 +531,17 @@ export function CallReportForm({
         }
 
         // Link draft-uploaded attachments to the new call report
+        let linkedDraftCount = 0;
         if (draftAttachments.length > 0 && result.id) {
           const supabase = createClient();
-          for (const att of draftAttachments) {
-            try {
-              const ext = att.file_name.includes('.') ? '.' + att.file_name.split('.').pop() : '';
-              const newPath = `call_report/${result.id}/${crypto.randomUUID()}${ext}`;
-              const { error: moveError } = await supabase.storage.from('attachments').move(att.file_path, newPath);
-              if (moveError) {
-                console.error("Storage move failed:", moveError);
-                toast.error(`Failed to attach ${att.file_name}: could not move file`);
-                continue;
-              }
-              await supabase.from('attachments').insert({
-                entity_type: 'call_report',
-                entity_id: result.id,
-                file_name: att.file_name,
-                file_path: newPath,
-                file_size: att.file_size,
-                file_type: att.file_type || 'application/octet-stream',
-                uploaded_by: userId,
-              });
-            } catch (err) {
-              console.error("Error linking draft attachment:", err);
-              toast.error(`Failed to attach ${att.file_name}`);
-            }
+          const linkResult = await linkDraftAttachments(supabase, "call_report", result.id, userId, draftAttachments);
+          linkedDraftCount = linkResult.linked;
+          for (const f of linkResult.failed) {
+            toast.error(`Failed to attach ${f.fileName}`);
           }
         }
 
-        const totalAttachments = filesToUpload.length + draftAttachments.length;
+        const totalAttachments = filesToUpload.length + linkedDraftCount;
         if (totalAttachments > 0) {
           toast.success(`One-Liner Report logged successfully with ${totalAttachments} attachment(s)!`);
         } else {

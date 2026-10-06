@@ -35,7 +35,7 @@ export async function POST(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const rate = await applyRateLimit(request, RateLimitPresets.standard, user.id);
+  const rate = await applyRateLimit(request, RateLimitPresets.bulk, user.id);
   if (!rate.success) return rate.response!;
 
   // Check role

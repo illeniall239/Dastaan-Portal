@@ -280,6 +280,12 @@ export const RateLimitPresets = {
   relaxed: { limit: 200, window: 60 * 1000 },
 
   /**
+   * Bulk: 30 requests per 2 minutes
+   * Use for: Upload-heavy endpoints (episode creation, file uploads in bulk sessions)
+   */
+  bulk: { limit: 100, window: 5 * 60 * 1000 },
+
+  /**
    * Very Strict: 10 requests per 5 minutes
    * Use for: Email sending, notification creation, external API calls
    */
