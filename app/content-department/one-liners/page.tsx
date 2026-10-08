@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { useRealtimeRefresh } from "@/lib/hooks/useRealtimeRefresh";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { Loader2, PlusIcon } from "lucide-react";
@@ -17,6 +18,8 @@ export default function ContentDepartmentOneLinersPage() {
   const [isTeamHead, setIsTeamHead] = useState(false);
   const [currentTeamId, setCurrentTeamId] = useState<string | null>(null);
   const [currentUserRole, setCurrentUserRole] = useState<string | null>(null);
+
+  const realtimeVersion = useRealtimeRefresh(["call_reports", "call_report_revisions"]);
 
   // Fetch user info
   useEffect(() => {
@@ -63,7 +66,7 @@ export default function ContentDepartmentOneLinersPage() {
       }
     };
     fetchReports();
-  }, []);
+  }, [realtimeVersion]);
 
   return (
     <div className="mobile-container mobile-section">

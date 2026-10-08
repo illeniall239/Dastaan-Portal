@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { useRealtimeRefresh } from "@/lib/hooks/useRealtimeRefresh";
 import { uploadAndVerify } from "@/lib/storage/verify-upload";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -177,6 +178,13 @@ export function ContentRevisions({
 
   const revisionsUrl = `${apiBasePath}/${entityId}/revisions`;
 
+  const realtimeTables = useMemo(() => {
+    const table = entityType === "episode" ? "episode_revisions" : "call_report_revisions";
+    const fk = entityType === "episode" ? "episode_id" : "call_report_id";
+    return [{ table, filter: `${fk}=eq.${entityId}` }];
+  }, [entityId, entityType]);
+  const realtimeVersion = useRealtimeRefresh(realtimeTables);
+
   // Determine if user can view/set initial assessment
   const canViewAssessment = userRole && [
     "content_manager", "content_creator", "content_head", "admin", "management", "programmer", "gcm", "evaluator"
@@ -210,7 +218,7 @@ export function ContentRevisions({
 
   useEffect(() => {
     fetchRevisions();
-  }, [fetchRevisions]);
+  }, [fetchRevisions, realtimeVersion]);
 
   const handleAddRevision = async () => {
     if (!file && !comment.trim()) {

@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
+import { useRealtimeRefresh } from "@/lib/hooks/useRealtimeRefresh";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -57,6 +58,14 @@ export function RevisionEvaluateList({
   readOnly,
 }: RevisionEvaluateListProps) {
   const router = useRouter();
+
+  const realtimeTables = useMemo(() => {
+    const table = entityType === "episode" ? "episode_revisions" : "call_report_revisions";
+    const fk = entityType === "episode" ? "episode_id" : "call_report_id";
+    return [{ table, filter: `${fk}=eq.${entityId}` }];
+  }, [entityId, entityType]);
+  const realtimeVersion = useRealtimeRefresh(realtimeTables);
+
   const [revisions, setRevisions] = useState<Revision[]>([]);
   const [statuses, setStatuses] = useState<{
     original: RevisionStatus;
@@ -80,9 +89,7 @@ export function RevisionEvaluateList({
             : `/api/evaluator/forms/by-call-report/${entityId}/revision-statuses`;
 
         const [revisionsRes, statusesRes] = await Promise.all([
-          revisionCount > 0
-            ? fetch(`${revisionsUrl}?_t=${Date.now()}`, { cache: "no-store" })
-            : Promise.resolve(null),
+          fetch(`${revisionsUrl}?_t=${Date.now()}`, { cache: "no-store" }),
           fetch(`${statusesUrl}?_t=${Date.now()}`, { cache: "no-store" }),
         ]);
 
@@ -103,7 +110,7 @@ export function RevisionEvaluateList({
     };
 
     fetchData();
-  }, [entityId, entityType, revisionCount]);
+  }, [entityId, entityType, realtimeVersion]);
 
   const getEvaluateUrl = (revisionId?: string) => {
     const basePath = evaluateBasePath

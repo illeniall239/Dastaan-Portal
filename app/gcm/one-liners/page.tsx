@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { useRealtimeRefresh } from "@/lib/hooks/useRealtimeRefresh";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { Loader2, PlusIcon } from "lucide-react";
@@ -16,6 +17,8 @@ export default function GcmOneLinersPage() {
   const [reportsLoading, setReportsLoading] = useState(true);
   const [isTeamHead, setIsTeamHead] = useState(false);
   const [currentTeamId, setCurrentTeamId] = useState<string | null>(null);
+
+  const realtimeVersion = useRealtimeRefresh(["call_reports", "call_report_revisions"]);
 
   // Fetch user info
   useEffect(() => {
@@ -61,7 +64,7 @@ export default function GcmOneLinersPage() {
       }
     };
     fetchReports();
-  }, []);
+  }, [realtimeVersion]);
 
   return (
     <div className="mobile-container mobile-section">

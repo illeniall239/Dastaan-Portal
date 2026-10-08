@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { useRealtimeRefresh } from "@/lib/hooks/useRealtimeRefresh";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -70,6 +71,8 @@ export default function ContentDepartmentEpisodesPage() {
   const [isTeamHead, setIsTeamHead] = useState(false);
   const [currentTeamId, setCurrentTeamId] = useState<string | null>(null);
   const [revisionOpenEpisodeId, setRevisionOpenEpisodeId] = useState<string | null>(null);
+
+  const realtimeVersion = useRealtimeRefresh(["episode_revisions", "episodes"]);
 
   // AbortController ref for cancelling in-flight requests
   const episodesAbortRef = useRef<AbortController | null>(null);
@@ -164,7 +167,7 @@ export default function ContentDepartmentEpisodesPage() {
     return () => {
       episodesAbortRef.current?.abort();
     };
-  }, [fetchEpisodesAndStatus]);
+  }, [fetchEpisodesAndStatus, realtimeVersion]);
 
   // Server-side search: debounce input, then re-fetch from API
   useEffect(() => {
