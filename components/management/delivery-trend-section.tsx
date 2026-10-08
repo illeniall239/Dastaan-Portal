@@ -80,10 +80,12 @@ export function DeliveryTrendSection() {
         agg.set(entry.month, existing);
       }
     }
-    const indices = Array.from(agg.keys()).map(toIdx);
+    const indices = Array.from(agg.keys()).map(toIdx).filter(i => i >= 0);
+    const jan25Idx = 2025 * 12 + 0;
     const jan26Idx = 2026 * 12 + 0;
-    const minIdx = indices.length > 0 ? Math.min(jan26Idx, ...indices) : jan26Idx;
-    const maxIdx = indices.length > 0 ? Math.max(...indices) : jan26Idx;
+    const validIndices = indices.filter(i => i >= jan25Idx);
+    const minIdx = validIndices.length > 0 ? Math.min(jan26Idx, ...validIndices) : jan26Idx;
+    const maxIdx = validIndices.length > 0 ? Math.max(...validIndices) : jan26Idx;
     const result: { month: string; "Fresh Eps": number; "Rev Eps": number }[] = [];
     for (let i = minIdx; i <= maxIdx; i++) {
       const key = fromIdx(i);

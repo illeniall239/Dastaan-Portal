@@ -35,11 +35,12 @@ function daysBetween(d1: string | null, d2: string | null): number | null {
   return Math.round(ms / 86400000);
 }
 
+const MONTH_ABBR = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 function monthKey(d: string | null): string | null {
   if (!d) return null;
   try {
     const date = new Date(d);
-    return date.toLocaleDateString("en-GB", { month: "short", year: "2-digit" });
+    return `${MONTH_ABBR[date.getMonth()]} ${String(date.getFullYear()).slice(2)}`;
   } catch { return null; }
 }
 
