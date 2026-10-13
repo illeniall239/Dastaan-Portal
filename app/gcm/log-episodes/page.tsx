@@ -76,7 +76,7 @@ export default function LogEpisodesPage() {
   const [currentUserRole, setCurrentUserRole] = useState<string | null>(null);
 
   const [newEpisodes, setNewEpisodes] = useState<EpisodeFormEntry[]>([
-    { episode_number: 1, file: null, additional_info: "" },
+    { _key: "ep-init-0", episode_number: 1, file: null, additional_info: "" },
   ]);
 
   const [uploadProgress, setUploadProgress] = useState<Record<number, number>>({});
@@ -102,7 +102,7 @@ export default function LogEpisodesPage() {
       const d = data as Record<string, any>;
       if (d.selectedSource) setSelectedSource(d.selectedSource);
       if (d.episodes) {
-        setNewEpisodes(d.episodes.map((ep: any) => ({ ...ep, file: null })));
+        setNewEpisodes(d.episodes.map((ep: any, i: number) => ({ ...ep, file: null, _key: ep._key || `ep-draft-${i}` })));
       }
       setDraftDismissed(true);
       toast.success("Draft restored (files must be re-selected)");
@@ -166,14 +166,14 @@ export default function LogEpisodesPage() {
       return numbers;
     });
     const nextEpisodeNumber = numbers.length > 0 ? Math.max(...numbers) + 1 : 1;
-    setNewEpisodes([{ episode_number: nextEpisodeNumber, file: null, additional_info: "" }]);
+    setNewEpisodes([{ _key: `ep-source-${Date.now()}`, episode_number: nextEpisodeNumber, file: null, additional_info: "" }]);
   }, [existingEpisodesForSource]);
 
   const loadExistingEpisodes = useCallback(async () => {
     if (!selectedSource) {
       setExistingEpisodesForSource([]);
       setExistingEpisodeNumbers([]);
-      setNewEpisodes([{ episode_number: 1, file: null, additional_info: "" }]);
+      setNewEpisodes([{ _key: `ep-reset-${Date.now()}`, episode_number: 1, file: null, additional_info: "" }]);
       return;
     }
     setExistingEpisodesLoading(true);
@@ -196,7 +196,7 @@ export default function LogEpisodesPage() {
       console.error("Error fetching existing episodes:", error);
       toast.error("Failed to fetch existing episodes");
       setExistingEpisodesForSource([]); setExistingEpisodeNumbers([]);
-      setNewEpisodes([{ episode_number: 1, file: null, additional_info: "" }]);
+      setNewEpisodes([{ _key: `ep-err-${Date.now()}`, episode_number: 1, file: null, additional_info: "" }]);
     } finally { setExistingEpisodesLoading(false); }
   }, [selectedSource]);
 
@@ -317,11 +317,11 @@ export default function LogEpisodesPage() {
       const payload = { call_report_id: selectedSource, episodes: episodesData };
       const response = await fetch("/api/episodes", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
       const result = await response.json();
-      if (!response.ok) throw new Error(result.details || result.error || "Failed to create episodes");
+      if (!response.ok) { const raw = result.details || result.error || "Failed to create episodes"; throw new Error(typeof raw === "string" ? raw : JSON.stringify(raw)); }
       await clearDraft();
       toast.success(`Successfully logged ${newEpisodes.length} episode(s)`);
       setSelectedSource("");
-      setNewEpisodes([{ episode_number: 1, file: null, additional_info: "" }]);
+      setNewEpisodes([{ _key: `ep-done-${Date.now()}`, episode_number: 1, file: null, additional_info: "" }]);
       router.push("/gcm/episodes");
       router.refresh();
     } catch (error: any) { console.error("Error creating episodes:", error); toast.error(error.message || "Failed to log episodes"); }

@@ -1,6 +1,5 @@
 "use client";
 
-import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,6 +11,7 @@ import { Plus, Trash2, AlertCircle } from "lucide-react";
 import { Card } from "@/components/ui/card";
 
 export interface EpisodeFormEntry {
+  _key?: string;
   episode_number: number;
   file: File | null;
   additional_info: string;
@@ -28,6 +28,8 @@ interface EpisodeUploadFormProps {
   onAssessmentTouch?: (episodeNumber: number) => void;
 }
 
+let _globalKeyId = 0;
+
 export function EpisodeUploadForm({
   episodes,
   onEpisodesChange,
@@ -36,11 +38,6 @@ export function EpisodeUploadForm({
   uploadProgress = {},
   onAssessmentTouch,
 }: EpisodeUploadFormProps) {
-  const updateEpisodes = (list: EpisodeFormEntry[]) => {
-    // Sort episodes by episode_number before updating parent
-    const sorted = [...list].sort((a, b) => a.episode_number - b.episode_number);
-    onEpisodesChange(sorted);
-  };
 
   const addEpisode = () => {
     const nextEpisodeNumber =
@@ -50,30 +47,31 @@ export function EpisodeUploadForm({
 
     const hasAssessment = episodes.length > 0 && episodes[0].initial_assessment !== undefined;
     const newEpisode: EpisodeFormEntry = {
+      _key: `ep-${++_globalKeyId}`,
       episode_number: nextEpisodeNumber,
       file: null,
       additional_info: "",
       ...(hasAssessment ? { initial_assessment: 5 } : {}),
     };
 
-    updateEpisodes([...episodes, newEpisode]);
+    onEpisodesChange([...episodes, newEpisode]);
   };
 
   const removeEpisode = (index: number) => {
-    updateEpisodes(episodes.filter((_, i) => i !== index));
+    onEpisodesChange(episodes.filter((_, i) => i !== index));
   };
 
   const updateEpisode = (index: number, field: keyof EpisodeFormEntry, value: any) => {
     const updated = episodes.map((episode, i) =>
       i === index ? { ...episode, [field]: value } : episode
     );
-    updateEpisodes(updated);
+    onEpisodesChange(updated);
   };
 
   return (
     <div className="space-y-3 sm:space-y-4 md:space-y-6">
       {episodes.map((episode, index) => (
-        <Card key={`episode-${episode.episode_number}-${index}`} className="p-3 sm:p-4 md:p-6">
+        <Card key={episode._key || `ep-fallback-${index}`} className="p-3 sm:p-4 md:p-6">
           <div className="space-y-3 sm:space-y-4">
             {/* Header with Episode Number and Remove Button */}
             <div className="flex items-center justify-between mb-2 sm:mb-3 md:mb-4">

@@ -25,6 +25,7 @@ import {
   ChevronDown,
   Pencil,
   Upload,
+  Archive,
 } from "lucide-react";
 import type { EpisodeWithDetails } from "@/types";
 import { canEditEpisode as canEditEpisodeUtil } from "@/lib/episodes/permissions";
@@ -44,6 +45,7 @@ interface ProjectGroup {
   writerName?: string;
   projectStatus?: string;
   episodes: EpisodeWithDetails[];
+  archivedEpisodes: EpisodeWithDetails[];
   totalCount: number;
   sourceId?: string;
 }
@@ -119,7 +121,7 @@ export default function ContentDepartmentEpisodesPage() {
       // Fetch episodes with project-based pagination (20 projects at a time, all their episodes)
       const searchParam = search ? `&search=${encodeURIComponent(search)}` : "";
       const response = await fetch(
-        `/api/episodes?group_by_project=true&project_limit=20&project_page=${page}&include_evaluation_status=true${searchParam}&_t=${Date.now()}`,
+        `/api/episodes?group_by_project=true&project_limit=20&project_page=${page}&include_evaluation_status=true&include_archived=true${searchParam}&_t=${Date.now()}`,
         { cache: 'no-store', signal: controller.signal }
       );
       const data = await response.json();
@@ -206,6 +208,22 @@ export default function ContentDepartmentEpisodesPage() {
     }
   };
 
+  const handleArchive = async (episode: EpisodeWithDetails) => {
+    try {
+      const res = await fetch(`/api/episodes/${episode.id}/archive`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ archive: true }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to archive");
+      toast.success(`EP ${episode.episode_number} archived`);
+      setEpisodes(prev => prev.filter(e => e.id !== episode.id));
+    } catch (err: any) {
+      toast.error(err.message || "Failed to archive episode");
+    }
+  };
+
   // Episodes are already filtered server-side when search is active
   const filteredEpisodes = episodes;
 
@@ -252,18 +270,26 @@ export default function ContentDepartmentEpisodesPage() {
           writerName,
           projectStatus,
           episodes: [],
+          archivedEpisodes: [],
           totalCount: 0,
           sourceId,
         });
       }
 
       const group = projectsMap.get(projectId)!;
-      group.episodes.push(ep);
-      group.totalCount++;
+      if (ep.archived_at) {
+        group.archivedEpisodes.push(ep);
+      } else {
+        group.episodes.push(ep);
+        group.totalCount++;
+      }
     });
 
     projectsMap.forEach((group) => {
       group.episodes.sort(
+        (a, b) => (a.episode_number ?? 0) - (b.episode_number ?? 0)
+      );
+      group.archivedEpisodes.sort(
         (a, b) => (a.episode_number ?? 0) - (b.episode_number ?? 0)
       );
     });
@@ -456,6 +482,12 @@ export default function ContentDepartmentEpisodesPage() {
                                         />
                                       </DropdownMenuItem>
                                     )}
+                                    {currentUserRole && ["content_creator", "content_manager", "evaluator", "admin"].includes(currentUserRole) && (
+                                      <DropdownMenuItem onClick={() => handleArchive(episode)} className="text-orange-600">
+                                        <Archive className="mr-2 h-4 w-4" />
+                                        Archive
+                                      </DropdownMenuItem>
+                                    )}
                                   </DropdownMenuContent>
                                 </DropdownMenu>
                               </div>
@@ -521,6 +553,60 @@ export default function ContentDepartmentEpisodesPage() {
                             )}
                           </div>
                         ))}
+
+                        {/* Archived episodes section */}
+                        {project.archivedEpisodes.length > 0 && (
+                          <div className="mt-3 border border-dashed border-orange-300 rounded-lg bg-orange-50/50 p-3">
+                            <div className="flex items-center gap-2 mb-2">
+                              <Archive className="h-4 w-4 text-orange-500" />
+                              <span className="text-sm font-medium text-orange-700">
+                                Archived ({project.archivedEpisodes.length})
+                              </span>
+                            </div>
+                            <div className="space-y-2">
+                              {project.archivedEpisodes.map((episode) => (
+                                <div key={episode.id} className="bg-white/80 rounded border border-orange-200 overflow-hidden">
+                                  <div
+                                    className="flex items-center justify-between px-3 py-2 cursor-pointer hover:bg-orange-50/50"
+                                    onClick={() => toggleEpisode(episode.id)}
+                                  >
+                                    <div className="flex items-center gap-2 min-w-0">
+                                      {expandedEpisodes.has(episode.id) ? (
+                                        <ChevronDown className="h-3.5 w-3.5 text-orange-400 flex-shrink-0" />
+                                      ) : (
+                                        <ChevronRight className="h-3.5 w-3.5 text-orange-400 flex-shrink-0" />
+                                      )}
+                                      <Badge variant="outline" className="text-orange-600 border-orange-300 text-xs">EP {episode.episode_number}</Badge>
+                                      <span className="text-sm text-muted-foreground truncate">
+                                        {episode.attachment_name || "No attachment"}
+                                      </span>
+                                      <span className="text-xs text-orange-500 hidden sm:inline">
+                                        {episode.archived_at ? formatDate(episode.archived_at) : ""}
+                                      </span>
+                                    </div>
+                                    <div className="flex items-center gap-2 flex-shrink-0">
+                                      {episode.attachment_url && (
+                                        <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={(e) => { e.stopPropagation(); handleDownload(episode); }}>
+                                          <Download className="h-3 w-3 mr-1" />
+                                          View
+                                        </Button>
+                                      )}
+                                    </div>
+                                  </div>
+                                  {expandedEpisodes.has(episode.id) && (
+                                    <div className="px-3 pb-3 border-t border-orange-200">
+                                      <EpisodeRevisions
+                                        episodeId={episode.id}
+                                        canEdit={false}
+                                        userRole={currentUserRole || undefined}
+                                      />
+                                    </div>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>

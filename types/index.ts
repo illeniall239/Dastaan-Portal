@@ -577,6 +577,8 @@ export interface Episode {
   average_initial_assessment?: number | null; // Denormalized avg from initial_assessments table
   assessment_count?: number; // Denormalized count from initial_assessments table
   evaluation_round?: number;
+  archived_at?: string | null;
+  archived_by?: string | null;
 }
 
 export interface EpisodeWithDetails extends Episode {

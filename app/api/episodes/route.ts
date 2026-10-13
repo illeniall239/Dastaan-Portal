@@ -113,7 +113,8 @@ export async function POST(request: Request) {
       .from("episodes")
       .select("episode_number")
       .in("episode_number", episodeNumbers)
-      .eq("is_current", true);
+      .eq("is_current", true)
+      .is("archived_at", null);
 
     if (call_report_id) {
       existingQuery = existingQuery.eq("call_report_id", call_report_id);
@@ -170,6 +171,7 @@ export async function POST(request: Request) {
         error.message.includes('unique_episode_per_story') ||
         error.message.includes('unique_episode_version_per_call_report') ||
         error.message.includes('unique_episode_version_per_story') ||
+        error.message.includes('idx_unique_episode_version_per_') ||
         error.message.includes('idx_one_current_per_')
       )) {
         // Try to fetch existing current episodes to provide better error message
@@ -177,7 +179,8 @@ export async function POST(request: Request) {
           .from("episodes")
           .select("episode_number")
           .in("episode_number", episodeNumbers)
-          .eq("is_current", true);
+          .eq("is_current", true)
+          .is("archived_at", null);
 
         if (call_report_id) {
           conflictQuery = conflictQuery.eq("call_report_id", call_report_id);
@@ -354,6 +357,9 @@ export async function GET(request: NextRequest) {
     // Version filtering: default to current versions only
     const currentOnly = searchParams.get("current_only") !== "false";
 
+    // Archive filtering: exclude archived by default
+    const includeArchived = searchParams.get("include_archived") === "true";
+
     // Validate query parameters
     const validation = episodesQuerySchema.safeParse(rawFilters);
     if (!validation.success) {
@@ -432,6 +438,10 @@ export async function GET(request: NextRequest) {
         .not("call_report_id", "is", null)
         .eq("is_current", true);
 
+      if (!includeArchived) {
+        allProjectsQuery = allProjectsQuery.is("archived_at", null);
+      }
+
       // TEAM ISOLATION: Filter through call_reports.team_id
       if (!hasGlobalAccess && userData.team_id) {
         allProjectsQuery = allProjectsQuery.eq("call_report.team_id", userData.team_id);
@@ -463,6 +473,10 @@ export async function GET(request: NextRequest) {
         .not("call_report_id", "is", null)
         .eq("is_current", true)
         .order("created_at", { ascending: false });
+
+      if (!includeArchived) {
+        paginatedProjectsQuery = paginatedProjectsQuery.is("archived_at", null);
+      }
 
       // TEAM ISOLATION: Filter through call_reports.team_id
       if (!hasGlobalAccess && userData.team_id) {
@@ -532,6 +546,10 @@ export async function GET(request: NextRequest) {
           .eq("is_current", true)
           .order("episode_number", { ascending: true });
 
+        if (!includeArchived) {
+          projectEpisodesQuery = projectEpisodesQuery.is("archived_at", null);
+        }
+
         // TEAM ISOLATION: Double-check team filter (should already be filtered by projectIdsForPage)
         if (!hasGlobalAccess && userData.team_id) {
           projectEpisodesQuery = projectEpisodesQuery.eq("call_report.team_id", userData.team_id);
@@ -572,6 +590,9 @@ export async function GET(request: NextRequest) {
       // Apply filters
       if (currentOnly) {
         query = query.eq("is_current", true);
+      }
+      if (!includeArchived) {
+        query = query.is("archived_at", null);
       }
       if (filters.call_report_id) {
         query = query.eq("call_report_id", filters.call_report_id);

@@ -82,6 +82,7 @@ export default function LogEpisodesPage() {
   // New Episodes
   const [newEpisodes, setNewEpisodes] = useState<EpisodeFormEntry[]>([
     {
+      _key: "ep-init-0",
       episode_number: 1,
       file: null,
       additional_info: "",
@@ -116,7 +117,7 @@ export default function LogEpisodesPage() {
       const d = data as Record<string, any>;
       if (d.selectedSource) setSelectedSource(d.selectedSource);
       if (d.episodes) {
-        const restored = d.episodes.map((ep: any) => ({ ...ep, file: null }));
+        const restored = d.episodes.map((ep: any, i: number) => ({ ...ep, file: null, _key: ep._key || `ep-draft-${i}` }));
         setNewEpisodes(restored);
         restored.forEach((ep: any) => {
           if (ep.initial_assessment != null) touchedAssessments.current.add(`new-${ep.episode_number}`);
@@ -238,6 +239,7 @@ export default function LogEpisodesPage() {
 
     setNewEpisodes([
       {
+        _key: `ep-source-${Date.now()}`,
         episode_number: nextEpisodeNumber,
         file: null,
         additional_info: "",
@@ -253,6 +255,7 @@ export default function LogEpisodesPage() {
       setExistingEpisodeNumbers([]);
       setNewEpisodes([
         {
+          _key: `ep-reset-${Date.now()}`,
           episode_number: 1,
           file: null,
           additional_info: "",
@@ -302,6 +305,7 @@ export default function LogEpisodesPage() {
       setExistingEpisodeNumbers([]);
       setNewEpisodes([
         {
+          _key: `ep-err-${Date.now()}`,
           episode_number: 1,
           file: null,
           additional_info: "",
@@ -559,7 +563,8 @@ export default function LogEpisodesPage() {
       const result = await response.json();
 
       if (!response.ok) {
-        const errorMessage = result.details || result.error || "Failed to create episodes";
+        const raw = result.details || result.error || "Failed to create episodes";
+        const errorMessage = typeof raw === "string" ? raw : JSON.stringify(raw);
         throw new Error(errorMessage);
       }
 
@@ -568,7 +573,7 @@ export default function LogEpisodesPage() {
 
       setSelectedSource("");
       setNewEpisodes([
-        { episode_number: 1, file: null, additional_info: "", initial_assessment: 5 },
+        { _key: `ep-done-${Date.now()}`, episode_number: 1, file: null, additional_info: "", initial_assessment: 5 },
       ]);
 
       router.push("/content-department/episodes");
