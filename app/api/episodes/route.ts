@@ -20,6 +20,7 @@ import {
   createSuccessResponse,
   internalError,
 } from "@/lib/api/errors";
+import { mustEvaluateOnUpload, getUnevaluatedEpisodes } from "@/lib/episodes/permissions";
 
 // Force dynamic rendering - prevent Vercel/Next.js from caching GET responses
 export const dynamic = 'force-dynamic';
@@ -49,6 +50,20 @@ export async function POST(request: Request) {
 
   if (!userData || !["content_creator", "content_manager", "gcm", "evaluator", "programmer", "admin"].includes(userData.role)) {
     return forbiddenError();
+  }
+
+  // Gate: roles that must evaluate can't log new episodes until prior ones are evaluated
+  if (mustEvaluateOnUpload(userData.role)) {
+    const admin = createAdminClient();
+    const pending = await getUnevaluatedEpisodes(admin, user.id);
+    if (pending.length > 0) {
+      const labels = pending.slice(0, 5).map(p => `EP ${p.episode_number} (${p.working_title})`).join(", ");
+      const suffix = pending.length > 5 ? ` and ${pending.length - 5} more` : "";
+      return NextResponse.json(
+        { error: `You have ${pending.length} un-evaluated episode(s): ${labels}${suffix}. Please evaluate them before logging new episodes.` },
+        { status: 403 }
+      );
+    }
   }
 
   const hasGlobalAccess = userData.role && ['admin', 'management', 'programmer'].includes(userData.role);

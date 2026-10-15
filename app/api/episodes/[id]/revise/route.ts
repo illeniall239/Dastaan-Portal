@@ -7,6 +7,7 @@ import { revalidatePath } from "next/cache";
 import { applyRateLimit } from '@/lib/api-middleware';
 import { RateLimitPresets } from '@/lib/rate-limit-redis';
 import { logAuditAction, getRequestContext } from "@/lib/audit/server";
+import { mustEvaluateOnUpload, getUnevaluatedEpisodes } from "@/lib/episodes/permissions";
 
 /**
  * POST /api/episodes/[id]/revise
@@ -47,6 +48,19 @@ export async function POST(
 
   if (!userData || !["content_manager", "evaluator", "programmer", "management", "admin"].includes(userData.role)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  if (mustEvaluateOnUpload(userData.role)) {
+    const adminGate = createAdminClient();
+    const pending = await getUnevaluatedEpisodes(adminGate, user.id);
+    if (pending.length > 0) {
+      const labels = pending.slice(0, 5).map(p => `EP ${p.episode_number} (${p.working_title})`).join(", ");
+      const suffix = pending.length > 5 ? ` and ${pending.length - 5} more` : "";
+      return NextResponse.json(
+        { error: `You have ${pending.length} un-evaluated episode(s): ${labels}${suffix}. Please evaluate them before uploading revisions.` },
+        { status: 403 },
+      );
+    }
   }
 
   try {

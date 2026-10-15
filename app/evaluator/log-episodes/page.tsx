@@ -23,11 +23,14 @@ import { createClient } from "@/lib/supabase/client";
 import { uploadAndVerify } from "@/lib/storage/verify-upload";
 import { uploadEpisodeFile } from "@/lib/episodes/upload-client";
 import { toast } from "sonner";
-import { Loader2, Info } from "lucide-react";
+import { Loader2, Info, CheckCircle2, ChevronLeft } from "lucide-react";
 import { BackButton } from "@/components/ui/back-button";
 import { useFormAutosave } from "@/lib/hooks/useFormAutosave";
 import { DraftRestoreBanner } from "@/components/ui/draft-restore-banner";
-import type { EpisodeWithDetails } from "@/types";
+import { EpisodicEvaluationForm } from "@/components/episodic-evaluations/episodic-evaluation-form";
+import { mustEvaluateOnUpload } from "@/lib/episodes/permissions";
+import type { Episode, EpisodeWithDetails } from "@/types";
+import type { EpisodicEvaluationFormData } from "@/lib/validations/episodic-evaluations";
 
 interface CallReportWriter {
   id: string;
@@ -81,6 +84,23 @@ export default function LogEpisodesPage() {
 
   const [uploadProgress, setUploadProgress] = useState<Record<number, number>>({});
   const newEpisodesSectionRef = useRef<HTMLDivElement | null>(null);
+
+  // Wizard: step 2 = evaluate before logging
+  const [wizardStep, setWizardStep] = useState<"upload" | "evaluate">("upload");
+  const [pendingPayload, setPendingPayload] = useState<{ call_report_id: string; episodes: any[] } | null>(null);
+  const [tempEpisodes, setTempEpisodes] = useState<Episode[]>([]);
+  const [pendingEvaluations, setPendingEvaluations] = useState<Map<string, EpisodicEvaluationFormData>>(new Map());
+  const [evaluatedEpisodeIds, setEvaluatedEpisodeIds] = useState<Set<string>>(new Set());
+  const [activeEvalIndex, setActiveEvalIndex] = useState(0);
+  const [finalizing, setFinalizing] = useState(false);
+  const requiresEvaluation = mustEvaluateOnUpload(currentUserRole || "");
+
+  useEffect(() => {
+    if (wizardStep !== "evaluate") return;
+    const handler = (e: BeforeUnloadEvent) => { e.preventDefault(); e.returnValue = ""; };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [wizardStep]);
 
   const { hasDraft, draftLoaded, draftUpdatedAt, saveDraft, loadDraft, clearDraft } = useFormAutosave({
     formType: "log_episodes",
@@ -315,21 +335,208 @@ export default function LogEpisodesPage() {
         })
       );
       const payload = { call_report_id: selectedSource, episodes: episodesData };
-      const response = await fetch("/api/episodes", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
-      const result = await response.json();
-      if (!response.ok) { const raw = result.details || result.error || "Failed to create episodes"; throw new Error(typeof raw === "string" ? raw : JSON.stringify(raw)); }
-      await clearDraft();
-      toast.success(`Successfully logged ${newEpisodes.length} episode(s)`);
-      setSelectedSource("");
-      setNewEpisodes([{ _key: `ep-done-${Date.now()}`, episode_number: 1, file: null, additional_info: "" }]);
-      router.push("/evaluator/episodes");
-      router.refresh();
+
+      if (requiresEvaluation) {
+        // Hold episode data — don't create until evaluation is complete
+        setPendingPayload(payload);
+        const temps = episodesData.map((ep: any) => ({
+          id: crypto.randomUUID(),
+          episode_number: ep.episode_number,
+          attachment_name: ep.attachment_name,
+        } as Episode));
+        setTempEpisodes(temps);
+        setPendingEvaluations(new Map());
+        setEvaluatedEpisodeIds(new Set());
+        setActiveEvalIndex(0);
+        setWizardStep("evaluate");
+        toast.info(`Now evaluate each episode — episodes will be logged once all evaluations are complete`);
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      } else {
+        const response = await fetch("/api/episodes", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+        const result = await response.json();
+        if (!response.ok) { const raw = result.details || result.error || "Failed to create episodes"; throw new Error(typeof raw === "string" ? raw : JSON.stringify(raw)); }
+        await clearDraft();
+        toast.success(`Successfully logged ${newEpisodes.length} episode(s)`);
+        setSelectedSource("");
+        setNewEpisodes([{ _key: `ep-done-${Date.now()}`, episode_number: 1, file: null, additional_info: "" }]);
+        router.push("/evaluator/episodes");
+        router.refresh();
+      }
     } catch (error: any) { console.error("Error creating episodes:", error); toast.error(error.message || "Failed to log episodes"); }
     finally { setLoading(false); }
   };
 
+  const handleEvaluationSubmit = async (tempEpisodeId: string, formData: EpisodicEvaluationFormData) => {
+    const nextEvals = new Map(pendingEvaluations);
+    nextEvals.set(tempEpisodeId, formData);
+    setPendingEvaluations(nextEvals);
+
+    const nextDone = new Set(evaluatedEpisodeIds);
+    nextDone.add(tempEpisodeId);
+    setEvaluatedEpisodeIds(nextDone);
+
+    const remaining = tempEpisodes.length - nextDone.size;
+    if (remaining > 0) {
+      const nextIdx = tempEpisodes.findIndex((ep) => !nextDone.has(ep.id));
+      if (nextIdx >= 0) setActiveEvalIndex(nextIdx);
+      toast.success(`Evaluation saved — ${remaining} remaining`);
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    } else {
+      await finalizeEpisodesAndEvaluations(nextEvals);
+    }
+  };
+
+  const finalizeEpisodesAndEvaluations = async (allEvaluations: Map<string, EpisodicEvaluationFormData>) => {
+    setFinalizing(true);
+    try {
+      // 1. Create episodes in DB
+      const response = await fetch("/api/episodes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(pendingPayload),
+      });
+      const result = await response.json();
+      if (!response.ok) {
+        const raw = result.details || result.error || "Failed to create episodes";
+        throw new Error(typeof raw === "string" ? raw : JSON.stringify(raw));
+      }
+
+      const realEpisodes: Episode[] = result.episodes;
+
+      // 2. Map temp IDs → real IDs by episode_number
+      const tempToReal = new Map<string, string>();
+      for (const tempEp of tempEpisodes) {
+        const realEp = realEpisodes.find((r) => r.episode_number === tempEp.episode_number);
+        if (realEp) tempToReal.set(tempEp.id, realEp.id);
+      }
+
+      // 3. Submit evaluations with real IDs
+      const evalErrors: string[] = [];
+      await Promise.all(
+        Array.from(allEvaluations.entries()).map(async ([tempId, evalData]) => {
+          const realId = tempToReal.get(tempId);
+          if (!realId) return;
+          try {
+            const evalRes = await fetch("/api/episodic-evaluations", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ ...evalData, episode_id: realId }),
+            });
+            if (!evalRes.ok) {
+              const err = await evalRes.json();
+              evalErrors.push(err.error || "Evaluation failed");
+            }
+          } catch {
+            evalErrors.push("Network error submitting evaluation");
+          }
+        })
+      );
+
+      await clearDraft();
+
+      if (evalErrors.length > 0) {
+        toast.warning(`Episodes logged but ${evalErrors.length} evaluation(s) failed. Please evaluate them from the episodes page.`);
+      } else {
+        toast.success("All episodes logged and evaluated!");
+      }
+      setTimeout(() => {
+        router.push("/evaluator/episodes");
+        router.refresh();
+      }, 600);
+    } catch (error: any) {
+      console.error("Error finalizing episodes:", error);
+      toast.error(error.message || "Failed to log episodes");
+    } finally {
+      setFinalizing(false);
+    }
+  };
+
   if (fetchingData) {
     return (<div className="flex items-center justify-center h-64"><Loader2 className="h-8 w-8 animate-spin text-gray-400" /></div>);
+  }
+
+  if (wizardStep === "evaluate" && tempEpisodes.length > 0) {
+    const allDone = evaluatedEpisodeIds.size >= tempEpisodes.length;
+    const activeEpisode = tempEpisodes[activeEvalIndex];
+
+    return (
+      <div className="mobile-container mobile-section space-y-4 sm:space-y-6 max-w-4xl mx-auto">
+        <div className="flex flex-col gap-4 sm:gap-6 mb-8">
+          <Button
+            variant="outline"
+            size="sm"
+            className="w-fit"
+            onClick={() => {
+              toast.warning("Episodes were not logged — evaluation was not completed");
+              router.push("/evaluator/episodes");
+            }}
+            disabled={finalizing}
+          >
+            <ChevronLeft className="h-4 w-4 mr-1" />
+            Cancel
+          </Button>
+          <div className="space-y-1">
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Evaluate Episodes</h1>
+            <p className="text-muted-foreground text-sm sm:text-base">
+              Episodes will be logged once all evaluations are complete
+            </p>
+          </div>
+        </div>
+
+        {/* Progress bar */}
+        <div className="bg-card rounded-lg border p-4">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm font-medium">
+              {evaluatedEpisodeIds.size} of {tempEpisodes.length} evaluated
+            </span>
+            <span className="text-sm text-muted-foreground">
+              {Math.round((evaluatedEpisodeIds.size / tempEpisodes.length) * 100)}%
+            </span>
+          </div>
+          <div className="w-full bg-muted rounded-full h-2">
+            <div
+              className="bg-green-500 h-2 rounded-full transition-all"
+              style={{ width: `${(evaluatedEpisodeIds.size / tempEpisodes.length) * 100}%` }}
+            />
+          </div>
+          <div className="flex gap-2 mt-3 flex-wrap">
+            {tempEpisodes.map((ep, idx) => {
+              const done = evaluatedEpisodeIds.has(ep.id);
+              return (
+                <Button
+                  key={ep.id}
+                  size="sm"
+                  variant={idx === activeEvalIndex ? "default" : done ? "outline" : "secondary"}
+                  className={done ? "border-green-500 text-green-700" : ""}
+                  onClick={() => !done && setActiveEvalIndex(idx)}
+                  disabled={done}
+                >
+                  {done && <CheckCircle2 className="h-3.5 w-3.5 mr-1" />}
+                  EP {ep.episode_number}
+                </Button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Active evaluation form */}
+        {!allDone && activeEpisode && !evaluatedEpisodeIds.has(activeEpisode.id) && (
+          <EpisodicEvaluationForm
+            key={activeEpisode.id}
+            episode={activeEpisode}
+            onSubmit={(formData) => handleEvaluationSubmit(activeEpisode.id, formData)}
+            wizardMode
+          />
+        )}
+
+        {(allDone || finalizing) && (
+          <div className="bg-green-50 border border-green-200 rounded-lg p-6 text-center">
+            <Loader2 className="h-8 w-8 text-green-600 mx-auto mb-2 animate-spin" />
+            <p className="font-semibold text-green-800">Logging episodes and evaluations...</p>
+          </div>
+        )}
+      </div>
+    );
   }
 
   return (

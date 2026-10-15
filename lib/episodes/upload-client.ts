@@ -17,60 +17,68 @@ export async function uploadEpisodeFile(
   onProgress?: (progress: number) => void,
   accessToken?: string
 ): Promise<EpisodeUploadResult> {
-  return new Promise((resolve, reject) => {
-    const xhr = new XMLHttpRequest();
+  const attempt = () =>
+    new Promise<EpisodeUploadResult>((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.timeout = 5 * 60 * 1000; // 5 minutes for large files
 
-    // Track upload progress
-    xhr.upload.addEventListener('progress', (event) => {
-      if (event.lengthComputable && onProgress) {
-        const progress = Math.round((event.loaded / event.total) * 100);
-        onProgress(progress);
-      }
-    });
-
-    // Handle completion
-    xhr.addEventListener('load', () => {
-      if (xhr.status >= 200 && xhr.status < 300) {
-        try {
-          const result = JSON.parse(xhr.responseText);
-
-          // Construct public URL
-          const publicUrl = `${supabaseUrl}/storage/v1/object/public/${bucket}/${filePath}`;
-
-          resolve({
-            publicUrl,
-            filePath,
-          });
-        } catch (parseError) {
-          reject(new Error('Failed to parse upload response'));
+      xhr.upload.addEventListener('progress', (event) => {
+        if (event.lengthComputable && onProgress) {
+          const progress = Math.round((event.loaded / event.total) * 100);
+          onProgress(progress);
         }
-      } else {
-        try {
-          const error = JSON.parse(xhr.responseText);
-          reject(new Error(error.message || `Upload failed with status ${xhr.status}`));
-        } catch {
-          reject(new Error(`Upload failed with status ${xhr.status}`));
+      });
+
+      xhr.addEventListener('load', () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          try {
+            JSON.parse(xhr.responseText);
+            const publicUrl = `${supabaseUrl}/storage/v1/object/public/${bucket}/${filePath}`;
+            resolve({ publicUrl, filePath });
+          } catch {
+            reject(new Error('Failed to parse upload response'));
+          }
+        } else {
+          let msg = `Upload failed with status ${xhr.status}`;
+          try {
+            const error = JSON.parse(xhr.responseText);
+            if (error.message) msg = error.message;
+          } catch { /* keep default msg */ }
+          reject(new Error(msg));
         }
-      }
+      });
+
+      xhr.addEventListener('error', () => {
+        const sizeMB = (file.size / (1024 * 1024)).toFixed(1);
+        reject(new Error(`Network error uploading ${file.name} (${sizeMB} MB) — check your connection and try again`));
+      });
+
+      xhr.addEventListener('timeout', () => {
+        const sizeMB = (file.size / (1024 * 1024)).toFixed(1);
+        reject(new Error(`Upload timed out for ${file.name} (${sizeMB} MB) — file may be too large or connection too slow`));
+      });
+
+      xhr.addEventListener('abort', () => {
+        reject(new Error('File upload was cancelled'));
+      });
+
+      const url = `${supabaseUrl}/storage/v1/object/${bucket}/${filePath}`;
+      xhr.open('POST', url);
+      xhr.setRequestHeader('Authorization', `Bearer ${accessToken || supabaseAnonKey}`);
+      xhr.setRequestHeader('apikey', supabaseAnonKey);
+      xhr.setRequestHeader('Content-Type', file.type || 'application/octet-stream');
+      xhr.send(file);
     });
 
-    // Handle network errors
-    xhr.addEventListener('error', () => {
-      reject(new Error('Network error during file upload'));
-    });
-
-    // Handle aborts
-    xhr.addEventListener('abort', () => {
-      reject(new Error('File upload was cancelled'));
-    });
-
-    // Prepare request
-    const url = `${supabaseUrl}/storage/v1/object/${bucket}/${filePath}`;
-    xhr.open('POST', url);
-    xhr.setRequestHeader('Authorization', `Bearer ${accessToken || supabaseAnonKey}`);
-    xhr.setRequestHeader('apikey', supabaseAnonKey);
-
-    // Send file
-    xhr.send(file);
-  });
+  try {
+    return await attempt();
+  } catch (err) {
+    // Single retry on network/timeout errors
+    const msg = (err as Error).message || '';
+    if (msg.includes('Network error') || msg.includes('timed out')) {
+      onProgress?.(0);
+      return attempt();
+    }
+    throw err;
+  }
 }

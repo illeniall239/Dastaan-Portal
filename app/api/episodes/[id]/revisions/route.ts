@@ -7,7 +7,7 @@ import { RateLimitPresets } from "@/lib/rate-limit-redis";
 import { logAuditAction, getRequestContext } from "@/lib/audit/server";
 import { createNotifications, excludeUserFromList } from "@/lib/notifications/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { canUploadRevision } from "@/lib/episodes/permissions";
+import { canUploadRevision, mustEvaluateOnUpload, getUnevaluatedEpisodes } from "@/lib/episodes/permissions";
 import { z } from "zod";
 
 export const dynamic = "force-dynamic";
@@ -206,6 +206,20 @@ export async function POST(
         { error: "Forbidden - You don't have permission to upload revisions for this episode" },
         { status: 403 },
       );
+    }
+
+    // Gate: roles that must evaluate can't upload revisions until prior episodes are evaluated
+    if (mustEvaluateOnUpload(userData.role)) {
+      const adminForGate = createAdminClient();
+      const pending = await getUnevaluatedEpisodes(adminForGate, user.id);
+      if (pending.length > 0) {
+        const labels = pending.slice(0, 5).map(p => `EP ${p.episode_number} (${p.working_title})`).join(", ");
+        const suffix = pending.length > 5 ? ` and ${pending.length - 5} more` : "";
+        return NextResponse.json(
+          { error: `You have ${pending.length} un-evaluated episode(s): ${labels}${suffix}. Please evaluate them before uploading revisions.` },
+          { status: 403 },
+        );
+      }
     }
 
     // Auto-calculate next revision number

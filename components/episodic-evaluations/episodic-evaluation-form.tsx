@@ -46,6 +46,8 @@ interface EpisodicEvaluationFormProps {
   viewOnly?: boolean;
   currentUserId?: string;
   currentUserRole?: string;
+  wizardMode?: boolean;
+  revisionId?: string;
 }
 
 export function EpisodicEvaluationForm({
@@ -57,6 +59,8 @@ export function EpisodicEvaluationForm({
   viewOnly = false,
   currentUserId,
   currentUserRole,
+  wizardMode = false,
+  revisionId,
 }: EpisodicEvaluationFormProps) {
   const [submitting, setSubmitting] = useState(false);
   const [savingDraft, setSavingDraft] = useState(false);
@@ -206,7 +210,7 @@ export function EpisodicEvaluationForm({
 
   // Check for existing draft on component mount
   useEffect(() => {
-    if (!isReadOnly) {
+    if (!isReadOnly && !wizardMode) {
       const fetchDraft = async () => {
         try {
           const response = await fetch(`/api/episodic-evaluations/draft/${episode.id}`);
@@ -226,7 +230,7 @@ export function EpisodicEvaluationForm({
 
       fetchDraft();
     }
-  }, [episode.id, isReadOnly]);
+  }, [episode.id, isReadOnly, wizardMode]);
 
   const saveDraft = async () => {
     setSavingDraft(true);
@@ -387,6 +391,7 @@ export function EpisodicEvaluationForm({
 
     const formData = {
       episode_id: episode.id,
+      ...(revisionId ? { revision_id: revisionId } : {}),
       is_feedback_only: isFeedbackOnly,
       no_of_pages: noOfPages,
       no_of_scenes: noOfScenes,
@@ -439,13 +444,14 @@ export function EpisodicEvaluationForm({
 
     try {
       await onSubmit(validation.data);
-      // Delete draft after successful submission
-      try {
-        await fetch(`/api/episodic-evaluations/draft/${episode.id}`, {
-          method: 'DELETE',
-        });
-      } catch (deleteError) {
-        console.error("Error deleting draft after submission:", deleteError);
+      if (!wizardMode) {
+        try {
+          await fetch(`/api/episodic-evaluations/draft/${episode.id}`, {
+            method: 'DELETE',
+          });
+        } catch (deleteError) {
+          console.error("Error deleting draft after submission:", deleteError);
+        }
       }
     } catch (error: any) {
       console.error("Form submission error:", error);
@@ -607,7 +613,7 @@ export function EpisodicEvaluationForm({
       )}
 
       {/* Editable sections wrapper — pointer-events-none when view-only (no graying) */}
-      <div className={viewOnly ? "pointer-events-none" : ""}>
+      <div className={`space-y-8${viewOnly ? " pointer-events-none" : ""}`}>
 
       {/* Section 1: Episode Metrics */}
       <div className="space-y-4">
@@ -1131,7 +1137,7 @@ export function EpisodicEvaluationForm({
       )}
 
       {/* Discussion Thread */}
-      {currentUserId && (
+      {currentUserId && !wizardMode && (
         <DiscussionThread
           entityId={episode.id}
           apiBasePath="/api/episodes"
@@ -1146,26 +1152,28 @@ export function EpisodicEvaluationForm({
       {/* Submit and Save Draft Buttons */}
       {showSubmit && (
         <div className="flex justify-end gap-4 pt-6 border-t sticky bottom-0 bg-white/80 backdrop-blur supports-[backdrop-filter]:bg-white/60 p-3 sm:p-0 sm:static sm:bg-transparent sm:backdrop-blur-0 sm:border-0">
-          <Button
-            type="button"
-            variant="outline"
-            size="lg"
-            onClick={saveDraft}
-            disabled={submitting || savingDraft}
-            className="min-w-[150px]"
-          >
-            {savingDraft ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Saving...
-              </>
-            ) : (
-              <>
-                <FilePenLine className="mr-2 h-4 w-4" />
-                Save Draft
-              </>
-            )}
-          </Button>
+          {!wizardMode && (
+            <Button
+              type="button"
+              variant="outline"
+              size="lg"
+              onClick={saveDraft}
+              disabled={submitting || savingDraft}
+              className="min-w-[150px]"
+            >
+              {savingDraft ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <FilePenLine className="mr-2 h-4 w-4" />
+                  Save Draft
+                </>
+              )}
+            </Button>
+          )}
           <Button
             type="submit"
             size="lg"

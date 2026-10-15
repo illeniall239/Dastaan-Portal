@@ -25,7 +25,10 @@ import {
   ClipboardCheck,
 } from "lucide-react";
 import { formatDate } from "@/lib/utils/format-date";
-import type { EpisodeRevision, RevisionEvaluation } from "@/types";
+import { EpisodicEvaluationForm } from "@/components/episodic-evaluations/episodic-evaluation-form";
+import { mustEvaluateOnUpload } from "@/lib/episodes/permissions";
+import type { Episode, EpisodeRevision, RevisionEvaluation } from "@/types";
+import type { EpisodicEvaluationFormData } from "@/lib/validations/episodic-evaluations";
 
 interface ContentRevisionsProps {
   entityId: string;
@@ -176,6 +179,11 @@ export function ContentRevisions({
   const [originalSubmissionDate, setOriginalSubmissionDate] = useState("");
   const [revisionAssessment, setRevisionAssessment] = useState<number | null>(null);
 
+  const [pendingRevisionPayload, setPendingRevisionPayload] = useState<Record<string, any> | null>(null);
+  const [pendingRevisionEvalStep, setPendingRevisionEvalStep] = useState(false);
+  const [finalizingRevision, setFinalizingRevision] = useState(false);
+  const requiresRevisionEval = entityType === "episode" && mustEvaluateOnUpload(userRole || "");
+
   const revisionsUrl = `${apiBasePath}/${entityId}/revisions`;
 
   const realtimeTables = useMemo(() => {
@@ -242,17 +250,27 @@ export function ContentRevisions({
         attachment_type = file.type;
       }
 
+      const payload = {
+        attachment_url,
+        attachment_name,
+        attachment_type,
+        comment: comment.trim() || null,
+        original_submission_date: originalSubmissionDate || null,
+        ...(revisionAssessment != null ? { initial_assessment: revisionAssessment } : {}),
+      };
+
+      if (requiresRevisionEval) {
+        setPendingRevisionPayload(payload);
+        setPendingRevisionEvalStep(true);
+        setSubmitting(false);
+        toast.info("Now evaluate this revision — it will be saved once evaluation is complete");
+        return;
+      }
+
       const response = await fetch(revisionsUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          attachment_url,
-          attachment_name,
-          attachment_type,
-          comment: comment.trim() || null,
-          original_submission_date: originalSubmissionDate || null,
-          ...(revisionAssessment != null ? { initial_assessment: revisionAssessment } : {}),
-        }),
+        body: JSON.stringify(payload),
       });
 
       const data = await response.json();
@@ -304,6 +322,54 @@ export function ContentRevisions({
         "_blank"
       );
     }
+  };
+
+  const handleRevisionEvalSubmit = async (formData: EpisodicEvaluationFormData) => {
+    if (!pendingRevisionPayload) return;
+    setFinalizingRevision(true);
+    try {
+      const response = await fetch(revisionsUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(pendingRevisionPayload),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Failed to create revision");
+
+      const realRevisionId = data.revision.id;
+
+      const evalRes = await fetch("/api/episodic-evaluations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...formData, episode_id: entityId, revision_id: realRevisionId }),
+      });
+      if (!evalRes.ok) {
+        const err = await evalRes.json();
+        toast.warning(`Revision saved but evaluation failed: ${err.error || "Unknown error"}`);
+      } else {
+        toast.success(`Revision ${data.revision.revision_number} added and evaluated`);
+      }
+
+      setPendingRevisionPayload(null);
+      setPendingRevisionEvalStep(false);
+      setFile(null);
+      setComment("");
+      setOriginalSubmissionDate("");
+      setRevisionAssessment(null);
+      setShowAddForm(false);
+      fetchRevisions();
+    } catch (error: any) {
+      console.error("Error finalizing revision:", error);
+      toast.error(error.message || "Failed to save revision");
+    } finally {
+      setFinalizingRevision(false);
+    }
+  };
+
+  const cancelRevisionEval = () => {
+    setPendingRevisionPayload(null);
+    setPendingRevisionEvalStep(false);
+    toast.warning("Revision was not saved — evaluation was not completed");
   };
 
   const handleAssessmentChange = async (revision: EpisodeRevision, score: number) => {
@@ -367,6 +433,30 @@ export function ContentRevisions({
   const latestEvaluatedRevision = [...revisions]
     .filter((r) => (r.evaluation_count || 0) > 0)
     .sort((a, b) => b.revision_number - a.revision_number)[0] || null;
+
+  const renderRevisionEvalForm = () => (
+    <div className="space-y-4 p-4 border-2 border-amber-300 rounded-lg bg-amber-50/50">
+      <div className="flex items-center justify-between">
+        <p className="text-sm font-medium text-amber-800">
+          Evaluate this revision before it&apos;s saved
+        </p>
+        <Button size="sm" variant="ghost" onClick={cancelRevisionEval} disabled={finalizingRevision}>
+          Cancel
+        </Button>
+      </div>
+      {finalizingRevision ? (
+        <div className="flex items-center gap-2 p-6 justify-center text-sm text-muted-foreground">
+          <Loader2 className="h-4 w-4 animate-spin" /> Saving revision and evaluation...
+        </div>
+      ) : (
+        <EpisodicEvaluationForm
+          episode={{ id: entityId } as Episode}
+          onSubmit={handleRevisionEvalSubmit}
+          wizardMode
+        />
+      )}
+    </div>
+  );
 
   const renderAddForm = (size: "sm" | "default" = "default") => (
     <div
@@ -742,13 +832,16 @@ export function ContentRevisions({
                 Upload Revision #{revisions.length + 1}
               </Button>
             )}
-            {showAddForm && canEdit && renderAddForm("sm")}
+            {showAddForm && canEdit && !pendingRevisionEvalStep && renderAddForm("sm")}
+            {pendingRevisionEvalStep && renderRevisionEvalForm()}
           </div>
         )}
 
         {expanded && !loading && revisions.length === 0 && canEdit && (
           <div className="ml-6">
-            {!showAddForm ? (
+            {pendingRevisionEvalStep ? (
+              renderRevisionEvalForm()
+            ) : !showAddForm ? (
               <Button
                 size="sm"
                 variant="outline"
@@ -843,7 +936,8 @@ export function ContentRevisions({
           </div>
         )}
 
-        {showAddForm && canEdit && renderAddForm("default")}
+        {showAddForm && canEdit && !pendingRevisionEvalStep && renderAddForm("default")}
+        {pendingRevisionEvalStep && renderRevisionEvalForm()}
       </CardContent>
     </Card>
   );
