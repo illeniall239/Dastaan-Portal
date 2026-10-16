@@ -112,8 +112,13 @@ export const TopBar = memo(function TopBar({
         {/* Spacer for desktop (hidden on mobile) */}
         <div className="hidden lg:block" />
 
-        {/* Right side: Team Badge + Notifications + Profile */}
+        {/* Right side: Staging Badge + Team Badge + Notifications + Profile */}
         <div className="flex items-center gap-3">
+          {process.env.NEXT_PUBLIC_SUPABASE_URL?.includes("ermhlmirkkcwlvpjtklf") && (
+            <span className="inline-flex items-center rounded-full bg-amber-100 border border-amber-300 px-3 py-1 text-xs font-bold text-amber-800 uppercase tracking-wide">
+              Staging
+            </span>
+          )}
           {/* Team Badge */}
           {teamName && (
             <span className="hidden sm:inline-flex items-center rounded-full bg-blue-50 border border-blue-200 px-3 py-1 text-xs font-medium text-blue-700">

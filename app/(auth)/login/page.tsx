@@ -234,6 +234,14 @@ function LoginPageContent() {
             className="w-[70vw] h-[70vw] max-w-[400px] max-h-[400px] object-contain opacity-[0.04] pointer-events-none"
           />
         </div>
+        {/* Staging Badge */}
+        {process.env.NEXT_PUBLIC_SUPABASE_URL?.includes("ermhlmirkkcwlvpjtklf") && (
+          <div className="mb-4 text-center relative z-10">
+            <span className="inline-flex items-center rounded-full bg-amber-100 border border-amber-300 px-4 py-1.5 text-sm font-bold text-amber-800 uppercase tracking-wide">
+              Staging Environment
+            </span>
+          </div>
+        )}
         {/* Heading */}
         <div className="mb-7 text-center relative z-10">
           <h1 className="text-[30px] font-bold text-[#0A0D14] leading-tight tracking-tight mb-1.5 flex flex-wrap items-baseline justify-center gap-2">
@@ -416,6 +424,14 @@ function LoginPageContent() {
               </div>
             )}
 
+            {/* Staging Badge */}
+            {process.env.NEXT_PUBLIC_SUPABASE_URL?.includes("ermhlmirkkcwlvpjtklf") && (
+              <div className="mb-4">
+                <span className="inline-flex items-center rounded-full bg-amber-100 border border-amber-300 px-4 py-1.5 text-sm font-bold text-amber-800 uppercase tracking-wide">
+                  Staging Environment
+                </span>
+              </div>
+            )}
             {/* Form header */}
             <div className="mb-8">
               <h2 className="font-heading text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 mb-2">
