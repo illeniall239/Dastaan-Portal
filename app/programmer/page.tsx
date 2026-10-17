@@ -56,47 +56,30 @@ export default async function ProgrammerDashboard() {
 
       {/* Dashboard Content */}
       <Suspense fallback={<DashboardContentSkeleton />}>
-        <DashboardContent userId={user.id} userRole={user.role} />
+        <DashboardContent userId={user.id} userRole={user.role} teamId={user.team_id ?? null} teamType={user.team_type ?? null} />
       </Suspense>
     </div>
   );
 }
 
 // Combined Dashboard Content - Fetches all data in parallel
-async function DashboardContent({ userId, userRole }: { userId: string; userRole: string }) {
+async function DashboardContent({ userId, userRole, teamId, teamType }: { userId: string; userRole: string; teamId: string | null; teamType: string | null }) {
   const supabase = await createClient();
   const adminClient = createAdminClient();
 
-  // Resolve team info via admin client (bypasses RLS on teams table)
-  const { data: userProfile } = await adminClient
-    .from("users")
-    .select("team_id")
-    .eq("id", userId)
-    .single();
+  const isRestrictedProgrammer = userRole === "programmer" && teamType === "management";
 
-  let isRestrictedProgrammer = false;
+  // Resolve team members + content-dev exclusion list in parallel (only if needed)
   let teamMemberIds: string[] = [userId];
-  const teamId = userProfile?.team_id ?? null;
-
-  if (userRole === "programmer" && teamId) {
-    const { data: team } = await adminClient
-      .from("teams")
-      .select("team_type")
-      .eq("id", teamId)
-      .single();
-    if (team?.team_type === "management") {
-      isRestrictedProgrammer = true;
-      const { data: members } = await adminClient
-        .from("users")
-        .select("id")
-        .eq("team_id", teamId);
-      teamMemberIds = (members || []).map((m: any) => m.id);
-    }
-  }
-
-  // For regular programmers: fetch content dev team member IDs to exclude from stats
   let contentDevUserIds: string[] = [];
-  if (!isRestrictedProgrammer && userRole === "programmer") {
+
+  if (isRestrictedProgrammer && teamId) {
+    const { data: members } = await adminClient
+      .from("users")
+      .select("id")
+      .eq("team_id", teamId);
+    teamMemberIds = (members || []).map((m: any) => m.id);
+  } else if (userRole === "programmer") {
     const { data: mgmtTeams } = await adminClient.from("teams").select("id").eq("team_type", "management");
     if (mgmtTeams && mgmtTeams.length > 0) {
       const { data: cdUsers } = await adminClient.from("users").select("id").in("team_id", mgmtTeams.map((t: any) => t.id));

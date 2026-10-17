@@ -1,10 +1,7 @@
 import { getCurrentUser } from "@/lib/auth";
 import { redirect } from "next/navigation";
-import { createAdminClient } from "@/lib/supabase/admin";
 import { SidebarWrapper } from "./sidebar-wrapper";
 
-// Allowlist: only these paths are visible to management-type teams (e.g., Humera's team)
-// New programmer tabs will NOT appear for them unless explicitly added here.
 const managementTeamAllowedPaths = new Set([
   "/programmer",
   "/programmer/calendar",
@@ -97,27 +94,12 @@ export default async function ProgrammerLayout({
     redirect("/dashboard");
   }
 
-  // Check if user is on a management-type team to hide certain nav items
+  // team_type from session cookie — no DB query needed
   let filteredNavItems = programmerNavItems;
-  if (["programmer", "management"].includes(user.role)) {
-    const adminClient = createAdminClient();
-    const { data: userProfile } = await adminClient
-      .from("users")
-      .select("team_id")
-      .eq("id", user.id)
-      .single();
-    if (userProfile?.team_id) {
-      const { data: team } = await adminClient
-        .from("teams")
-        .select("team_type")
-        .eq("id", userProfile.team_id)
-        .single();
-      if (team?.team_type === "management") {
-        filteredNavItems = programmerNavItems.filter(
-          (item) => managementTeamAllowedPaths.has(item.href)
-        );
-      }
-    }
+  if (user.team_type === "management") {
+    filteredNavItems = programmerNavItems.filter(
+      (item) => managementTeamAllowedPaths.has(item.href)
+    );
   }
 
   return (

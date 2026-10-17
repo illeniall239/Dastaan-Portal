@@ -352,29 +352,14 @@ export async function getAllMeetings() {
 export async function getAllCallReports() {
   const supabase = await createClient();
 
-  // Get current user and their team for team isolation
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) {
+  // Use getCurrentUser() which reads from session cookie (no DB queries)
+  const { getCurrentUser } = await import("@/lib/auth");
+  const currentUser = await getCurrentUser();
+  if (!currentUser) {
     throw new Error('Not authenticated');
   }
 
-  const adminClient = createAdminClient();
-  const { data: currentUser } = await adminClient
-    .from("users")
-    .select("team_id, role")
-    .eq("id", user.id)
-    .single();
-
-  // Resolve team_type via admin client to bypass RLS on teams table
-  let teamType: string | null = null;
-  if (currentUser?.team_id) {
-    const { data: team } = await adminClient
-      .from("teams")
-      .select("team_type")
-      .eq("id", currentUser.team_id)
-      .single();
-    teamType = team?.team_type ?? null;
-  }
+  const teamType = currentUser.team_type ?? null;
 
   // Build base query
   let query = supabase
@@ -418,55 +403,9 @@ export async function getAllCallReports() {
     throw new Error(`Failed to fetch call reports: ${error.message}`);
   }
 
-  // Batch fetch revision counts + latest comment
+  // Batch fetch revision counts, episodes, and approval status in parallel
   let revisionMap: Record<string, { count: number; latest_comment: string | null; latest_date: string | null }> = {};
-  if (data && data.length > 0) {
-    const reportIds = data.map((r: any) => r.id);
-    const { data: revisionData } = await supabase
-      .from("call_report_revisions")
-      .select("call_report_id, revision_number, comment, created_at, original_submission_date")
-      .in("call_report_id", reportIds)
-      .order("revision_number", { ascending: false });
-
-    if (revisionData) {
-      for (const rev of revisionData) {
-        const rid = rev.call_report_id;
-        if (!revisionMap[rid]) {
-          // First entry per report is the latest (desc order)
-          revisionMap[rid] = { count: 1, latest_comment: rev.comment, latest_date: rev.original_submission_date || rev.created_at };
-        } else {
-          revisionMap[rid].count++;
-        }
-      }
-    }
-  }
-
-  // Batch fetch episodes with initial_assessment for all call reports
   let episodeMap: Record<string, Array<{ episode_number: number; initial_assessment: number | null; average_initial_assessment?: number | null; assessment_count?: number | null; logged_by_name: string }>> = {};
-  if (data && data.length > 0) {
-    const reportIds = data.map((r: any) => r.id);
-    const { data: episodeData } = await supabase
-      .from("episodes")
-      .select("call_report_id, episode_number, initial_assessment, average_initial_assessment, assessment_count, logged_by_user:users!logged_by(name)")
-      .in("call_report_id", reportIds)
-      .order("episode_number", { ascending: true });
-
-    if (episodeData) {
-      for (const ep of episodeData as any[]) {
-        if (!ep.call_report_id) continue;
-        if (!episodeMap[ep.call_report_id]) episodeMap[ep.call_report_id] = [];
-        episodeMap[ep.call_report_id].push({
-          episode_number: ep.episode_number,
-          initial_assessment: ep.initial_assessment,
-          average_initial_assessment: ep.average_initial_assessment,
-          assessment_count: ep.assessment_count,
-          logged_by_name: ep.logged_by_user?.name || "Unknown",
-        });
-      }
-    }
-  }
-
-  // Batch fetch story approval status for all call reports
   interface ManagementApproval {
     name: string;
     decision: string;
@@ -479,17 +418,58 @@ export async function getAllCallReports() {
     managementApprovals: ManagementApproval[];
   }
   let approvalStatusMap: Record<string, ApprovalStatus> = {};
+
   if (data && data.length > 0) {
     const reportIds = data.map((r: any) => r.id);
-    const { data: approvalData } = await supabase
-      .from("story_approvals")
-      .select("call_report_id, decision, approver_type, user:users!user_id(email, name)")
-      .in("call_report_id", reportIds);
 
-    if (approvalData) {
-      // Group by call_report_id
-      const grouped: Record<string, typeof approvalData> = {};
-      for (const a of approvalData) {
+    const [revisionRes, episodeRes, approvalRes] = await Promise.all([
+      supabase
+        .from("call_report_revisions")
+        .select("call_report_id, revision_number, comment, created_at, original_submission_date")
+        .in("call_report_id", reportIds)
+        .order("revision_number", { ascending: false }),
+      supabase
+        .from("episodes")
+        .select("call_report_id, episode_number, initial_assessment, average_initial_assessment, assessment_count, logged_by_user:users!logged_by(name)")
+        .in("call_report_id", reportIds)
+        .order("episode_number", { ascending: true }),
+      supabase
+        .from("story_approvals")
+        .select("call_report_id, decision, approver_type, user:users!user_id(email, name)")
+        .in("call_report_id", reportIds),
+    ]);
+
+    // Process revisions
+    if (revisionRes.data) {
+      for (const rev of revisionRes.data) {
+        const rid = rev.call_report_id;
+        if (!revisionMap[rid]) {
+          revisionMap[rid] = { count: 1, latest_comment: rev.comment, latest_date: rev.original_submission_date || rev.created_at };
+        } else {
+          revisionMap[rid].count++;
+        }
+      }
+    }
+
+    // Process episodes
+    if (episodeRes.data) {
+      for (const ep of episodeRes.data as any[]) {
+        if (!ep.call_report_id) continue;
+        if (!episodeMap[ep.call_report_id]) episodeMap[ep.call_report_id] = [];
+        episodeMap[ep.call_report_id].push({
+          episode_number: ep.episode_number,
+          initial_assessment: ep.initial_assessment,
+          average_initial_assessment: ep.average_initial_assessment,
+          assessment_count: ep.assessment_count,
+          logged_by_name: ep.logged_by_user?.name || "Unknown",
+        });
+      }
+    }
+
+    // Process approvals
+    if (approvalRes.data) {
+      const grouped: Record<string, typeof approvalRes.data> = {};
+      for (const a of approvalRes.data) {
         if (!grouped[a.call_report_id]) grouped[a.call_report_id] = [];
         grouped[a.call_report_id].push(a);
       }
@@ -497,15 +477,12 @@ export async function getAllCallReports() {
       for (const [reportId, approvals] of Object.entries(grouped)) {
         const approved = approvals.filter(a => a.decision === "approved");
         const managementRejected = approvals.some(a => a.decision === "rejected" && a.approver_type === "management");
-
-        // Check mandatory approvers specifically
         const mandatoryApprovedEmails = approved
           .filter(a => a.approver_type === "management" && MANDATORY_APPROVER_EMAILS.includes((a.user as any)?.email))
           .map(a => (a.user as any)?.email);
         const allMandatoryApproved = MANDATORY_APPROVER_EMAILS.every(email => mandatoryApprovedEmails.includes(email));
         const thirdApproved = approved.some(a => a.approver_type !== "management");
 
-        // Collect individual management approver decisions
         const mgmtApprovals: ManagementApproval[] = approvals
           .filter(a => a.approver_type === "management")
           .map(a => ({

@@ -124,7 +124,7 @@ export async function proxy(request: NextRequest) {
       try {
         const { data: userData, error } = await supabase
           .from('users')
-          .select('id, email, name, role, position, department, status')
+          .select('id, email, name, role, position, department, status, team_id')
           .eq('id', user.id)
           .single();
 
@@ -136,6 +136,17 @@ export async function proxy(request: NextRequest) {
           userStatus = userData?.status;
           logger.dev(`🔍 [Proxy] DB query returned role: ${userRole}`);
 
+          // Resolve team_type if user has a team (single extra query, cached in cookie)
+          let teamType: string | null = null;
+          if (userData?.team_id) {
+            const { data: team } = await supabase
+              .from('teams')
+              .select('team_type')
+              .eq('id', userData.team_id)
+              .single();
+            teamType = team?.team_type ?? null;
+          }
+
           // Set session cookie for future requests (performance optimization)
           if (userData) {
             const sessionPayload = {
@@ -146,6 +157,8 @@ export async function proxy(request: NextRequest) {
               position: userData.position,
               department: userData.department,
               status: userData.status,
+              team_id: userData.team_id ?? null,
+              team_type: teamType,
             };
             supabaseResponse.cookies.set('user_session', signSessionPayload(sessionPayload), {
               httpOnly: true,

@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
     // Get user profile from database
     const { data: profile, error: profileError } = await supabase
       .from("users")
-      .select("id, email, name, role, position, department")
+      .select("id, email, name, role, position, department, team_id")
       .eq("id", user.id)
       .single();
 
@@ -39,6 +39,18 @@ export async function POST(request: NextRequest) {
         { error: "Failed to fetch user profile" },
         { status: 500 }
       );
+    }
+
+    // Resolve team_type for session cookie (eliminates per-page DB lookups)
+    let teamType: string | null = null;
+    if (profile.team_id) {
+      const adminClient = createAdminClient();
+      const { data: team } = await adminClient
+        .from("teams")
+        .select("team_type")
+        .eq("id", profile.team_id)
+        .single();
+      teamType = team?.team_type ?? null;
     }
 
     // Record login event in user_sessions
@@ -63,6 +75,8 @@ export async function POST(request: NextRequest) {
       role: profile.role,
       position: profile.position,
       department: profile.department,
+      team_id: profile.team_id ?? null,
+      team_type: teamType,
       sessionId,
     });
 

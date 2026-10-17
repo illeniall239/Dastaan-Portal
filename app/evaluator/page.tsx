@@ -60,30 +60,18 @@ export default async function EvaluatorDashboard() {
 
       {/* Dashboard Content */}
       <Suspense fallback={<DashboardContentSkeleton />}>
-        <DashboardContent userId={user.id} />
+        <DashboardContent userId={user.id} userRole={user.role} teamId={user.team_id ?? null} />
       </Suspense>
     </div>
   );
 }
 
 // Combined Dashboard Content - Fetches all data in parallel
-async function DashboardContent({ userId }: { userId: string }) {
+async function DashboardContent({ userId, userRole, teamId }: { userId: string; userRole: string; teamId: string | null }) {
   const supabase = await createClient();
-
-  // STEP 1: Get current user's team_id FIRST for team isolation
   const adminClient = createAdminClient();
-  const { data: currentUser } = await adminClient
-    .from("users")
-    .select("team_id, role")
-    .eq("id", userId)
-    .single();
 
-  if (!currentUser) {
-    throw new Error("User not found");
-  }
-
-  // Only admin and management roles see global data; all other roles see their own
-  const hasGlobalAccess = ["admin", "management"].includes(currentUser.role);
+  const hasGlobalAccess = ["admin", "management"].includes(userRole);
 
   // Fetch ALL data in parallel for maximum performance
   const [statsData, pendingData, completedData, productionMetrics, crossTeamSharesData, scoreDistData, scoreTrendData] = await Promise.all([
@@ -96,8 +84,8 @@ async function DashboardContent({ userId }: { userId: string }) {
           .select("id", { count: "exact", head: true })
           .eq("meeting_type", "call_report");
 
-        if (!hasGlobalAccess && currentUser.team_id) {
-          query = query.eq("team_id", currentUser.team_id);
+        if (!hasGlobalAccess && teamId) {
+          query = query.eq("team_id", teamId);
         }
 
         return await query;
@@ -117,7 +105,7 @@ async function DashboardContent({ userId }: { userId: string }) {
       // Pending evaluations count
       supabase.rpc("get_pending_evaluations_count", {
         evaluator_user_id: userId,
-        team_id_filter: hasGlobalAccess ? null : currentUser.team_id,
+        team_id_filter: hasGlobalAccess ? null : teamId,
       }),
       // Episode evaluations count — own evals for regular, all for mgmt (adminClient bypasses RLS)
       (async () => {
@@ -158,10 +146,10 @@ async function DashboardContent({ userId }: { userId: string }) {
         .order("meeting_date", { ascending: false });
 
       // TEAM ISOLATION: Add team filter
-      if (!hasGlobalAccess && currentUser.team_id) {
+      if (!hasGlobalAccess && teamId) {
         allCallReportsQuery = allCallReportsQuery.eq(
           "team_id",
-          currentUser.team_id
+          teamId
         );
       }
 
@@ -215,11 +203,11 @@ async function DashboardContent({ userId }: { userId: string }) {
       .limit(5),
 
     // Production metrics - global-access evaluators see all teams
-    getProductionMetrics(hasGlobalAccess ? null : currentUser.team_id, currentUser.role),
+    getProductionMetrics(hasGlobalAccess ? null : teamId, userRole),
 
     // Cross-team shares for this user's team
     (async () => {
-      if (!currentUser.team_id) return [];
+      if (!teamId) return [];
       const { data: shares } = await supabase
         .from("cross_team_shares")
         .select(`
@@ -233,7 +221,7 @@ async function DashboardContent({ userId }: { userId: string }) {
           call_report:call_reports (id, call_report_id, working_title, writer_name, logline),
           from_team:teams!cross_team_shares_from_team_id_fkey (id, name)
         `)
-        .eq("to_team_id", currentUser.team_id)
+        .eq("to_team_id", teamId)
         .neq("status", "cancelled")
         .order("shared_at", { ascending: false });
 
@@ -262,8 +250,8 @@ async function DashboardContent({ userId }: { userId: string }) {
         .eq("meeting_type", "call_report")
         .is("archived_at", null);
 
-      if (!hasGlobalAccess && currentUser.team_id) {
-        crQuery = crQuery.eq("team_id", currentUser.team_id);
+      if (!hasGlobalAccess && teamId) {
+        crQuery = crQuery.eq("team_id", teamId);
       }
 
       const { data: crs } = await crQuery;
@@ -304,8 +292,8 @@ async function DashboardContent({ userId }: { userId: string }) {
         .eq("meeting_type", "call_report")
         .is("archived_at", null);
 
-      if (!hasGlobalAccess && currentUser.team_id) {
-        crQuery = crQuery.eq("team_id", currentUser.team_id);
+      if (!hasGlobalAccess && teamId) {
+        crQuery = crQuery.eq("team_id", teamId);
       }
 
       const { data: crs } = await crQuery;

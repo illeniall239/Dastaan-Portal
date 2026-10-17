@@ -54,118 +54,67 @@ export default async function ContentDepartmentDashboard() {
 
       {/* Dashboard Content */}
       <Suspense fallback={<DashboardContentSkeleton />}>
-        <DashboardContent />
+        <DashboardContent userId={user.id} userRole={user.role} teamId={user.team_id ?? null} />
       </Suspense>
     </div>
   );
 }
 
 // Dashboard Content Component - Fetches data and displays modern grid layout
-async function DashboardContent() {
+async function DashboardContent({ userId, userRole, teamId }: { userId: string; userRole: string; teamId: string | null }) {
   const supabase = await createClient();
-
-  // STEP 1: Get current user's team context for team isolation
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) {
-    return <div>Not authenticated</div>;
-  }
-
-  const { data: currentUser } = await supabase
-    .from("users")
-    .select("team_id, role")
-    .eq("id", user.id)
-    .single();
-
-  const hasGlobalAccess = currentUser?.role && ['admin', 'management'].includes(currentUser.role);
-
-  let callReportsCount = 0;
-  let episodesCount = 0;
-  let upcomingMeetings: any[] = [];
-
-  try {
-    // STEP 2: Build queries with team filters
-    let callReportsQuery = supabase
-      .from("call_reports")
-      .select("id", { count: "exact", head: true })
-      .eq("meeting_type", "call_report")
-      .is("archived_at", null);
-
-    let episodesQuery = supabase
-      .from("episodes")
-      .select("id", { count: "exact", head: true });
-
-    let upcomingMeetingsQuery = supabase
-      .from("meetings")
-      .select("id, title, meeting_date, contact_name")
-      .gte("meeting_date", new Date().toISOString())
-      .order("meeting_date", { ascending: true })
-      .limit(5);
-
-    // TEAM ISOLATION: Apply filters unless admin/management
-    if (!hasGlobalAccess && currentUser?.team_id) {
-      callReportsQuery = callReportsQuery.eq("team_id", currentUser.team_id);
-      episodesQuery = episodesQuery.eq("team_id", currentUser.team_id);
-      upcomingMeetingsQuery = upcomingMeetingsQuery.eq("team_id", currentUser.team_id);
-    }
-
-    const [callReportsRes, episodesRes, upcomingMeetingsRes] = await Promise.all([
-      callReportsQuery,
-      episodesQuery,
-      upcomingMeetingsQuery
-    ]);
-
-    callReportsCount = callReportsRes.count || 0;
-    episodesCount = episodesRes.count || 0;
-    upcomingMeetings = upcomingMeetingsRes.data || [];
-  } catch (error) {
-    logger.error("❌ [Stats] Error fetching dashboard data:", error);
-  }
-
-  // Chart data — slot, genre, content_type
   const adminClient = createAdminClient();
-  let chartProjects: ChartProject[] = [];
-  try {
-    let crQuery = adminClient
-      .from("call_reports")
-      .select("id, working_title, writer_name, genre, content_type, target_slot")
-      .eq("meeting_type", "call_report")
-      .is("archived_at", null);
 
-    if (!hasGlobalAccess && currentUser?.team_id) {
-      crQuery = crQuery.eq("team_id", currentUser.team_id);
-    }
+  const hasGlobalAccess = ['admin', 'management'].includes(userRole);
+  const teamFilter = !hasGlobalAccess && teamId ? teamId : null;
 
-    const { data: crs } = await crQuery;
+  // Build all queries upfront, execute in ONE parallel batch
+  let callReportsQuery = supabase
+    .from("call_reports")
+    .select("id", { count: "exact", head: true })
+    .eq("meeting_type", "call_report")
+    .is("archived_at", null);
 
-    if (crs && crs.length > 0) {
-      const ids = crs.map((r: any) => r.id);
+  let episodesQuery = supabase
+    .from("episodes")
+    .select("id", { count: "exact", head: true });
 
-      const { data: forms } = await adminClient
-        .from("evaluator_forms")
-        .select("call_report_id, slot")
-        .in("call_report_id", ids)
-        .not("submitted_at", "is", null)
-        .not("slot", "is", null);
+  let upcomingMeetingsQuery = supabase
+    .from("meetings")
+    .select("id, title, meeting_date, contact_name")
+    .gte("meeting_date", new Date().toISOString())
+    .order("meeting_date", { ascending: true })
+    .limit(5);
 
-      const slotMap: Record<string, string> = {};
-      for (const f of (forms || []) as any[]) {
-        if (f.slot && !slotMap[f.call_report_id]) slotMap[f.call_report_id] = f.slot;
-      }
+  let chartCrQuery = adminClient
+    .from("call_reports")
+    .select("id, working_title, writer_name, genre, content_type, target_slot, overall_rating")
+    .eq("meeting_type", "call_report")
+    .is("archived_at", null);
 
-      chartProjects = (crs as any[]).map((cr) => ({
-        id: cr.id,
-        title: cr.working_title || "Untitled",
-        writer: cr.writer_name || "—",
-        genre: Array.isArray(cr.genre) ? cr.genre : [],
-        contentType: cr.content_type || null,
-        slot: slotMap[cr.id] || cr.target_slot || null,
-      }));
-    }
-  } catch (error) {
-    logger.error("❌ [Charts] Error fetching chart data:", error);
+  if (teamFilter) {
+    callReportsQuery = callReportsQuery.eq("team_id", teamFilter);
+    episodesQuery = episodesQuery.eq("team_id", teamFilter);
+    upcomingMeetingsQuery = upcomingMeetingsQuery.eq("team_id", teamFilter);
+    chartCrQuery = chartCrQuery.eq("team_id", teamFilter);
   }
 
-  // Assessment vs Evaluation comparison data
+  // Single Promise.all — stats + chart base data in parallel
+  const [callReportsRes, episodesRes, upcomingMeetingsRes, chartCrRes] = await Promise.all([
+    callReportsQuery,
+    episodesQuery,
+    upcomingMeetingsQuery,
+    chartCrQuery,
+  ]);
+
+  const callReportsCount = callReportsRes.count || 0;
+  const episodesCount = episodesRes.count || 0;
+  const upcomingMeetings = upcomingMeetingsRes.data || [];
+
+  // Process chart data + comparison data from the same base query
+  const crs = (chartCrRes.data || []) as any[];
+  let chartProjects: ChartProject[] = [];
+
   type ComparisonProject = {
     id: string;
     title: string;
@@ -175,107 +124,110 @@ async function DashboardContent() {
     episodeNumber?: number;
   };
   let comparisonData: ComparisonProject[] = [];
-  try {
-    if (chartProjects.length > 0) {
-      const crIds = chartProjects.map((p) => p.id);
 
-      // One-liner: initial assessment from call_reports.overall_rating + evaluator avg from evaluator_forms
-      const { data: crWithRating } = await adminClient
-        .from("call_reports")
-        .select("id, working_title, overall_rating")
-        .in("id", crIds);
+  if (crs.length > 0) {
+    const crIds = crs.map((r: any) => r.id);
+    const crTitleMap = new Map(crs.map((cr: any) => [cr.id, cr.working_title || "Untitled"]));
+    const crInitialMap = new Map(crs.filter((cr: any) => cr.overall_rating != null).map((cr: any) => [cr.id, cr.overall_rating]));
 
-      const crInitialMap = new Map<string, number>();
-      const crTitleMap = new Map<string, string>();
-      for (const cr of (crWithRating || []) as any[]) {
-        crTitleMap.set(cr.id, cr.working_title || "Untitled");
-        if (cr.overall_rating != null) crInitialMap.set(cr.id, cr.overall_rating);
-      }
-
-      const { data: evalForms } = await adminClient
+    // Parallel: evaluator_forms (slots + scores) + episodes
+    const [formsRes, episodesRes2] = await Promise.all([
+      adminClient
         .from("evaluator_forms")
-        .select("call_report_id, average_score")
+        .select("call_report_id, slot, average_score, submitted_at")
         .in("call_report_id", crIds)
-        .not("submitted_at", "is", null)
-        .not("average_score", "is", null);
-
-      const evalAvgMap = new Map<string, number[]>();
-      for (const f of (evalForms || []) as any[]) {
-        if (!evalAvgMap.has(f.call_report_id)) evalAvgMap.set(f.call_report_id, []);
-        evalAvgMap.get(f.call_report_id)!.push(f.average_score);
-      }
-
-      for (const crId of crIds) {
-        const initScore = crInitialMap.get(crId) ?? null;
-        const evalScores = evalAvgMap.get(crId);
-        const evalAvg = evalScores && evalScores.length > 0
-          ? Number((evalScores.reduce((a: number, b: number) => a + b, 0) / evalScores.length).toFixed(1))
-          : null;
-        comparisonData.push({
-          id: crId,
-          title: crTitleMap.get(crId) || "Untitled",
-          initialAssessment: initScore,
-          evaluationScore: evalAvg,
-          type: "oneliner",
-        });
-      }
-
-      // Episodic: initial_assessment from episodes table + evaluator avg from episodic_evaluations
-      const { data: episodes } = await adminClient
+        .not("submitted_at", "is", null),
+      adminClient
         .from("episodes")
         .select("id, call_report_id, episode_number, initial_assessment")
         .in("call_report_id", crIds)
         .eq("is_current", true)
-        .order("episode_number", { ascending: true });
+        .order("episode_number", { ascending: true }),
+    ]);
 
-      if (episodes && episodes.length > 0) {
-        const epIds = episodes.map((e: any) => e.id);
+    const forms = (formsRes.data || []) as any[];
+    const episodes = (episodesRes2.data || []) as any[];
 
-        // Also check episode_revisions for latest initial_assessment
-        const { data: epRevisions } = await adminClient
+    // Build slot map + eval average map from single forms query
+    const slotMap: Record<string, string> = {};
+    const evalAvgMap = new Map<string, number[]>();
+    for (const f of forms) {
+      if (f.slot && !slotMap[f.call_report_id]) slotMap[f.call_report_id] = f.slot;
+      if (f.average_score != null) {
+        if (!evalAvgMap.has(f.call_report_id)) evalAvgMap.set(f.call_report_id, []);
+        evalAvgMap.get(f.call_report_id)!.push(f.average_score);
+      }
+    }
+
+    chartProjects = crs.map((cr: any) => ({
+      id: cr.id,
+      title: cr.working_title || "Untitled",
+      writer: cr.writer_name || "—",
+      genre: Array.isArray(cr.genre) ? cr.genre : [],
+      contentType: cr.content_type || null,
+      slot: slotMap[cr.id] || cr.target_slot || null,
+    }));
+
+    // One-liner comparison
+    for (const crId of crIds) {
+      const initScore = crInitialMap.get(crId) ?? null;
+      const evalScores = evalAvgMap.get(crId);
+      const evalAvg = evalScores && evalScores.length > 0
+        ? Number((evalScores.reduce((a: number, b: number) => a + b, 0) / evalScores.length).toFixed(1))
+        : null;
+      comparisonData.push({
+        id: crId,
+        title: crTitleMap.get(crId) || "Untitled",
+        initialAssessment: initScore,
+        evaluationScore: evalAvg,
+        type: "oneliner",
+      });
+    }
+
+    // Episodic comparison (parallel: revisions + evals)
+    if (episodes.length > 0) {
+      const epIds = episodes.map((e: any) => e.id);
+      const [epRevisionsRes, epEvalsRes] = await Promise.all([
+        adminClient
           .from("episode_revisions")
           .select("episode_id, initial_assessment")
           .in("episode_id", epIds)
-          .not("initial_assessment", "is", null);
-
-        const epRevMap = new Map<string, number>();
-        for (const r of (epRevisions || []) as any[]) {
-          epRevMap.set(r.episode_id, r.initial_assessment);
-        }
-
-        const { data: epEvals } = await adminClient
+          .not("initial_assessment", "is", null),
+        adminClient
           .from("episodic_evaluations")
           .select("episode_id, overall_average")
           .in("episode_id", epIds)
           .not("submitted_at", "is", null)
-          .not("overall_average", "is", null);
+          .not("overall_average", "is", null),
+      ]);
 
-        const epEvalAvgMap = new Map<string, number[]>();
-        for (const e of (epEvals || []) as any[]) {
-          if (!epEvalAvgMap.has(e.episode_id)) epEvalAvgMap.set(e.episode_id, []);
-          epEvalAvgMap.get(e.episode_id)!.push(e.overall_average);
-        }
+      const epRevMap = new Map<string, number>();
+      for (const r of (epRevisionsRes.data || []) as any[]) {
+        epRevMap.set(r.episode_id, r.initial_assessment);
+      }
 
-        for (const ep of episodes as any[]) {
-          // Prefer revision initial_assessment, fallback to episode's own
-          const initScore = epRevMap.get(ep.id) ?? ep.initial_assessment ?? null;
-          const evalScores = epEvalAvgMap.get(ep.id);
-          const evalAvg = evalScores && evalScores.length > 0
-            ? Number((evalScores.reduce((a: number, b: number) => a + b, 0) / evalScores.length).toFixed(1))
-            : null;
-          comparisonData.push({
-            id: ep.id,
-            title: crTitleMap.get(ep.call_report_id) || "Untitled",
-            initialAssessment: initScore,
-            evaluationScore: evalAvg,
-            type: "episodic",
-            episodeNumber: ep.episode_number,
-          });
-        }
+      const epEvalAvgMap = new Map<string, number[]>();
+      for (const e of (epEvalsRes.data || []) as any[]) {
+        if (!epEvalAvgMap.has(e.episode_id)) epEvalAvgMap.set(e.episode_id, []);
+        epEvalAvgMap.get(e.episode_id)!.push(e.overall_average);
+      }
+
+      for (const ep of episodes) {
+        const initScore = epRevMap.get(ep.id) ?? ep.initial_assessment ?? null;
+        const evalScores = epEvalAvgMap.get(ep.id);
+        const evalAvg = evalScores && evalScores.length > 0
+          ? Number((evalScores.reduce((a: number, b: number) => a + b, 0) / evalScores.length).toFixed(1))
+          : null;
+        comparisonData.push({
+          id: ep.id,
+          title: crTitleMap.get(ep.call_report_id) || "Untitled",
+          initialAssessment: initScore,
+          evaluationScore: evalAvg,
+          type: "episodic",
+          episodeNumber: ep.episode_number,
+        });
       }
     }
-  } catch (error) {
-    logger.error("❌ [Comparison] Error fetching comparison data:", error);
   }
   const quickActions = [
     {

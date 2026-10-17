@@ -58,46 +58,40 @@ export default async function ManagementDashboard({
     redirect("/dashboard");
   }
 
-  // Fetch ONLY critical above-the-fold data
-  // Other sections will stream in via Suspense
-  const [summary, workload] = await Promise.all([
-    getExecutiveSummary(),
-    getDepartmentWorkload(),
-  ]);
-
-  // Detect if current user is a mandatory approver (Humera / Salman)
   const isMandatoryApprover = MANDATORY_APPROVER_EMAILS.includes(user.email ?? "");
 
-  let mandatoryApproverPendingCount = 0;
-  if (isMandatoryApprover) {
-    try {
-      const adminClient = createAdminClient();
+  // Fetch summary, workload, and approver count in parallel
+  const [summary, workload, mandatoryApproverPendingCount] = await Promise.all([
+    getExecutiveSummary(),
+    getDepartmentWorkload(),
+    isMandatoryApprover
+      ? (async () => {
+          try {
+            const adminClient = createAdminClient();
+            const { data: viewRows } = await adminClient
+              .from("call_report_evaluations_with_type")
+              .select("call_report_id")
+              .not("call_report_id", "is", null);
 
-      // Get all evaluated call_report_ids
-      const { data: viewRows } = await adminClient
-        .from("call_report_evaluations_with_type")
-        .select("call_report_id")
-        .not("call_report_id", "is", null);
+            const evaluatedIds = [
+              ...new Set((viewRows || []).map((r: any) => r.call_report_id as string)),
+            ];
+            if (evaluatedIds.length === 0) return 0;
 
-      const evaluatedIds = [
-        ...new Set((viewRows || []).map((r: any) => r.call_report_id as string)),
-      ];
+            const { data: myApprovals } = await adminClient
+              .from("story_approvals")
+              .select("call_report_id")
+              .eq("user_id", user.id)
+              .in("call_report_id", evaluatedIds);
 
-      if (evaluatedIds.length > 0) {
-        // IDs this user has already voted on
-        const { data: myApprovals } = await adminClient
-          .from("story_approvals")
-          .select("call_report_id")
-          .eq("user_id", user.id)
-          .in("call_report_id", evaluatedIds);
-
-        const myApprovedIds = new Set((myApprovals || []).map((a: any) => a.call_report_id));
-        mandatoryApproverPendingCount = evaluatedIds.filter((id) => !myApprovedIds.has(id)).length;
-      }
-    } catch {
-      // Non-fatal — fall back to 0
-    }
-  }
+            const myApprovedIds = new Set((myApprovals || []).map((a: any) => a.call_report_id));
+            return evaluatedIds.filter((id) => !myApprovedIds.has(id)).length;
+          } catch {
+            return 0;
+          }
+        })()
+      : Promise.resolve(0),
+  ]);
 
   return (
     <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">

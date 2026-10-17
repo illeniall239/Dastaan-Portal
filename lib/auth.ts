@@ -23,11 +23,11 @@ export const getCurrentUser = cache(async () => {
   // Get user data from session cookie (set by proxy.ts)
   const sessionUser = await getUserSession();
   if (sessionUser && sessionUser.id === user.id) {
-    // Cookie is valid and matches current user - return it
     return {
       ...sessionUser,
       department: sessionUser.department,
-      // created_at is omitted (undefined) when using cached session
+      team_id: sessionUser.team_id ?? null,
+      team_type: sessionUser.team_type ?? null,
     };
   }
 
@@ -38,7 +38,7 @@ export const getCurrentUser = cache(async () => {
   // Emergency fallback: query DB (this indicates proxy.ts isn't working)
   const { data: profile, error: profileError } = await supabase
     .from("users")
-    .select("id, email, name, role, position, department, created_at")
+    .select("id, email, name, role, position, department, team_id, created_at")
     .eq("id", user.id)
     .single();
 
@@ -47,7 +47,7 @@ export const getCurrentUser = cache(async () => {
     return null;
   }
 
-  return profile;
+  return { ...profile, team_type: null as string | null };
 });
 
 export async function requireAuth() {

@@ -40,6 +40,8 @@ export interface UserSession {
   role: string;
   position?: string;
   department?: string;
+  team_id?: string | null;
+  team_type?: string | null;
   sessionId?: string; // user_sessions.id — used for heartbeat and logout tracking
 }
 

@@ -1,108 +1,56 @@
-"use client";
+import { getCurrentUser } from "@/lib/auth";
+import { redirect } from "next/navigation";
+import { getAllCallReports } from "@/lib/meetings/server";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { Suspense } from "react";
+import { Loader2 } from "lucide-react";
+import { OneLinersClient } from "@/components/call-reports/one-liners-client";
 
-import { useState, useEffect } from "react";
-import { createClient } from "@/lib/supabase/client";
-import { useRealtimeRefresh } from "@/lib/hooks/useRealtimeRefresh";
-import { Button } from "@/components/ui/button";
-import { toast } from "sonner";
-import { Loader2, PlusIcon } from "lucide-react";
-import { BackButton } from "@/components/ui/back-button";
-import { CallReportSearchableList } from "@/components/call-reports/call-report-searchable-list";
-import Link from "next/link";
+export const dynamic = "force-dynamic";
 
-export default function ContentDepartmentOneLinersPage() {
-  const supabase = createClient();
-
-  const [callReports, setCallReports] = useState<any[]>([]);
-  const [reportsLoading, setReportsLoading] = useState(true);
-  const [isTeamHead, setIsTeamHead] = useState(false);
-  const [currentTeamId, setCurrentTeamId] = useState<string | null>(null);
-  const [currentUserRole, setCurrentUserRole] = useState<string | null>(null);
-
-  const realtimeVersion = useRealtimeRefresh(["call_reports", "call_report_revisions"]);
-
-  // Fetch user info
-  useEffect(() => {
-    const fetchUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const { data: profile } = await supabase
-        .from("users")
-        .select("role, team_id")
-        .eq("id", user.id)
-        .single();
-
-      if (profile) {
-        setCurrentUserRole(profile.role);
-        setCurrentTeamId(profile.team_id || null);
-        if (profile.team_id) {
-          const { data: team } = await supabase
-            .from("teams")
-            .select("team_head_id")
-            .eq("id", profile.team_id)
-            .single();
-          setIsTeamHead(team?.team_head_id === user.id);
-        }
-      }
-    };
-    fetchUser();
-  }, [supabase]);
-
-  // Fetch call reports on mount
-  useEffect(() => {
-    const fetchReports = async () => {
-      setReportsLoading(true);
-      try {
-        const res = await fetch(`/api/call-reports/list?_t=${Date.now()}`, { cache: "no-store" });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error);
-        setCallReports(data.callReports || []);
-      } catch (error: any) {
-        console.error("Error fetching call reports:", error);
-        toast.error("Failed to load reports");
-      } finally {
-        setReportsLoading(false);
-      }
-    };
-    fetchReports();
-  }, [realtimeVersion]);
+export default async function ContentDepartmentOneLinersPage() {
+  const user = await getCurrentUser();
+  if (!user) redirect("/login");
 
   return (
-    <div className="mobile-container mobile-section">
-      <div className="flex flex-col gap-4 sm:gap-6 mb-8">
-        <BackButton fallbackHref="/content-department" variant="outline" size="sm" className="w-fit" />
-        <div className="flex items-center justify-between">
-          <div className="space-y-1">
-            <h1 className="text-xl sm:text-2xl font-bold tracking-tight">One-Liners</h1>
-            <p className="text-muted-foreground text-sm sm:text-base">
-              View reports and upload revisions
-            </p>
-          </div>
-          <Button asChild className="bg-[#224794] hover:bg-[#1a3670] shrink-0">
-            <Link href="/content-department/log-call-report">
-              <PlusIcon className="h-4 w-4 mr-2" />
-              Log New One-Liner
-            </Link>
-          </Button>
-        </div>
-      </div>
-
-      {reportsLoading ? (
+    <Suspense
+      fallback={
         <div className="flex items-center justify-center h-64">
           <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
         </div>
-      ) : (
-        <CallReportSearchableList
-          callReports={callReports}
-          portalPrefix="content-department"
-          emptyStateHref="/content-department/log-call-report"
-          isTeamHead={isTeamHead}
-          currentTeamId={currentTeamId || undefined}
-          readOnly
-          userRole={currentUserRole || undefined}
-        />
-      )}
-    </div>
+      }
+    >
+      <OneLinersContent userId={user.id} userRole={user.role} teamId={user.team_id ?? null} />
+    </Suspense>
+  );
+}
+
+async function OneLinersContent({ userId, userRole, teamId }: { userId: string; userRole: string; teamId: string | null }) {
+  const [callReports, isTeamHead] = await Promise.all([
+    getAllCallReports(),
+    (async () => {
+      if (!teamId) return false;
+      const adminClient = createAdminClient();
+      const { data: team } = await adminClient
+        .from("teams")
+        .select("team_head_id")
+        .eq("id", teamId)
+        .single();
+      return team?.team_head_id === userId;
+    })(),
+  ]);
+
+  return (
+    <OneLinersClient
+      initialReports={callReports}
+      isTeamHead={isTeamHead}
+      currentTeamId={teamId ?? undefined}
+      portalPrefix="content-department"
+      backHref="/content-department"
+      logHref="/content-department/log-call-report"
+      subtitle="View reports and upload revisions"
+      readOnly
+      userRole={userRole}
+    />
   );
 }
