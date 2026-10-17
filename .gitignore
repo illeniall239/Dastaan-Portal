@@ -43,3 +43,13 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# workspace (screenshots, meeting notes, spreadsheets, etc.)
+/_workspace/
+
+# Excel temp files
+~$*.xlsx
+
+# Claude/AI tooling
+.agents/
+skills-lock.json

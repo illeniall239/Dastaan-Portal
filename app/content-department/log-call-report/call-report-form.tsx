@@ -337,6 +337,24 @@ export function CallReportForm({
       return;
     }
 
+    const missingFields: string[] = [];
+    if (!formData.workingTitle.trim()) missingFields.push("Working Title");
+    if (!formData.logline.trim()) missingFields.push("Logline");
+    if (!formData.shortSynopsis.trim()) missingFields.push("Short Synopsis");
+    if (!formData.genre || formData.genre.length === 0) missingFields.push("Genre");
+    if (!formData.theme.trim()) missingFields.push("Theme");
+    if (!formData.targetSlot) missingFields.push("Target Slot");
+    if (!formData.contentType) missingFields.push("Content Type");
+
+    const hasAttachment = filesToUpload.length > 0 || draftAttachments.length > 0 ||
+      (mode === "edit" && existingAttachments.length > 0);
+    if (!hasAttachment) missingFields.push("At least one attachment");
+
+    if (missingFields.length > 0) {
+      toast.error(`Please fill in required fields: ${missingFields.join(", ")}`);
+      return;
+    }
+
     setIsLoading(true);
 
     try {
@@ -767,7 +785,7 @@ export function CallReportForm({
           <CardContent className="p-3 sm:p-4 md:p-6 pt-0 space-y-3 sm:space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
               <div className="space-y-2">
-                <Label htmlFor="workingTitle">Working Title</Label>
+                <Label htmlFor="workingTitle">Working Title *</Label>
                 <Input
                   id="workingTitle"
                   placeholder="Story working title"
@@ -808,7 +826,7 @@ export function CallReportForm({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="logline">Logline</Label>
+              <Label htmlFor="logline">Logline *</Label>
               <div className="relative">
                 <Textarea
                   id="logline"
@@ -828,7 +846,7 @@ export function CallReportForm({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="shortSynopsis">Short Synopsis</Label>
+              <Label htmlFor="shortSynopsis">Short Synopsis *</Label>
               <Textarea
                 id="shortSynopsis"
                 placeholder="A brief overview of the story, characters, and main plot points..."
@@ -853,11 +871,11 @@ export function CallReportForm({
               selectedGenres={formData.genre}
               onChange={(genres) => setFormData({ ...formData, genre: genres })}
               required={false}
-              label="Genre"
+              label="Genre *"
             />
 
             <div className="space-y-2">
-              <Label htmlFor="theme">Theme</Label>
+              <Label htmlFor="theme">Theme *</Label>
               <Input
                 id="theme"
                 placeholder="Select or type a theme"
@@ -900,7 +918,7 @@ export function CallReportForm({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="targetSlot">Target Slot</Label>
+              <Label htmlFor="targetSlot">Target Slot *</Label>
               <Select onValueChange={(value) => handleSelectChange("targetSlot", value)} value={formData.targetSlot}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select slot" />
@@ -915,7 +933,7 @@ export function CallReportForm({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="contentType">Content Type</Label>
+              <Label htmlFor="contentType">Content Type *</Label>
               <Select onValueChange={(value) => handleSelectChange("contentType", value)} value={formData.contentType}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select content type" />
