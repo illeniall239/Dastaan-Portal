@@ -189,9 +189,11 @@ export async function withApiPerf(handler: () => Promise<NextResponse>, req?: Re
     // Add Server-Timing header
     res.headers.set("Server-Timing", `total;dur=${dur.toFixed(0)}`);
 
-    // Add cache headers for GET requests
-    if (req && req.method === 'GET') {
-      res.headers.set('Cache-Control', 'public, max-age=30, s-maxage=120, stale-while-revalidate=300');
+    // API responses depend on who is signed in, so a shared cache (Vercel's CDN) must never
+    // store them, and a route's own Cache-Control wins. A public s-maxage here served stale
+    // episode lists for minutes after a save, which caused false "already exists" errors.
+    if (req && req.method === 'GET' && !res.headers.has('Cache-Control')) {
+      res.headers.set('Cache-Control', 'private, no-store');
     }
 
     // Record metrics (if OTel is available)
