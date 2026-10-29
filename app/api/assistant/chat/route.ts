@@ -318,9 +318,9 @@ const DATA_TOOLS = [
           team_name: { type: "string", description: "Filter by team." },
           logged_by: { type: "string", description: "Name of the person who logged the one-liner." },
           genre: { type: "string", description: "One exact genre tag, or 'not classified' for one-liners with no genre tag." },
-          genres: { type: "array", items: { type: "string" }, description: "Match ANY of these exact genre tags (e.g. every tag that means romance: ['Romance', 'Love', 'Romantic Comedy'])." },
+          genres: { type: "array", items: { type: "string" }, description: "Match ANY of these exact genre tags, e.g. several tags from tags_in_scope that the user asked for together." },
           theme: { type: "string", description: "Filter by theme (contains)." },
-          keywords: { type: "array", items: { type: "string" }, description: "For a concept or topic (\"love story\", \"revenge\", \"based on a novel\"): the user's own key word(s), e.g. ['love'] for 'love story'. Add synonyms only if the user asks for related ones too. Searches title, writer, genres, theme, content type, slot, logline, synopses, category, director, idea by, meeting notes, next steps, remarks, feedback and tracking notes. Each project returned says matched_in." },
+          keywords: { type: "array", items: { type: "string" }, description: "For a concept or topic: the key word(s) the user used, cut to the core word (substring match, so a stem also finds longer forms). Add synonyms only if the user asks for related ones too. Searches title, writer, genres, theme, content type, slot, logline, synopses, category, director, idea by, meeting notes, next steps, remarks, feedback and tracking notes. Each project returned says matched_in." },
           content_type: { type: "string", description: "Serial, Long Serial, Telefilm, Mini-serial, Ramadan Serial, Series Sitcom or Soap." },
           slot: { type: "string", description: "Filter by target slot." },
           phase: { type: "string", enum: ["Pre Cast", "Pre Production", "Production Start", "none"], description: "Production phase. 'none' = not yet in any phase." },
@@ -1441,6 +1441,9 @@ async function toolQueryProjects(args: any, admin: AdminClient, scope: TeamScope
     ...result,
     phase_rule: PHASE_MEANING,
     ...(canSeeApprovals ? {} : { note: "Approval status is not available to this user." }),
+    ...(result.by_focus && {
+      focus_rule: `For each project, focus says whether the topic (${result.topic_terms!.join(", ")}) is its main theme or an underlying one: "main" when it is the first genre tag or the first theme listed, "underlying" when it is one of several later tags. Check that against the logline and correct it when the logline clearly says otherwise, saying which ones you moved. In the answer, split the projects into main and underlying.`,
+    }),
     ...(result.keywords_used && {
       how_to_read: `Concept search for ${result.keywords_used.map((k) => `"${k}"`).join(", ")}. The answer is total_matching (${result.total_matching}): every project whose genre or theme contains any of these words, so all of them count, whichever keyword matched. Report that number and list every one of them; don't drop any by your own reading of the question. Then say separately that ${result.matched_in_text_only} more only mention it in their title, synopsis or notes (text_only_matches), and don't add those to the count. If total_matching is 0, the text-only matches are the best answer: say so.`,
     }),
@@ -1904,7 +1907,7 @@ TOOL ROUTING GUIDE:
 - Meetings, calendar → query_meetings
 - Story approvals, approved/rejected → query_approvals
 - Genres / themes / content types of one-liners, untagged ("Not classified") one-liners, production phase (Pre Cast, Pre Production, Production Start), "ready for production", "how far along", counts or breakdowns of projects by any field, listing all projects → query_projects (use group_by for breakdowns, limit 200 for "all")
-- Concept or topic questions ("how many love story ideas", "anything about revenge", "village-based stories") → query_projects with keywords = the user's own key word (e.g. ['love'] for "love story"; matching is by substring, so "love" also finds "Love after Marriage" and "lovers"). Don't add synonyms such as "romance" unless the user asks for related ones too. Genre and theme are free-text tags, so never rely on one exact genre for a concept; the result's tags_in_scope lists every genre and theme that exists, for when the user asks what tags there are or wants related ones. The result's total_matching and projects are the projects tagged with the concept in genre or theme; text_only_matches only mention a keyword in their title, synopsis or notes.
+- Concept or topic questions (how many ideas are about / based on / involve <topic>) → query_projects with keywords = the user's own key word for the topic, cut to its core (matching is by substring, so a stem also finds longer forms). Don't add synonyms unless the user asks for related ones too. Genre and theme are free-text tags, so never rely on one exact genre for a concept; the result's tags_in_scope lists every genre and theme that exists, for when the user asks what tags there are or wants related ones. The result's total_matching and projects are the projects tagged with the concept in genre or theme; text_only_matches only mention a keyword in their title, synopsis or notes.
 
 IMPORTANT: If the question is ambiguous or broad AND requires new data, call MULTIPLE tools. For example:
 - "How are things going?" → query_overview + query_pending + query_episode_delivery
@@ -1955,6 +1958,7 @@ CONTENT RULES:
 - When the user asks for a full list ("all", "every", "list of"), include every item in the data — do not shorten it. If the data says truncated: true, say how many matched in total.
 - Use the conversation history to connect follow-up answers to prior context.
 - Whenever the answer mentions a production phase (Pre Cast, Pre Production, Production Start), add a short line saying what each phase mentioned means, from this: ${PHASE_MEANING}
+- When the question is about a topic, genre or theme, distinguish projects where it is the main theme from ones where it is an underlying theme (use focus / focus_rule when the data has it).
 - The data is already filtered for the question. Don't narrow it further by your own reading of the question, and follow any how_to_read note in the data.
 - Numbers come from the data retrieved for this question. If memory or an earlier answer gives a different number, use the new data and don't repeat the old number.
 
@@ -1990,6 +1994,7 @@ CONTENT RULES:
 - When the user asks for a full list ("all", "every", "list of"), include every item in the data — do not shorten it. If the data says truncated: true, say how many matched in total.
 - Use the conversation history to connect follow-up answers to prior context.
 - Whenever the answer mentions a production phase (Pre Cast, Pre Production, Production Start), add a short line saying what each phase mentioned means, from this: ${PHASE_MEANING}
+- When the question is about a topic, genre or theme, distinguish projects where it is the main theme from ones where it is an underlying theme (use focus / focus_rule when the data has it).
 - The data is already filtered for the question. Don't narrow it further by your own reading of the question, and follow any how_to_read note in the data.
 - Numbers come from the data retrieved for this question. If memory or an earlier answer gives a different number, use the new data and don't repeat the old number.
 - Use memory from past conversations for richer context when relevant.

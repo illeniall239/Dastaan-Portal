@@ -130,6 +130,17 @@ function keywordHits(p: ProjectSummary, keywords: string[]): string[] {
   });
 }
 
+/**
+ * Whether a topic is the project's main theme or an underlying one. Tags are listed
+ * main-first, so the first genre tag or the first theme listed counts as main.
+ * ponytail: tag order is a heuristic; the logline sent alongside lets the model check it.
+ */
+function focusOf(p: ProjectSummary, terms: string[]): "main" | "underlying" {
+  const has = (v: string | null | undefined) => Boolean(v) && terms.some((t) => v!.toLowerCase().includes(t));
+  const firstGenre = p.genres[0] === NOT_CLASSIFIED ? null : p.genres[0];
+  return has(firstGenre) || has(p.theme?.split(/[,;]/)[0]) ? "main" : "underlying";
+}
+
 function topCounts(values: string[], max = 150): Record<string, number> {
   const counts = new Map<string, number>();
   for (const v of values) counts.set(v, (counts.get(v) || 0) + 1);
@@ -198,18 +209,38 @@ export function queryProjects(
   });
 
   const limit = Math.min(Math.max(Math.floor(q.limit ?? 100), 1), 200);
-  const withHits = (p: ProjectSummary) => (hits.has(p) ? { ...p, matched_in: hits.get(p)! } : p);
-  // Free-text tags: show what exists so a concept ("love story") can be mapped to real tags
+  // Any topic filter (keywords, genre tags, theme): say whether the topic is each project's
+  // main theme or an underlying one, with the logline so the model can check
+  const topicTerms = [...keywords, ...genres, q.genre, q.theme]
+    .map((t) => t?.trim().toLowerCase())
+    .filter((t): t is string => Boolean(t) && !isNotClassified(t!));
+  const logline = (p: ProjectSummary) => {
+    const l = p[SEARCH_TEXT]?.logline?.trim();
+    return l && l.length > 300 ? `${l.slice(0, 300)}…` : l || null;
+  };
+  const withContext = (p: ProjectSummary) => ({
+    ...p,
+    ...(hits.has(p) && { matched_in: hits.get(p)! }),
+    ...(topicTerms.length > 0 && { focus: focusOf(p, topicTerms), logline: logline(p) }),
+  });
+  // Free-text tags: show what exists so a topic can be mapped to the real tags
   const tagsUsed = Boolean(q.genre || genres.length || q.theme || keywords.length);
   return {
     total_matching: answer.length,
+    ...(topicTerms.length > 0 && {
+      topic_terms: topicTerms,
+      by_focus: {
+        main: answer.filter((p) => focusOf(p, topicTerms) === "main").length,
+        underlying: answer.filter((p) => focusOf(p, topicTerms) === "underlying").length,
+      },
+    }),
     ...(keywords.length > 0 && {
       keywords_used: keywords,
       matched_in_text_only: textOnly.length,
       text_only_matches: textOnly.slice(0, 50).map((p) => ({ title: p.title, writer: p.writer, team: p.team, matched_in: hits.get(p)! })),
     }),
     groups,
-    projects: sorted.slice(0, limit).map(withHits),
+    projects: sorted.slice(0, limit).map(withContext),
     truncated: answer.length > limit,
     ...(tagsUsed && {
       tags_in_scope: {

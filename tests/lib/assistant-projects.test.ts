@@ -153,3 +153,38 @@ describe("keyword search across fields", () => {
     expect(JSON.stringify(r)).not.toMatch(/separated by war|start soon/);
   });
 });
+
+describe("main vs underlying theme", () => {
+  const list = summarizeProjects([
+    raw({ id: "f1", working_title: "Aatish", genre: ["Love", "Thriller"], logline: "A love that turns into obsession." }),
+    raw({ id: "f2", working_title: "Wujood", genre: ["Supernatural"], theme: "Intense love and revenge story" }),
+    raw({ id: "f3", working_title: "Case 10", genre: null, theme: "Murder Mystery, Love after Marriage" }),
+    raw({ id: "f4", working_title: "Daur", genre: ["Thriller", "Love"] }),
+  ], { ...lookups, episodesByCr: new Map() });
+  const r = queryProjects(list, { keywords: ["love"] });
+  const focus = Object.fromEntries(r.projects.map((p: any) => [p.title, p.focus]));
+
+  it("counts the word as main when it is the first genre tag or first theme listed", () => {
+    expect(focus.Aatish).toBe("main");
+    expect(focus.Wujood).toBe("main");
+  });
+
+  it("counts it as underlying when it is one of several later tags", () => {
+    expect(focus["Case 10"]).toBe("underlying");
+    expect(focus.Daur).toBe("underlying");
+    expect(r.by_focus).toEqual({ main: 2, underlying: 2 });
+  });
+
+  it("works the same for a genre filter, not only keywords", () => {
+    const g = queryProjects(list, { genres: ["Love"] });
+    expect(Object.fromEntries(g.projects.map((p: any) => [p.title, p.focus]))).toEqual({ Aatish: "main", Daur: "underlying" });
+  });
+
+  it("adds no focus when the question has no topic filter", () => {
+    expect(queryProjects(list, {}).projects.every((p: any) => !("focus" in p))).toBe(true);
+  });
+
+  it("sends the logline so the model can check", () => {
+    expect((r.projects.find((p) => p.title === "Aatish") as any).logline).toBe("A love that turns into obsession.");
+  });
+});
