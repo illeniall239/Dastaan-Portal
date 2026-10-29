@@ -3,11 +3,15 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { applyRateLimit } from "@/lib/api-middleware";
 import { RateLimitPresets } from "@/lib/rate-limit-redis";
+import { loadProjectSummaries, queryProjects } from "@/lib/assistant/projects";
+import { MANAGEMENT_REPORTS, describeManagementReports, runManagementReport } from "@/lib/assistant/management-reports";
 
 export const dynamic = "force-dynamic";
 
 const GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions";
 const MODEL      = "gemini-2.5-flash";
+// Gemini 2.5 Flash counts its thinking tokens against this too; the model's own limit is 65,536
+const NARRATION_MAX_TOKENS = 16384;
 
 type AdminClient = ReturnType<typeof createAdminClient>;
 
@@ -297,6 +301,60 @@ const DATA_TOOLS = [
           team_filter: { type: "string", description: "Filter by feedback source: 'programming' or 'content_development'. Leave blank for both." },
           period: { type: "string", description: "Time period: this_month, last_month, this_year, etc." },
         },
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "query_projects",
+      description:
+        "Every one-liner / project with its genres, theme, content type, slot, episodes received vs total, production phase, average evaluation score and approval status. Production phase is the same as the management dashboard's Production Phases chart: Pre Cast, Pre Production, Production Start (= ready for / in production). Use for: genres of one-liners and which have no genre ('Not classified'), which projects are in a phase or ready for production, counts or breakdowns by genre / theme / content type / slot / team / phase / approval, and listing or filtering projects by any of these.",
+      parameters: {
+        type: "object",
+        properties: {
+          search: { type: "string", description: "Match against project title, writer name or code (e.g. CR-2026-8224)." },
+          team_name: { type: "string", description: "Filter by team." },
+          logged_by: { type: "string", description: "Name of the person who logged the one-liner." },
+          genre: { type: "string", description: "One exact genre tag, or 'not classified' for one-liners with no genre tag." },
+          genres: { type: "array", items: { type: "string" }, description: "Match ANY of these exact genre tags (e.g. every tag that means romance: ['Romance', 'Love', 'Romantic Comedy'])." },
+          theme: { type: "string", description: "Filter by theme (contains)." },
+          keywords: { type: "array", items: { type: "string" }, description: "For a concept or topic (\"love story\", \"revenge\", \"based on a novel\"): the word plus its synonyms and word stems, e.g. ['love', 'romance', 'romantic']. Searches title, writer, genres, theme, content type, slot, logline, synopses, category, director, idea by, meeting notes, next steps, remarks, feedback and tracking notes. Each project returned says matched_in." },
+          content_type: { type: "string", description: "Serial, Long Serial, Telefilm, Mini-serial, Ramadan Serial, Series Sitcom or Soap." },
+          slot: { type: "string", description: "Filter by target slot." },
+          phase: { type: "string", enum: ["Pre Cast", "Pre Production", "Production Start", "none"], description: "Production phase. 'none' = not yet in any phase." },
+          approval: { type: "string", enum: ["approved", "rejected", "pending"], description: "Approval decision." },
+          min_episodes_received: { type: "number", description: "Only projects with at least this many episodes received." },
+          period: { type: "string", description: "Logged within: this_month, last_month, this_year, last_3_months, etc." },
+          group_by: { type: "string", enum: ["genre", "theme", "content_type", "slot", "phase", "team", "approval", "logged_by"], description: "Also return counts per value (a project with several genres counts under each)." },
+          sort_by: { type: "string", enum: ["logged_on", "episodes_received", "avg_score", "title"], description: "Default: most recently logged first." },
+          limit: { type: "number", description: "Max projects to list (default 100, max 200). Use 200 when the user asks for all." },
+        },
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "query_management_report",
+      description:
+        "Read one of the management portal's own reports (the same data the management dashboard and pages show): annual targets vs current, alerts, content aging and delivery trend, delay tracker, writer delivery rate and commitments, contracts, contract terms, payments, pipeline value, approval queues, evaluator stats and bias, rating trends and comparisons, revision ranking, teams overview, team activity and trends, writer financials, episode milestones, genre/theme and audience breakdowns, roadmap, cross-team shares, external evaluations, and more. See the REPORTS list in the instructions for what each report contains. Call several reports for broad questions.",
+      parameters: {
+        type: "object",
+        properties: {
+          report: { type: "string", enum: Object.keys(MANAGEMENT_REPORTS), description: "Which report to read." },
+          project_title: { type: "string", description: "Project (one-liner) title, for project-specific reports." },
+          team_name: { type: "string", description: "Team name or team head's name, for team reports." },
+          person_name: { type: "string", description: "Person's name, for pending_by_person." },
+          metric: { type: "string", description: "Metric for headline_metric or team_metric (see REPORTS)." },
+          dimension: { type: "string", enum: ["content_type", "genre", "target_slot", "category", "writer"], description: "For evaluator_bias." },
+          genre: { type: "string", description: "Genre, for active_ideas_details or archive_details." },
+          content_type: { type: "string", enum: ["Serial", "Long Serial"], description: "For episode_milestones drill-down." },
+          min_episodes: { type: "number", enum: [5, 10, 15, 20], description: "For episode_milestones drill-down: the group's lower bound." },
+          drilldown: { type: "boolean", description: "For episode_milestones: true to list the projects in one group." },
+          period: { type: "string", description: "For date-based reports: this_month, last_month, this_year, last_7_days, last_3_months, etc." },
+        },
+        required: ["report"],
       },
     },
   },
@@ -1359,7 +1417,41 @@ async function toolQueryTeamFeedback(
   };
 }
 
-async function executeTool(name: string, args: any, admin: AdminClient, scope: TeamScope = null, userRole = ""): Promise<any> {
+async function toolQueryProjects(args: any, admin: AdminClient, scope: TeamScope, canSeeApprovals: boolean) {
+  const all = await loadProjectSummaries(admin, scope?.crIds ?? null, canSeeApprovals);
+  const result = queryProjects(all, {
+    search: args.search,
+    team: args.team_name,
+    logged_by: args.logged_by,
+    genre: args.genre,
+    genres: Array.isArray(args.genres) ? args.genres : undefined,
+    theme: args.theme,
+    keywords: Array.isArray(args.keywords) ? args.keywords : undefined,
+    content_type: args.content_type,
+    slot: args.slot,
+    phase: args.phase,
+    approval: args.approval,
+    min_episodes: args.min_episodes_received,
+    group_by: args.group_by,
+    sort_by: args.sort_by,
+    limit: args.limit,
+  }, parsePeriod(args.period));
+  return {
+    ...result,
+    phase_rule: "Same as the management dashboard: 30-episode projects reach Pre Cast at 3 episodes received, Pre Production at 10, Production Start at 15; 50-episode projects at 8, 18 and 25. Projects with other episode totals have no phase.",
+    ...(canSeeApprovals ? {} : { note: "Approval status is not available to this user." }),
+  };
+}
+
+async function executeTool(
+  name: string,
+  args: any,
+  admin: AdminClient,
+  scope: TeamScope = null,
+  userRole = "",
+  canSeeApprovals = false,
+  request: { origin: string; cookie: string } | null = null
+): Promise<any> {
 
   // Pre-populate team CR IDs once for scoped access (cached across multiple tool calls)
   if (scope && !scope.crIds) {
@@ -1380,6 +1472,10 @@ async function executeTool(name: string, args: any, admin: AdminClient, scope: T
     case "query_meetings":           return toolQueryMeetings(args, admin, scope);
     case "query_approvals":          return toolQueryApprovals(args, admin, scope);
     case "query_team_feedback":      return toolQueryTeamFeedback(args, admin, scope);
+    case "query_projects":           return toolQueryProjects(args, admin, scope, canSeeApprovals);
+    case "query_management_report":
+      if (!request) return { error: "Reports are not available here." };
+      return runManagementReport(args, { admin, ...request, dateRange: parsePeriod(args.period) });
     default:                         return { error: `Unknown tool: ${name}` };
   }
 }
@@ -1749,7 +1845,10 @@ export async function POST(request: NextRequest) {
       gcm:              ["query_approvals"],
       programmer:       ["query_approvals"],
     };
-    const blockedToolNames = isUnrestricted ? [] : (ROLE_BLOCKED_TOOLS[role] || ["query_approvals"]);
+    // Management reports are the management portal's own data, so only management/admin get them
+    const blockedToolNames = isUnrestricted
+      ? []
+      : [...(ROLE_BLOCKED_TOOLS[role] || ["query_approvals"]), "query_management_report"];
     const availableTools = DATA_TOOLS.filter(t => !blockedToolNames.includes(t.function.name));
 
     // ── Data-access agent — native function calling ──────────────────────────
@@ -1800,11 +1899,31 @@ TOOL ROUTING GUIDE:
 - Writers list, writer engagement → query_writers
 - Meetings, calendar → query_meetings
 - Story approvals, approved/rejected → query_approvals
+- Genres / themes / content types of one-liners, untagged ("Not classified") one-liners, production phase (Pre Cast, Pre Production, Production Start), "ready for production", "how far along", counts or breakdowns of projects by any field, listing all projects → query_projects (use group_by for breakdowns, limit 200 for "all")
+- Concept or topic questions ("how many love story ideas", "anything about revenge", "village-based stories") → query_projects with keywords = the concept plus synonyms and stems (e.g. ['love', 'romance', 'romantic']). Genre and theme are free-text tags, so never rely on one exact genre for a concept. The result's tags_in_scope lists every genre and theme that exists: if a tag there clearly fits the concept but your keywords missed it, call again with that tag in genres. In the answer, give matched_by_tags (tagged with the concept in genre or theme) as the main count and matched_in_text_only separately ("N more mention it in their synopsis or notes"), and name the tags that matched. Check the text-only matches before counting them: a word like "love" in meeting notes may not be about the story.
 
 IMPORTANT: If the question is ambiguous or broad AND requires new data, call MULTIPLE tools. For example:
 - "How are things going?" → query_overview + query_pending + query_episode_delivery
 - "Tell me about project X" → query_evaluations(project_title=X) + query_episode_delivery(project_title=X) + query_contracts_payments(project_title=X)
-- "How is the team performing?" → query_team_stats + query_evaluations`;
+- "How is the team performing?" → query_team_stats + query_evaluations${isUnrestricted ? `
+
+MANAGEMENT REPORTS (query_management_report) — the same data the management pages show. Use these for anything the other tools don't cover; never answer that the system can't do something before checking whether a report covers it.
+${describeManagementReports()}
+
+More examples:
+- "Which projects are behind schedule?" → query_management_report(delay_tracker) + query_episode_delivery
+- "What's waiting for my approval?" → query_management_report(approval_queue)
+- "Is any evaluator biased by genre?" → query_management_report(evaluator_bias, dimension=genre)
+- "How much do we owe writers?" → query_management_report(writer_financials) + query_management_report(overdue_payments)
+- "Which project needs the most rewrites?" → query_management_report(revision_ranking)
+- "How is Ali's team doing?" → query_management_report(team_trends, team_name=Ali) + query_management_report(team_members, team_name=Ali)
+- "Everything about project X" → query_projects(search=X) + query_management_report(project_review, project_title=X)
+- "Are we on track for this year's targets? / annual target" → query_management_report(annual_targets)
+- "What are the top themes / genres?" → query_projects(group_by=theme or genre) + query_management_report(genre_theme)
+- "Which writers are behind on delivery?" → query_management_report(delivery_rate) + query_management_report(delay_tracker)
+- "How are the teams doing overall?" → query_management_report(teams_overview)
+- "What's on the roadmap?" → query_management_report(roadmap)
+- "What did external reviewers say?" → query_management_report(external_evaluations)` : ""}`;
 
     const memoryContext = memory.length > 0
       ? `\n\nRELEVANT MEMORY FROM PAST CONVERSATIONS:\n${memory.slice(-20).map((m, i) => `${i + 1}. ${m}`).join("\n")}`
@@ -1826,7 +1945,10 @@ CONTENT RULES:
 - All data shown is scoped to the user's team — do not mention "all teams" or imply global scope.
 - Use actual names — never UUIDs or IDs.
 - If results are empty, say so plainly and suggest why.
-- Keep it concise and helpful.
+- Keep the wording short, but don't leave out relevant context.
+- Answer with context, not only the field that was asked for. From the data, add whatever helps the user understand the answer in one go and saves a follow-up question. For example, a count of projects also lists which ones, with title, writer, team, genre/theme, phase, episodes received vs total, score and approval. A project's status also gives its phase, episodes, score and approval. A person's numbers also give what they are working on and what is pending.
+- Pick only what is relevant to the question. Leave out empty fields and data unrelated to what was asked.
+- When the user asks for a full list ("all", "every", "list of"), include every item in the data — do not shorten it. If the data says truncated: true, say how many matched in total.
 - Use the conversation history to connect follow-up answers to prior context.
 
 MEMORY EXTRACTION:
@@ -1855,7 +1977,10 @@ CONTENT RULES:
 - Format episodes as "Episode [number] of [Project Title]".
 - If results are empty, say so plainly and suggest why.
 - If multiple people matched a name, list each separately.
-- Keep it concise — this is an executive briefing.
+- Keep the wording short (this is an executive briefing), but don't leave out relevant context.
+- Answer with context, not only the field that was asked for. From the data, add whatever helps the user understand the answer in one go and saves a follow-up question. For example, a count of projects also lists which ones, with title, writer, team, genre/theme, phase, episodes received vs total, score and approval. A project's status also gives its phase, episodes, score and approval. A person's numbers also give what they are working on and what is pending.
+- Pick only what is relevant to the question. Leave out empty fields and data unrelated to what was asked.
+- When the user asks for a full list ("all", "every", "list of"), include every item in the data — do not shorten it. If the data says truncated: true, say how many matched in total.
 - Use the conversation history to connect follow-up answers to prior context.
 - Use memory from past conversations for richer context when relevant.
 
@@ -1906,7 +2031,7 @@ Extract 1-3 key facts (scores, statuses, trends). If nothing noteworthy: <memory
               ...historyForNarration,
               { role: "user", content: `User's question: ${message.trim()}${memoryContext}\n\nContext from prior conversation (no new data fetched):\n\n${directContent}` },
             ],
-            max_tokens: 4096,
+            max_tokens: NARRATION_MAX_TOKENS,
             temperature: 0.3,
           });
         } catch {
@@ -1935,7 +2060,10 @@ Extract 1-3 key facts (scores, statuses, trends). If nothing noteworthy: <memory
       for (const tc of toolCalls) {
         const fnName = tc.function.name;
         const fnArgs = JSON.parse(tc.function.arguments || "{}");
-        const result = await executeTool(fnName, fnArgs, admin, scope, role);
+        const result = await executeTool(fnName, fnArgs, admin, scope, role, !blockedToolNames.includes("query_approvals"), {
+          origin: request.nextUrl.origin,
+          cookie: request.headers.get("cookie") || "",
+        });
         toolResults.push({ name: fnName, data: JSON.stringify(result) });
       }
     } catch (err: any) {
@@ -1959,7 +2087,7 @@ Extract 1-3 key facts (scores, statuses, trends). If nothing noteworthy: <memory
           ...historyForNarration,
           { role: "user", content: `User's question: ${message.trim()}${memoryContext}\n\nData retrieved from the database:\n\n${dataContext}` },
         ],
-        max_tokens: 4096,
+        max_tokens: NARRATION_MAX_TOKENS,
         temperature: 0.3,
       });
     } catch (err: any) {
@@ -1968,6 +2096,10 @@ Extract 1-3 key facts (scores, statuses, trends). If nothing noteworthy: <memory
     }
 
     let fullReply = secondData.choices?.[0]?.message?.content?.trim() ?? "Sorry, I couldn't generate a response.";
+    if (secondData.choices?.[0]?.finish_reason === "length") {
+      fullReply = fullReply.replace(/<memory>[\s\S]*$/, "").trim() +
+        "\n\n_This answer was too long and got cut off. Ask for a narrower part (one team, one genre, a shorter period) to see the rest._";
+    }
 
     // Extract memory items from the response
     let memoryExtract: string[] = [];

@@ -1,22 +1,9 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireApiAuth } from "@/lib/api/auth";
+import { getProductionPhase } from "@/lib/production-phase";
 
 export const dynamic = "force-dynamic";
-
-function getProductionPhase(totalEps: number | null, epsReceived: number): string | null {
-  if (!totalEps || epsReceived === 0) return null;
-  const thresholds: Record<number, { preCast: number; preProduction: number; productionStart: number }> = {
-    30: { preCast: 3, preProduction: 10, productionStart: 15 },
-    50: { preCast: 8, preProduction: 18, productionStart: 25 },
-  };
-  const t = thresholds[totalEps];
-  if (!t) return null;
-  if (epsReceived >= t.productionStart) return "Production Start";
-  if (epsReceived >= t.preProduction) return "Pre Production";
-  if (epsReceived >= t.preCast) return "Pre Cast";
-  return null;
-}
 
 export async function GET() {
   try {
