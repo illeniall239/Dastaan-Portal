@@ -319,7 +319,7 @@ const DATA_TOOLS = [
           genre: { type: "string", description: "One exact genre tag, or 'not classified' for one-liners with no genre tag." },
           genres: { type: "array", items: { type: "string" }, description: "Match ANY of these exact genre tags (e.g. every tag that means romance: ['Romance', 'Love', 'Romantic Comedy'])." },
           theme: { type: "string", description: "Filter by theme (contains)." },
-          keywords: { type: "array", items: { type: "string" }, description: "For a concept or topic (\"love story\", \"revenge\", \"based on a novel\"): the word plus its synonyms and word stems, e.g. ['love', 'romance', 'romantic']. Searches title, writer, genres, theme, content type, slot, logline, synopses, category, director, idea by, meeting notes, next steps, remarks, feedback and tracking notes. Each project returned says matched_in." },
+          keywords: { type: "array", items: { type: "string" }, description: "For a concept or topic (\"love story\", \"revenge\", \"based on a novel\"): the user's own key word(s), e.g. ['love'] for 'love story'. Add synonyms only if the user asks for related ones too. Searches title, writer, genres, theme, content type, slot, logline, synopses, category, director, idea by, meeting notes, next steps, remarks, feedback and tracking notes. Each project returned says matched_in." },
           content_type: { type: "string", description: "Serial, Long Serial, Telefilm, Mini-serial, Ramadan Serial, Series Sitcom or Soap." },
           slot: { type: "string", description: "Filter by target slot." },
           phase: { type: "string", enum: ["Pre Cast", "Pre Production", "Production Start", "none"], description: "Production phase. 'none' = not yet in any phase." },
@@ -1440,6 +1440,9 @@ async function toolQueryProjects(args: any, admin: AdminClient, scope: TeamScope
     ...result,
     phase_rule: "Same as the management dashboard: 30-episode projects reach Pre Cast at 3 episodes received, Pre Production at 10, Production Start at 15; 50-episode projects at 8, 18 and 25. Projects with other episode totals have no phase.",
     ...(canSeeApprovals ? {} : { note: "Approval status is not available to this user." }),
+    ...(result.keywords_used && {
+      how_to_read: `Concept search for ${result.keywords_used.map((k) => `"${k}"`).join(", ")}. The answer is total_matching (${result.total_matching}): every project whose genre or theme contains any of these words, so all of them count, whichever keyword matched. Report that number and list every one of them; don't drop any by your own reading of the question. Then say separately that ${result.matched_in_text_only} more only mention it in their title, synopsis or notes (text_only_matches), and don't add those to the count. If total_matching is 0, the text-only matches are the best answer: say so.`,
+    }),
   };
 }
 
@@ -1881,7 +1884,7 @@ WHEN TO CALL TOOLS:
 - NEVER guess or make up numbers — if you need data you don't have, call the tool.
 
 WHEN TO SKIP TOOLS (respond with text instead):
-- If the conversation history already contains the answer (e.g., previous responses listed specific projects, scores, or counts), respond directly instead of re-querying.
+- Only for a follow-up about items an earlier answer already showed. If the user asks a question again, or asks how many / what is the status / "right now" / "currently", call the tools again: earlier answers and memory may be out of date or wrong.
 - Follow-up questions like "list those projects", "which one scored highest?", "tell me more about the third one" should be answered from the prior conversation.
 - Previous assistant messages may contain <!-- data-digest ... --> blocks with raw data from that turn — use these to answer follow-ups accurately.
 
@@ -1900,7 +1903,7 @@ TOOL ROUTING GUIDE:
 - Meetings, calendar → query_meetings
 - Story approvals, approved/rejected → query_approvals
 - Genres / themes / content types of one-liners, untagged ("Not classified") one-liners, production phase (Pre Cast, Pre Production, Production Start), "ready for production", "how far along", counts or breakdowns of projects by any field, listing all projects → query_projects (use group_by for breakdowns, limit 200 for "all")
-- Concept or topic questions ("how many love story ideas", "anything about revenge", "village-based stories") → query_projects with keywords = the concept plus synonyms and stems (e.g. ['love', 'romance', 'romantic']). Genre and theme are free-text tags, so never rely on one exact genre for a concept. The result's tags_in_scope lists every genre and theme that exists: if a tag there clearly fits the concept but your keywords missed it, call again with that tag in genres. In the answer, give matched_by_tags (tagged with the concept in genre or theme) as the main count and matched_in_text_only separately ("N more mention it in their synopsis or notes"), and name the tags that matched. Check the text-only matches before counting them: a word like "love" in meeting notes may not be about the story.
+- Concept or topic questions ("how many love story ideas", "anything about revenge", "village-based stories") → query_projects with keywords = the user's own key word (e.g. ['love'] for "love story"; matching is by substring, so "love" also finds "Love after Marriage" and "lovers"). Don't add synonyms such as "romance" unless the user asks for related ones too. Genre and theme are free-text tags, so never rely on one exact genre for a concept; the result's tags_in_scope lists every genre and theme that exists, for when the user asks what tags there are or wants related ones. The result's total_matching and projects are the projects tagged with the concept in genre or theme; text_only_matches only mention a keyword in their title, synopsis or notes.
 
 IMPORTANT: If the question is ambiguous or broad AND requires new data, call MULTIPLE tools. For example:
 - "How are things going?" → query_overview + query_pending + query_episode_delivery
@@ -1950,11 +1953,13 @@ CONTENT RULES:
 - Pick only what is relevant to the question. Leave out empty fields and data unrelated to what was asked.
 - When the user asks for a full list ("all", "every", "list of"), include every item in the data — do not shorten it. If the data says truncated: true, say how many matched in total.
 - Use the conversation history to connect follow-up answers to prior context.
+- The data is already filtered for the question. Don't narrow it further by your own reading of the question, and follow any how_to_read note in the data.
+- Numbers come from the data retrieved for this question. If memory or an earlier answer gives a different number, use the new data and don't repeat the old number.
 
 MEMORY EXTRACTION:
 After your main answer, on a new line output a memory block:
 <memory>["fact 1", "fact 2"]</memory>
-Extract 1-3 key facts. If nothing noteworthy: <memory>[]</memory>.`
+Extract 1-3 key facts. Save what the user cares about and what they asked, not counts or statuses, because those change. If nothing noteworthy: <memory>[]</memory>.`
       : `You are a senior analyst briefing the CEO of GEO TV on data from the Dastaan content portal. Present data in a clear, structured, professional format using markdown.
 
 FORMATTING RULES:
@@ -1982,12 +1987,14 @@ CONTENT RULES:
 - Pick only what is relevant to the question. Leave out empty fields and data unrelated to what was asked.
 - When the user asks for a full list ("all", "every", "list of"), include every item in the data — do not shorten it. If the data says truncated: true, say how many matched in total.
 - Use the conversation history to connect follow-up answers to prior context.
+- The data is already filtered for the question. Don't narrow it further by your own reading of the question, and follow any how_to_read note in the data.
+- Numbers come from the data retrieved for this question. If memory or an earlier answer gives a different number, use the new data and don't repeat the old number.
 - Use memory from past conversations for richer context when relevant.
 
 MEMORY EXTRACTION:
 After your main answer, on a new line output a memory block:
 <memory>["fact 1", "fact 2"]</memory>
-Extract 1-3 key facts (scores, statuses, trends). If nothing noteworthy: <memory>[]</memory>.`;
+Extract 1-3 key facts. Save what the user cares about and what they asked, not counts or statuses, because those change. If nothing noteworthy: <memory>[]</memory>.`;
 
     // Step 1: Ask LLM to pick and call tools (native function calling, tool_choice=auto)
     let firstPass: any;

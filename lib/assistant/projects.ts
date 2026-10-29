@@ -172,17 +172,23 @@ export function queryProjects(
     return true;
   });
 
+  // Keyword search: projects tagged with the concept (genre or theme) are the answer;
+  // ones that only mention it in their text are listed separately, not counted.
+  const byTags = (p: ProjectSummary) => hits.get(p)!.some((f) => f === "genre" || f === "theme");
+  const answer = keywords.length > 0 ? matching.filter(byTags) : matching;
+  const textOnly = keywords.length > 0 ? matching.filter((p) => !byTags(p)) : [];
+
   let groups: Record<string, number> | undefined;
   const groupBy = q.group_by;
   if (groupBy && (groupBy !== "approval" || approvalsVisible)) {
     groups = {};
-    for (const p of matching) {
+    for (const p of answer) {
       const keys = groupBy === "genre" ? p.genres : [String(p[groupBy] ?? "None")];
       for (const k of keys) groups[k] = (groups[k] || 0) + 1;
     }
   }
 
-  const sorted = [...matching].sort((a, b) => {
+  const sorted = [...answer].sort((a, b) => {
     switch (q.sort_by) {
       case "episodes_received": return b.episodes_received - a.episodes_received;
       case "avg_score": return (b.avg_score ?? -1) - (a.avg_score ?? -1);
@@ -192,18 +198,19 @@ export function queryProjects(
   });
 
   const limit = Math.min(Math.max(Math.floor(q.limit ?? 100), 1), 200);
-  const byTags = (p: ProjectSummary) => hits.get(p)!.some((f) => f === "genre" || f === "theme");
+  const withHits = (p: ProjectSummary) => (hits.has(p) ? { ...p, matched_in: hits.get(p)! } : p);
   // Free-text tags: show what exists so a concept ("love story") can be mapped to real tags
   const tagsUsed = Boolean(q.genre || genres.length || q.theme || keywords.length);
   return {
-    total_matching: matching.length,
+    total_matching: answer.length,
     ...(keywords.length > 0 && {
-      matched_by_tags: matching.filter(byTags).length,
-      matched_in_text_only: matching.filter((p) => !byTags(p)).length,
+      keywords_used: keywords,
+      matched_in_text_only: textOnly.length,
+      text_only_matches: textOnly.slice(0, 50).map((p) => ({ title: p.title, writer: p.writer, team: p.team, matched_in: hits.get(p)! })),
     }),
     groups,
-    projects: sorted.slice(0, limit).map((p) => (hits.has(p) ? { ...p, matched_in: hits.get(p)! } : p)),
-    truncated: matching.length > limit,
+    projects: sorted.slice(0, limit).map(withHits),
+    truncated: answer.length > limit,
     ...(tagsUsed && {
       tags_in_scope: {
         genres: topCounts(list.flatMap((p) => p.genres)),

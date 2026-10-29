@@ -126,25 +126,26 @@ describe("keyword search across fields", () => {
   const list = summarizeProjects(texts, { ...lookups, episodesByCr: new Map() });
   const r = queryProjects(list, { keywords: ["love", "romance", "romantic"] });
 
-  it("finds a concept in tags and in story text", () => {
-    expect(r.projects.map((p) => p.title).sort()).toEqual(["Dil", "Kasak", "Notes", "Rishta"]);
+  it("answers with the projects tagged with the concept, in genre or theme", () => {
+    expect(r.projects.map((p) => p.title).sort()).toEqual(["Dil", "Rishta"]);
+    expect(r.total_matching).toBe(2);
+  });
+
+  it("lists projects that only mention it in their text separately, not in the count", () => {
+    expect(r.matched_in_text_only).toBe(2);
+    expect(r.text_only_matches!.map((p) => p.title).sort()).toEqual(["Kasak", "Notes"]);
   });
 
   it("says where each project matched", () => {
-    const by = Object.fromEntries(r.projects.map((p) => [p.title, p.matched_in]));
+    const by = Object.fromEntries([...r.projects, ...r.text_only_matches!].map((p: any) => [p.title, p.matched_in]));
     expect(by.Dil).toEqual(["genre"]);
     expect(by.Rishta).toEqual(["theme"]);
     expect(by.Kasak).toEqual(["short_synopsis"]);
     expect(by.Notes).toEqual(["meeting_notes"]);
   });
 
-  it("separates tagged matches from mentions only in the text", () => {
-    expect(r.matched_by_tags).toBe(2);       // Dil (genre), Rishta (theme)
-    expect(r.matched_in_text_only).toBe(2);  // Kasak (synopsis), Notes (meeting notes)
-  });
-
   it("never searches or returns contact details", () => {
-    expect(r.projects.map((p) => p.title)).not.toContain("Other");
+    expect([...r.projects, ...r.text_only_matches!].map((p) => p.title)).not.toContain("Other");
     expect(JSON.stringify(r)).not.toMatch(/Love Lane|contact_/);
   });
 
