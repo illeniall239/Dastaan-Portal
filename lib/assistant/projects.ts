@@ -141,6 +141,9 @@ function focusOf(p: ProjectSummary, terms: string[]): "main" | "underlying" {
   return has(firstGenre) || has(p.theme?.split(/[,;]/)[0]) ? "main" : "underlying";
 }
 
+/** Readable name of a searched field, for matched_in. */
+const fieldLabel = (f: string) => (f === "feedback_text" ? "feedback" : f.replace(/_/g, " "));
+
 function topCounts(values: string[], max = 150): Record<string, number> {
   const counts = new Map<string, number>();
   for (const v of values) counts.set(v, (counts.get(v) || 0) + 1);
@@ -220,7 +223,7 @@ export function queryProjects(
   };
   const withContext = (p: ProjectSummary) => ({
     ...p,
-    ...(hits.has(p) && { matched_in: hits.get(p)! }),
+    ...(hits.has(p) && { matched_in: hits.get(p)!.map(fieldLabel) }),
     ...(topicTerms.length > 0 && { focus: focusOf(p, topicTerms), logline: logline(p) }),
   });
   // Free-text tags: show what exists so a topic can be mapped to the real tags
@@ -237,7 +240,7 @@ export function queryProjects(
     ...(keywords.length > 0 && {
       keywords_used: keywords,
       matched_in_text_only: textOnly.length,
-      text_only_matches: textOnly.slice(0, 50).map((p) => ({ title: p.title, writer: p.writer, team: p.team, matched_in: hits.get(p)! })),
+      text_only_matches: textOnly.slice(0, 50).map((p) => ({ title: p.title, writer: p.writer, team: p.team, matched_in: hits.get(p)!.map(fieldLabel) })),
     }),
     groups,
     projects: sorted.slice(0, limit).map(withContext),

@@ -140,8 +140,8 @@ describe("keyword search across fields", () => {
     const by = Object.fromEntries([...r.projects, ...r.text_only_matches!].map((p: any) => [p.title, p.matched_in]));
     expect(by.Dil).toEqual(["genre"]);
     expect(by.Rishta).toEqual(["theme"]);
-    expect(by.Kasak).toEqual(["short_synopsis"]);
-    expect(by.Notes).toEqual(["meeting_notes"]);
+    expect(by.Kasak).toEqual(["short synopsis"]);
+    expect(by.Notes).toEqual(["meeting notes"]);
   });
 
   it("never searches or returns contact details", () => {

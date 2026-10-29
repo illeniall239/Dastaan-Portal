@@ -6,6 +6,7 @@ import { RateLimitPresets } from "@/lib/rate-limit-redis";
 import { loadProjectSummaries, queryProjects } from "@/lib/assistant/projects";
 import { MANAGEMENT_REPORTS, describeManagementReports, runManagementReport } from "@/lib/assistant/management-reports";
 import { PHASE_MEANING } from "@/lib/production-phase";
+import { cleanReply } from "@/lib/assistant/format";
 
 export const dynamic = "force-dynamic";
 
@@ -1951,6 +1952,13 @@ CONTENT RULES:
 - Lead with the direct answer in the first sentence.
 - All data shown is scoped to the user's team — do not mention "all teams" or imply global scope.
 - Use actual names — never UUIDs or IDs.
+- Never show raw data in the answer. Write everything the way a person would say it:
+  - field and key names → plain words (episodes_received → "episodes received"); nothing with underscores;
+  - status and code values → capitalised words (pending → "Pending", in_evaluation → "In evaluation", strong_yes → "Strong yes", content_manager → "Content manager");
+  - null, undefined or empty values → "—", or leave the item out;
+  - true / false → "Yes" / "No";
+  - dates and timestamps → "Oct 29, 2026";
+  - no JSON, no IDs or UUIDs.
 - If results are empty, say so plainly and suggest why.
 - Keep the wording short, but don't leave out relevant context.
 - Answer with context, not only the field that was asked for. From the data, add whatever helps the user understand the answer in one go and saves a follow-up question. For example, a count of projects also lists which ones, with title, writer, team, genre/theme, phase, episodes received vs total, score and approval. A project's status also gives its phase, episodes, score and approval. A person's numbers also give what they are working on and what is pending.
@@ -1985,6 +1993,13 @@ CONTENT RULES:
 - Lead with the direct answer in the first sentence.
 - Break down totals by category when relevant.
 - Use actual names — never UUIDs or IDs.
+- Never show raw data in the answer. Write everything the way a person would say it:
+  - field and key names → plain words (episodes_received → "episodes received"); nothing with underscores;
+  - status and code values → capitalised words (pending → "Pending", in_evaluation → "In evaluation", strong_yes → "Strong yes", content_manager → "Content manager");
+  - null, undefined or empty values → "—", or leave the item out;
+  - true / false → "Yes" / "No";
+  - dates and timestamps → "Oct 29, 2026";
+  - no JSON, no IDs or UUIDs.
 - Format episodes as "Episode [number] of [Project Title]".
 - If results are empty, say so plainly and suggest why.
 - If multiple people matched a name, list each separately.
@@ -2053,7 +2068,7 @@ Extract 1-3 key facts. Save what the user cares about and what they asked, not c
           return NextResponse.json({ reply: directContent });
         }
 
-        let fullReply = secondData.choices?.[0]?.message?.content?.trim() ?? directContent;
+        let fullReply = cleanReply(secondData.choices?.[0]?.message?.content?.trim() ?? directContent);
         let memoryExtract: string[] = [];
         const memoryMatch = fullReply.match(/<memory>([\s\S]*?)<\/memory>/);
         if (memoryMatch) {
@@ -2110,7 +2125,7 @@ Extract 1-3 key facts. Save what the user cares about and what they asked, not c
       return NextResponse.json({ reply: "I got the data but had trouble formatting the response. Please try again." });
     }
 
-    let fullReply = secondData.choices?.[0]?.message?.content?.trim() ?? "Sorry, I couldn't generate a response.";
+    let fullReply = cleanReply(secondData.choices?.[0]?.message?.content?.trim() ?? "Sorry, I couldn't generate a response.");
     if (secondData.choices?.[0]?.finish_reason === "length") {
       fullReply = fullReply.replace(/<memory>[\s\S]*$/, "").trim() +
         "\n\n_This answer was too long and got cut off. Ask for a narrower part (one team, one genre, a shorter period) to see the rest._";
