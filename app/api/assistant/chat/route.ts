@@ -5,6 +5,7 @@ import { applyRateLimit } from "@/lib/api-middleware";
 import { RateLimitPresets } from "@/lib/rate-limit-redis";
 import { loadProjectSummaries, queryProjects } from "@/lib/assistant/projects";
 import { MANAGEMENT_REPORTS, describeManagementReports, runManagementReport } from "@/lib/assistant/management-reports";
+import { PHASE_MEANING } from "@/lib/production-phase";
 
 export const dynamic = "force-dynamic";
 
@@ -1438,7 +1439,7 @@ async function toolQueryProjects(args: any, admin: AdminClient, scope: TeamScope
   }, parsePeriod(args.period));
   return {
     ...result,
-    phase_rule: "Same as the management dashboard: 30-episode projects reach Pre Cast at 3 episodes received, Pre Production at 10, Production Start at 15; 50-episode projects at 8, 18 and 25. Projects with other episode totals have no phase.",
+    phase_rule: PHASE_MEANING,
     ...(canSeeApprovals ? {} : { note: "Approval status is not available to this user." }),
     ...(result.keywords_used && {
       how_to_read: `Concept search for ${result.keywords_used.map((k) => `"${k}"`).join(", ")}. The answer is total_matching (${result.total_matching}): every project whose genre or theme contains any of these words, so all of them count, whichever keyword matched. Report that number and list every one of them; don't drop any by your own reading of the question. Then say separately that ${result.matched_in_text_only} more only mention it in their title, synopsis or notes (text_only_matches), and don't add those to the count. If total_matching is 0, the text-only matches are the best answer: say so.`,
@@ -1953,6 +1954,7 @@ CONTENT RULES:
 - Pick only what is relevant to the question. Leave out empty fields and data unrelated to what was asked.
 - When the user asks for a full list ("all", "every", "list of"), include every item in the data — do not shorten it. If the data says truncated: true, say how many matched in total.
 - Use the conversation history to connect follow-up answers to prior context.
+- Whenever the answer mentions a production phase (Pre Cast, Pre Production, Production Start), add a short line saying what each phase mentioned means, from this: ${PHASE_MEANING}
 - The data is already filtered for the question. Don't narrow it further by your own reading of the question, and follow any how_to_read note in the data.
 - Numbers come from the data retrieved for this question. If memory or an earlier answer gives a different number, use the new data and don't repeat the old number.
 
@@ -1987,6 +1989,7 @@ CONTENT RULES:
 - Pick only what is relevant to the question. Leave out empty fields and data unrelated to what was asked.
 - When the user asks for a full list ("all", "every", "list of"), include every item in the data — do not shorten it. If the data says truncated: true, say how many matched in total.
 - Use the conversation history to connect follow-up answers to prior context.
+- Whenever the answer mentions a production phase (Pre Cast, Pre Production, Production Start), add a short line saying what each phase mentioned means, from this: ${PHASE_MEANING}
 - The data is already filtered for the question. Don't narrow it further by your own reading of the question, and follow any how_to_read note in the data.
 - Numbers come from the data retrieved for this question. If memory or an earlier answer gives a different number, use the new data and don't repeat the old number.
 - Use memory from past conversations for richer context when relevant.

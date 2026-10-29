@@ -18,3 +18,11 @@ export function getProductionPhase(totalEps: number | null, epsReceived: number)
   if (epsReceived >= t.preCast) return "Pre Cast";
   return null;
 }
+
+/** Plain-language meaning of each phase, for the AI assistant's answers. */
+export const PHASE_MEANING =
+  "Phases come from how many episode scripts have been received (same rule as the management dashboard's Production Phases chart). " +
+  "Pre Cast: enough episodes to start casting (3 of a 30-episode project, 8 of a 50-episode one). " +
+  "Pre Production: enough to start preparing the shoot (10 of 30, 18 of 50). " +
+  "Production Start: enough to start shooting, i.e. ready for production (15 of 30, 25 of 50). " +
+  "No phase: fewer episodes than that yet, or an episode total other than 30 or 50.";
