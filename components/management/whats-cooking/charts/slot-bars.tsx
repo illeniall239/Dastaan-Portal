@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, Cell } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, Cell, LabelList } from "recharts";
 import { Card } from "@/components/ui/card";
 import { DrillDownModal, DrillDownData } from "@/components/management/drill-down-modal";
 import type { ActiveIdeaDetail } from "@/lib/management/active-ideas-details";
@@ -145,6 +145,8 @@ export function SlotBars({ ideas, teams }: SlotBarsProps) {
                     fill={entry.name === "Unassigned" ? "#9ca3af" : "#224794"}
                   />
                 ))}
+                {/* Count inside the end of each bar, as on the Top Themes chart */}
+                <LabelList dataKey="value" position="insideRight" fill="#ffffff" fontSize={10} fontWeight={600} />
               </Bar>
             </BarChart>
           </ResponsiveContainer>
