@@ -295,17 +295,6 @@ export const DynamicRevisionRanking = dynamic(
 );
 
 /**
- * POV / Audience Focus Breakdown
- */
-export const DynamicPovBreakdown = dynamic(
-  () => import("@/components/management/pov-breakdown").then((mod) => mod.PovBreakdown),
-  {
-    loading: () => <ChartLoader />,
-    ssr: false,
-  }
-);
-
-/**
  * Delay Tracker (Commitment vs Actual Pace)
  */
 export const DynamicDelayTracker = dynamic(

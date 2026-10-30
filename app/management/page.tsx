@@ -17,7 +17,6 @@ import {
   ProductionPhasesSection,
   GenreThemeSection,
   RevisionRankingSection,
-  PovBreakdownSection,
   DelayTrackerSection,
   DeliveryRateOverviewSection,
   DeliveryPerformanceSection,
@@ -175,12 +174,6 @@ export default async function ManagementDashboard({
       <ErrorBoundary fallback={<SectionErrorFallback title="Genre & Theme Breakdown" />}>
         <Suspense fallback={<ChartSkeleton />}>
           <GenreThemeSection />
-        </Suspense>
-      </ErrorBoundary>
-
-      <ErrorBoundary fallback={<SectionErrorFallback title="Audience Focus / POV" />}>
-        <Suspense fallback={<ChartSkeleton />}>
-          <PovBreakdownSection />
         </Suspense>
       </ErrorBoundary>
 

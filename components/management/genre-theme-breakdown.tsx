@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Loader2 } from "lucide-react";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis } from "recharts";
+import { PovBreakdown } from "@/components/management/pov-breakdown";
 
 interface Project {
   id: string;
@@ -149,7 +150,7 @@ export function GenreThemeBreakdown() {
 
   return (
     <>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {/* Theme Category (Commercial Positioning) */}
         <Card>
           <CardContent className="p-4">
@@ -262,6 +263,9 @@ export function GenreThemeBreakdown() {
             <p className="text-[10px] text-muted-foreground text-center mt-1">Click a bar to see projects</p>
           </CardContent>
         </Card>
+
+        {/* Audience Focus / POV */}
+        <PovBreakdown />
       </div>
 
       {drill && (

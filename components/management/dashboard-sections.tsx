@@ -27,7 +27,6 @@ import {
   DynamicProductionPhases,
   DynamicGenreThemeBreakdown,
   DynamicRevisionRanking,
-  DynamicPovBreakdown,
   DynamicDelayTracker,
   DynamicRatingTrends,
   DynamicQualityQuantityChart,
@@ -403,7 +402,7 @@ export async function ProductionPhasesSection() {
 
 /**
  * Genre / Theme Breakdown Section - Async Component
- * Commercial positioning + subject matter themes
+ * Commercial positioning + subject matter themes + audience focus / POV
  */
 export async function GenreThemeSection() {
   return (
@@ -414,7 +413,7 @@ export async function GenreThemeSection() {
             Genre & Theme Breakdown
           </h2>
           <p className="text-muted-foreground mt-1 text-xs sm:text-sm">
-            Commercial positioning and subject matter distribution across active projects
+            Commercial positioning, subject matter and audience focus across active projects
           </p>
         </div>
         <ExportButton
@@ -453,34 +452,6 @@ export async function RevisionRankingSection() {
         />
       </div>
       <DynamicRevisionRanking />
-    </div>
-  );
-}
-
-/**
- * POV / Audience Focus Section - Async Component
- * Male-centric vs female-centric vs ensemble breakdown
- */
-export async function PovBreakdownSection() {
-  return (
-    <div id="pov-breakdown-section" className="mb-6 sm:mb-8">
-      <div className="flex items-center justify-between mb-3 sm:mb-4">
-        <div>
-          <h2 className="text-base sm:text-lg lg:text-xl font-bold text-gray-900">
-            Audience Focus / POV
-          </h2>
-          <p className="text-muted-foreground mt-1 text-xs sm:text-sm">
-            Male-centric vs female-centric vs ensemble — perspective distribution
-          </p>
-        </div>
-        <ExportButton
-          elementId="pov-breakdown-section"
-          filename="pov-breakdown"
-          formats={["png", "pdf"]}
-          compact
-        />
-      </div>
-      <DynamicPovBreakdown />
     </div>
   );
 }

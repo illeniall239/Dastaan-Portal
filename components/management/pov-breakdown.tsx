@@ -100,13 +100,14 @@ export function PovBreakdown() {
   if (!data || data.noDataYet) {
     return (
       <Card>
-        <CardContent className="py-8 text-center">
+        <CardContent className="p-4 text-center">
+          <h3 className="text-sm font-semibold text-gray-900 mb-3 text-left">Audience Focus / POV</h3>
           <Users className="h-8 w-8 text-gray-300 mx-auto mb-2" />
           <p className="text-sm text-muted-foreground">
             No audience focus data yet.
           </p>
           <p className="text-xs text-gray-400 mt-1">
-            Evaluators will populate this when they fill the audience focus field during evaluations.
+            Set Gender POV on a project when logging it, or on its edit page.
           </p>
           {data && data.totalProjects > 0 && (
             <p className="text-[10px] text-gray-400 mt-2">
@@ -133,6 +134,7 @@ export function PovBreakdown() {
     <>
       <Card>
         <CardContent className="p-4">
+          <h3 className="text-sm font-semibold text-gray-900 mb-3">Audience Focus / POV</h3>
           <div className="flex items-center gap-4">
             <div className="relative w-28 h-28 flex-shrink-0">
               <ResponsiveContainer width="100%" height="100%">
@@ -166,9 +168,10 @@ export function PovBreakdown() {
             </div>
             <div className="flex-1 space-y-2">
               {chartData.map((item) => (
-                <div
+                <button
+                  type="button"
                   key={item.name}
-                  className="flex items-center justify-between text-xs cursor-pointer hover:bg-gray-50 rounded px-1.5 py-1 -mx-1 transition-colors"
+                  className="w-full flex items-center justify-between text-xs cursor-pointer hover:bg-gray-50 rounded px-1.5 py-1 -mx-1 transition-colors"
                   onClick={() => handleClick(item)}
                 >
                   <div className="flex items-center gap-1.5">
@@ -176,7 +179,7 @@ export function PovBreakdown() {
                     <span className="text-gray-600">{item.name}</span>
                   </div>
                   <span className="font-semibold text-gray-800">{item.value}</span>
-                </div>
+                </button>
               ))}
               {data.totalProjects - data.totalWithFocus > 0 && (
                 <p className="text-[10px] text-gray-400">
