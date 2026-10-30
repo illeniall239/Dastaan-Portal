@@ -311,7 +311,7 @@ const DATA_TOOLS = [
     function: {
       name: "query_projects",
       description:
-        "Every one-liner / project with its genres, theme, content type, slot, episodes received vs total, production phase, average evaluation score and approval status. Production phase is the same as the management dashboard's Production Phases chart: Pre Cast, Pre Production, Production Start (= ready for / in production). Use for: genres of one-liners and which have no genre ('Not classified'), which projects are in a phase or ready for production, counts or breakdowns by genre / theme / content type / slot / team / phase / approval, and listing or filtering projects by any of these.",
+        "Every one-liner / project with its genres, theme, content type, commercial positioning, gender POV, slot, episodes received vs total, production phase, average evaluation score and approval status. Production phase is the same as the management dashboard's Production Phases chart: Pre Cast, Pre Production, Production Start (= ready for / in production). Use for: genres of one-liners and which have no genre ('Not classified'), which projects are in a phase or ready for production, counts or breakdowns by genre / theme / content type / slot / team / phase / approval, and listing or filtering projects by any of these.",
       parameters: {
         type: "object",
         properties: {
@@ -323,12 +323,14 @@ const DATA_TOOLS = [
           theme: { type: "string", description: "Filter by theme (contains)." },
           keywords: { type: "array", items: { type: "string" }, description: "For a concept or topic: the key word(s) the user used, cut to the core word (substring match, so a stem also finds longer forms). Add synonyms only if the user asks for related ones too. Searches title, writer, genres, theme, content type, slot, logline, synopses, category, director, idea by, meeting notes, next steps, remarks, feedback and tracking notes. Each project returned says matched_in." },
           content_type: { type: "string", description: "Serial, Long Serial, Telefilm, Mini-serial, Ramadan Serial, Series Sitcom or Soap." },
+          commercial_positioning: { type: "string", enum: ["Commercial", "Non Commercial/Experimental", "Commercial Edge", "Signature Commercial"], description: "Commercial positioning, set on the project when it was logged." },
+          gender_pov: { type: "string", enum: ["Male Centric", "Female Centric", "Both"], description: "Gender POV / audience focus, set on the project when it was logged." },
           slot: { type: "string", description: "Filter by target slot." },
           phase: { type: "string", enum: ["Pre Cast", "Pre Production", "Production Start", "none"], description: "Production phase. 'none' = not yet in any phase." },
           approval: { type: "string", enum: ["approved", "rejected", "pending"], description: "Approval decision." },
           min_episodes_received: { type: "number", description: "Only projects with at least this many episodes received." },
           period: { type: "string", description: "Logged within: this_month, last_month, this_year, last_3_months, etc." },
-          group_by: { type: "string", enum: ["genre", "theme", "content_type", "slot", "phase", "team", "approval", "logged_by"], description: "Also return counts per value (a project with several genres counts under each)." },
+          group_by: { type: "string", enum: ["genre", "theme", "content_type", "commercial_positioning", "gender_pov", "slot", "phase", "team", "approval", "logged_by"], description: "Also return counts per value (a project with several genres counts under each)." },
           sort_by: { type: "string", enum: ["logged_on", "episodes_received", "avg_score", "title"], description: "Default: most recently logged first." },
           limit: { type: "number", description: "Max projects to list (default 100, max 200). Use 200 when the user asks for all." },
         },
@@ -1430,6 +1432,8 @@ async function toolQueryProjects(args: any, admin: AdminClient, scope: TeamScope
     theme: args.theme,
     keywords: Array.isArray(args.keywords) ? args.keywords : undefined,
     content_type: args.content_type,
+    commercial_positioning: args.commercial_positioning,
+    gender_pov: args.gender_pov,
     slot: args.slot,
     phase: args.phase,
     approval: args.approval,
@@ -1907,7 +1911,7 @@ TOOL ROUTING GUIDE:
 - Writers list, writer engagement → query_writers
 - Meetings, calendar → query_meetings
 - Story approvals, approved/rejected → query_approvals
-- Genres / themes / content types of one-liners, untagged ("Not classified") one-liners, production phase (Pre Cast, Pre Production, Production Start), "ready for production", "how far along", counts or breakdowns of projects by any field, listing all projects → query_projects (use group_by for breakdowns, limit 200 for "all")
+- Genres / themes / content types / commercial positioning (Commercial, Commercial Edge, Signature Commercial, Non Commercial) / gender POV (male or female centric) of one-liners, untagged ("Not classified") one-liners, production phase (Pre Cast, Pre Production, Production Start), "ready for production", "how far along", counts or breakdowns of projects by any field, listing all projects → query_projects (use group_by for breakdowns, limit 200 for "all")
 - Concept or topic questions (how many ideas are about / based on / involve <topic>) → query_projects with keywords = the user's own key word for the topic, cut to its core (matching is by substring, so a stem also finds longer forms). Don't add synonyms unless the user asks for related ones too. Genre and theme are free-text tags, so never rely on one exact genre for a concept; the result's tags_in_scope lists every genre and theme that exists, for when the user asks what tags there are or wants related ones. The result's total_matching and projects are the projects tagged with the concept in genre or theme; text_only_matches only mention a keyword in their title, synopsis or notes.
 
 IMPORTANT: If the question is ambiguous or broad AND requires new data, call MULTIPLE tools. For example:

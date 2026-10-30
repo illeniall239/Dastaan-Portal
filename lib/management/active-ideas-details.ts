@@ -145,8 +145,16 @@ export async function getActiveIdeasByGenre(
     const descMap = new Map<string, any>();
     const { data: rawEvals } = await supabase
       .from('evaluator_forms')
-      .select('call_report_id, theme_category, audience_focus, no_of_tracks, closing_remarks, themes_of_drama')
+      .select('call_report_id, no_of_tracks, closing_remarks, themes_of_drama')
       .not('submitted_at', 'is', null);
+
+    // Commercial Positioning and Gender POV come only from the project (set at logging)
+    const { data: projectTags } = await supabase
+      .from('call_reports')
+      .select('id, commercial_positioning, audience_focus')
+      .eq('meeting_type', 'call_report')
+      .is('archived_at', null);
+    const tagMap = new Map((projectTags || []).map((t: any) => [t.id, t]));
 
     if (rawEvals) {
       const grouped = new Map<string, any[]>();
@@ -157,8 +165,6 @@ export async function getActiveIdeasByGenre(
       }
       for (const [crId, rows] of grouped) {
         descMap.set(crId, {
-          has_theme_category: rows.some((r: any) => r.theme_category != null),
-          has_audience_focus: rows.some((r: any) => r.audience_focus != null),
           has_no_of_tracks: rows.some((r: any) => r.no_of_tracks != null),
           has_closing_remarks: rows.some((r: any) => r.closing_remarks != null && r.closing_remarks !== ''),
           has_themes_of_drama: rows.some((r: any) => r.themes_of_drama != null && Array.isArray(r.themes_of_drama) && r.themes_of_drama.length > 0),
@@ -187,8 +193,8 @@ export async function getActiveIdeasByGenre(
         writer_names: report.writer_name ? [report.writer_name] : [],
         genre: Array.isArray(report.genre) ? report.genre : (report.genre ? [report.genre] : ['Other']),
         evaluator_scores: null, // Aggregated scores are top-level
-        has_theme_category: desc?.has_theme_category ?? false,
-        has_audience_focus: desc?.has_audience_focus ?? false,
+        has_theme_category: Boolean(tagMap.get(report.id)?.commercial_positioning),
+        has_audience_focus: Boolean(tagMap.get(report.id)?.audience_focus),
         has_no_of_tracks: desc?.has_no_of_tracks ?? false,
         has_closing_remarks: desc?.has_closing_remarks ?? false,
         has_themes_of_drama: desc?.has_themes_of_drama ?? false,

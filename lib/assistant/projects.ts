@@ -2,6 +2,7 @@
 // sorting and grouping over those rows. Phase uses the same rule as the management dashboard.
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { getProductionPhase } from "@/lib/production-phase";
+import { COMMERCIAL_POSITIONING_OPTIONS, AUDIENCE_FOCUS_OPTIONS } from "@/lib/project-tags";
 
 export const NOT_CLASSIFIED = "Not classified";
 
@@ -18,6 +19,9 @@ export type RawProject = {
   created_at: string;
   team_name: string | null;
   logged_by: string | null;
+  /** project tags, set at logging */
+  commercial_positioning?: string | null;
+  audience_focus?: string | null;
 } & { [K in (typeof TEXT_FIELDS)[number]]?: string | null };
 
 // Extra call report text searched by `keywords`. Kept off the output so story text and
@@ -48,6 +52,8 @@ export type ProjectSummary = {
   genres: string[];
   theme: string | null;
   content_type: string | null;
+  commercial_positioning: string | null;
+  gender_pov: string | null;
   slot: string | null;
   episodes_received: number;
   total_episodes: number | null;
@@ -56,6 +62,9 @@ export type ProjectSummary = {
   approval?: "approved" | "rejected" | "pending";
   [SEARCH_TEXT]?: Record<string, string>;
 };
+
+const tagLabel = (options: readonly { value: string; label: string }[], value: string | null | undefined) =>
+  value ? options.find((o) => o.value === value)?.label ?? value : null;
 
 export function summarizeProjects(rows: RawProject[], lk: ProjectLookups): ProjectSummary[] {
   return rows.map((r) => {
@@ -72,6 +81,8 @@ export function summarizeProjects(rows: RawProject[], lk: ProjectLookups): Proje
       genres: genres.length > 0 ? genres : [NOT_CLASSIFIED],
       theme: r.theme,
       content_type: r.content_type,
+      commercial_positioning: tagLabel(COMMERCIAL_POSITIONING_OPTIONS, r.commercial_positioning),
+      gender_pov: tagLabel(AUDIENCE_FOCUS_OPTIONS, r.audience_focus),
       slot: r.target_slot,
       episodes_received: received,
       total_episodes: total,
@@ -101,11 +112,13 @@ export type ProjectQuery = {
   /** match any keyword anywhere: title, writer, genres, theme, content type, slot and TEXT_FIELDS */
   keywords?: string[];
   content_type?: string;
+  commercial_positioning?: string;
+  gender_pov?: string;
   slot?: string;
   phase?: string;
   approval?: string;
   min_episodes?: number;
-  group_by?: "genre" | "theme" | "content_type" | "slot" | "phase" | "team" | "approval" | "logged_by";
+  group_by?: "genre" | "theme" | "content_type" | "commercial_positioning" | "gender_pov" | "slot" | "phase" | "team" | "approval" | "logged_by";
   sort_by?: "logged_on" | "episodes_received" | "avg_score" | "title";
   limit?: number;
 };
@@ -168,6 +181,8 @@ export function queryProjects(
     if (genres.length > 0 && !genres.some((g) => genreMatches(p, g))) return false;
     if (q.theme && !contains(p.theme, q.theme)) return false;
     if (q.content_type && norm(p.content_type) !== norm(q.content_type)) return false;
+    if (q.commercial_positioning && norm(p.commercial_positioning) !== norm(q.commercial_positioning)) return false;
+    if (q.gender_pov && norm(p.gender_pov) !== norm(q.gender_pov)) return false;
     if (q.slot && !contains(p.slot, q.slot)) return false;
     if (q.phase) {
       if (norm(q.phase) === "none" ? p.phase !== null : norm(p.phase) !== norm(q.phase)) return false;
@@ -278,7 +293,7 @@ export async function loadProjectSummaries(
 ): Promise<ProjectSummary[]> {
   const [crs, episodes, negotiations, evalForms, evalLogs, users] = await Promise.all([
     fetchAll<any>((f, t) => admin.from("call_reports")
-      .select(`id, call_report_id, working_title, writer_name, genre, theme, content_type, target_slot, total_episodes, created_at, created_by, ${TEXT_FIELDS.join(", ")}, team:teams!call_reports_team_id_fkey(name, team_head:users!teams_team_head_id_fkey(name))`)
+      .select(`id, call_report_id, working_title, writer_name, genre, theme, content_type, target_slot, total_episodes, created_at, created_by, ${TEXT_FIELDS.join(", ")}, team:teams!call_reports_team_id_fkey(name, team_head:users!teams_team_head_id_fkey(name)), commercial_positioning, audience_focus`)
       .eq("meeting_type", "call_report").is("archived_at", null).order("id").range(f, t)),
     // Counted the same way as the dashboard's Production Phases chart
     fetchAll<any>((f, t) => admin.from("episodes").select("id, call_report_id")
@@ -323,6 +338,8 @@ export async function loadProjectSummaries(
         genre: cr.genre,
         theme: cr.theme,
         content_type: cr.content_type,
+        commercial_positioning: cr.commercial_positioning,
+        audience_focus: cr.audience_focus,
         target_slot: cr.target_slot,
         total_episodes: cr.total_episodes,
         created_at: cr.created_at,

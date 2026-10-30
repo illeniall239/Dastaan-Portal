@@ -188,3 +188,22 @@ describe("main vs underlying theme", () => {
     expect((r.projects.find((p) => p.title === "Aatish") as any).logline).toBe("A love that turns into obsession.");
   });
 });
+
+describe("commercial positioning and gender POV", () => {
+  const list = summarizeProjects([
+    raw({ id: "t1", working_title: "Edge", commercial_positioning: "commercial_edge", audience_focus: "female_centric" }),
+    raw({ id: "t2", working_title: "Sig", commercial_positioning: "signature_commercial", audience_focus: "male_centric" }),
+    raw({ id: "t3", working_title: "Untagged" }),
+  ], { ...lookups, episodesByCr: new Map() });
+
+  it("shows the tags as plain labels", () => {
+    expect(list.find((p) => p.title === "Edge")).toMatchObject({ commercial_positioning: "Commercial Edge", gender_pov: "Female Centric" });
+    expect(list.find((p) => p.title === "Untagged")).toMatchObject({ commercial_positioning: null, gender_pov: null });
+  });
+
+  it("filters and groups by them", () => {
+    expect(queryProjects(list, { commercial_positioning: "Signature Commercial" }).projects.map((p) => p.title)).toEqual(["Sig"]);
+    expect(queryProjects(list, { gender_pov: "female centric" }).projects.map((p) => p.title)).toEqual(["Edge"]);
+    expect(queryProjects(list, { group_by: "gender_pov" }).groups).toEqual({ "Female Centric": 1, "Male Centric": 1, None: 1 });
+  });
+});

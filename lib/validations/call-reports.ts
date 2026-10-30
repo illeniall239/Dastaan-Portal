@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { COMMERCIAL_POSITIONING_VALUES, AUDIENCE_FOCUS_VALUES } from "@/lib/project-tags";
 
 /**
  * Validation schema for updating a call report (writer engagement report)
@@ -43,6 +44,15 @@ export const updateCallReportSchema = z.object({
     }).optional()
   ),
   theme: z.string().max(200).optional(),
+  // Optional on edit so older projects can still be saved; empty leaves the value unchanged
+  commercial_positioning: z.preprocess(
+    (val) => (val === "" || val === null || val === undefined) ? undefined : val,
+    z.enum(COMMERCIAL_POSITIONING_VALUES, { errorMap: () => ({ message: "Please select a valid commercial positioning" }) }).optional()
+  ),
+  audience_focus: z.preprocess(
+    (val) => (val === "" || val === null || val === undefined) ? undefined : val,
+    z.enum(AUDIENCE_FOCUS_VALUES, { errorMap: () => ({ message: "Please select a valid gender POV" }) }).optional()
+  ),
   category: z.preprocess(
     (val) => (val === "" || val === null || val === undefined) ? undefined : val,
     z.enum([

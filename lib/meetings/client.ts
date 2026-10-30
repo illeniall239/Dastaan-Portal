@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/client";
 import type { UpdateCallReportFormData } from "@/lib/validations/call-reports";
+import type { CommercialPositioning, AudienceFocus } from "@/lib/project-tags";
 import type { Meeting as MeetingType } from "@/types";
 
 export type Meeting = MeetingType;
@@ -46,6 +47,8 @@ export interface CreateMeetingInput {
   theme?: string;
   slot?: string;
   content_type?: "Serial" | "Long Serial" | "Telefilm" | "Mini-serial" | "Ramadan Serial" | "Series Sitcom" | "Soap";
+  commercial_positioning?: CommercialPositioning;
+  audience_focus?: AudienceFocus;
   idea_by?: string;
   developed_by?: string;
   management_member_name?: string;
@@ -168,6 +171,8 @@ export async function createMeetingClient(meetingData: CreateMeetingInput) {
     // Map UI-provided slot to DB column target_slot
     target_slot: meetingData.slot || null,
     content_type: meetingData.content_type || null,
+    commercial_positioning: meetingData.commercial_positioning || null,
+    audience_focus: meetingData.audience_focus || null,
     idea_by: meetingData.idea_by || null,
     developed_by: meetingData.developed_by || null,
     management_member_name: meetingData.management_member_name || null,

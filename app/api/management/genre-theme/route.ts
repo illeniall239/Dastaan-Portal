@@ -20,35 +20,16 @@ export async function GET() {
 
     const admin = createAdminClient();
 
-    const [{ data: evalForms }, { data: callReports }] = await Promise.all([
-      admin
-        .from("evaluator_forms")
-        .select("call_report_id, theme_category")
-        .not("submitted_at", "is", null)
-        .not("theme_category", "is", null),
-      admin
-        .from("call_reports")
-        .select("id, working_title, writer_name, theme, genre, target_slot, team_id, team:teams!call_reports_team_id_fkey(name, team_head:users!teams_team_head_id_fkey(name))")
-        .is("archived_at", null)
-        .eq("meeting_type", "call_report"),
-    ]);
+    const { data: callReports } = await admin
+      .from("call_reports")
+      .select("id, working_title, writer_name, theme, genre, target_slot, team_id, commercial_positioning, team:teams!call_reports_team_id_fkey(name, team_head:users!teams_team_head_id_fkey(name))")
+      .is("archived_at", null)
+      .eq("meeting_type", "call_report");
 
-    // ── Theme Category (from evaluator_forms) ──────────────────────────
-    // Aggregate per call_report: majority vote if multiple evals
+    // ── Theme Category (project's Commercial Positioning, set at logging) ──
     const crThemeCategory = new Map<string, string>();
-    const crCategoryCounts = new Map<string, Map<string, number>>();
-    for (const ef of evalForms || []) {
-      if (!crCategoryCounts.has(ef.call_report_id)) crCategoryCounts.set(ef.call_report_id, new Map());
-      const m = crCategoryCounts.get(ef.call_report_id)!;
-      m.set(ef.theme_category, (m.get(ef.theme_category) || 0) + 1);
-    }
-    for (const [crId, counts] of crCategoryCounts) {
-      let best = "";
-      let bestCount = 0;
-      for (const [cat, count] of counts) {
-        if (count > bestCount) { best = cat; bestCount = count; }
-      }
-      crThemeCategory.set(crId, best);
+    for (const cr of callReports || []) {
+      if (cr.commercial_positioning) crThemeCategory.set(cr.id, cr.commercial_positioning);
     }
 
     // Count by category
@@ -72,7 +53,7 @@ export async function GET() {
       });
     }
 
-    // Also count projects with NO theme_category
+    // Also count projects with no category
     const evaluatedCrIds = new Set(crThemeCategory.keys());
     const unevaluatedCount = (callReports || []).filter((cr) => !evaluatedCrIds.has(cr.id)).length;
 

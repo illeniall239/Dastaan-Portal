@@ -18,6 +18,8 @@ import Link from "next/link";
 import { toast } from "sonner";
 import { createMeetingClient, updateCallReportClient } from "@/lib/meetings/client";
 import { FileUpload } from "@/components/ui/file-upload";
+import { ProjectTagFields } from "@/components/call-reports/project-tag-fields";
+import type { CommercialPositioning, AudienceFocus } from "@/lib/project-tags";
 import { ContentRevisions } from "@/components/ui/content-revisions";
 import { uploadFile } from "@/lib/attachments/client";
 import { formatFileSize } from "@/lib/validations/episodes";
@@ -118,6 +120,8 @@ export function CallReportForm({
         theme: initialData.theme || "",
         targetSlot: initialData.target_slot || "",
         contentType: initialData.content_type || "",
+        commercialPositioning: initialData.commercial_positioning || "",
+        audienceFocus: initialData.audience_focus || "",
         notes: initialData.meeting_notes || "",
         nextSteps: initialData.next_steps || "",
         status: initialData.status || "draft",
@@ -145,6 +149,8 @@ export function CallReportForm({
       theme: "",
       targetSlot: "",
       contentType: "",
+      commercialPositioning: "",
+      audienceFocus: "",
       notes: "",
       nextSteps: "",
       status: "ready_for_evaluation",
@@ -247,6 +253,8 @@ export function CallReportForm({
         theme: d.theme || "",
         targetSlot: d.targetSlot || "",
         contentType: d.contentType || "",
+        commercialPositioning: d.commercialPositioning || "",
+        audienceFocus: d.audienceFocus || "",
         notes: d.notes || "",
         nextSteps: d.nextSteps || "",
         status: d.status || "ready_for_evaluation",
@@ -345,6 +353,9 @@ export function CallReportForm({
     if (!formData.theme.trim()) missingFields.push("Theme");
     if (!formData.targetSlot) missingFields.push("Target Slot");
     if (!formData.contentType) missingFields.push("Content Type");
+    // Required for new one-liners; optional on edit so older projects can still be saved
+    if (mode === "create" && !formData.commercialPositioning) missingFields.push("Commercial Positioning");
+    if (mode === "create" && !formData.audienceFocus) missingFields.push("Gender POV");
 
     const hasAttachment = filesToUpload.length > 0 || draftAttachments.length > 0 ||
       (mode === "edit" && existingAttachments.length > 0);
@@ -378,6 +389,8 @@ export function CallReportForm({
           theme: formData.theme || undefined,
           target_slot: formData.targetSlot || undefined,
           content_type: (formData.contentType || undefined) as "Serial" | "Long Serial" | "Telefilm" | "Mini-serial" | "Ramadan Serial" | "Series Sitcom" | "Soap" | undefined,
+          commercial_positioning: (formData.commercialPositioning || undefined) as CommercialPositioning | undefined,
+          audience_focus: (formData.audienceFocus || undefined) as AudienceFocus | undefined,
           category: (formData.category || undefined) as "external_producer" | "writer_pitch" | "inhouse_content" | "content_head_initiative" | "given_by_management" | undefined,
           idea_by: formData.ideaBy || undefined,
           developed_by: formData.developedBy || undefined,
@@ -492,6 +505,8 @@ export function CallReportForm({
           theme: formData.theme || undefined,
           slot: formData.targetSlot,
           content_type: formData.contentType as "Serial" | "Long Serial" | "Telefilm" | "Mini-serial" | "Ramadan Serial" | "Series Sitcom" | "Soap" | undefined,
+          commercial_positioning: (formData.commercialPositioning || undefined) as CommercialPositioning | undefined,
+          audience_focus: (formData.audienceFocus || undefined) as AudienceFocus | undefined,
           idea_by: formData.ideaBy || undefined,
           developed_by: formData.developedBy || undefined,
           management_member_name: formData.managementMemberName || undefined,
@@ -591,6 +606,8 @@ export function CallReportForm({
           theme: "",
           targetSlot: "",
           contentType: "",
+          commercialPositioning: "",
+          audienceFocus: "",
           notes: "",
           nextSteps: "",
           status: "ready_for_evaluation",
@@ -947,6 +964,14 @@ export function CallReportForm({
                 </SelectContent>
               </Select>
             </div>
+
+            <ProjectTagFields
+              commercialPositioning={formData.commercialPositioning}
+              audienceFocus={formData.audienceFocus}
+              onChange={handleSelectChange}
+              required={mode === "create"}
+              disabled={isLoading}
+            />
 
           </CardContent>
         </Card>

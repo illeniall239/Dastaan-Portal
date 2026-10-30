@@ -157,8 +157,6 @@ export function EvaluatorEvaluationForm({
     // Descriptive evaluation
     themesOfDrama: [] as string[],
     correspondingDramas: [] as string[],
-    themeCategory: "" as "" | "commercial" | "non_commercial" | "commercial_edge" | "signature_commercial",
-    audienceFocus: "" as "" | "male_centric" | "female_centric" | "both",
     noOfTracks: "" as string,
     closingRemarks: "",
     // Additional project info
@@ -325,8 +323,6 @@ export function EvaluatorEvaluationForm({
           overall_oneliner_grade_comment: formData.overallOnelinerGradeComment || null,
           themes_of_drama: formData.themesOfDrama,
           corresponding_dramas: formData.correspondingDramas,
-          theme_category: formData.themeCategory || null,
-          audience_focus: formData.audienceFocus || null,
           no_of_tracks: noOfTracks ?? null,
           closing_remarks: formData.closingRemarks || null,
           first_2_eps_required: formData.first2EpsRequired,
@@ -361,8 +357,6 @@ export function EvaluatorEvaluationForm({
           overall_oneliner_grade_comment: formData.overallOnelinerGradeComment || undefined,
           themes_of_drama: formData.themesOfDrama,
           corresponding_dramas: formData.correspondingDramas,
-          theme_category: formData.themeCategory || undefined,
-          audience_focus: formData.audienceFocus || undefined,
           no_of_tracks: noOfTracks,
           closing_remarks: formData.closingRemarks || undefined,
           first_2_eps_required: formData.first2EpsRequired,
@@ -483,8 +477,6 @@ export function EvaluatorEvaluationForm({
         overallOnelinerGradeComment: pendingDraftData.overallOnelinerGradeComment || "",
         themesOfDrama: pendingDraftData.themesOfDrama || [],
         correspondingDramas: pendingDraftData.correspondingDramas || [],
-        themeCategory: pendingDraftData.themeCategory || "",
-        audienceFocus: pendingDraftData.audienceFocus || "",
         noOfTracks: pendingDraftData.noOfTracks?.toString() || "",
         closingRemarks: pendingDraftData.closingRemarks || "",
         targetWriterId: pendingDraftData.targetWriterId || "",
@@ -529,8 +521,6 @@ export function EvaluatorEvaluationForm({
         overallOnelinerGradeComment: propExistingEvaluation.overall_oneliner_grade_comment || "",
         themesOfDrama: propExistingEvaluation.themes_of_drama || [],
         correspondingDramas: propExistingEvaluation.corresponding_dramas || [],
-        themeCategory: propExistingEvaluation.theme_category || "",
-        audienceFocus: propExistingEvaluation.audience_focus || "",
         noOfTracks: propExistingEvaluation.no_of_tracks?.toString() || "",
         closingRemarks: propExistingEvaluation.closing_remarks || "",
         perEpPriceRange: propExistingEvaluation.per_ep_price_range || "",
@@ -568,8 +558,6 @@ export function EvaluatorEvaluationForm({
               overallOnelinerGradeComment: json.evaluation.overall_oneliner_grade_comment || "",
               themesOfDrama: json.evaluation.themes_of_drama || [],
               correspondingDramas: json.evaluation.corresponding_dramas || [],
-              themeCategory: json.evaluation.theme_category || "",
-              audienceFocus: json.evaluation.audience_focus || "",
               noOfTracks: json.evaluation.no_of_tracks?.toString() || "",
               closingRemarks: json.evaluation.closing_remarks || "",
               perEpPriceRange: json.evaluation.per_ep_price_range || "",
@@ -995,72 +983,7 @@ export function EvaluatorEvaluationForm({
               />
             </div>
 
-            {/* Category of Theme/Subject */}
-            <div className="space-y-2">
-              <Label className="font-semibold">Category of Theme/Subject</Label>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {[
-                  { value: "commercial", label: "Commercial", description: "A drama made to attract a large audience, achieve high ratings, and generate strong commercial success through entertaining and emotionally engaging stories." },
-                  { value: "non_commercial", label: "Non Commercial/Experimental", description: "A drama that focuses on meaningful storytelling, realism, or social issues, where creative value is given more importance than ratings." },
-                  { value: "commercial_edge", label: "Commercial Edge", description: "A drama that combines mass appeal with a fresh concept or unique storytelling, aiming to achieve both strong ratings and quality." },
-                  { value: "signature_commercial", label: "Signature Commercial", description: "A premium, flagship drama that represents a channel's creative identity through outstanding storytelling, production quality, and lasting impact." },
-                ].map((option) => (
-                  <label
-                    key={option.value}
-                    className={`flex items-start gap-2 p-3 rounded-lg border-2 cursor-pointer transition-all ${
-                      formData.themeCategory === option.value
-                        ? "border-blue-500 bg-blue-50"
-                        : "border-gray-200 hover:border-blue-300 hover:bg-blue-50/30"
-                    }`}
-                  >
-                    <input
-                      type="radio"
-                      name="themeCategory"
-                      value={option.value}
-                      checked={formData.themeCategory === option.value}
-                      onChange={(e) => setFormData((prev) => ({ ...prev, themeCategory: e.target.value as any }))}
-                      className="h-4 w-4 text-blue-600 focus:ring-blue-500 mt-0.5"
-                    />
-                    <div>
-                      <span className="text-sm font-medium">{option.label}</span>
-                      <p className="text-xs text-muted-foreground mt-0.5">{option.description}</p>
-                    </div>
-                  </label>
-                ))}
-              </div>
-            </div>
-
-            {/* Character Centric */}
-            <div className="space-y-2">
-              <Label className="font-semibold">Character Centric</Label>
-              <div className="flex flex-col sm:flex-row gap-3">
-                {[
-                  { value: "male_centric", label: "Male Centric" },
-                  { value: "female_centric", label: "Female Centric" },
-                  { value: "both", label: "Both" },
-                ].map((option) => (
-                  <label
-                    key={option.value}
-                    className={`flex items-center gap-2 p-3 rounded-lg border-2 cursor-pointer transition-all flex-1 ${
-                      formData.audienceFocus === option.value
-                        ? "border-blue-500 bg-blue-50"
-                        : "border-gray-200 hover:border-blue-300 hover:bg-blue-50/30"
-                    }`}
-                  >
-                    <input
-                      type="radio"
-                      name="audienceFocus"
-                      value={option.value}
-                      checked={formData.audienceFocus === option.value}
-                      onChange={(e) => setFormData((prev) => ({ ...prev, audienceFocus: e.target.value as any }))}
-                      className="h-4 w-4 text-blue-600 focus:ring-blue-500"
-                    />
-                    <span className="text-sm font-medium">{option.label}</span>
-                  </label>
-                ))}
-              </div>
-            </div>
-
+            {/* Commercial Positioning and Gender POV are set on the project when it is logged */}
             {/* No. of Tracks Mentioned */}
             <div className="space-y-2">
               <Label htmlFor="noOfTracks" className="font-semibold">No. of Tracks Mentioned</Label>
