@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import {
   CheckCircle2,
   ClipboardCheck,
+  Download,
   Eye,
   FileText,
   Loader2,
@@ -45,6 +46,8 @@ interface RevisionEvaluateListProps {
   evaluateBasePath?: string;
   /** Hide evaluate/edit/view buttons — show only file info and status badges */
   readOnly?: boolean;
+  /** Show a Download button on each submission (episodes only) */
+  showDownloads?: boolean;
 }
 
 export function RevisionEvaluateList({
@@ -56,6 +59,7 @@ export function RevisionEvaluateList({
   originalDate,
   evaluateBasePath,
   readOnly,
+  showDownloads,
 }: RevisionEvaluateListProps) {
   const router = useRouter();
 
@@ -121,6 +125,26 @@ export function RevisionEvaluateList({
 
     return revisionId ? `${basePath}?revision_id=${revisionId}` : basePath;
   };
+
+  // Same signed-link routes the rest of the app uses: the episode's own file, and revision files
+  // from the "episodes" storage bucket
+  const originalDownloadUrl = showDownloads && entityType === "episode" && originalFileName
+    ? `/api/episodes/download/${entityId}`
+    : null;
+  const revisionDownloadUrl = (rev: Revision) =>
+    showDownloads && entityType === "episode" && rev.attachment_url
+      ? `/api/storage/download?url=${encodeURIComponent(rev.attachment_url)}&bucket=episodes`
+      : null;
+
+  const renderDownload = (url: string | null, label: string) =>
+    url ? (
+      <Button asChild size="sm" variant="outline" className="h-7 text-xs gap-1 shrink-0">
+        <a href={url} target="_blank" rel="noopener noreferrer" aria-label={`Download ${label}`}>
+          <Download className="h-3 w-3" />
+          <span className="hidden sm:inline">Download</span>
+        </a>
+      </Button>
+    ) : null;
 
   const formatDate = (dateStr: string) => {
     return new Date(dateStr).toLocaleDateString("en-US", {
@@ -247,7 +271,10 @@ export function RevisionEvaluateList({
               )}
             </div>
           </div>
-          {renderStatus(originalStatus)}
+          <div className="shrink-0 flex items-center gap-1.5">
+            {renderStatus(originalStatus)}
+            {renderDownload(originalDownloadUrl, originalFileName || "original submission")}
+          </div>
         </div>
 
         {/* Revisions */}
@@ -269,7 +296,10 @@ export function RevisionEvaluateList({
                   <span className="shrink-0">&middot; {formatDate(rev.original_submission_date || rev.created_at)}</span>
                 </div>
               </div>
-              {renderStatus(revStatus, rev.id)}
+              <div className="shrink-0 flex items-center gap-1.5">
+                {renderStatus(revStatus, rev.id)}
+                {renderDownload(revisionDownloadUrl(rev), rev.attachment_name || `revision ${rev.revision_number}`)}
+              </div>
             </div>
           );
         })}

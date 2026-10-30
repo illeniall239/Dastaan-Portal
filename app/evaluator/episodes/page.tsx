@@ -516,6 +516,7 @@ export default function EvaluatorEpisodesPage() {
                                   <RevisionEvaluateList
                                     entityId={episode.id}
                                     entityType="episode"
+                                    showDownloads
                                     revisionCount={(episode as any).revision_count || 0}
                                     portalPrefix="evaluator"
                                     originalFileName={episode.attachment_name}
@@ -536,12 +537,6 @@ export default function EvaluatorEpisodesPage() {
                                     <Button size="sm" variant="outline" onClick={() => router.push(`/evaluator/episodes/${episode.id}/edit`)}>
                                       <Pencil className="h-4 w-4 sm:mr-1.5" />
                                       <span className="hidden sm:inline">Edit</span>
-                                    </Button>
-                                  )}
-                                  {episode.attachment_url && (
-                                    <Button size="sm" variant="outline" onClick={() => handleDownload(episode)}>
-                                      <Download className="h-4 w-4 sm:mr-1.5" />
-                                      <span className="hidden sm:inline">Download</span>
                                     </Button>
                                   )}
                                 </div>
