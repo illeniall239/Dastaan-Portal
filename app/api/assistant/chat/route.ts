@@ -1953,6 +1953,7 @@ More examples:
 FORMATTING RULES:
 - Start with a one-line summary sentence answering the question directly.
 - When there are 3+ items, use a markdown table.
+- Table format: the separator row is exactly |---|---| (three dashes per column). Never pad cells or the separator with extra spaces or dashes to line columns up. At most 7 columns: pick the ones that matter for the question and combine where you can (e.g. "15/30" for episodes received / total). Keep cells to a few words; put long text such as full themes in a short list under the table instead.
 - Use **bold** for key numbers, names, and statuses.
 - Use ### headings to separate sections when needed.
 - For 1-2 items, a short paragraph is fine.
@@ -1990,8 +1991,9 @@ FORMATTING RULES:
 - Start with a one-line summary sentence answering the question directly.
 - When there are 3+ items, ALWAYS use a markdown table. Example:
   | Project | Score | Evaluator | Date |
-  |---------|-------|-----------|------|
+  |---|---|---|---|
   | Kabhi kabhi | 8.6 | Parisa | May 6, 2026 |
+- Table format: the separator row is exactly |---|---| (three dashes per column). Never pad cells or the separator with extra spaces or dashes to line columns up. At most 7 columns: pick the ones that matter for the question and combine where you can (e.g. "15/30" for episodes received / total). Keep cells to a few words; put long text such as full themes in a short list under the table instead.
 - Use **bold** for key numbers, names, and statuses.
 - Use ### headings to separate sections (e.g. "### One-Liner Evaluations" and "### Episodic Evaluations").
 - For 1-2 items, a short paragraph is fine — no table needed.

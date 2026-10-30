@@ -10,4 +10,19 @@ describe("cleanReply", () => {
     const text = "The null hypothesis\n| Project | Note |\n| Nullah | null and void |";
     expect(cleanReply(text)).toBe(text);
   });
+
+  it("cuts separator cells padded with long runs of dashes", () => {
+    expect(cleanReply("| Title | Writer |\n| :" + "-".repeat(500) + " | ------------: |"))
+      .toBe("| Title | Writer |\n| :--- | ---: |");
+  });
+
+  it("puts a separator row glued onto the header row on its own line", () => {
+    expect(cleanReply("| Title | Writer | | :--- | :--- |\n| Dil | Ali |"))
+      .toBe("| Title | Writer |\n| :--- | :--- |\n| Dil | Ali |");
+  });
+
+  it("leaves a normal table and plain dashes outside tables alone", () => {
+    const text = "Notes -------- here\n| A | B |\n|---|---|\n| 1 | 2 |";
+    expect(cleanReply(text)).toBe(text);
+  });
 });
