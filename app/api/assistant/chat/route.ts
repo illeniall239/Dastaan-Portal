@@ -6,6 +6,7 @@ import { RateLimitPresets } from "@/lib/rate-limit-redis";
 import { loadProjectSummaries, queryProjects } from "@/lib/assistant/projects";
 import { MANAGEMENT_REPORTS, describeManagementReports, runManagementReport } from "@/lib/assistant/management-reports";
 import { PHASE_MEANING } from "@/lib/production-phase";
+import { COMMERCIAL_POSITIONING_OPTIONS, AUDIENCE_FOCUS_OPTIONS } from "@/lib/project-tags";
 import { cleanReply } from "@/lib/assistant/format";
 
 export const dynamic = "force-dynamic";
@@ -1528,6 +1529,9 @@ Dastaan (meaning "Story" in Urdu) is a story development management system for a
 
 KEY TERMINOLOGY (memorise these — users will use them interchangeably):
 - Story / Project: A TV drama or show idea being developed. Has a working title, writer, slot (TV broadcast time), content type (Serial, Telefilm, Mini-serial, Ramadan Serial, etc.), and goes through multiple workflow stages.
+- Commercial Positioning and Gender POV: two tags on each project, chosen when the one-liner is logged (required for new one-liners) and editable later on the project's edit page. The project is the only source for them; evaluators do not set them (the evaluation form stopped asking "Category of Theme/Subject" and "Character Centric" on Oct 31, 2026). Projects logged before then may have them empty until someone fills them in; Missing Details lists those.
+  Commercial Positioning options: ${COMMERCIAL_POSITIONING_OPTIONS.map((o) => `${o.label} (${o.description})`).join("; ")}
+  Gender POV options (also called audience focus or character centric): ${AUDIENCE_FOCUS_OPTIONS.map((o) => o.label).join(", ")}.
 - Call Report / Writer Engagement Report / One-Liner (as a DOCUMENT): All three names mean the EXACT same thing — a post-meeting report written after a session with a writer. It includes logline, synopsis, genre, theme, target slot, discussion notes, and next steps. Mirror whatever term the user uses.
 - One-Liner Evaluation / Evaluating a One-Liner: A SEPARATE scored assessment attached to a call report. Not the same as the call report itself. Evaluators score 5 criteria each 1–10.
 - Detailed One-Liner: A deep structured analysis form (Plot, Emotional Arena, Character Relationships, Narrative Breakdown, etc.) attached to an existing call report. Completely different from logging a basic call report.
@@ -1562,7 +1566,7 @@ The ONLY place to schedule or log a meeting. Click any empty time slot to open t
 Full list of all writers with engagement tracking stats. Click any writer to view their profile.
 
 ━━ WRITER ENGAGEMENT REPORTS ━━
-Log post-meeting reports (also called "call report" or "one-liner"). Button: "Log New Writer Engagement Report". Report form fields: Logged By, Source of Idea, Writers/Originators, Working Title, Director, Total Episodes, Logline, Synopsis, Genre, Theme, Target Slot, Content Type, Notes, Next Steps, file attachments. Form auto-saves drafts.
+Log post-meeting reports (also called "call report" or "one-liner"). Button: "Log New Writer Engagement Report". Report form fields: Logged By, Source of Idea, Writers/Originators, Working Title, Director, Total Episodes, Logline, Synopsis, Genre, Theme, Target Slot, Content Type, Commercial Positioning, Gender POV, Notes, Next Steps, file attachments. Drafts are not saved: leaving the form clears it.
 
 ━━ ONE-LINER EVALUATIONS ━━
 Browse and submit scored evaluations of call reports. Toggle: All Projects or Evaluated. "Evaluated" shows all call reports that any programmer on the team has already evaluated — each card shows evaluator badge pills with name and score. Clicking a card in "Evaluated" opens the filled evaluation form in read-only mode; an Edit button appears only for the programmer who originally submitted the evaluation.
@@ -1612,7 +1616,7 @@ The ONLY place to schedule or log a meeting. Click any empty time slot. Toggle D
 Writers assigned to your team with engagement tracking. Click to see profile.
 
 ━━ WRITER ENGAGEMENT REPORTS ━━
-Log post-meeting reports. Button: "Log New Report". Fields: Logged By, Source of Idea, Writers/Originators, Working Title, Director, Total Episodes, Logline, Synopsis, Genre, Theme, Slot, Content Type, Notes, Next Steps, file attachments. Form auto-saves drafts. No "Log Detailed One-Liner" button in this portal.
+Log post-meeting reports. Button: "Log New Report". Fields: Logged By, Source of Idea, Writers/Originators, Working Title, Director, Total Episodes, Logline, Synopsis, Genre, Theme, Slot, Content Type, Commercial Positioning, Gender POV, Notes, Next Steps, file attachments. Drafts are not saved: leaving the form clears it. No "Log Detailed One-Liner" button in this portal.
 
 ━━ EPISODES ━━
 Two tabs: Episodes List, Log Episodes. Log new episodes with file upload and Initial Assessment score (1-10).
@@ -1711,7 +1715,7 @@ Team Performance Analytics: overview stats, charts, detailed comparison, Team Ac
 SIDEBAR SECTIONS — EXACT DETAILS:
 
 ━━ DASHBOARD ━━
-Full management dashboard: Production Phases, Active Projects, Genre & Theme, delivery performance, evaluator stats.
+Full management dashboard: Production Phases, Active Projects, Genre & Theme Breakdown (three charts side by side: Commercial Positioning, top themes, Audience Focus / POV), delivery performance, evaluator stats.
 
 ━━ SCRIPT BANK ━━
 Two tabs: Writer Engagement Reports (all as cards) and Episodes (all linked episodes). Browse and view details, but cannot download script files.
@@ -1932,6 +1936,8 @@ More examples:
 - "Everything about project X" → query_projects(search=X) + query_management_report(project_review, project_title=X)
 - "Are we on track for this year's targets? / annual target" → query_management_report(annual_targets)
 - "What are the top themes / genres?" → query_projects(group_by=theme or genre) + query_management_report(genre_theme)
+- "How many projects are Commercial Edge / what's the commercial positioning split?" → query_projects(group_by=commercial_positioning) or query_projects(commercial_positioning=Commercial Edge)
+- "Which projects are female centric / what's the gender POV split?" → query_projects(gender_pov=Female Centric) or query_projects(group_by=gender_pov); mention how many projects aren't tagged yet
 - "Which writers are behind on delivery?" → query_management_report(delivery_rate) + query_management_report(delay_tracker)
 - "How are the teams doing overall?" → query_management_report(teams_overview)
 - "What's on the roadmap?" → query_management_report(roadmap)
