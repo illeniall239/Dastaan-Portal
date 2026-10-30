@@ -5,7 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Loader2 } from "lucide-react";
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis } from "recharts";
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, LabelList } from "recharts";
 import { PovBreakdown } from "@/components/management/pov-breakdown";
 import { scoreColor } from "@/components/management/production-phases";
 
@@ -286,7 +286,10 @@ export function GenreThemeBreakdown() {
                     cursor="pointer"
                     onClick={(d: any) => handleThemeClick(d)}
                     maxBarSize={20}
-                  />
+                  >
+                    {/* Count inside the end of each bar */}
+                    <LabelList dataKey="count" position="insideRight" fill="#ffffff" fontSize={10} fontWeight={600} />
+                  </Bar>
                 </BarChart>
               </ResponsiveContainer>
               </div>
