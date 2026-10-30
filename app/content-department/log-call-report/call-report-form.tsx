@@ -93,7 +93,7 @@ export function CallReportForm({
   const { hasDraft, draftLoaded, draftUpdatedAt, saveDraft, loadDraft, clearDraft } = useFormAutosave({
     formType: "call_report_content",
     entityId: callReportId || "_new",
-    enabled: mode === "create",
+    enabled: false, // drafts off for logging forms: restored drafts brought back stale data
   });
 
   const [draftDismissed, setDraftDismissed] = useState(false);

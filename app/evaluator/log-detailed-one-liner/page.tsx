@@ -132,6 +132,7 @@ export default function LogDetailedOneLinerPage() {
   // Autosave
   const { hasDraft, draftLoaded, draftUpdatedAt, saveDraft, loadDraft, clearDraft } = useFormAutosave({
     formType: "detailed_one_liner",
+    enabled: false, // drafts off for logging forms: restored drafts brought back stale episode numbers
     entityId: callReportId || "_new",
   });
 
