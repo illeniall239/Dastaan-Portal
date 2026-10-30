@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Loader2 } from "lucide-react";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis } from "recharts";
 import { PovBreakdown } from "@/components/management/pov-breakdown";
+import { scoreColor } from "@/components/management/production-phases";
 
 interface Project {
   id: string;
@@ -14,6 +15,12 @@ interface Project {
   writer: string;
   slot?: string | null;
   teamName?: string | null;
+  contentType?: string | null;
+  genres?: string[];
+  theme?: string | null;
+  epsReceived?: number;
+  totalEps?: number | null;
+  avgScore?: number | null;
 }
 
 interface CategoryEntry {
@@ -67,23 +74,43 @@ function DrillDialog({ title, badge, projects, onClose }: {
           ) : (
             <div className="space-y-2">
               {projects.map((p) => (
-                <div key={p.id} className="border rounded-lg p-2.5 flex items-start justify-between gap-2">
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium text-gray-800 leading-snug">{p.title}</p>
-                    <p className="text-xs text-gray-500">{p.writer}</p>
+                <div key={p.id} className="border rounded-lg p-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-gray-800 leading-snug">{p.title}</p>
+                      <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
+                        <p className="text-xs text-gray-500">{p.writer}</p>
+                        {p.teamName && (
+                          <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-blue-50 text-blue-700 border-blue-200">
+                            {p.teamName}
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      {p.avgScore != null && (
+                        <Badge variant="outline" className={`text-[10px] px-1.5 py-0 font-semibold ${scoreColor(p.avgScore)}`}>
+                          {p.avgScore.toFixed(1)}/10
+                        </Badge>
+                      )}
+                      {p.slot && (
+                        <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-gray-50">
+                          {p.slot.replace(":00 ", "")}
+                        </Badge>
+                      )}
+                      {p.epsReceived != null && (
+                        <Badge variant="outline" className="text-xs px-2 py-0.5">
+                          {p.epsReceived}/{p.totalEps ?? "?"} eps
+                        </Badge>
+                      )}
+                    </div>
                   </div>
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    {p.teamName && (
-                      <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-blue-50 text-blue-700 border-blue-200">
-                        {p.teamName}
-                      </Badge>
-                    )}
-                    {p.slot && (
-                      <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-gray-50">
-                        {p.slot.replace(":00 ", "")}
-                      </Badge>
-                    )}
-                  </div>
+                  {(p.contentType || (p.genres && p.genres.length > 0)) && (
+                    <p className="text-xs text-gray-600 mt-1.5">
+                      {[p.contentType, ...(p.genres || [])].filter(Boolean).join(" · ")}
+                    </p>
+                  )}
+                  {p.theme && <p className="text-[11px] text-gray-500 mt-0.5 leading-snug">Theme: {p.theme}</p>}
                 </div>
               ))}
             </div>
@@ -95,6 +122,7 @@ function DrillDialog({ title, badge, projects, onClose }: {
 }
 
 export function GenreThemeBreakdown() {
+  const [showAllThemes, setShowAllThemes] = useState(false);
   const [data, setData] = useState<GenreThemeData | null>(null);
   const [loading, setLoading] = useState(true);
   const [drill, setDrill] = useState<{ title: string; badge: string; projects: Project[] } | null>(null);
@@ -220,9 +248,11 @@ export function GenreThemeBreakdown() {
             {topThemes.length === 0 ? (
               <p className="text-center py-8 text-gray-400 text-xs">No theme data available</p>
             ) : (
-              <ResponsiveContainer width="100%" height={200}>
+              // All themes scroll inside the same 200px box; the chart grows to fit them
+              <div className={showAllThemes ? "max-h-[200px] overflow-y-auto pr-1" : undefined}>
+              <ResponsiveContainer width="100%" height={showAllThemes ? Math.max(200, topThemes.length * 26) : 200}>
                 <BarChart
-                  data={topThemes.slice(0, 8)}
+                  data={showAllThemes ? topThemes : topThemes.slice(0, 8)}
                   layout="vertical"
                   margin={{ top: 0, right: 10, bottom: 0, left: 0 }}
                 >
@@ -259,6 +289,16 @@ export function GenreThemeBreakdown() {
                   />
                 </BarChart>
               </ResponsiveContainer>
+              </div>
+            )}
+            {topThemes.length > 8 && (
+              <button
+                type="button"
+                onClick={() => setShowAllThemes(!showAllThemes)}
+                className="text-[10px] text-blue-600 hover:text-blue-800 font-medium cursor-pointer"
+              >
+                {showAllThemes ? "Show less" : `+${topThemes.length - 8} more`}
+              </button>
             )}
             <p className="text-[10px] text-muted-foreground text-center mt-1">Click a bar to see projects</p>
           </CardContent>

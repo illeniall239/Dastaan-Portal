@@ -52,7 +52,7 @@ function progressPercent(received: number, total: number): number {
   return total === 0 ? 0 : Math.round((received / total) * 100);
 }
 
-function scoreColor(score: number): string {
+export function scoreColor(score: number): string {
   if (score >= 7) return "bg-green-100 text-green-700 border-green-200";
   if (score >= 5) return "bg-amber-100 text-amber-700 border-amber-200";
   return "bg-red-100 text-red-700 border-red-200";

@@ -2,6 +2,7 @@
 // sorting and grouping over those rows. Phase uses the same rule as the management dashboard.
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { getProductionPhase } from "@/lib/production-phase";
+import { fetchAll } from "@/lib/supabase/fetch-all";
 import { COMMERCIAL_POSITIONING_OPTIONS, AUDIENCE_FOCUS_OPTIONS } from "@/lib/project-tags";
 
 export const NOT_CLASSIFIED = "Not classified";
@@ -273,17 +274,6 @@ export function queryProjects(
 
 type Admin = SupabaseClient<any, any, any>;
 
-// PostgREST returns at most 1000 rows per request, so read every page.
-async function fetchAll<T>(page: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: any }>): Promise<T[]> {
-  const size = 1000;
-  const out: T[] = [];
-  for (let from = 0; ; from += size) {
-    const { data, error } = await page(from, from + size - 1);
-    if (error) throw new Error(error.message);
-    out.push(...(data || []));
-    if (!data || data.length < size) return out;
-  }
-}
 
 /** Summaries for every active one-liner, limited to `crIdsInScope` when the user is team-scoped. */
 export async function loadProjectSummaries(
