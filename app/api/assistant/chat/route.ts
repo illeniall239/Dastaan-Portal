@@ -8,6 +8,7 @@ import { MANAGEMENT_REPORTS, describeManagementReports, runManagementReport } fr
 import { PHASE_MEANING } from "@/lib/production-phase";
 import { COMMERCIAL_POSITIONING_OPTIONS, AUDIENCE_FOCUS_OPTIONS } from "@/lib/project-tags";
 import { cleanReply } from "@/lib/assistant/format";
+import { digestBlock, stripOldDigests } from "@/lib/assistant/digest";
 
 export const dynamic = "force-dynamic";
 
@@ -1494,35 +1495,6 @@ async function executeTool(
 }
 
 // ─── System prompts ────────────────────────────────────────────────────────────
-const TOOL_SELECTION_PROMPT = `You are a data routing assistant for Dastaan Portal at GEO TV. Your ONLY job is to pick the right tool and arguments for the user's question, then output valid JSON.
-
-AVAILABLE TOOLS:
-1. query_evaluations — Search evaluations. Args: evaluator_name?, project_title?, period?
-2. query_content — Search call reports/ideas. Args: search?, team_name?, period?
-3. query_person_activity — Full activity summary for a person. Args: person_name (required), period?
-4. query_episode_delivery — Episode delivery status. Args: project_title?, writer_name?, status?
-5. query_pending — Pending evaluations/approvals. Args: type? ("evaluations"|"approvals"|"all")
-6. query_team_stats — Team membership & performance. Args: team_name?, period?
-
-ROUTING RULES:
-- "how many evaluations did X do / what did X score" → query_evaluations
-- "what has X been doing / X's activity / X's work" → query_person_activity
-- "which projects are behind / delivery status / episodes" → query_episode_delivery
-- "how many ideas / stories logged / call reports" → query_content
-- "pending evaluations / unapproved ideas" → query_pending
-- "who is on team X / team performance / list teams" → query_team_stats
-
-PERIOD VALUES: this_month, last_month, this_year, last_7_days, last_30_days, last_2_weeks, last_3_months, last_1_year
-
-You MUST respond with ONLY a JSON object, no explanation, no markdown, no thinking tags:
-{"tool": "tool_name", "args": {"param": "value"}}
-
-If the question needs multiple tools, return an array:
-[{"tool": "tool_name", "args": {...}}, {"tool": "tool_name", "args": {...}}]
-
-If it is purely a navigation question (how do I, where is), respond with:
-{"tool": "none", "answer": "your answer here"}`;
-
 const SHARED_CONTEXT = `
 ABOUT DASTAAN PORTAL:
 Dastaan (meaning "Story" in Urdu) is a story development management system for a Pakistani media organisation (GEO TV). It manages the full lifecycle of a TV drama — from the initial idea/pitch, through writer engagement meetings, script evaluations, approval, contract signing, and episode delivery.
@@ -1768,11 +1740,19 @@ HOW TO RESPOND:
 }
 
 // ─── LLM helper (Gemini OpenAI-compatible API) ────────────────────────────────
-async function callLLM(apiKey: string, body: object): Promise<any> {
+// Ceilings that only stop a hung Gemini call, so the user gets a message instead of an endless spinner.
+// Normal answers finish far below them. Narration allows a maximum-length answer (NARRATION_MAX_TOKENS
+// at ~150 tokens/s plus thinking is ~110 s) with room to spare.
+const LLM_TIMEOUT_MS = { navigation: 45_000, tools: 90_000, narration: 150_000 };
+const TIMEOUT_REPLY = "That took too long to answer. Please try again.";
+const isTimeout = (err: any) => err?.name === "TimeoutError" || err?.name === "AbortError";
+
+async function callLLM(apiKey: string, body: object, timeoutMs: number): Promise<any> {
   const res = await fetch(GEMINI_URL, {
     method: "POST",
     headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
     body: JSON.stringify(body),
+    signal: AbortSignal.timeout(timeoutMs),
   });
   if (!res.ok) {
     const err = await res.text();
@@ -1808,6 +1788,7 @@ export async function POST(request: NextRequest) {
     const portalKey = role === "management_viewer" ? "management_viewer" : clientPortalKey;
 
     if (!message?.trim()) return NextResponse.json({ error: "Message is required" }, { status: 400 });
+    const chatHistory = stripOldDigests(Array.isArray(history) ? history : []);
 
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) return NextResponse.json({ reply: "The AI assistant isn't configured yet. Please add a GEMINI_API_KEY." });
@@ -1816,14 +1797,14 @@ export async function POST(request: NextRequest) {
     if (!isUnrestricted && !profile?.team_id) {
       const messages = [
         { role: "system", content: buildSystemPrompt(portalKey) },
-        ...history.slice(-6),
+        ...chatHistory.slice(-6),
         { role: "user", content: message.trim() },
       ];
       try {
-        const data = await callLLM(apiKey, { model: MODEL, messages, max_tokens: 400, temperature: 0.4 });
+        const data = await callLLM(apiKey, { model: MODEL, messages, max_tokens: 400, temperature: 0.4 }, LLM_TIMEOUT_MS.navigation);
         return NextResponse.json({ reply: data.choices?.[0]?.message?.content?.trim() ?? "Sorry, I couldn't generate a response." });
-      } catch {
-        return NextResponse.json({ reply: "Sorry, I ran into an issue. Please try again." });
+      } catch (err: any) {
+        return NextResponse.json({ reply: isTimeout(err) ? TIMEOUT_REPLY : "Sorry, I ran into an issue. Please try again." });
       }
     }
 
@@ -1943,93 +1924,64 @@ More examples:
 - "What's on the roadmap?" → query_management_report(roadmap)
 - "What did external reviewers say?" → query_management_report(external_evaluations)` : ""}`;
 
-    const memoryContext = memory.length > 0
-      ? `\n\nRELEVANT MEMORY FROM PAST CONVERSATIONS:\n${memory.slice(-20).map((m, i) => `${i + 1}. ${m}`).join("\n")}`
+    // Last 20 distinct facts (older chats may hold repeats)
+    const recentMemory = [...new Map((Array.isArray(memory) ? memory : [])
+      .filter((m) => typeof m === "string" && m.trim())
+      .map((m) => [m.trim().toLowerCase(), m.trim()] as const)).values()].slice(-20);
+    const memoryContext = recentMemory.length > 0
+      ? `\n\nRELEVANT MEMORY FROM PAST CONVERSATIONS:\n${recentMemory.map((m, i) => `${i + 1}. ${m}`).join("\n")}`
       : "";
 
-    const NARRATION_SYSTEM = scope
-      ? `You are a helpful data assistant for Dastaan Portal at GEO TV, briefing a team member on their team's data. Present data clearly using markdown.
-
-FORMATTING RULES:
-- Start with a one-line summary sentence answering the question directly.
-- When there are 3+ items, use a markdown table.
-- Table format: the separator row is exactly |---|---| (three dashes per column). Never pad cells or the separator with extra spaces or dashes to line columns up. At most 7 columns: pick the ones that matter for the question and combine where you can (e.g. "15/30" for episodes received / total). Keep cells to a few words; put long text such as full themes in a short list under the table instead.
-- Use **bold** for key numbers, names, and statuses.
-- Use ### headings to separate sections when needed.
-- For 1-2 items, a short paragraph is fine.
-- Mark statuses with labels: "Behind", "On Track", "Complete".
-
-CONTENT RULES:
-- Lead with the direct answer in the first sentence.
-- All data shown is scoped to the user's team — do not mention "all teams" or imply global scope.
-- Use actual names — never UUIDs or IDs.
-- Never show raw data in the answer. Write everything the way a person would say it:
-  - field and key names → plain words (episodes_received → "episodes received"); nothing with underscores;
-  - status and code values → capitalised words (pending → "Pending", in_evaluation → "In evaluation", strong_yes → "Strong yes", content_manager → "Content manager");
-  - null, undefined or empty values → "—", or leave the item out;
-  - true / false → "Yes" / "No";
-  - dates and timestamps → "Oct 29, 2026";
-  - no JSON, no IDs or UUIDs.
-- If results are empty, say so plainly and suggest why.
-- Keep the wording short, but don't leave out relevant context.
-- Answer with context, not only the field that was asked for. From the data, add whatever helps the user understand the answer in one go and saves a follow-up question. For example, a count of projects also lists which ones, with title, writer, team, genre/theme, phase, episodes received vs total, score and approval. A project's status also gives its phase, episodes, score and approval. A person's numbers also give what they are working on and what is pending.
-- Pick only what is relevant to the question. Leave out empty fields and data unrelated to what was asked.
-- When the user asks for a full list ("all", "every", "list of"), include every item in the data — do not shorten it. If the data says truncated: true, say how many matched in total.
-- Use the conversation history to connect follow-up answers to prior context.
-- Whenever the answer mentions a production phase (Pre Cast, Pre Production, Production Start), add a short line saying what each phase mentioned means, from this: ${PHASE_MEANING}
-- When the question is about a topic, genre or theme, distinguish projects where it is the main theme from ones where it is an underlying theme (use focus / focus_rule when the data has it).
-- The data is already filtered for the question. Don't narrow it further by your own reading of the question, and follow any how_to_read note in the data.
-- Numbers come from the data retrieved for this question. If memory or an earlier answer gives a different number, use the new data and don't repeat the old number.
-
-MEMORY EXTRACTION:
-After your main answer, on a new line output a memory block:
-<memory>["fact 1", "fact 2"]</memory>
-Extract 1-3 key facts. Save what the user cares about and what they asked, not counts or statuses, because those change. If nothing noteworthy: <memory>[]</memory>.`
-      : `You are a senior analyst briefing the CEO of GEO TV on data from the Dastaan content portal. Present data in a clear, structured, professional format using markdown.
-
-FORMATTING RULES:
-- Start with a one-line summary sentence answering the question directly.
-- When there are 3+ items, ALWAYS use a markdown table. Example:
+    // One set of answer rules for everyone; only the audience lines differ
+    const NARRATION_SYSTEM = [
+      scope
+        ? "You are a helpful data assistant for Dastaan Portal at GEO TV, briefing a team member on their team's data. Present data clearly using markdown."
+        : "You are a senior analyst briefing the CEO of GEO TV on data from the Dastaan content portal. Present data in a clear, structured, professional format using markdown.",
+      "",
+      "FORMATTING RULES:",
+      "- Start with a one-line summary sentence answering the question directly.",
+      `- When there are 3+ items, ALWAYS use a markdown table. Example:
   | Project | Score | Evaluator | Date |
   |---|---|---|---|
-  | Kabhi kabhi | 8.6 | Parisa | May 6, 2026 |
-- Table format: the separator row is exactly |---|---| (three dashes per column). Never pad cells or the separator with extra spaces or dashes to line columns up. At most 7 columns: pick the ones that matter for the question and combine where you can (e.g. "15/30" for episodes received / total). Keep cells to a few words; put long text such as full themes in a short list under the table instead.
-- Use **bold** for key numbers, names, and statuses.
-- Use ### headings to separate sections (e.g. "### One-Liner Evaluations" and "### Episodic Evaluations").
-- For 1-2 items, a short paragraph is fine — no table needed.
-- When showing per-person summaries, use a table with columns like Name, One-Liner Count, Episodic Count, Total, Avg Score.
-- When showing delivery status, use a table with Project, Writer, Required, Received, Status.
-- Mark statuses with labels: "Behind", "On Track", "Complete".
-
-CONTENT RULES:
-- Lead with the direct answer in the first sentence.
-- Break down totals by category when relevant.
-- Use actual names — never UUIDs or IDs.
-- Never show raw data in the answer. Write everything the way a person would say it:
+  | Kabhi kabhi | 8.6 | Parisa | May 6, 2026 |`,
+      "- Table format: the separator row is exactly |---|---| (three dashes per column). Never pad cells or the separator with extra spaces or dashes to line columns up. At most 7 columns: pick the ones that matter for the question and combine where you can (e.g. \"15/30\" for episodes received / total). Keep cells to a few words; put long text such as full themes in a short list under the table instead.",
+      "- Use **bold** for key numbers, names, and statuses.",
+      "- Use ### headings to separate sections when needed (e.g. \"### One-Liner Evaluations\" and \"### Episodic Evaluations\").",
+      "- For 1-2 items, a short paragraph is fine — no table needed.",
+      "- Per-person summaries: a table with columns like Name, One-Liner Count, Episodic Count, Total, Avg Score. Delivery status: Project, Writer, Required, Received, Status.",
+      "- Mark statuses with labels: \"Behind\", \"On Track\", \"Complete\".",
+      "",
+      "CONTENT RULES:",
+      "- Lead with the direct answer in the first sentence.",
+      ...(scope ? ["- All data shown is scoped to the user's team — do not mention \"all teams\" or imply global scope."] : []),
+      "- Break down totals by category when relevant.",
+      "- Use actual names — never UUIDs or IDs.",
+      `- Never show raw data in the answer. Write everything the way a person would say it:
   - field and key names → plain words (episodes_received → "episodes received"); nothing with underscores;
   - status and code values → capitalised words (pending → "Pending", in_evaluation → "In evaluation", strong_yes → "Strong yes", content_manager → "Content manager");
   - null, undefined or empty values → "—", or leave the item out;
   - true / false → "Yes" / "No";
   - dates and timestamps → "Oct 29, 2026";
-  - no JSON, no IDs or UUIDs.
-- Format episodes as "Episode [number] of [Project Title]".
-- If results are empty, say so plainly and suggest why.
-- If multiple people matched a name, list each separately.
-- Keep the wording short (this is an executive briefing), but don't leave out relevant context.
-- Answer with context, not only the field that was asked for. From the data, add whatever helps the user understand the answer in one go and saves a follow-up question. For example, a count of projects also lists which ones, with title, writer, team, genre/theme, phase, episodes received vs total, score and approval. A project's status also gives its phase, episodes, score and approval. A person's numbers also give what they are working on and what is pending.
-- Pick only what is relevant to the question. Leave out empty fields and data unrelated to what was asked.
-- When the user asks for a full list ("all", "every", "list of"), include every item in the data — do not shorten it. If the data says truncated: true, say how many matched in total.
-- Use the conversation history to connect follow-up answers to prior context.
-- Whenever the answer mentions a production phase (Pre Cast, Pre Production, Production Start), add a short line saying what each phase mentioned means, from this: ${PHASE_MEANING}
-- When the question is about a topic, genre or theme, distinguish projects where it is the main theme from ones where it is an underlying theme (use focus / focus_rule when the data has it).
-- The data is already filtered for the question. Don't narrow it further by your own reading of the question, and follow any how_to_read note in the data.
-- Numbers come from the data retrieved for this question. If memory or an earlier answer gives a different number, use the new data and don't repeat the old number.
-- Use memory from past conversations for richer context when relevant.
-
-MEMORY EXTRACTION:
-After your main answer, on a new line output a memory block:
-<memory>["fact 1", "fact 2"]</memory>
-Extract 1-3 key facts. Save what the user cares about and what they asked, not counts or statuses, because those change. If nothing noteworthy: <memory>[]</memory>.`;
+  - no JSON, no IDs or UUIDs.`,
+      "- Format episodes as \"Episode [number] of [Project Title]\".",
+      "- If results are empty, say so plainly and suggest why.",
+      "- If multiple people matched a name, list each separately.",
+      `- Keep the wording short${scope ? "" : " (this is an executive briefing)"}, but don't leave out relevant context.`,
+      "- Answer with context, not only the field that was asked for. From the data, add whatever helps the user understand the answer in one go and saves a follow-up question. For example, a count of projects also lists which ones, with title, writer, team, genre/theme, phase, episodes received vs total, score and approval. A project's status also gives its phase, episodes, score and approval. A person's numbers also give what they are working on and what is pending.",
+      "- Pick only what is relevant to the question. Leave out empty fields and data unrelated to what was asked.",
+      "- When the user asks for a full list (\"all\", \"every\", \"list of\"), include every item in the data — do not shorten it. If the data says truncated: true, say how many matched in total.",
+      "- Use the conversation history to connect follow-up answers to prior context.",
+      `- Whenever the answer mentions a production phase (Pre Cast, Pre Production, Production Start), add a short line saying what each phase mentioned means, from this: ${PHASE_MEANING}`,
+      "- When the question is about a topic, genre or theme, distinguish projects where it is the main theme from ones where it is an underlying theme (use focus / focus_rule when the data has it).",
+      "- The data is already filtered for the question. Don't narrow it further by your own reading of the question, and follow any how_to_read note in the data.",
+      "- Numbers come from the data retrieved for this question. If memory or an earlier answer gives a different number, use the new data and don't repeat the old number.",
+      "- Use memory from past conversations for richer context when relevant.",
+      "",
+      "MEMORY EXTRACTION:",
+      "After your main answer, on a new line output a memory block:",
+      "<memory>[\"fact 1\", \"fact 2\"]</memory>",
+      "Extract 1-3 key facts. Save what the user cares about and what they asked, not counts or statuses, because those change. If nothing noteworthy: <memory>[]</memory>.",
+    ].join("\n");
 
     // Step 1: Ask LLM to pick and call tools (native function calling, tool_choice=auto)
     let firstPass: any;
@@ -2038,22 +1990,22 @@ Extract 1-3 key facts. Save what the user cares about and what they asked, not c
         model: MODEL,
         messages: [
           { role: "system", content: DATA_SYSTEM },
-          ...history.slice(-16),
+          ...chatHistory.slice(-16),
           { role: "user", content: message.trim() },
         ],
         tools: availableTools,
         tool_choice: "auto",
         max_tokens: 4096,
         temperature: 0.1,
-      });
+      }, LLM_TIMEOUT_MS.tools);
     } catch (err: any) {
       console.error("[AI Agent] First-pass error:", err.message);
-      return NextResponse.json({ reply: "Sorry, I ran into an issue. Please try again." });
+      return NextResponse.json({ reply: isTimeout(err) ? TIMEOUT_REPLY : "Sorry, I ran into an issue. Please try again." });
     }
 
     const assistantMsg = firstPass.choices?.[0]?.message;
     const toolCalls = assistantMsg?.tool_calls;
-    const historyForNarration = history.slice(-10).map(
+    const historyForNarration = chatHistory.slice(-10).map(
       (m: { role: string; content: string }) => ({ role: m.role, content: m.content })
     );
 
@@ -2075,9 +2027,9 @@ Extract 1-3 key facts. Save what the user cares about and what they asked, not c
             ],
             max_tokens: NARRATION_MAX_TOKENS,
             temperature: 0.3,
-          });
+          }, LLM_TIMEOUT_MS.narration);
         } catch {
-          return NextResponse.json({ reply: directContent });
+          return NextResponse.json({ reply: cleanReply(directContent) });
         }
 
         let fullReply = cleanReply(secondData.choices?.[0]?.message?.content?.trim() ?? directContent);
@@ -2097,19 +2049,22 @@ Extract 1-3 key facts. Save what the user cares about and what they asked, not c
 
     // Step 2: Execute the selected tools (with team scope applied)
     const admin = createAdminClient();
-    const toolResults: { name: string; data: string }[] = [];
-    try {
-      for (const tc of toolCalls) {
-        const fnName = tc.function.name;
+    // Tools run at the same time; a tool that fails reports an error and the others still answer
+    const requestCtx = { origin: request.nextUrl.origin, cookie: request.headers.get("cookie") || "" };
+    let failedTools = 0;
+    const toolResults: { name: string; data: string }[] = await Promise.all(toolCalls.map(async (tc: any) => {
+      const fnName = tc.function.name;
+      try {
         const fnArgs = JSON.parse(tc.function.arguments || "{}");
-        const result = await executeTool(fnName, fnArgs, admin, scope, role, !blockedToolNames.includes("query_approvals"), {
-          origin: request.nextUrl.origin,
-          cookie: request.headers.get("cookie") || "",
-        });
-        toolResults.push({ name: fnName, data: JSON.stringify(result) });
+        const result = await executeTool(fnName, fnArgs, admin, scope, role, !blockedToolNames.includes("query_approvals"), requestCtx);
+        return { name: fnName, data: JSON.stringify(result) };
+      } catch (err: any) {
+        failedTools++;
+        console.error(`[AI Agent] Tool ${fnName} failed:`, err.message);
+        return { name: fnName, data: JSON.stringify({ error: "This data couldn't be fetched right now." }) };
       }
-    } catch (err: any) {
-      console.error("[AI Agent] Tool execution error:", err.message);
+    }));
+    if (failedTools === toolResults.length) {
       return NextResponse.json({ reply: "I had trouble fetching that data. Please try again." });
     }
 
@@ -2131,16 +2086,16 @@ Extract 1-3 key facts. Save what the user cares about and what they asked, not c
         ],
         max_tokens: NARRATION_MAX_TOKENS,
         temperature: 0.3,
-      });
+      }, LLM_TIMEOUT_MS.narration);
     } catch (err: any) {
       console.error("[AI Agent] Narration error:", err.message);
-      return NextResponse.json({ reply: "I got the data but had trouble formatting the response. Please try again." });
+      return NextResponse.json({ reply: isTimeout(err) ? TIMEOUT_REPLY : "I got the data but had trouble formatting the response. Please try again." });
     }
 
     let fullReply = cleanReply(secondData.choices?.[0]?.message?.content?.trim() ?? "Sorry, I couldn't generate a response.");
     if (secondData.choices?.[0]?.finish_reason === "length") {
       fullReply = fullReply.replace(/<memory>[\s\S]*$/, "").trim() +
-        "\n\n_This answer was too long and got cut off. Ask for a narrower part (one team, one genre, a shorter period) to see the rest._";
+        "\n\n_This answer got cut off before it finished. Please try again._";
     }
 
     // Extract memory items from the response
@@ -2154,31 +2109,9 @@ Extract 1-3 key facts. Save what the user cares about and what they asked, not c
       fullReply = fullReply.replace(/<memory>[\s\S]*?<\/memory>/, "").trim();
     }
 
-    // Embed a compact data digest as an HTML comment so follow-up turns can access raw data.
-    // ReactMarkdown strips HTML comments — invisible to the user but persists in history.
-    const compactResults = toolResults.map((tr) => {
-      try {
-        const parsed = JSON.parse(tr.data);
-        if (parsed.items && Array.isArray(parsed.items) && parsed.items.length > 20) {
-          parsed.items = parsed.items.slice(0, 20);
-          parsed._truncated = true;
-        }
-        if (parsed.recent_one_liner_items && parsed.recent_one_liner_items.length > 10) {
-          parsed.recent_one_liner_items = parsed.recent_one_liner_items.slice(0, 10);
-        }
-        if (parsed.recent_episodic_items && parsed.recent_episodic_items.length > 10) {
-          parsed.recent_episodic_items = parsed.recent_episodic_items.slice(0, 10);
-        }
-        if (parsed.writers && Array.isArray(parsed.writers) && parsed.writers.length > 20) {
-          parsed.writers = parsed.writers.slice(0, 20);
-          parsed._truncated = true;
-        }
-        return `[${tr.name}] ${JSON.stringify(parsed)}`;
-      } catch {
-        return `[${tr.name}] ${tr.data.slice(0, 2000)}`;
-      }
-    }).join("\n");
-    fullReply += `\n\n<!-- data-digest\n${compactResults}\n-->`;
+    // Hidden, size-capped copy of the tool results so a follow-up can refer back to them
+    // (ReactMarkdown doesn't render HTML comments)
+    fullReply += digestBlock(toolResults);
 
     return NextResponse.json({ reply: fullReply, memoryExtract });
   } catch (error) {

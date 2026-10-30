@@ -186,7 +186,10 @@ export function AIAssistantPage({
 
       let finalMemory = memory;
       if (data.memoryExtract?.length) {
-        finalMemory = [...memory, ...data.memoryExtract].slice(-MAX_MEMORY_ITEMS);
+        // Skip facts already remembered (same wording, ignoring case); a repeat moves to the end as the newest
+        const fresh = (data.memoryExtract as string[]).map((f) => f.trim()).filter(Boolean);
+        const freshKeys = new Set(fresh.map((f) => f.toLowerCase()));
+        finalMemory = [...memory.filter((m) => !freshKeys.has(m.trim().toLowerCase())), ...new Map(fresh.map((f) => [f.toLowerCase(), f])).values()].slice(-MAX_MEMORY_ITEMS);
         setMemory(finalMemory);
       }
 
