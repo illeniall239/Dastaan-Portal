@@ -505,7 +505,7 @@ export default function GcmEpisodesPage() {
                             <div className="px-4 sm:px-5 pb-3 flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4 text-sm text-muted-foreground">
                               <span>Logged by: <span className="text-foreground font-medium">{episode.logged_by_user?.name || "Unknown"}</span></span>
                               {episode.initial_assessment != null && (
-                                <span>Assessment: <span className="font-semibold text-blue-700">{episode.initial_assessment}/10</span></span>
+                                <span>Initial Assessment: <span className="font-semibold text-blue-700">{episode.initial_assessment}/10</span></span>
                               )}
                             </div>
 

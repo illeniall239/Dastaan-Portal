@@ -40,7 +40,11 @@ export function EpisodeEditForm({ episode, onSuccess }: EpisodeEditFormProps) {
   }, [supabase]);
   const [episodeNumber, setEpisodeNumber] = useState<number | string>(episode.episode_number);
   const [additionalInfo, setAdditionalInfo] = useState(episode.additional_info || "");
-  const [initialAssessment, setInitialAssessment] = useState(episode.initial_assessment || 5);
+  // Only content roles see the score. The slider starts at 5 when there's no score yet, but a score is
+  // saved only when someone with the field actually sets it, so other edits never write a default 5.
+  const canAssess = userRole === "content_manager" || userRole === "content_creator" || userRole === "admin";
+  const [initialAssessment, setInitialAssessment] = useState(episode.initial_assessment ?? 5);
+  const [assessmentChanged, setAssessmentChanged] = useState(false);
   const [originalSubmissionDate, setOriginalSubmissionDate] = useState<string>((episode as any).original_submission_date || "");
   const [file, setFile] = useState<File | null>(null);
   const [existingAttachment, setExistingAttachment] = useState({
@@ -88,7 +92,7 @@ export function EpisodeEditForm({ episode, onSuccess }: EpisodeEditFormProps) {
       const updateData = {
         episode_number: typeof episodeNumber === "string" ? parseInt(episodeNumber) || 1 : episodeNumber,
         additional_info: additionalInfo.trim() || null,
-        initial_assessment: initialAssessment,
+        ...(canAssess && assessmentChanged ? { initial_assessment: initialAssessment } : {}),
         original_submission_date: originalSubmissionDate || null,
         attachment_url,
         attachment_name,
@@ -231,12 +235,12 @@ export function EpisodeEditForm({ episode, onSuccess }: EpisodeEditFormProps) {
           </div>
 
           {/* Initial Assessment - content department only */}
-          {(userRole === "content_manager" || userRole === "content_creator" || userRole === "admin") && (
+          {canAssess && (
             <ScoreCard
               label="Initial Assessment"
               description="Your initial rating of this episode (1-10)"
               score={initialAssessment}
-              onChange={setInitialAssessment}
+              onChange={(score) => { setInitialAssessment(score); setAssessmentChanged(true); }}
               disabled={loading}
             />
           )}
