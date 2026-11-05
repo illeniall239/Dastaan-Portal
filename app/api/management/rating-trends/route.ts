@@ -56,19 +56,11 @@ export async function GET() {
       })
     );
 
-    // Evaluator team labels — merge programmer team + same head's management team into "Programming"
-    const programmerHeadNames = new Set(
-      (teams || []).filter((t: any) => t.team_type === "programmer")
-        .map((t: any) => {
-          const head = t.team_head ? (Array.isArray(t.team_head) ? t.team_head[0] : t.team_head) : null;
-          return head?.name;
-        }).filter(Boolean)
-    );
     const evalTeamMap = new Map(
       (teams || []).map((t: any) => {
         const head = t.team_head ? (Array.isArray(t.team_head) ? t.team_head[0] : t.team_head) : null;
         let label: string;
-        if (t.team_type === "programmer" || (head?.name && programmerHeadNames.has(head.name))) {
+        if (t.team_type === "programmer") {
           label = "Programming";
         } else if (t.team_type === "evaluator") {
           label = "Content";

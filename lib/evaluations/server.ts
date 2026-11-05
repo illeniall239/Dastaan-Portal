@@ -303,7 +303,7 @@ export async function hasUserEvaluatedCallReport(userId: string, callReportId: s
  * Uses two-step query (teams then users) for reliable FK resolution.
  */
 async function getEvaluatorTeamMap(evaluatorIds: string[]) {
-  const map = new Map<string, { teamName: string; isManagementTeam: boolean }>();
+  const map = new Map<string, { teamName: string; isManagementTeam: boolean; isProgrammingTeam: boolean }>();
   if (evaluatorIds.length === 0) return map;
 
   const admin = createAdminClient();
@@ -320,6 +320,10 @@ async function getEvaluatorTeamMap(evaluatorIds: string[]) {
       .map((t: any) => t.id)
   );
 
+  // Programming Team members (including its head) are grouped as Programming, like Content Development
+  const { data: programmerTeams } = await admin.from("teams").select("id").eq("team_type", "programmer");
+  const programmingTeamIds = new Set((programmerTeams || []).map((t: any) => t.id));
+
   // Step 2: Get team_id for each evaluator
   const { data: evaluatorUsers } = await admin
     .from("users")
@@ -331,6 +335,7 @@ async function getEvaluatorTeamMap(evaluatorIds: string[]) {
     map.set(u.id, {
       teamName: isContentDev ? "Content Development" : "",
       isManagementTeam: isContentDev,
+      isProgrammingTeam: u.team_id ? programmingTeamIds.has(u.team_id) : false,
     });
   }
   return map;
@@ -377,6 +382,8 @@ export async function getSegregatedEvaluations(callReportId: string, teamMemberI
       const list = contentTeamMap.get(teamInfo.teamName) || [];
       list.push(e);
       contentTeamMap.set(teamInfo.teamName, list);
+    } else if (teamInfo?.isProgrammingTeam) {
+      programmerEvaluations.push(e);
     } else if (e.evaluation_type === 'evaluator') {
       evaluatorEvaluations.push(e);
     } else if (e.evaluation_type === 'programmer') {
@@ -592,6 +599,8 @@ export async function getSegregatedEpisodicEvaluations(episodeId: string) {
       const list = contentTeamMap.get(teamInfo.teamName) || [];
       list.push(e);
       contentTeamMap.set(teamInfo.teamName, list);
+    } else if (teamInfo?.isProgrammingTeam) {
+      programmerEvaluations.push(e);
     } else if (e.evaluation_type === 'evaluator') {
       evaluatorEvaluations.push(e);
     } else if (e.evaluation_type === 'programmer') {

@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import { logger } from "@/lib/logger";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getProgrammingTeamMemberIds } from "@/lib/management/programming-team";
 import { applyRateLimit, addRateLimitHeaders, withCors } from "@/lib/api-middleware";
 import { RateLimitPresets } from "@/lib/rate-limit-redis";
 import { idParamSchema } from "@/lib/validations/uuid-params";
@@ -110,7 +111,9 @@ export async function GET(
       // Content dev team can only view their own team's evaluations
       canView = contentDevTeamMemberIds.includes(evaluation.evaluator_id);
     } else if (userData.role === "programmer") {
-      canView = evaluation.evaluator?.role === "programmer";
+      // The programming team's evaluations, head included
+      canView = evaluation.evaluator?.role === "programmer"
+        || (await getProgrammingTeamMemberIds(createAdminClient())).has(evaluation.evaluator_id);
     }
 
     if (!canView) {

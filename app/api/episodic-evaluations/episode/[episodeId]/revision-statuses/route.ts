@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import { logger } from "@/lib/logger";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getProgrammingTeamMemberIds } from "@/lib/management/programming-team";
 import { episodeIdParamSchema } from "@/lib/validations/uuid-params";
 import { applyRateLimit } from '@/lib/api-middleware';
 import { RateLimitPresets } from '@/lib/rate-limit-redis';
@@ -113,12 +114,19 @@ export async function GET(
     const original: { hasEvaluated: boolean; evaluatorName?: string; averageScore?: number; decision?: string; grade?: string; evaluationId?: string } = { hasEvaluated: false };
     const revisions: Record<string, { hasEvaluated: boolean; evaluatorName?: string; averageScore?: number; decision?: string; grade?: string; evaluationId?: string }> = {};
 
+    // Programming Team: anyone on the team (head included) evaluates for the team, like Content Development
+    const programmingIds = userData.role === "programmer" && !isManagementTeam
+      ? await getProgrammingTeamMemberIds(adminClient)
+      : new Set<string>();
+
     for (const ev of evaluations || []) {
       const evaluatorName = (ev.evaluator as any)?.name || undefined;
 
-      // For programmers, skip content dev evaluations
+      // For programmers, count the programming team's evaluations only (not content dev's)
       if (userData.role === "programmer" && !isManagementTeam) {
-        if ((ev.evaluator as any)?.role !== "programmer" || contentDevUserIds.includes(ev.evaluator_id)) {
+        const isTeamEval = programmingIds.has(ev.evaluator_id)
+          || ((ev.evaluator as any)?.role === "programmer" && !contentDevUserIds.includes(ev.evaluator_id));
+        if (!isTeamEval) {
           continue;
         }
       }

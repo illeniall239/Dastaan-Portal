@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getProgrammingTeamMemberIds } from "@/lib/management/programming-team";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { logger } from "@/lib/logger";
@@ -95,6 +96,8 @@ export async function GET(request: NextRequest) {
       const { data: cdUsers } = await admin.from("users").select("id").in("team_id", mgmtTeamIds);
       contentDevIds = new Set((cdUsers || []).map((u: any) => u.id));
     }
+    // Programming Team members (including its head) are grouped as Programming, like Content Development
+    const programmingIds = await getProgrammingTeamMemberIds(admin);
 
     // 1. Fetch all active call reports
     const { data: callReports, error: crErr } = await admin
@@ -213,7 +216,7 @@ export async function GET(request: NextRequest) {
       oneLinerByReport.get(row.call_report_id)!.set(row.evaluator_id, parseFloat(row.average_score));
       if (!globalOneLinerAssessorMap.has(row.evaluator_id)) {
         const group = contentDevIds.has(row.evaluator_id) ? "Content Development"
-          : assessor.role === "programmer" ? "Programming"
+          : programmingIds.has(row.evaluator_id) || assessor.role === "programmer" ? "Programming"
           : ["admin", "management", "executive"].includes(assessor.role) ? "Management"
           : "Content";
         globalOneLinerAssessorMap.set(row.evaluator_id, { name: assessor.name, email: assessor.email, role: assessor.role, group });
@@ -346,7 +349,7 @@ export async function GET(request: NextRequest) {
         allEvaluatorGrades[id] = buildEvaluatorGrade(data);
         if (!globalEvaluatorMap.has(id)) {
           const group = contentDevIds.has(id) ? "Content Development"
-            : data.role === "programmer" ? "Programming"
+            : programmingIds.has(id) || data.role === "programmer" ? "Programming"
             : ["admin", "management", "executive"].includes(data.role) ? "Management"
             : "Content";
           globalEvaluatorMap.set(id, { name: data.name, email: data.email, role: data.role, group });

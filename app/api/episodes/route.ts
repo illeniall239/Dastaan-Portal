@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { logger } from "@/lib/logger";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getProgrammingTeamMemberIds } from "@/lib/management/programming-team";
 import { createMultipleEpisodesSchema, episodesQuerySchema } from "@/lib/validations/episodes";
 import { withApiPerf, applyRateLimit, addRateLimitHeaders, withCors } from "@/lib/api-middleware";
 import { RateLimitPresets } from "@/lib/rate-limit-redis";
@@ -686,6 +687,9 @@ export async function GET(request: NextRequest) {
           }
         }
 
+        // Programming Team members (including its head) evaluate for the team
+        const programmingIds = isManagementTeam ? new Set<string>() : await getProgrammingTeamMemberIds(createAdminClient());
+
         // Programmers share evaluations — check if any programmer has evaluated each episode
         let evalQuery = supabase
           .from("episodic_evaluations")
@@ -704,9 +708,9 @@ export async function GET(request: NextRequest) {
             if (isManagementTeam) {
               // Management team: show only their own team's evaluations
               evaluationStatusMap[ev.episode_id] = { evaluated: true, evaluatedByName: ev.evaluator?.name };
-            } else if ((ev.evaluator?.role === "programmer" && !mgmtTeamUserIds.has(ev.evaluator_id)) || ev.evaluator_id === user!.id) {
-              // Regular programming team: non-management-team programmer evals, plus the viewer's own
-              // (e.g. the programming head, a management user, sees their own evaluations too)
+            } else if ((ev.evaluator?.role === "programmer" && !mgmtTeamUserIds.has(ev.evaluator_id)) || programmingIds.has(ev.evaluator_id) || ev.evaluator_id === user!.id) {
+              // Regular programming team: anyone on the programming team (head included, like Content
+              // Development), non-management-team programmers, plus the viewer's own evaluations
               evaluationStatusMap[ev.episode_id] = { evaluated: true, evaluatedByName: ev.evaluator?.name };
             }
           }

@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { logger } from "@/lib/logger";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getProgrammingTeamMemberIds } from "@/lib/management/programming-team";
 import { episodicEvaluationSchema } from "@/lib/validations/episodic-evaluations";
 import { episodicEvaluationsQuerySchema } from "@/lib/validations/query-params";
 import { parsePaginationParams, applyPagination, createPaginatedResponse } from "@/lib/utils/pagination";
@@ -144,9 +145,11 @@ export async function POST(request: Request) {
     if (isContentDevTeam) {
       existingEvaluation = (existingEvals || [])[0];
     } else if (userData.role === "programmer") {
-      // Only block if a non-content-dev programmer already evaluated
+      // Block if the programming team already evaluated (anyone on the team, head included)
+      const programmingIds = await getProgrammingTeamMemberIds(adminClient);
       existingEvaluation = (existingEvals || []).find((e: any) =>
-        e.evaluator?.role === "programmer" && !contentDevUserIds.includes(e.evaluator_id)
+        programmingIds.has(e.evaluator_id)
+        || (e.evaluator?.role === "programmer" && !contentDevUserIds.includes(e.evaluator_id))
       );
     } else {
       existingEvaluation = (existingEvals || [])[0];

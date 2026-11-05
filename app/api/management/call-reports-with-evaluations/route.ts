@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getProgrammingTeamMemberIds } from "@/lib/management/programming-team";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getSegregatedEvaluations } from "@/lib/evaluations/server";
 import { applyRateLimit } from "@/lib/api-middleware";
@@ -129,6 +130,8 @@ export async function GET(request: NextRequest) {
         .in("team_id", contentDevTeamIds);
       for (const u of cdUsers || []) contentDevUserIds.add(u.id);
     }
+    // Programming Team members (including its head) count as Programming, like Content Development above
+    const programmingUserIds = await getProgrammingTeamMemberIds(adminClient);
 
     // Map call reports with their evaluations
     const callReportsWithEvaluations = (callReportsData || []).map((callReport) => {
@@ -145,6 +148,8 @@ export async function GET(request: NextRequest) {
           const list = contentTeamMap.get("Content Development") || [];
           list.push(e);
           contentTeamMap.set("Content Development", list);
+        } else if (programmingUserIds.has(e.evaluator_id)) {
+          programmerEvaluations.push(e);
         } else if (e.evaluation_type === 'evaluator') {
           evaluatorEvaluations.push(e);
         } else if (e.evaluation_type === 'programmer') {

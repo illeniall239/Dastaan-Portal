@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import { logger } from "@/lib/logger";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getProgrammingTeamMemberIds } from "@/lib/management/programming-team";
 import { episodeIdParamSchema } from "@/lib/validations/uuid-params";
 import { applyRateLimit } from '@/lib/api-middleware';
 import { RateLimitPresets } from '@/lib/rate-limit-redis';
@@ -158,11 +159,15 @@ export async function GET(
       evalQuery = evalQuery.is("cross_team_share_id", null);
     }
 
-    // For programmers, pick the first non-content-dev programmer's evaluation if multiple exist
+    // For programmers, pick the programming team's evaluation (anyone on the team, head included)
     const { data: evaluations, error } = await evalQuery.limit(10);
+    const programmingIds = userData.role === "programmer" && !isManagementTeam
+      ? await getProgrammingTeamMemberIds(createAdminClient())
+      : new Set<string>();
     const evaluation = userData.role === "programmer" && !isManagementTeam
       ? (evaluations || []).find((e: any) =>
-          e.evaluator?.role === "programmer" && !contentDevUserIds.includes(e.evaluator_id)
+          programmingIds.has(e.evaluator_id)
+          || (e.evaluator?.role === "programmer" && !contentDevUserIds.includes(e.evaluator_id))
         ) ?? null
       : (evaluations || [])[0] ?? null;
 

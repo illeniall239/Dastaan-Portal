@@ -107,19 +107,11 @@ export async function GET(request: NextRequest) {
     ]);
 
     // Build user→teamLabel map
-    // Find the programmer team head so we can merge their management team under "Programming"
-    const programmerHeadIds = new Set(
-      (allTeams || []).filter((t: any) => t.team_type === "programmer")
-        .map((t: any) => {
-          const head = t.team_head ? (Array.isArray(t.team_head) ? t.team_head[0] : t.team_head) : null;
-          return head?.name;
-        }).filter(Boolean)
-    );
     const teamLabelMap = new Map<string, string>();
     for (const t of allTeams || []) {
       const head = t.team_head ? (Array.isArray(t.team_head) ? t.team_head[0] : t.team_head) : null;
       let label: string;
-      if (t.team_type === "programmer" || (head?.name && programmerHeadIds.has(head.name))) {
+      if (t.team_type === "programmer") {
         label = "Programming's Feedback";
       } else if (t.team_type === "evaluator") {
         label = "Content Head's Feedback";
