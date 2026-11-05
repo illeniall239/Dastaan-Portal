@@ -704,8 +704,9 @@ export async function GET(request: NextRequest) {
             if (isManagementTeam) {
               // Management team: show only their own team's evaluations
               evaluationStatusMap[ev.episode_id] = { evaluated: true, evaluatedByName: ev.evaluator?.name };
-            } else if (ev.evaluator?.role === "programmer" && !mgmtTeamUserIds.has(ev.evaluator_id)) {
-              // Regular programmer: show only non-management-team programmer evals
+            } else if ((ev.evaluator?.role === "programmer" && !mgmtTeamUserIds.has(ev.evaluator_id)) || ev.evaluator_id === user!.id) {
+              // Regular programming team: non-management-team programmer evals, plus the viewer's own
+              // (e.g. the programming head, a management user, sees their own evaluations too)
               evaluationStatusMap[ev.episode_id] = { evaluated: true, evaluatedByName: ev.evaluator?.name };
             }
           }

@@ -85,17 +85,15 @@ export async function GET(request: NextRequest) {
 
     const admin = createAdminClient();
 
-    // Fetch content development team member IDs (teams with team_type='management')
-    // Exclude users who head non-management teams (e.g. Salman heads Programming Team but sits on mgmt team)
-    const { data: allTeams } = await admin.from("teams").select("id, team_type, team_head_id");
+    // Fetch content development team member IDs (teams with team_type='management').
+    // A team head is always a member of the team they head (enforced in the database), so heads of other
+    // teams never land here.
+    const { data: allTeams } = await admin.from("teams").select("id, team_type");
     const mgmtTeamIds = (allTeams || []).filter((t: any) => t.team_type === "management").map((t: any) => t.id);
-    const otherTeamHeadIds = new Set(
-      (allTeams || []).filter((t: any) => t.team_type !== "management" && t.team_head_id).map((t: any) => t.team_head_id)
-    );
     let contentDevIds = new Set<string>();
     if (mgmtTeamIds.length > 0) {
       const { data: cdUsers } = await admin.from("users").select("id").in("team_id", mgmtTeamIds);
-      contentDevIds = new Set((cdUsers || []).filter((u: any) => !otherTeamHeadIds.has(u.id)).map((u: any) => u.id));
+      contentDevIds = new Set((cdUsers || []).map((u: any) => u.id));
     }
 
     // 1. Fetch all active call reports

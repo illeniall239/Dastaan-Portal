@@ -81,7 +81,7 @@ export async function GET(request: NextRequest) {
     // Helper: get eval sets — team-level for EVALUATES_ALL, personal for others
     function getEvalSets(ev: { id: string; email: string; team_id: string }) {
       if (EVALUATES_ALL_EMAILS.has(ev.email)) {
-        // Get ALL teams this person heads (e.g. Salman heads both personal + Programming team)
+        // Get ALL teams this person heads (a person can head more than one)
         const headedTeamIds = (teamsData || [])
           .filter((t) => t.team_head_id === ev.id)
           .map((t) => t.id);
