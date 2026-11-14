@@ -106,7 +106,7 @@ export default async function TeamFeedbackPage() {
       conflict_of_content_comment, characterization_comment, story_progression_comment,
       whats_next_element_comment, overall_oneliner_grade_comment,
       closing_remarks, decision, decision_notes, submitted_at,
-      themes_of_drama, corresponding_dramas, category_of_theme, no_of_tracks,
+      themes_of_drama, corresponding_dramas, theme_category, no_of_tracks,
       first_2_eps_required, target_writer, per_ep_price_range, slot, delay_reason,
       evaluator:users!evaluator_id(id, name, role)
     `)
@@ -235,7 +235,7 @@ export default async function TeamFeedbackPage() {
         submittedAt:         f?.submitted_at          ?? null,
         themesOfDrama:       f?.themes_of_drama       ?? null,
         correspondingDramas: f?.corresponding_dramas  ?? null,
-        categoryOfTheme:     f?.category_of_theme     ?? null,
+        categoryOfTheme:     f?.theme_category        ?? null,
         noOfTracks:          f?.no_of_tracks          ?? null,
         first2EpsRequired:   f?.first_2_eps_required  ?? null,
         targetWriter:        f?.target_writer         ?? null,

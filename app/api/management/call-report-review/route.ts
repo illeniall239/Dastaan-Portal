@@ -74,6 +74,7 @@ export async function GET(request: NextRequest) {
         .select(
           `id, average_score, decision, decision_notes, comments,
            big_idea, theme, submitted_at,
+           feedback_text, feedback_attachments,
            conflict_of_content_score, conflict_of_content_comment,
            characterization_score, characterization_comment,
            story_progression_score, story_progression_comment,
@@ -173,6 +174,8 @@ export async function GET(request: NextRequest) {
         big_idea: e.big_idea || null,
         theme: e.theme || null,
         submitted_at: e.submitted_at || null,
+        feedback_text: e.feedback_text || null,
+        feedback_attachments: e.feedback_attachments || [],
       })),
     });
   } catch (error) {

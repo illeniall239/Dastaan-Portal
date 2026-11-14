@@ -26,6 +26,8 @@ import type { Episode, EpisodicEvaluation } from "@/types";
 import { toast } from "sonner";
 import { Loader2, Save, FilePenLine, Download, FileText, Paperclip } from "lucide-react";
 import { DiscussionThread } from "@/components/call-reports/call-report-discussion";
+import { RichTextEditor, RichTextView } from "@/components/ui/rich-text-editor";
+import { useRevisions, episodeVersionLabel } from "@/components/ui/evaluating-version-banner";
 import {
   AlertDialog,
   AlertDialogContent,
@@ -62,12 +64,16 @@ export function EpisodicEvaluationForm({
   wizardMode = false,
   revisionId,
 }: EpisodicEvaluationFormProps) {
+  // The revision being evaluated, if any — shown as "Episode 1 (Rev #1)"
+  const { data: episodeRevisions } = useRevisions("/api/episodes", episode?.id, !!revisionId);
+  const revisionNumber = revisionId ? episodeRevisions?.find((r) => r.id === revisionId)?.revision_number : null;
   const [submitting, setSubmitting] = useState(false);
   const [savingDraft, setSavingDraft] = useState(false);
   const [showDraftDialog, setShowDraftDialog] = useState(false);
   const [pendingDraftData, setPendingDraftData] = useState<any>(null);
   const [initialTimeFromDraft, setInitialTimeFromDraft] = useState(0);
   const isReadOnly = disabled;
+  const feedbackReadOnly = isReadOnly || viewOnly;
 
   // Track time spent on form
   const timeSpentMinutes = useFormTimeTracking({
@@ -555,7 +561,7 @@ export function EpisodicEvaluationForm({
         <div className="grid md:grid-cols-2 gap-4">
           <div>
             <span className="text-sm font-medium text-muted-foreground">Episode Number</span>
-            <p className="text-lg font-semibold">Episode {episode.episode_number}</p>
+            <p className="text-lg font-semibold">{episodeVersionLabel(episode.episode_number, revisionNumber)}</p>
           </div>
           {episode.title && (
             <div>
@@ -570,7 +576,7 @@ export function EpisodicEvaluationForm({
           <div className="mt-4 pt-4 border-t border-blue-200">
             <span className="text-sm font-medium text-muted-foreground flex items-center gap-1.5 mb-2">
               <Paperclip className="h-3.5 w-3.5" />
-              Attachment
+              {revisionId ? "Original submission (the revision being evaluated is at the top of the page)" : "Attachment"}
             </span>
             <button
               type="button"
@@ -1050,20 +1056,20 @@ export function EpisodicEvaluationForm({
 
       </div>{/* end viewOnly wrapper */}
 
-      {/* Feedback Communication */}
-      {(!isReadOnly || feedbackText || feedbackAttachments.length > 0) && (
+      {/* Feedback Communication — read-only whenever the form is (disabled or view-only) */}
+      {(!feedbackReadOnly || feedbackText || feedbackAttachments.length > 0) && (
         <Card className="p-4 border border-gray-200">
           <div className="space-y-4">
             <div>
-              <h3 className="text-base font-semibold text-gray-800">Feedback Communication {!isReadOnly && <span className="text-sm font-normal text-gray-500">(optional)</span>}</h3>
-              {!isReadOnly && <p className="text-xs text-gray-500 mt-0.5">Attach email or written feedback evidence submitted alongside this evaluation.</p>}
+              <h3 className="text-base font-semibold text-gray-800">Feedback Communication {!feedbackReadOnly && <span className="text-sm font-normal text-gray-500">(optional)</span>}</h3>
+              {!feedbackReadOnly && <p className="text-xs text-gray-500 mt-0.5">Attach email or written feedback evidence submitted alongside this evaluation.</p>}
             </div>
-            {isReadOnly ? (
+            {feedbackReadOnly ? (
               <>
                 {feedbackText && (
                   <div className="space-y-2">
                     <Label>Email / Communication Text</Label>
-                    <div className="bg-gray-50 border rounded-md p-3 text-sm text-gray-700 whitespace-pre-wrap">{feedbackText}</div>
+                    <RichTextView value={feedbackText} className="bg-gray-50 border rounded-md px-3 py-2" />
                   </div>
                 )}
                 {feedbackAttachments.length > 0 && (
@@ -1073,7 +1079,7 @@ export function EpisodicEvaluationForm({
                       {feedbackAttachments.map((att, idx) => (
                         <div key={idx} className="flex items-center gap-2 text-sm text-gray-700 border rounded-md px-3 py-2 bg-gray-50">
                           <Paperclip className="h-4 w-4 text-gray-400 shrink-0" />
-                          <a href={`/api/storage/download?url=${encodeURIComponent(att.url)}&bucket=attachments`} target="_blank" rel="noopener noreferrer" className="truncate flex-1 hover:underline text-blue-600">{att.name}</a>
+                          <a href={`/api/storage/download?url=${encodeURIComponent(att.url)}&bucket=attachments&name=${encodeURIComponent(att.name || "")}`} target="_blank" rel="noopener noreferrer" className="truncate flex-1 hover:underline text-blue-600">{att.name}</a>
                         </div>
                       ))}
                     </div>
@@ -1084,13 +1090,11 @@ export function EpisodicEvaluationForm({
               <>
                 <div className="space-y-2">
                   <Label htmlFor="feedbackText">Email / Communication Text</Label>
-                  <Textarea
+                  <RichTextEditor
                     id="feedbackText"
                     placeholder="Paste email or communication content here..."
                     value={feedbackText}
-                    onChange={(e) => setFeedbackText(e.target.value)}
-                    rows={4}
-                    className="resize-none"
+                    onChange={setFeedbackText}
                   />
                 </div>
                 <div className="space-y-3">
@@ -1100,7 +1104,7 @@ export function EpisodicEvaluationForm({
                       {feedbackAttachments.map((att, idx) => (
                         <div key={idx} className="flex items-center gap-2 text-sm text-gray-700 border rounded-md px-3 py-2 bg-gray-50">
                           <Paperclip className="h-4 w-4 text-gray-400 shrink-0" />
-                          <a href={`/api/storage/download?url=${encodeURIComponent(att.url)}&bucket=attachments`} target="_blank" rel="noopener noreferrer" className="truncate flex-1 hover:underline text-blue-600">{att.name}</a>
+                          <a href={`/api/storage/download?url=${encodeURIComponent(att.url)}&bucket=attachments&name=${encodeURIComponent(att.name || "")}`} target="_blank" rel="noopener noreferrer" className="truncate flex-1 hover:underline text-blue-600">{att.name}</a>
                           <button
                             type="button"
                             onClick={() => setFeedbackAttachments(prev => prev.filter((_, i) => i !== idx))}

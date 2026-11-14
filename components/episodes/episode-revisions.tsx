@@ -9,6 +9,8 @@ interface EpisodeRevisionsProps {
   compact?: boolean;
   userRole?: string;
   evaluateUrl?: string;
+  /** The revision being evaluated on this page */
+  activeRevisionId?: string | null;
 }
 
 /**
@@ -22,6 +24,7 @@ export function EpisodeRevisions({
   compact = false,
   userRole,
   evaluateUrl,
+  activeRevisionId,
 }: EpisodeRevisionsProps) {
   return (
     <ContentRevisions
@@ -34,6 +37,7 @@ export function EpisodeRevisions({
       userRole={userRole}
       evaluateUrl={evaluateUrl}
       entityType="episode"
+      activeRevisionId={activeRevisionId}
     />
   );
 }

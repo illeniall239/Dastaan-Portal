@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { COMMERCIAL_POSITIONING_OPTIONS } from "@/lib/project-tags";
 import { ChevronDown, ChevronRight, Users, Search, Eye, Paperclip, FileText, Image as ImageIcon, File } from "lucide-react";
 
 type Team = "programming" | "content_development";
@@ -217,7 +218,7 @@ function OnelinerViewDialog({ ev, open, onClose }: { ev: EvalEntry; open: boolea
                 {ev.categoryOfTheme && (
                   <div className="flex justify-between">
                     <span className="text-slate-500 text-xs">Category of Theme</span>
-                    <span className="text-slate-800 text-xs font-medium">{ev.categoryOfTheme}</span>
+                    <span className="text-slate-800 text-xs font-medium">{COMMERCIAL_POSITIONING_OPTIONS.find(o => o.value === ev.categoryOfTheme)?.label ?? ev.categoryOfTheme}</span>
                   </div>
                 )}
                 {ev.noOfTracks !== null && (
@@ -590,8 +591,8 @@ function getAttachmentIcon(fileType: string) {
   return <File className="h-3 w-3" />;
 }
 
-function getDownloadUrl(filePath: string): string {
-  return `/api/storage/download?url=${encodeURIComponent(filePath)}&bucket=attachments`;
+function getDownloadUrl(filePath: string, fileName?: string | null): string {
+  return `/api/storage/download?url=${encodeURIComponent(filePath)}&bucket=attachments&name=${encodeURIComponent(fileName || "")}`;
 }
 
 function formatFeedbackDate(dateStr: string): string {
@@ -643,7 +644,7 @@ function ProgrammerFeedbackSection({ entries }: { entries: ProgrammerFeedbackEnt
                   {entry.attachments.map((att) => (
                     <a
                       key={att.id}
-                      href={getDownloadUrl(att.file_path)}
+                      href={getDownloadUrl(att.file_path, att.file_name)}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="inline-flex items-center gap-1 text-xs px-2 py-1 bg-white hover:bg-slate-50 rounded border border-slate-200 transition-colors"

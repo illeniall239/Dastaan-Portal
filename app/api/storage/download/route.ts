@@ -18,6 +18,8 @@ export async function GET(request: NextRequest) {
 
     const url = request.nextUrl.searchParams.get("url");
     const bucket = request.nextUrl.searchParams.get("bucket");
+    // Uploaded file name to save as; storage paths are generated (e.g. 1794644683396-gs4pqn.pdf)
+    const name = request.nextUrl.searchParams.get("name");
 
     if (!url || !bucket) {
       return NextResponse.json({ error: "Missing url or bucket parameter" }, { status: 400 });
@@ -61,7 +63,7 @@ export async function GET(request: NextRequest) {
 
     const { data: signedUrlData, error: signedUrlError } = await supabase.storage
       .from(bucket)
-      .createSignedUrl(filePath, 3600);
+      .createSignedUrl(filePath, 3600, name ? { download: name } : undefined);
 
     if (signedUrlError || !signedUrlData?.signedUrl) {
       return NextResponse.json({ error: "Failed to generate download URL" }, { status: 500 });

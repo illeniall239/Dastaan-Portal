@@ -23,6 +23,7 @@ import {
   ChevronRight,
   Star,
   ClipboardCheck,
+  FilePenLine,
 } from "lucide-react";
 import { formatDate } from "@/lib/utils/format-date";
 import { EpisodicEvaluationForm } from "@/components/episodic-evaluations/episodic-evaluation-form";
@@ -46,6 +47,8 @@ interface ContentRevisionsProps {
   evaluateUrl?: string;
   /** Entity type for evaluation context: "call-report" or "episode" */
   entityType?: "call-report" | "episode";
+  /** The revision being evaluated on this page: its row is marked so it can't be mistaken */
+  activeRevisionId?: string | null;
 }
 
 function RevScoreBox({ label, score, comment }: { label: string; score: number | null; comment?: string | null }) {
@@ -160,6 +163,7 @@ export function ContentRevisions({
   userRole,
   evaluateUrl,
   entityType,
+  activeRevisionId,
 }: ContentRevisionsProps) {
   const supabase = createClient();
 
@@ -318,7 +322,7 @@ export function ContentRevisions({
   const handleDownload = (revision: EpisodeRevision) => {
     if (revision.attachment_url) {
       window.open(
-        `/api/storage/download?url=${encodeURIComponent(revision.attachment_url)}&bucket=${encodeURIComponent(storageBucket)}`,
+        `/api/storage/download?url=${encodeURIComponent(revision.attachment_url)}&bucket=${encodeURIComponent(storageBucket)}&name=${encodeURIComponent(revision.attachment_name || "")}`,
         "_blank"
       );
     }
@@ -578,6 +582,7 @@ export function ContentRevisions({
   const renderRevisionRow = (revision: EpisodeRevision, isCompact: boolean) => {
     const isLatestEvaluated = latestEvaluatedRevision?.id === revision.id;
     const hasEvaluations = (revision.evaluation_count || 0) > 0;
+    const isActive = activeRevisionId === revision.id;
 
     return (
       <div
@@ -587,7 +592,9 @@ export function ContentRevisions({
             ? "flex flex-col gap-2 p-2 rounded-md text-sm"
             : "flex flex-col gap-3 p-4 border rounded-lg"
           }
-          ${isLatestEvaluated
+          ${isActive
+            ? "border-2 border-amber-400 bg-amber-50 ring-2 ring-amber-200"
+            : isLatestEvaluated
             ? "border-green-300 bg-green-50/50"
             : isCompact
               ? "bg-slate-50"
@@ -672,6 +679,12 @@ export function ContentRevisions({
 
           {/* Badges and actions on right */}
           <div className="flex items-center gap-1 flex-shrink-0">
+            {isActive && (
+              <Badge className="text-[10px] bg-amber-500 hover:bg-amber-500 text-white whitespace-nowrap">
+                <FilePenLine className="h-3 w-3 mr-0.5" />
+                Evaluating now
+              </Badge>
+            )}
             {isLatestEvaluated && (
               <Badge variant="outline" className="text-[10px] border-green-400 text-green-700 whitespace-nowrap">
                 <Star className="h-3 w-3 mr-0.5" />
@@ -736,7 +749,7 @@ export function ContentRevisions({
         )}
 
         {/* Row 3: Evaluate Revision button (evaluators) */}
-        {canEvaluate && evaluateUrl && (
+        {canEvaluate && evaluateUrl && !isActive && (
           <div className="flex items-center gap-2">
             {hasEvaluations ? (
               <Badge variant="outline" className="text-xs text-green-700 border-green-400">

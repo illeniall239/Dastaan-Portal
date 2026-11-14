@@ -205,7 +205,7 @@ export async function GET(
     }
 
     // Get signed URL for the file
-    const signedUrl = await getSignedUrlServer(attachment.file_path);
+    const signedUrl = await getSignedUrlServer(attachment.file_path, 3600, attachment.file_name || undefined);
 
     // Return a redirect response
     return Response.redirect(signedUrl as unknown as URL, 307);

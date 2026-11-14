@@ -21,6 +21,8 @@ import { useFormTimeTracking } from "@/lib/hooks/useFormTimeTracking";
 import { BackButton } from "@/components/ui/back-button";
 import { TagInput } from "@/components/ui/tag-input";
 import { ContentRevisions } from "@/components/ui/content-revisions";
+import { RichTextEditor } from "@/components/ui/rich-text-editor";
+import { EvaluatingVersionBanner } from "@/components/ui/evaluating-version-banner";
 import {
   AlertDialog,
   AlertDialogContent,
@@ -607,29 +609,28 @@ export function EvaluatorEvaluationForm({
         </div>
       </div>
 
-      {/* Call Report Revisions — always visible, never dimmed */}
-      <div className="max-w-4xl mx-auto px-4 sm:px-6">
+      {/* Which version is being evaluated, then all revisions — always visible, never dimmed */}
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 space-y-4">
+        <EvaluatingVersionBanner
+          apiBasePath="/api/call-reports"
+          storageBucket="attachments"
+          entityId={callReport.id}
+          revisionId={revisionId}
+          entityLabel="this one-liner"
+        />
         <ContentRevisions
           entityId={callReport.id}
           apiBasePath="/api/call-reports"
           storageBucket="attachments"
           canEdit={false}
           entityType="call-report"
+          activeRevisionId={revisionId}
         />
       </div>
 
       {/* Form body — dimmed + non-interactive when read-only */}
       <div className={isReadOnly ? "pointer-events-none select-none opacity-60" : ""}>
       <div className="space-y-6 max-w-4xl mx-auto px-4 sm:px-6">
-        {/* Revision evaluation banner */}
-        {revisionId && (
-          <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg flex items-center gap-2">
-            <FilePenLine className="h-4 w-4 text-amber-600 shrink-0" />
-            <p className="text-sm text-amber-800">
-              Evaluating a <span className="font-semibold">specific revision</span> of this one-liner
-            </p>
-          </div>
-        )}
 
         {/* Cross-team share banner */}
         {crossTeamShareId && crossTeamFromTeamName && (
@@ -735,8 +736,13 @@ export function EvaluatorEvaluationForm({
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <PaperclipIcon className="h-5 w-5" />
-                Attachments
+                {revisionId ? "Original Submission Attachments" : "Attachments"}
               </CardTitle>
+              {revisionId && (
+                <p className="text-sm text-muted-foreground">
+                  These are the original one-liner&apos;s files. The revision being evaluated is at the top of the page.
+                </p>
+              )}
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
@@ -1275,13 +1281,11 @@ export function EvaluatorEvaluationForm({
               </div>
               <div className="space-y-2">
                 <Label htmlFor="feedbackText">Email / Communication Text</Label>
-                <Textarea
+                <RichTextEditor
                   id="feedbackText"
                   placeholder="Paste email or communication content here..."
                   value={feedbackText}
-                  onChange={(e) => setFeedbackText(e.target.value)}
-                  rows={4}
-                  className="resize-none"
+                  onChange={setFeedbackText}
                 />
               </div>
               <div className="space-y-3">
@@ -1291,7 +1295,7 @@ export function EvaluatorEvaluationForm({
                     {feedbackAttachments.map((att, idx) => (
                       <div key={idx} className="flex items-center gap-2 text-sm text-gray-700 border rounded-md px-3 py-2 bg-gray-50">
                         <PaperclipIcon className="h-4 w-4 text-gray-400 shrink-0" />
-                        <a href={`/api/storage/download?url=${encodeURIComponent(att.url)}&bucket=attachments`} target="_blank" rel="noopener noreferrer" className="truncate flex-1 hover:underline text-blue-600">{att.name}</a>
+                        <a href={`/api/storage/download?url=${encodeURIComponent(att.url)}&bucket=attachments&name=${encodeURIComponent(att.name || "")}`} target="_blank" rel="noopener noreferrer" className="truncate flex-1 hover:underline text-blue-600">{att.name}</a>
                         <button
                           type="button"
                           onClick={() => setFeedbackAttachments(prev => prev.filter((_, i) => i !== idx))}

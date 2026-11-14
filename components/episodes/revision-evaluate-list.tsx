@@ -133,7 +133,7 @@ export function RevisionEvaluateList({
     : null;
   const revisionDownloadUrl = (rev: Revision) =>
     showDownloads && entityType === "episode" && rev.attachment_url
-      ? `/api/storage/download?url=${encodeURIComponent(rev.attachment_url)}&bucket=episodes`
+      ? `/api/storage/download?url=${encodeURIComponent(rev.attachment_url)}&bucket=episodes&name=${encodeURIComponent(rev.attachment_name || "")}`
       : null;
 
   const renderDownload = (url: string | null, label: string) =>

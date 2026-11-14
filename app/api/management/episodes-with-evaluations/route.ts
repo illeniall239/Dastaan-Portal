@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getProgrammingTeamMemberIds } from "@/lib/management/programming-team";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { mergeEvaluationFeedback } from "@/lib/evaluations/feedback";
 import { getSegregatedEpisodicEvaluations } from "@/lib/evaluations/server";
 import { applyRateLimit } from "@/lib/api-middleware";
 import { RateLimitPresets } from "@/lib/rate-limit-redis";
@@ -99,6 +100,9 @@ export async function GET(request: NextRequest) {
       .select("*")
       .in("episode_id", uniqueEpisodeIds)
       .order("created_at", { ascending: false });
+
+    // Feedback Communication (pasted email + attachments) isn't in the view
+    await mergeEvaluationFeedback(adminClient, "episodic_evaluations", "episode_id", uniqueEpisodeIds, allEvaluations || []);
 
     if (evaluationsError) {
       logger.error("Error fetching episodic evaluations:", { error: evaluationsError });

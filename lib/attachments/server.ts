@@ -83,12 +83,12 @@ export async function deleteAttachmentServer(attachmentId: string) {
 }
 
 // Function to get a signed URL for a file (server-side)
-export async function getSignedUrlServer(filePath: string, expiresIn = 3600) {
+export async function getSignedUrlServer(filePath: string, expiresIn = 3600, downloadName?: string) {
   const supabase = await createClient();
 
   const { data, error } = await supabase.storage
     .from('attachments')
-    .createSignedUrl(filePath, expiresIn);
+    .createSignedUrl(filePath, expiresIn, downloadName ? { download: downloadName } : undefined);
 
   if (error) {
     console.error('Error creating signed URL:', error);

@@ -106,10 +106,10 @@ export async function GET(
       );
     }
 
-    // Generate signed URL (expires in 1 hour = 3600 seconds)
+    // Generate signed URL (expires in 1 hour = 3600 seconds), saved under the uploaded file name
     const { data: signedUrlData, error: signedUrlError } = await supabase.storage
       .from("episodes")
-      .createSignedUrl(filePath, 3600);
+      .createSignedUrl(filePath, 3600, episode.attachment_name ? { download: episode.attachment_name } : undefined);
 
     if (signedUrlError || !signedUrlData?.signedUrl) {
       logger.error("Error creating signed URL:", signedUrlError);

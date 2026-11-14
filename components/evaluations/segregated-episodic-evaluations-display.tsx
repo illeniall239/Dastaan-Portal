@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Users, User, Code2, Building2, Star, MessageSquare, TrendingUp } from "lucide-react";
 import { formatDate } from "@/lib/utils/format-date";
 import type { SegregatedEpisodicEvaluations } from "@/types";
+import { FeedbackCommunicationView } from "@/components/evaluations/feedback-communication-view";
 
 interface SegregatedEpisodicEvaluationsDisplayProps {
   evaluations: SegregatedEpisodicEvaluations;
@@ -122,7 +123,7 @@ export function SegregatedEpisodicEvaluationsDisplay({
               <p className="font-semibold">{evaluation.freezes_score != null ? `${evaluation.freezes_score}/10` : "N/A"}</p>
             </div>
             <div className="bg-gray-50 rounded p-2">
-              <p className="text-muted-foreground mb-1">What's Next Element</p>
+              <p className="text-muted-foreground mb-1">What&apos;s Next Element</p>
               <p className="font-semibold">{evaluation.whats_next_element_score != null ? `${evaluation.whats_next_element_score}/10` : "N/A"}</p>
             </div>
             <div className="bg-gray-50 rounded p-2">
@@ -143,6 +144,8 @@ export function SegregatedEpisodicEvaluationsDisplay({
               </div>
             </div>
           )}
+
+          <FeedbackCommunicationView text={evaluation.feedback_text} attachments={evaluation.feedback_attachments} />
 
           {/* Events */}
           {evaluation.events && evaluation.events.length > 0 && (

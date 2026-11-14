@@ -66,8 +66,8 @@ function formatDate(dateStr: string) {
   return d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
 }
 
-function getDownloadUrl(filePath: string) {
-  return `/api/storage/download?url=${encodeURIComponent(filePath)}&bucket=attachments`;
+function getDownloadUrl(filePath: string, fileName?: string | null) {
+  return `/api/storage/download?url=${encodeURIComponent(filePath)}&bucket=attachments&name=${encodeURIComponent(fileName || "")}`;
 }
 
 interface FeedbackFormProps {
@@ -433,7 +433,7 @@ export function StoryFeedbackClient({ callReports, initialFeedback, currentUserI
         <div className="text-center py-16 text-muted-foreground">
           <Paperclip className="h-10 w-10 mx-auto mb-3 opacity-30" />
           <p className="font-medium">No feedback yet</p>
-          <p className="text-sm mt-1">Click "Add Feedback" to log your first entry.</p>
+          <p className="text-sm mt-1">Click &ldquo;Add Feedback&rdquo; to log your first entry.</p>
         </div>
       )}
 
@@ -520,7 +520,7 @@ export function StoryFeedbackClient({ callReports, initialFeedback, currentUserI
                     {entry.attachments.map((att) => (
                       <a
                         key={att.id}
-                        href={getDownloadUrl(att.file_path)}
+                        href={getDownloadUrl(att.file_path, att.file_name)}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="inline-flex items-center gap-1 text-xs px-2 py-1 bg-slate-100 hover:bg-slate-200 rounded-md border border-slate-200 transition-colors"

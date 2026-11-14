@@ -441,6 +441,9 @@ export interface EvaluationWithType {
   average_score: number;
   decision: string;
   comments: string | null;
+  // Feedback Communication: pasted email / written feedback (rich text) + supporting files
+  feedback_text?: string | null;
+  feedback_attachments?: { url: string; name: string }[] | null;
   submitted_at: string;
   created_at: string;
   updated_at: string;
@@ -485,6 +488,9 @@ export interface EpisodicEvaluationWithType {
   // Qualitative remarks
   scenes_remarks?: string;
   characterization_remarks?: string;
+  // Feedback Communication: pasted email / written feedback (rich text) + supporting files
+  feedback_text?: string | null;
+  feedback_attachments?: { url: string; name: string }[] | null;
   submitted_at: string;
   created_at: string;
   updated_at: string;

@@ -102,7 +102,7 @@ export default async function GcmTeamFeedbackPage() {
       conflict_of_content_comment, characterization_comment, story_progression_comment,
       whats_next_element_comment, overall_oneliner_grade_comment,
       closing_remarks, decision, decision_notes, submitted_at,
-      themes_of_drama, corresponding_dramas, category_of_theme, no_of_tracks,
+      themes_of_drama, corresponding_dramas, theme_category, no_of_tracks,
       first_2_eps_required, target_writer, per_ep_price_range, slot, delay_reason,
       evaluator:users!evaluator_id(id, name, role)
     `)
@@ -212,7 +212,7 @@ export default async function GcmTeamFeedbackPage() {
         criteria: ONELINER_CRITERIA.map(c => ({ label: c.label, score: f?.[c.scoreKey] ?? null, comment: f?.[c.commentKey] ?? null })),
         closingRemarks: f?.closing_remarks ?? null, decision: f?.decision ?? null, decisionNotes: f?.decision_notes ?? null,
         submittedAt: f?.submitted_at ?? null, themesOfDrama: f?.themes_of_drama ?? null, correspondingDramas: f?.corresponding_dramas ?? null,
-        categoryOfTheme: f?.category_of_theme ?? null, noOfTracks: f?.no_of_tracks ?? null, first2EpsRequired: f?.first_2_eps_required ?? null,
+        categoryOfTheme: f?.theme_category ?? null, noOfTracks: f?.no_of_tracks ?? null, first2EpsRequired: f?.first_2_eps_required ?? null,
         targetWriter: f?.target_writer ?? null, perEpPriceRange: f?.per_ep_price_range ?? null, slot: f?.slot ?? null, delayReason: f?.delay_reason ?? null,
       };
     }).sort((a, b) => a.team.localeCompare(b.team) || a.evaluatorName.localeCompare(b.evaluatorName));

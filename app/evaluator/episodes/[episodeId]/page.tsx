@@ -11,6 +11,8 @@ import { toast } from "sonner";
 import { Loader2, FileText, FilePenLine, Share2 } from "lucide-react";
 import { BackButton } from "@/components/ui/back-button";
 import { EpisodeRevisions } from "@/components/episodes/episode-revisions";
+import { EvaluatingVersionBanner } from "@/components/ui/evaluating-version-banner";
+import { EpisodeNav } from "@/components/episodes/episode-nav";
 import type { Episode, EpisodicEvaluation } from "@/types";
 import type { EpisodicEvaluationFormData } from "@/lib/validations/episodic-evaluations";
 
@@ -34,6 +36,8 @@ export default function EpisodicEvaluationPage({ params }: EpisodePageProps) {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [currentUserRole, setCurrentUserRole] = useState<string | null>(null);
   const [currentUserTeamId, setCurrentUserTeamId] = useState<string | null>(null);
+  // Set after submitting this episode's evaluation: shows the "evaluate next" bar
+  const [justEvaluated, setJustEvaluated] = useState(false);
 
   useEffect(() => {
     params.then((resolvedParams) => {
@@ -63,6 +67,9 @@ export default function EpisodicEvaluationPage({ params }: EpisodePageProps) {
     if (!episodeId) return;
 
     setLoading(true);
+    // Moving between episodes can keep this page mounted: never show the previous one's evaluation
+    setExistingEvaluation(null);
+    setIsEditing(false);
     try {
       // Fetch episode details
       const episodeResponse = await fetch(`/api/episodes/${episodeId}`);
@@ -84,8 +91,8 @@ export default function EpisodicEvaluationPage({ params }: EpisodePageProps) {
 
       if (!evalResponse.ok) {
         console.error("Error checking evaluation status:", evalData.error);
-      } else if (evalData.evaluation) {
-        setExistingEvaluation(evalData.evaluation);
+      } else {
+        setExistingEvaluation(evalData.evaluation || null);
       }
     } catch (error: any) {
       console.error("Error fetching data:", error);
@@ -98,6 +105,7 @@ export default function EpisodicEvaluationPage({ params }: EpisodePageProps) {
 
   useEffect(() => {
     if (episodeId) {
+      setJustEvaluated(false);
       fetchEpisodeAndEvaluation();
     }
   }, [episodeId, fetchEpisodeAndEvaluation]);
@@ -138,9 +146,17 @@ export default function EpisodicEvaluationPage({ params }: EpisodePageProps) {
 
       toast.success("Evaluation submitted successfully!");
 
-      setTimeout(() => {
-        router.push(crossTeamShareId ? "/evaluator/cross-team-shares" : "/evaluator/episodes");
-      }, 1500);
+      // Cross-team requests go back to their list; episodes and revisions stay here and offer
+      // the next version to evaluate
+      if (crossTeamShareId) {
+        setTimeout(() => {
+          router.push((crossTeamShareId ? "/evaluator/cross-team-shares" : "/evaluator/episodes"));
+        }, 1500);
+        return;
+      }
+      await fetchEpisodeAndEvaluation();
+      setJustEvaluated(true);
+      window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (error: any) {
       console.error("Error submitting evaluation:", error);
       throw error;
@@ -199,6 +215,17 @@ export default function EpisodicEvaluationPage({ params }: EpisodePageProps) {
         </div>
       </div>
 
+      {!crossTeamShareId && (
+        <EpisodeNav
+          episode={episode}
+          revisionId={revisionId}
+          projectTitle={(episode as any).call_report?.working_title}
+          hrefFor={(id, rev) => rev ? `/evaluator/episodes/${id}?revision_id=${rev}` : `/evaluator/episodes/${id}`}
+          backHref="/evaluator/episodes"
+          justEvaluated={justEvaluated}
+        />
+      )}
+
       {/* Cross-team share evaluation banner */}
       {crossTeamShareId && (
         <div className="p-3 bg-purple-50 border border-purple-200 rounded-lg flex items-center gap-2">
@@ -209,20 +236,20 @@ export default function EpisodicEvaluationPage({ params }: EpisodePageProps) {
         </div>
       )}
 
-      {/* Revision evaluation banner */}
-      {revisionId && (
-        <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg flex items-center gap-2">
-          <FilePenLine className="h-4 w-4 text-amber-600 shrink-0" />
-          <p className="text-sm text-amber-800">
-            Evaluating a <span className="font-semibold">specific revision</span> of this episode
-          </p>
-        </div>
-      )}
+      {/* Which version is being evaluated: the revision (with its file) or the original */}
+      <EvaluatingVersionBanner
+        apiBasePath="/api/episodes"
+        storageBucket="episodes"
+        entityId={episode.id}
+        revisionId={revisionId}
+        entityLabel={`EP${episode.episode_number}`}
+      />
 
       {/* Episode Revisions */}
       {episodeId && (
         <EpisodeRevisions
           episodeId={episodeId}
+          activeRevisionId={revisionId}
           canEdit={false}
           userRole={currentUserRole || undefined}
         />
@@ -230,7 +257,9 @@ export default function EpisodicEvaluationPage({ params }: EpisodePageProps) {
 
       {/* Evaluation Form */}
       <EpisodicEvaluationForm
+        key={`${episode.id}:${revisionId ?? ""}`}
         episode={episode}
+        revisionId={revisionId}
         existingEvaluation={existingEvaluation || undefined}
         onSubmit={handleSubmit}
         disabled={isEvaluatedView || (!!existingEvaluation && !isEditing)}

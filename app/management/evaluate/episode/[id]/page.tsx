@@ -11,6 +11,8 @@ import { toast } from "sonner";
 import { Loader2, FileText, FilePenLine } from "lucide-react";
 import { BackButton } from "@/components/ui/back-button";
 import { EpisodeRevisions } from "@/components/episodes/episode-revisions";
+import { EvaluatingVersionBanner, useRevisions, episodeVersionLabel } from "@/components/ui/evaluating-version-banner";
+import { EpisodeNav } from "@/components/episodes/episode-nav";
 import type { Episode, EpisodicEvaluation } from "@/types";
 import type { EpisodicEvaluationFormData } from "@/lib/validations/episodic-evaluations";
 import { MANDATORY_APPROVER_EMAILS } from "@/lib/approvals/config";
@@ -32,6 +34,10 @@ export default function ManagementEvaluateEpisodePage({ params }: EpisodePagePro
   const [userRole, setUserRole] = useState<string | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [isMandatoryApprover, setIsMandatoryApprover] = useState(false);
+  const { data: revisions } = useRevisions("/api/episodes", episodeId, !!revisionId);
+  const revisionNumber = revisionId ? revisions?.find((r) => r.id === revisionId)?.revision_number : null;
+  // Set after submitting this episode's evaluation: shows the "evaluate next" bar
+  const [justEvaluated, setJustEvaluated] = useState(false);
 
   useEffect(() => {
     params.then((resolvedParams) => {
@@ -71,6 +77,8 @@ export default function ManagementEvaluateEpisodePage({ params }: EpisodePagePro
     if (!episodeId) return;
 
     setLoading(true);
+    // Moving between episodes can keep this page mounted: never show the previous one's evaluation
+    setExistingEvaluation(null);
     try {
       // Fetch episode details
       const episodeResponse = await fetch(`/api/episodes/${episodeId}`);
@@ -91,8 +99,8 @@ export default function ManagementEvaluateEpisodePage({ params }: EpisodePagePro
 
       if (!evalResponse.ok) {
         console.error("Error checking evaluation status:", evalData.error);
-      } else if (evalData.evaluation) {
-        setExistingEvaluation(evalData.evaluation);
+      } else {
+        setExistingEvaluation(evalData.evaluation || null);
       }
     } catch (error: any) {
       console.error("Error fetching data:", error);
@@ -105,6 +113,7 @@ export default function ManagementEvaluateEpisodePage({ params }: EpisodePagePro
 
   useEffect(() => {
     if (episodeId && userRole) {
+      setJustEvaluated(false);
       fetchEpisodeAndEvaluation();
     }
   }, [episodeId, userRole, fetchEpisodeAndEvaluation]);
@@ -151,9 +160,10 @@ export default function ManagementEvaluateEpisodePage({ params }: EpisodePagePro
 
       toast.success("Management evaluation submitted successfully!");
 
-      setTimeout(() => {
-        router.push("/management/evaluations");
-      }, 1500);
+      // Stay here and offer the next episode or revision to evaluate
+      await fetchEpisodeAndEvaluation();
+      setJustEvaluated(true);
+      window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (error: any) {
       console.error("Error submitting evaluation:", error);
       throw error;
@@ -189,7 +199,7 @@ export default function ManagementEvaluateEpisodePage({ params }: EpisodePagePro
         <BackButton fallbackHref="/management" variant="outline" size="sm" className="w-fit" />
         <div className="space-y-1">
           <h1 className="text-xl sm:text-2xl font-bold tracking-tight">
-            Evaluate Episode {episode.episode_number}
+            Evaluate {episodeVersionLabel(episode.episode_number, revisionNumber)}
           </h1>
           <p className="text-muted-foreground text-sm sm:text-base">
             {episode.title || "Untitled Episode"}
@@ -197,21 +207,33 @@ export default function ManagementEvaluateEpisodePage({ params }: EpisodePagePro
         </div>
       </div>
 
-      {/* Revision evaluation banner */}
-      {revisionId && (
-        <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg flex items-center gap-2 mb-6">
-          <FilePenLine className="h-4 w-4 text-amber-600 shrink-0" />
-          <p className="text-sm text-amber-800">
-            Evaluating a <span className="font-semibold">specific revision</span> of this episode
-          </p>
-        </div>
-      )}
+      <div className="mb-6">
+        <EpisodeNav
+          episode={episode}
+          revisionId={revisionId}
+          projectTitle={(episode as any).call_report?.working_title}
+          hrefFor={(id, rev) => rev ? `/management/evaluate/episode/${id}?revision_id=${rev}` : `/management/evaluate/episode/${id}`}
+          backHref="/management/evaluations"
+          justEvaluated={justEvaluated}
+        />
+      </div>
+
+      {/* Which version is being evaluated: the revision (with its file) or the original */}
+      <EvaluatingVersionBanner
+        apiBasePath="/api/episodes"
+        storageBucket="episodes"
+        entityId={episode.id}
+        revisionId={revisionId}
+        entityLabel={`EP${episode.episode_number}`}
+        className="mb-6"
+      />
 
       {/* Episode Revisions */}
       {episodeId && (
         <div className="mb-6">
           <EpisodeRevisions
             episodeId={episodeId}
+            activeRevisionId={revisionId}
             canEdit={false}
             userRole={userRole || undefined}
           />
@@ -219,7 +241,9 @@ export default function ManagementEvaluateEpisodePage({ params }: EpisodePagePro
       )}
 
       <EpisodicEvaluationForm
+        key={`${episode.id}:${revisionId ?? ""}`}
         episode={episode}
+        revisionId={revisionId}
         onSubmit={handleSubmit}
         existingEvaluation={existingEvaluation || undefined}
         disabled={!!existingEvaluation}

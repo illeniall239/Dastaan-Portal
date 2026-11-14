@@ -29,6 +29,7 @@ import { ContentRevisions } from "@/components/ui/content-revisions";
 import { CallReportDiscussion, DiscussionThread } from "@/components/call-reports/call-report-discussion";
 import { ShareCrossTeamButton } from "@/components/call-report/share-cross-team-button";
 import { RevisionEvaluateList } from "@/components/episodes/revision-evaluate-list";
+import { FeedbackCommunicationView } from "@/components/evaluations/feedback-communication-view";
 import { formatDistanceToNow } from "date-fns";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -112,6 +113,8 @@ interface OLReviewEvaluation {
   big_idea: string | null;
   theme: string | null;
   submitted_at: string | null;
+  feedback_text?: string | null;
+  feedback_attachments?: { url: string; name: string }[] | null;
 }
 
 interface OLReviewData {
@@ -178,6 +181,8 @@ interface EpReviewEvaluation {
   freeze_ending_scene: string | null;
   summary_analysis: string | null;
   remarks: string | null;
+  feedback_text?: string | null;
+  feedback_attachments?: { url: string; name: string }[] | null;
   scenes_remarks: string | null;
   characterization_remarks: string | null;
   conflict_of_content_score: number | null;
@@ -981,6 +986,7 @@ function OLReviewContent({ data, userId, userRole }: { data: OLReviewData; userI
                     {ev.decision_notes && <span className="text-xs text-muted-foreground">{ev.decision_notes}</span>}
                   </div>
                 )}
+                <FeedbackCommunicationView text={ev.feedback_text} attachments={ev.feedback_attachments} />
               </div>
             ))}
           </div>
@@ -1070,6 +1076,7 @@ function EpReviewContent({ data, userId, userRole }: { data: EpReviewData; userI
                 {ev.remarks && (
                   <div className="bg-slate-50 rounded p-2 text-xs"><p className="font-medium text-slate-700 mb-0.5">Remarks</p><p className="text-slate-600">{ev.remarks}</p></div>
                 )}
+                <FeedbackCommunicationView text={ev.feedback_text} attachments={ev.feedback_attachments} />
                 {ev.events && ev.events.length > 0 && (
                   <div className="text-xs">
                     <p className="font-medium text-slate-700 mb-1">Events</p>

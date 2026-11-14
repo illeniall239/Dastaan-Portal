@@ -66,9 +66,16 @@ export async function GET(request: NextRequest) {
 
     // Use admin client for signed URL generation (storage RLS doesn't support fine-grained path access)
     const adminSupabase = createAdminClient();
+    // Save under the uploaded file name, not the generated storage path
+    const { data: record } = await adminSupabase
+      .from("attachments")
+      .select("file_name")
+      .eq("file_path", filePath)
+      .limit(1)
+      .maybeSingle();
     const { data: signedUrlData, error: signedUrlError } = await adminSupabase.storage
       .from("attachments")
-      .createSignedUrl(filePath, 3600);
+      .createSignedUrl(filePath, 3600, record?.file_name ? { download: record.file_name } : undefined);
 
     if (signedUrlError || !signedUrlData?.signedUrl) {
       logger.error("Error creating signed URL:", { error: signedUrlError, filePath, bucket: "attachments" });
