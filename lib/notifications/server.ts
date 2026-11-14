@@ -257,6 +257,24 @@ export async function getUserIdsByRoles(roles: string[]) {
 }
 
 /**
+ * The team that owns a project (one-liner): its active members plus its head.
+ * Used so a team hears when its project is rated by another team.
+ */
+export async function getProjectTeamMemberIds(callReportId: string): Promise<string[]> {
+  const admin = createAdminClient();
+  const { data: cr } = await admin.from("call_reports").select("team_id").eq("id", callReportId).single();
+  if (!cr?.team_id) return [];
+
+  const [{ data: members }, { data: team }] = await Promise.all([
+    admin.from("users").select("id").eq("team_id", cr.team_id).eq("status", "active"),
+    admin.from("teams").select("team_head_id").eq("id", cr.team_id).single(),
+  ]);
+  const ids = new Set((members || []).map((u: { id: string }) => u.id));
+  if (team?.team_head_id) ids.add(team.team_head_id);
+  return Array.from(ids);
+}
+
+/**
  * Helper: Exclude a specific user ID from a list
  * Used to prevent notifying the person who performed the action
  */

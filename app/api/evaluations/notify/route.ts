@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { createNotifications, getUserIdsByRoles, excludeUserFromList } from "@/lib/notifications/server";
-import { MANDATORY_APPROVER_EMAILS } from "@/lib/approvals/config";
+import { createNotifications, getUserIdsByRoles, getProjectTeamMemberIds, excludeUserFromList } from "@/lib/notifications/server";
 import { applyRateLimit } from "@/lib/api-middleware";
 import { RateLimitPresets } from "@/lib/rate-limit-redis";
 
@@ -39,57 +38,32 @@ export async function POST(request: NextRequest) {
       .eq("id", callReportId)
       .single();
 
-    // Fetch evaluation score
+    // Only the evaluator who just submitted this evaluation can announce it
     const { data: evaluation } = await adminClient
       .from("evaluator_forms")
-      .select("average_score")
+      .select("evaluator_id, call_report_id")
       .eq("id", evaluationId)
       .single();
+    if (!evaluation || evaluation.evaluator_id !== user.id || evaluation.call_report_id !== callReportId) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
 
     const storyTitle = callReport?.working_title || callReport?.call_report_id || "Unknown";
-    const score = evaluation?.average_score;
 
-    // Notify full team (management + content_manager + content_creator)
-    // Team anonymity: no evaluator name in notification
-    const teamIds = await getUserIdsByRoles(["management", "content_manager", "content_creator"]);
-    const teamRecipients = excludeUserFromList(teamIds, user.id);
+    // Notify the team, same wording and recipients as an episodic evaluation,
+    // plus the team that owns the project. Team anonymity: no evaluator name in notification
+    const [roleIds, projectTeamIds] = await Promise.all([
+      getUserIdsByRoles(["management", "content_manager", "content_creator"]),
+      getProjectTeamMemberIds(callReportId),
+    ]);
+    const teamRecipients = excludeUserFromList([...new Set([...roleIds, ...projectTeamIds])], user.id);
 
     if (teamRecipients.length > 0) {
       await createNotifications(
         teamRecipients,
         "success",
-        `New evaluation submitted: ${storyTitle}`,
-        `Evaluation completed${score != null ? ` — average score: ${score}/10` : ""}.`,
-        "evaluation_submitted",
-        evaluationId,
-        user.id
-      );
-    }
-
-    // Notify mandatory approvers (Humera/Salman) + programmers: story ready for approval
-    const { data: mandatoryUsers } = await adminClient
-      .from("users")
-      .select("id")
-      .in("email", MANDATORY_APPROVER_EMAILS);
-
-    const { data: programmerUsers } = await adminClient
-      .from("users")
-      .select("id")
-      .eq("role", "programmer")
-      .eq("status", "active");
-
-    const approvalRecipientSet = new Set<string>([
-      ...(mandatoryUsers || []).map((u: { id: string }) => u.id),
-      ...(programmerUsers || []).map((u: { id: string }) => u.id),
-    ]);
-    const approvalRecipients = excludeUserFromList(Array.from(approvalRecipientSet), user.id);
-
-    if (approvalRecipients.length > 0) {
-      await createNotifications(
-        approvalRecipients,
-        "info",
-        `Story ready for your review: ${storyTitle}`,
-        `An evaluation has been completed. Please review and approve or reject this story.`,
+        `New one-liner evaluation: ${storyTitle}`,
+        `"${storyTitle}" has been evaluated. Review the scores in the evaluation section.`,
         "call_report",
         callReportId,
         user.id

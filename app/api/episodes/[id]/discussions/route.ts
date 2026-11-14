@@ -120,18 +120,19 @@ export async function POST(
       return NextResponse.json({ error: "Episode not found" }, { status: 404 });
     }
 
-    // Fetch parent call report for title + logged_by
+    // Fetch parent call report for title + who logged it (created_by is their user id;
+    // logged_by is only their display name)
     let callReportTitle = "";
     let loggedBy: string | null = null;
     if (episode.call_report_id) {
       const { data: callReport } = await supabase
         .from("call_reports")
-        .select("working_title, call_report_id, logged_by")
+        .select("working_title, call_report_id, created_by")
         .eq("id", episode.call_report_id)
         .single();
       if (callReport) {
         callReportTitle = callReport.working_title || callReport.call_report_id || "";
-        loggedBy = callReport.logged_by || null;
+        loggedBy = callReport.created_by || null;
       }
     }
 

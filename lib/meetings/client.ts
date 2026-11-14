@@ -305,65 +305,9 @@ export async function createMeetingClient(meetingData: CreateMeetingInput) {
     throw new Error(`Failed to create meeting: ${error.message}`);
   }
 
-  // Create notifications for management, evaluators, and content department members
-  // Exclude the creator from receiving notification
-  // TEAM ISOLATION: Only notify team members + management
-  try {
-    // Get current user ID and team
-    const { data: { user } } = await supabase.auth.getUser();
-    const creatorId = user?.id;
-
-    // Get current user's team_id
-    const { data: currentUser } = await supabase
-      .from("users")
-      .select("team_id")
-      .eq("id", creatorId)
-      .single();
-
-    // Get all relevant users (management sees all, team members see only their team)
-    const { data: relevantUsers } = await supabase
-      .from("users")
-      .select("id, role, team_id")
-      .in("role", ["management", "evaluator", "content_manager", "content_creator", "admin"])
-      .eq("status", "active")
-      .or(`team_id.eq.${currentUser?.team_id},role.in.(admin,management)`);
-
-    if (relevantUsers && relevantUsers.length > 0) {
-      // Exclude the creator from notification list
-      const recipientUsers = relevantUsers.filter(u => u.id !== creatorId);
-
-      if (recipientUsers.length > 0) {
-        const meetingDate = new Date(meetingData.meeting_date);
-        const formattedDate = meetingDate.toLocaleDateString("en-US", {
-          month: "short",
-          day: "numeric",
-          year: "numeric",
-        });
-        const formattedTime = meetingDate.toLocaleTimeString("en-US", {
-          hour: "numeric",
-          minute: "2-digit",
-          hour12: true,
-        });
-
-        // Create notification for each relevant user (except creator)
-        const notifications = recipientUsers.map((user) => ({
-          user_id: user.id,
-          type: "info",
-          title: `New call report logged: ${meetingData.working_title}`,
-          message: `Meeting with ${meetingData.writer_name} on ${formattedDate} at ${formattedTime}`,
-          entity_type: "call_report_logged",
-          entity_id: data.id,
-          created_by: creatorId,
-          is_read: false,
-        }));
-
-        await supabase.from("notifications").insert(notifications);
-      }
-    }
-  } catch (notifError) {
-    console.error("Failed to create notifications:", notifError);
-    // Don't fail the meeting creation if notification fails
-  }
+  // Notify like a logged episode does. Sent server-side: the notifications table blocks
+  // inserts from users. Fire-and-forget, a failed notification must not fail the logging.
+  fetch(`/api/call-reports/${data.id}/notify-logged`, { method: "POST", keepalive: true }).catch(() => {});
 
   // Create audit log entry
   try {

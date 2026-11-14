@@ -112,7 +112,7 @@ export async function POST(
     // Verify call report exists and get creator id + display fields
     const { data: callReport } = await supabase
       .from("call_reports")
-      .select("id, logged_by, working_title, call_report_id")
+      .select("id, created_by, working_title, call_report_id")
       .eq("id", id)
       .single();
 
@@ -168,7 +168,6 @@ export async function POST(
       const isMandatoryApprover = (MANDATORY_APPROVER_EMAILS as readonly string[]).includes(posterEmail as string);
 
       const displayTitle = callReport.working_title || callReport.call_report_id || "a call report";
-      const displayId = callReport.call_report_id || "";
       const msgPreview = validation.data.message.slice(0, 100) + (validation.data.message.length > 100 ? "…" : "");
 
       // Get all previous participants in this thread (excluding poster)
@@ -201,21 +200,21 @@ export async function POST(
 
         recipientIds = [...new Set([
           ...mandatoryInThread,
-          ...(callReport.logged_by ? [callReport.logged_by] : []),
+          ...(callReport.created_by ? [callReport.created_by] : []),
         ])].filter((uid) => uid !== user.id);
 
         notifTitle = `Feedback reply on ${displayTitle}`;
-        notifMessage = `${posterName} replied on ${displayId}: "${msgPreview}"`;
+        notifMessage = `${posterName} replied on ${displayTitle}: "${msgPreview}"`;
       } else {
         // Mandatory approver (Humera/Salman) leaving feedback:
         // notify all existing thread participants + logged_by
         recipientIds = [...new Set([
           ...participantIds,
-          ...(callReport.logged_by ? [callReport.logged_by] : []),
+          ...(callReport.created_by ? [callReport.created_by] : []),
         ])].filter((uid) => uid !== user.id);
 
         notifTitle = `New feedback on ${displayTitle}`;
-        notifMessage = `${posterName} left feedback on ${displayId}: "${msgPreview}"`;
+        notifMessage = `${posterName} left feedback on ${displayTitle}: "${msgPreview}"`;
       }
 
       if (recipientIds.length > 0) {

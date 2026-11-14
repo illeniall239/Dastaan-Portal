@@ -12,7 +12,7 @@ import { revalidatePath } from 'next/cache';
 import { applyRateLimit } from '@/lib/api-middleware';
 import { RateLimitPresets } from '@/lib/rate-limit-redis';
 import { logAuditAction, getRequestContext } from "@/lib/audit/server";
-import { createNotifications, getUserIdsByRoles, excludeUserFromList } from "@/lib/notifications/server";
+import { createNotifications, getUserIdsByRoles, getProjectTeamMemberIds, excludeUserFromList } from "@/lib/notifications/server";
 
 /**
  * POST /api/episodic-evaluations
@@ -220,7 +220,7 @@ export async function POST(request: Request) {
         evaluator:users!evaluator_id(name, email),
         episode:episodes(
           *,
-          call_report:call_reports(working_title, writer_name, call_report_writers(writer:writers(name), display_order)),
+          call_report:call_reports(id, working_title, writer_name, call_report_writers(writer:writers(name), display_order)),
           story:stories(title, status)
         )
       `)
@@ -244,10 +244,15 @@ export async function POST(request: Request) {
       details: { ...requestContext, newValues: { episode_id: evaluationData.episode_id, conflict_of_content_score: evaluationData.conflict_of_content_score, characterization_score: evaluationData.characterization_score, story_progression_score: evaluationData.story_progression_score, overall_assessment_score: evaluationData.overall_assessment_score } },
     }).catch(err => logger.error("Audit log failed", { error: err }));
 
-    // Notify the team about the new episodic evaluation (anonymous — no evaluator name revealed)
+    // Notify the team about the new episodic evaluation, plus the team that owns the project
+    // (anonymous — no evaluator name revealed)
     try {
-      const recipientIds = await getUserIdsByRoles(["management", "content_manager", "content_creator"]);
-      const filtered = excludeUserFromList(recipientIds, user.id);
+      const projectId = (evaluation.episode as any)?.call_report?.id;
+      const [roleIds, projectTeamIds] = await Promise.all([
+        getUserIdsByRoles(["management", "content_manager", "content_creator"]),
+        projectId ? getProjectTeamMemberIds(projectId) : Promise.resolve([] as string[]),
+      ]);
+      const filtered = excludeUserFromList([...new Set([...roleIds, ...projectTeamIds])], user.id);
       if (filtered.length > 0) {
         const epNum = (evaluation.episode as any)?.episode_number;
         const dramaTitle = (evaluation.episode as any)?.call_report?.working_title || "Unknown";

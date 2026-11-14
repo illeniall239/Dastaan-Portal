@@ -15,7 +15,6 @@ const PAGE_SIZE = 20;
 function getNotificationIcon(entityType: string) {
   switch (entityType) {
     case "meeting_scheduled":
-    case "call_report_logged":
       return <CalendarIcon className="h-4 w-4 text-blue-600" />;
     case "story_submitted":
     case "call_report":
