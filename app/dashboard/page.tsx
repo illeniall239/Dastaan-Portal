@@ -321,7 +321,7 @@ export default async function DashboardPage() {
                     case "created_meeting":
                       activityDescription = `Scheduled meeting: ${activity.details?.title || 'Untitled Meeting'}`;
                       ActivityIcon = Calendar;
-                      activityLink = `/content-department/calendar`;
+                      activityLink = "#";
                       break;
                     default:
                       activityDescription = `${activity.action.replace(/_/g, ' ').toUpperCase()}: ${activity.entityType} ${activity.entityId}`;

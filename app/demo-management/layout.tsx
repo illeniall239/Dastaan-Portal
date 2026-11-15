@@ -18,11 +18,6 @@ const demoNavItems = [
     icon: "chefHat",
   },
   {
-    title: "Calendar",
-    href: "/demo-management/calendar",
-    icon: "calendar",
-  },
-  {
     title: "Script Bank",
     href: "/demo-management/story-bank",
     icon: "fileText",

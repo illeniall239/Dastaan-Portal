@@ -8,8 +8,6 @@ import {
   FileText,
   CheckCircle2,
   Clock,
-  CalendarIcon,
-  PlusIcon,
   Users,
   Share2,
 } from "lucide-react";
@@ -50,12 +48,6 @@ export default async function GcmDashboard() {
           </p>
         </div>
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3 w-full sm:w-auto">
-          <Button asChild className="bg-[#10b981] hover:bg-[#059669] touch-target">
-            <Link href="/gcm/calendar" prefetch>
-              <PlusIcon className="h-4 w-4 mr-2" />
-              Schedule Meeting
-            </Link>
-          </Button>
           <Button asChild variant="outline" className="touch-target">
             <Link href="/gcm/log-call-report" prefetch>
               <FileTextIcon className="h-4 w-4 mr-2" />
@@ -415,12 +407,6 @@ async function DashboardContent({ userId, userRole, teamId }: { userId: string; 
       label: "Log One-Liner Report",
       description: "Document writer meetings",
       href: "/gcm/log-call-report",
-    },
-    {
-      icon: CalendarIcon,
-      label: "Schedule a Meeting",
-      description: "Book meetings on calendar",
-      href: "/gcm/calendar",
     },
     {
       icon: ClipboardListIcon,

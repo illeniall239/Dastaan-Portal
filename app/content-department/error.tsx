@@ -87,16 +87,7 @@ export default function ContentDepartmentError({
               </Link>
             </Button>
           </div>
-          <div className="grid grid-cols-2 gap-2">
-            <Button
-              asChild
-              variant="ghost"
-              size="sm"
-            >
-              <Link href="/content-department/calendar">
-                Calendar
-              </Link>
-            </Button>
+          <div className="grid grid-cols-1 gap-2">
             <Button
               asChild
               variant="ghost"

@@ -41,11 +41,6 @@ const evaluatorNavItems = [
     href: "/evaluator/contract-terms",
     icon: "handshake",
   },
-  {
-    title: "Calendar",
-    href: "/evaluator/calendar",
-    icon: "calendar",
-  },
 ];
 
 export default async function EvaluatorLayout({

@@ -4,11 +4,12 @@ import { SidebarWrapper } from "./sidebar-wrapper";
 
 const managementTeamAllowedPaths = new Set([
   "/programmer",
-  "/programmer/calendar",
   "/programmer/one-liners",
   "/programmer/episodes",
   "/programmer/status-updater",
   "/programmer/contract-terms",
+  "/programmer/content-aging",
+  "/programmer/feedback-timeline",
 ]);
 
 // Programmer-specific navigation items
@@ -69,11 +70,6 @@ const programmerNavItems = [
     title: "Missing Details",
     href: "/programmer/missing-details",
     icon: "alertCircle",
-  },
-  {
-    title: "Calendar",
-    href: "/programmer/calendar",
-    icon: "calendar",
   },
 ];
 

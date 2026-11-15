@@ -7,7 +7,6 @@ import {
   FileText,
   CheckCircle2,
   Clock,
-  CalendarIcon,
   Globe,
   Film,
   BookOpen,
@@ -284,12 +283,6 @@ async function DashboardContent({ userId, userRole, teamId, teamType }: { userId
       label: "Log One-Liner Report",
       description: "Document writer meetings",
       href: "/programmer/log-call-report",
-    },
-    {
-      icon: CalendarIcon,
-      label: "Schedule a Meeting",
-      description: "Book meetings on calendar",
-      href: "/programmer/calendar",
     },
     {
       icon: ClipboardListIcon,

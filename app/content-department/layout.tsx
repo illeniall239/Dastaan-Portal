@@ -59,11 +59,6 @@ export default async function ContentDepartmentLayout({
       icon: "film",
       highlight: true,
     },
-    {
-      title: "Calendar",
-      href: "/content-department/calendar",
-      icon: "calendar",
-    },
   ];
 
   return (

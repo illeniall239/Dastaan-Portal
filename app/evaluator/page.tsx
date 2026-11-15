@@ -7,7 +7,6 @@ import {
   FileText,
   CheckCircle2,
   Clock,
-  CalendarIcon,
   Users,
   Share2,
 } from "lucide-react";
@@ -401,12 +400,6 @@ async function DashboardContent({ userId, userRole, teamId }: { userId: string; 
       label: "Log One-Liner Report",
       description: "Document writer meetings",
       href: "/evaluator/log-call-report",
-    },
-    {
-      icon: CalendarIcon,
-      label: "Schedule a Meeting",
-      description: "Book meetings on calendar",
-      href: "/evaluator/calendar",
     },
     {
       icon: ClipboardListIcon,

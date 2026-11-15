@@ -26,7 +26,6 @@ export default async function GcmLayout({
     { title: "Team Feedback", href: "/gcm/team-feedback", icon: "users" },
     { title: "My Team", href: "/gcm/team", icon: "users" },
     { title: "Writer Contracts", href: "/gcm/contract-terms", icon: "handshake" },
-    { title: "Calendar", href: "/gcm/calendar", icon: "calendar" },
   ];
 
   return (

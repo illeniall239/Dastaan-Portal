@@ -82,11 +82,6 @@ const defaultNavItems: NavItem[] = [
     icon: "home",
   },
   {
-    title: "Calendar",
-    href: "/content-department/calendar",
-    icon: "calendar",
-  },
-  {
     title: "One-Liner Reports",
     href: "/content-department/call-reports",
     icon: "fileText",

@@ -2,7 +2,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { CalendarIcon, PlusIcon, FileTextIcon, Calendar, FileText, Film } from "lucide-react";
+import { FileTextIcon, FileText, Film } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { Suspense } from "react";
@@ -36,12 +36,6 @@ export default async function ContentDepartmentDashboard() {
           </p>
         </div>
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3 w-full sm:w-auto">
-          <Button asChild className="bg-[#10b981] hover:bg-[#059669] touch-target">
-            <Link href="/content-department/calendar" prefetch>
-              <PlusIcon className="h-4 w-4 mr-2" />
-              Schedule Meeting
-            </Link>
-          </Button>
           <Button asChild variant="outline" className="touch-target">
             <Link href="/content-department/log-call-report" prefetch>
               <FileTextIcon className="h-4 w-4 mr-2" />
@@ -79,13 +73,6 @@ async function DashboardContent({ userId, userRole, teamId }: { userId: string; 
     .from("episodes")
     .select("id", { count: "exact", head: true });
 
-  let upcomingMeetingsQuery = supabase
-    .from("meetings")
-    .select("id, title, meeting_date, contact_name")
-    .gte("meeting_date", new Date().toISOString())
-    .order("meeting_date", { ascending: true })
-    .limit(5);
-
   let chartCrQuery = adminClient
     .from("call_reports")
     .select("id, working_title, writer_name, genre, content_type, target_slot, overall_rating")
@@ -95,21 +82,18 @@ async function DashboardContent({ userId, userRole, teamId }: { userId: string; 
   if (teamFilter) {
     callReportsQuery = callReportsQuery.eq("team_id", teamFilter);
     episodesQuery = episodesQuery.eq("team_id", teamFilter);
-    upcomingMeetingsQuery = upcomingMeetingsQuery.eq("team_id", teamFilter);
     chartCrQuery = chartCrQuery.eq("team_id", teamFilter);
   }
 
   // Single Promise.all — stats + chart base data in parallel
-  const [callReportsRes, episodesRes, upcomingMeetingsRes, chartCrRes] = await Promise.all([
+  const [callReportsRes, episodesRes, chartCrRes] = await Promise.all([
     callReportsQuery,
     episodesQuery,
-    upcomingMeetingsQuery,
     chartCrQuery,
   ]);
 
   const callReportsCount = callReportsRes.count || 0;
   const episodesCount = episodesRes.count || 0;
-  const upcomingMeetings = upcomingMeetingsRes.data || [];
 
   // Process chart data + comparison data from the same base query
   const crs = (chartCrRes.data || []) as any[];
@@ -231,12 +215,6 @@ async function DashboardContent({ userId, userRole, teamId }: { userId: string; 
   }
   const quickActions = [
     {
-      icon: Calendar,
-      label: "Schedule Meeting",
-      description: "Book meetings on calendar",
-      href: "/content-department/calendar",
-    },
-    {
       icon: FileText,
       label: "Log One-Liner Report",
       description: "Document writer meetings",
@@ -286,8 +264,8 @@ async function DashboardContent({ userId, userRole, teamId }: { userId: string; 
       {/* Assessment vs Evaluation */}
       <AssessmentVsEvaluationChart data={comparisonData} />
 
-      {/* Content Grid - 3 columns */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {/* Content Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Quick Actions */}
         <ModernContentCard
           title="Quick Actions"
@@ -329,46 +307,6 @@ async function DashboardContent({ userId, userRole, teamId }: { userId: string; 
               className="text-sm text-[#224794] hover:underline font-medium"
             >
               View all reports →
-            </Link>
-          </div>
-        </ModernContentCard>
-
-        {/* Upcoming Meetings */}
-        <ModernContentCard
-          title="Upcoming Meetings"
-          subtitle="Next 5 scheduled meetings"
-        >
-          {upcomingMeetings.length > 0 ? (
-            <div className="space-y-2">
-              {upcomingMeetings.map((meeting) => (
-                <Link
-                  key={meeting.id}
-                  href="/content-department/calendar"
-                  className="block p-3 rounded-lg hover:bg-gray-50 transition-colors border border-transparent hover:border-gray-200"
-                >
-                  <p className="text-sm font-medium text-gray-900 line-clamp-1">
-                    {meeting.title || "Untitled Meeting"}
-                  </p>
-                  <p className="text-xs text-gray-500 mt-1">
-                    {meeting.contact_name ? `With: ${meeting.contact_name}` : "No contact specified"}
-                  </p>
-                  <p className="text-xs text-gray-400 mt-0.5">
-                    {formatDateTime(meeting.meeting_date)}
-                  </p>
-                </Link>
-              ))}
-            </div>
-          ) : (
-            <p className="text-sm text-gray-500 text-center py-8">
-              No upcoming meetings scheduled
-            </p>
-          )}
-          <div className="pt-2 text-center">
-            <Link
-              href="/content-department/calendar"
-              className="text-sm text-[#224794] hover:underline font-medium"
-            >
-              View calendar →
             </Link>
           </div>
         </ModernContentCard>
