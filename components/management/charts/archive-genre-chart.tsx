@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Archive } from "lucide-react";
 import { DrillDownModal, DrillDownData } from "@/components/management/drill-down-modal";
 import type { ArchiveDetail } from "@/lib/management/archive-details";
+import { PKT_TIME_ZONE } from "@/lib/utils/format-date";
 
 interface ArchiveGenreChartProps {
   data: {
@@ -65,7 +66,7 @@ export function ArchiveGenreChart({ data }: ArchiveGenreChartProps) {
           {
             key: "rejection_date",
             label: "Rejection Date",
-            format: (value: string) => new Date(value).toLocaleDateString()
+            format: (value: string) => new Date(value).toLocaleDateString("en-US", { timeZone: PKT_TIME_ZONE })
           },
           {
             key: "days_in_system",

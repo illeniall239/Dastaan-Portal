@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireApiAuth } from "@/lib/api/auth";
+import { PKT_TIME_ZONE } from "@/lib/utils/format-date";
 
 export const dynamic = "force-dynamic";
 
 function formatDate(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString("en-GB", {
+    timeZone: PKT_TIME_ZONE,
     day: "2-digit", month: "short", year: "numeric",
   });
 }

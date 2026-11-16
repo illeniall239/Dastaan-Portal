@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { COMMERCIAL_POSITIONING_OPTIONS } from "@/lib/project-tags";
 import { ChevronDown, ChevronRight, Users, Search, Eye, Paperclip, FileText, Image as ImageIcon, File } from "lucide-react";
+import { PKT_TIME_ZONE } from "@/lib/utils/format-date";
 
 type Team = "programming" | "content_development";
 
@@ -130,7 +131,7 @@ function decisionLabel(decision: string | null): string {
 
 function formatDate(iso: string | null): string {
   if (!iso) return "";
-  return new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+  return new Date(iso).toLocaleDateString("en-GB", { timeZone: PKT_TIME_ZONE, day: "numeric", month: "short", year: "numeric" });
 }
 
 // ── One-liner eval view dialog ──────────────────────────────────────────────
@@ -597,7 +598,7 @@ function getDownloadUrl(filePath: string, fileName?: string | null): string {
 
 function formatFeedbackDate(dateStr: string): string {
   const d = new Date(dateStr + "T00:00:00");
-  return d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+  return d.toLocaleDateString("en-GB", { timeZone: PKT_TIME_ZONE, day: "numeric", month: "short", year: "numeric" });
 }
 
 function ProgrammerFeedbackSection({ entries }: { entries: ProgrammerFeedbackEntry[] }) {

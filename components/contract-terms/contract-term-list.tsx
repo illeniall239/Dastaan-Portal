@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
 import { Eye, FileText, Pencil } from "lucide-react";
 import type { ContractTerm } from "@/lib/contract-terms/client";
+import { PKT_TIME_ZONE } from "@/lib/utils/format-date";
 
 interface ContractTermListProps {
   contractTerms: ContractTerm[];
@@ -33,7 +34,7 @@ export function ContractTermList({ contractTerms, basePath }: ContractTermListPr
 
   const formatDate = (dateString?: string) => {
     if (!dateString) return "N/A";
-    return new Date(dateString).toLocaleDateString("en-PK");
+    return new Date(dateString).toLocaleDateString("en-PK", { timeZone: PKT_TIME_ZONE });
   };
 
   if (contractTerms.length === 0) {

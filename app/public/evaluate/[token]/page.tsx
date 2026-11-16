@@ -520,7 +520,7 @@ export default function ExternalEvaluatePage({ params }: ExternalEvaluatePagePro
         <div className="mb-6 text-center">
           <h1 className="text-xl sm:text-2xl font-bold mb-2">External Evaluation</h1>
           <p className="text-muted-foreground">
-            You've been invited to provide feedback on this {content?.type === "episode" ? "episode" : "One-Liner"}
+            You&apos;ve been invited to provide feedback on this {content?.type === "episode" ? "episode" : "One-Liner"}
           </p>
         </div>
 

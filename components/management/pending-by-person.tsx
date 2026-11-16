@@ -5,6 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Loader2, User, FileText, Film, Clock, CheckCircle2 } from "lucide-react";
+import { PKT_TIME_ZONE } from "@/lib/utils/format-date";
 
 interface PersonPending {
   userId: string;
@@ -106,7 +107,7 @@ function gradeColor(grade: string): string {
 }
 
 function formatDate(dateStr: string): string {
-  return new Date(dateStr).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  return new Date(dateStr).toLocaleDateString("en-US", { timeZone: PKT_TIME_ZONE, month: "short", day: "numeric", year: "numeric" });
 }
 
 function getBadgeProps(name: string, role: string) {

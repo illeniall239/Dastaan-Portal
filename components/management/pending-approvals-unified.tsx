@@ -31,6 +31,7 @@ import { ShareCrossTeamButton } from "@/components/call-report/share-cross-team-
 import { RevisionEvaluateList } from "@/components/episodes/revision-evaluate-list";
 import { FeedbackCommunicationView } from "@/components/evaluations/feedback-communication-view";
 import { formatDistanceToNow } from "date-fns";
+import { PKT_TIME_ZONE } from "@/lib/utils/format-date";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -251,7 +252,7 @@ function timeAgo(dateStr: string) {
 }
 
 function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  return new Date(iso).toLocaleDateString("en-US", { timeZone: PKT_TIME_ZONE, month: "short", day: "numeric", year: "numeric" });
 }
 
 function formatFileSize(bytes: number | null): string {

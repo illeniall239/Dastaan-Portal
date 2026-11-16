@@ -11,6 +11,7 @@ import { Download, Search, X, Clock, Pin, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useCallback, useRef } from "react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
+import { PKT_TIME_ZONE } from "@/lib/utils/format-date";
 
 interface EvaluatorGrade {
   id: string;
@@ -292,7 +293,7 @@ function scoreBadge(score: number | null) {
 
 function fmt(dateStr: string | null) {
   if (!dateStr) return "—";
-  return new Date(dateStr).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+  return new Date(dateStr).toLocaleDateString("en-GB", { timeZone: PKT_TIME_ZONE, day: "numeric", month: "short", year: "numeric" });
 }
 
 // FIXED COLUMN WIDTHS (sticky)

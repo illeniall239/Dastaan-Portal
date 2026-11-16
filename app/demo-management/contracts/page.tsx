@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { FileText, DollarSign, CheckCircle, Clock } from 'lucide-react';
 import { dummyContracts } from '../lib/dummy-data';
+import { PKT_TIME_ZONE } from "@/lib/utils/format-date";
 
 export default function ContractsPage() {
   const totalContractValue = dummyContracts.reduce((sum, c) => sum + c.total_amount, 0);
@@ -173,6 +174,7 @@ export default function ContractsPage() {
                             <p className="text-xs text-muted-foreground">
                               Due:{' '}
                               {new Date(milestone.due_date).toLocaleDateString('en-US', {
+                                timeZone: PKT_TIME_ZONE,
                                 month: 'short',
                                 day: 'numeric',
                                 year: 'numeric',
@@ -181,6 +183,7 @@ export default function ContractsPage() {
                                 <span className="ml-2">
                                   • Paid:{' '}
                                   {new Date(milestone.paid_date).toLocaleDateString('en-US', {
+                                    timeZone: PKT_TIME_ZONE,
                                     month: 'short',
                                     day: 'numeric',
                                     year: 'numeric',
@@ -206,6 +209,7 @@ export default function ContractsPage() {
                   <p className="text-sm text-muted-foreground pt-2 border-t">
                     Contract Signed:{' '}
                     {new Date(contract.signed_date).toLocaleDateString('en-US', {
+                      timeZone: PKT_TIME_ZONE,
                       month: 'long',
                       day: 'numeric',
                       year: 'numeric',

@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Film } from "lucide-react";
 import { ExportButton } from "../export-button";
 import { DrillDownModal, DrillDownData } from "../drill-down-modal";
+import { PKT_TIME_ZONE } from "@/lib/utils/format-date";
 
 interface EpisodeProductionChartProps {
   data: {
@@ -21,7 +22,7 @@ export function EpisodeProductionChart({ data }: EpisodeProductionChartProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   // Format data for chart
   const chartData = data.map(item => ({
-    week: new Date(item.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+    week: new Date(item.date).toLocaleDateString('en-US', { timeZone: PKT_TIME_ZONE, month: 'short', day: 'numeric' }),
     date: item.date,
     "One-Liners": item.callReportEpisodes,
     "Stories": item.storyEpisodes,

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { MessageCircle, X, Send, Bot } from "lucide-react";
+import { PKT_TIME_ZONE } from "@/lib/utils/format-date";
 
 interface Message {
   role: "user" | "assistant";
@@ -12,7 +13,7 @@ interface Message {
 function formatTime(iso?: string): string {
   if (!iso) return "";
   const d = new Date(iso);
-  return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  return d.toLocaleTimeString("en-US", { timeZone: PKT_TIME_ZONE, hour: "2-digit", minute: "2-digit" });
 }
 
 interface AssistantChatProps {

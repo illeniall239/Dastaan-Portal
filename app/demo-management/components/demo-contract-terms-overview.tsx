@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { FileText } from 'lucide-react';
 import { DummyContractTerm } from '../lib/dummy-data';
+import { PKT_TIME_ZONE } from "@/lib/utils/format-date";
 
 interface DemoContractTermsOverviewProps {
   contractTerms: DummyContractTerm[];
@@ -93,6 +94,7 @@ export function DemoContractTermsOverview({ contractTerms }: DemoContractTermsOv
                 <p className="text-sm text-muted-foreground">Writer: {term.writer_name}</p>
                 <p className="text-xs text-muted-foreground mt-1">
                   Created: {new Date(term.created_at).toLocaleDateString('en-US', {
+                    timeZone: PKT_TIME_ZONE,
                     month: 'short',
                     day: 'numeric',
                     year: 'numeric',

@@ -2,6 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { EvaluationSnapshot } from "@/types";
 import { User, TrendingUp, TrendingDown, Minus } from "lucide-react";
+import { PKT_TIME_ZONE } from "@/lib/utils/format-date";
 
 interface EvaluatorScoresBreakdownProps {
   evaluations: EvaluationSnapshot[];
@@ -107,9 +108,9 @@ export function EvaluatorScoresBreakdown({
                       </p>
                       <p className="text-xs text-muted-foreground mt-1">
                         Submitted:{" "}
-                        {new Date(evaluation.submitted_at).toLocaleDateString(
-                          "en-US",
+                        {new Date(evaluation.submitted_at).toLocaleDateString("en-US",
                           {
+                            timeZone: PKT_TIME_ZONE,
                             month: "short",
                             day: "numeric",
                             year: "numeric",

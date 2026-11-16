@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { AlertTriangle, AlertCircle, Info, Clock } from 'lucide-react';
 import { dummyAlerts } from '../lib/dummy-data';
+import { PKT_TIME_ZONE } from "@/lib/utils/format-date";
 
 export default function AlertsPage() {
   const criticalAlerts = dummyAlerts.filter(
@@ -110,6 +111,7 @@ export default function AlertsPage() {
                     <div className="flex items-center gap-3 text-xs text-muted-foreground">
                       <span>
                         {new Date(alert.created_at).toLocaleDateString('en-US', {
+                          timeZone: PKT_TIME_ZONE,
                           month: 'short',
                           day: 'numeric',
                           hour: '2-digit',
@@ -159,6 +161,7 @@ export default function AlertsPage() {
                     <div className="flex items-center gap-3 text-xs text-muted-foreground">
                       <span>
                         {new Date(alert.created_at).toLocaleDateString('en-US', {
+                          timeZone: PKT_TIME_ZONE,
                           month: 'short',
                           day: 'numeric',
                           hour: '2-digit',
@@ -206,6 +209,7 @@ export default function AlertsPage() {
                     <div className="flex items-center gap-3 text-xs text-muted-foreground">
                       <span>
                         {new Date(alert.created_at).toLocaleDateString('en-US', {
+                          timeZone: PKT_TIME_ZONE,
                           month: 'short',
                           day: 'numeric',
                           hour: '2-digit',

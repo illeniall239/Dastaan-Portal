@@ -9,6 +9,7 @@ import { PHASE_MEANING } from "@/lib/production-phase";
 import { COMMERCIAL_POSITIONING_OPTIONS, AUDIENCE_FOCUS_OPTIONS } from "@/lib/project-tags";
 import { cleanReply } from "@/lib/assistant/format";
 import { digestBlock, stripOldDigests } from "@/lib/assistant/digest";
+import { PKT_TIME_ZONE } from "@/lib/utils/format-date";
 
 export const dynamic = "force-dynamic";
 
@@ -58,7 +59,7 @@ function parsePeriod(period?: string | null): { start: Date; end: Date } | null 
 }
 
 function fmtDate(d: string): string {
-  return new Date(d).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+  return new Date(d).toLocaleDateString("en-GB", { timeZone: PKT_TIME_ZONE, day: "numeric", month: "short", year: "numeric" });
 }
 
 // Fuzzy ILIKE pattern: "jang e ishq" → "%jang%ishq%" (each word becomes a wildcard segment)
@@ -1145,7 +1146,7 @@ async function toolQueryMeetings(
   let items = meetList.map((m: any) => ({
     title: m.title || "Untitled Meeting",
     date: m.start_time ? fmtDate(m.start_time) : "",
-    time: m.start_time ? new Date(m.start_time).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }) : "",
+    time: m.start_time ? new Date(m.start_time).toLocaleTimeString("en-US", { timeZone: PKT_TIME_ZONE, hour: "numeric", minute: "2-digit" }) : "",
     created_by: userMap.get(m.created_by) || "Unknown",
     attendees: Array.isArray(m.attendees) ? m.attendees.length : 0,
   }));

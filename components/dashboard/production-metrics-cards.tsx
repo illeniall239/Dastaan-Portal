@@ -22,6 +22,7 @@ import {
   MessageSquare,
 } from "lucide-react";
 import type { ProductionMetrics } from "@/types";
+import { PKT_TIME_ZONE } from "@/lib/utils/format-date";
 
 interface ProductionMetricsCardsProps {
   metrics: ProductionMetrics;
@@ -67,6 +68,7 @@ export function ProductionMetricsCards({
           format: (val) =>
             val
               ? new Date(val).toLocaleDateString('en-US', {
+                timeZone: PKT_TIME_ZONE,
                 year: 'numeric',
                 month: 'short',
                 day: 'numeric',
@@ -104,6 +106,7 @@ export function ProductionMetricsCards({
           format: (val) =>
             val
               ? new Date(val).toLocaleDateString('en-US', {
+                timeZone: PKT_TIME_ZONE,
                 year: 'numeric',
                 month: 'short',
                 day: 'numeric',
@@ -231,6 +234,7 @@ export function ProductionMetricsCards({
           format: (val) =>
             val
               ? new Date(val).toLocaleDateString('en-US', {
+                timeZone: PKT_TIME_ZONE,
                 year: 'numeric',
                 month: 'short',
                 day: 'numeric',

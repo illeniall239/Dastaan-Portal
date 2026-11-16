@@ -2,6 +2,7 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Activity } from "lucide-react";
+import { PKT_TIME_ZONE } from "@/lib/utils/format-date";
 
 interface EvaluatorActivity {
   evaluatorId: string;
@@ -59,7 +60,7 @@ export function EvaluatorHeatmap({ activities }: EvaluatorHeatmapProps) {
   // Get week headers (last 12 weeks)
   const weekHeaders = activities[0]?.weeklyActivity.map(w => {
     const date = new Date(w.weekStart);
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    return date.toLocaleDateString('en-US', { timeZone: PKT_TIME_ZONE, month: 'short', day: 'numeric' });
   }) || [];
 
   return (
@@ -105,7 +106,7 @@ export function EvaluatorHeatmap({ activities }: EvaluatorHeatmapProps) {
                     <div
                       key={index}
                       className={`w-12 h-12 rounded flex items-center justify-center ${getColor(week.count)} ${getTextColor(week.count)} text-xs font-semibold border border-slate-200 cursor-pointer hover:ring-2 hover:ring-blue-400 transition-all`}
-                      title={`${evaluator.evaluatorName}\n${new Date(week.weekStart).toLocaleDateString()}\n${week.count} evaluation${week.count !== 1 ? 's' : ''}`}
+                      title={`${evaluator.evaluatorName}\n${new Date(week.weekStart).toLocaleDateString("en-US", { timeZone: PKT_TIME_ZONE })}\n${week.count} evaluation${week.count !== 1 ? 's' : ''}`}
                     >
                       {week.count > 0 ? week.count : ''}
                     </div>

@@ -34,7 +34,8 @@ import {
   ChevronUp,
   Pin,
 } from "lucide-react";
-import { format } from "date-fns";
+import { formatInTimeZone } from "date-fns-tz";
+import { PKT_TIME_ZONE } from "@/lib/utils/format-date";
 
 interface ActivityLog {
   id: string;
@@ -129,7 +130,7 @@ export default function ActivityLogsPage() {
       if (l.type === "click") detail = `${l.element_tag || ""} "${l.element_text || ""}"`;
       if (l.type === "client_error") detail = l.error_message || "";
       return [
-        format(new Date(l.timestamp), "yyyy-MM-dd HH:mm:ss"),
+        formatInTimeZone(new Date(l.timestamp), PKT_TIME_ZONE, "yyyy-MM-dd HH:mm:ss"),
         l.type,
         l.user?.name || "Anonymous",
         l.user?.email || "",
@@ -144,7 +145,7 @@ export default function ActivityLogsPage() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `activity-logs-${format(new Date(), "yyyy-MM-dd")}.csv`;
+    a.download = `activity-logs-${formatInTimeZone(new Date(), PKT_TIME_ZONE, "yyyy-MM-dd")}.csv`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -166,7 +167,7 @@ export default function ActivityLogsPage() {
             <div className="p-3 bg-blue-100 rounded-full"><Eye className="h-6 w-6 text-blue-600" /></div>
             <div>
               <p className="text-sm text-muted-foreground">Page Views (24h)</p>
-              <p className="text-3xl font-bold text-blue-600">{stats.page_views_today.toLocaleString()}</p>
+              <p className="text-3xl font-bold text-blue-600">{stats.page_views_today.toLocaleString("en-US")}</p>
             </div>
           </CardContent>
         </Card>
@@ -175,7 +176,7 @@ export default function ActivityLogsPage() {
             <div className="p-3 bg-green-100 rounded-full"><MousePointer className="h-6 w-6 text-green-600" /></div>
             <div>
               <p className="text-sm text-muted-foreground">Clicks (24h)</p>
-              <p className="text-3xl font-bold text-green-600">{stats.clicks_today.toLocaleString()}</p>
+              <p className="text-3xl font-bold text-green-600">{stats.clicks_today.toLocaleString("en-US")}</p>
             </div>
           </CardContent>
         </Card>
@@ -184,7 +185,7 @@ export default function ActivityLogsPage() {
             <div className="p-3 bg-red-100 rounded-full"><AlertTriangle className="h-6 w-6 text-red-600" /></div>
             <div>
               <p className="text-sm text-muted-foreground">Client Errors (24h)</p>
-              <p className="text-3xl font-bold text-red-600">{stats.client_errors_today.toLocaleString()}</p>
+              <p className="text-3xl font-bold text-red-600">{stats.client_errors_today.toLocaleString("en-US")}</p>
             </div>
           </CardContent>
         </Card>
@@ -234,7 +235,7 @@ export default function ActivityLogsPage() {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-base">
-            {loading ? "Loading..." : `${pagination.total.toLocaleString()} events total`}
+            {loading ? "Loading..." : `${pagination.total.toLocaleString("en-US")} events total`}
           </CardTitle>
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Button variant={freezePanes ? "default" : "outline"} size="sm" onClick={() => setFreezePanes(f => !f)} className="gap-1.5 h-8 text-xs">
@@ -279,7 +280,7 @@ export default function ActivityLogsPage() {
                     <>
                       <TableRow key={log.id} className="cursor-pointer hover:bg-muted/50" onClick={() => setExpandedId(expandedId === log.id ? null : log.id)}>
                         <TableCell className="text-xs text-muted-foreground whitespace-nowrap bg-background">
-                          {format(new Date(log.timestamp), "MMM d, HH:mm:ss")}
+                          {formatInTimeZone(new Date(log.timestamp), PKT_TIME_ZONE, "MMM d, HH:mm:ss")}
                         </TableCell>
                         <TableCell><TypeBadge type={log.type} /></TableCell>
                         <TableCell className="text-xs">
@@ -326,7 +327,7 @@ export default function ActivityLogsPage() {
                                   <p className="bg-green-50 text-green-800 p-2 rounded border border-green-200">
                                     <span className="font-mono">&lt;{log.element_tag}&gt;</span>
                                     {log.element_id && <span className="ml-2 text-muted-foreground">#{log.element_id}</span>}
-                                    {log.element_text && <span className="ml-2">"{log.element_text}"</span>}
+                                    {log.element_text && <span className="ml-2">&quot;{log.element_text}&quot;</span>}
                                   </p>
                                 </div>
                               )}

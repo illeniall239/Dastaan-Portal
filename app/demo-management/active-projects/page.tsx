@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Film, Calendar, DollarSign, Users } from 'lucide-react';
 import { dummyStories, dummyEpisodes } from '../lib/dummy-data';
+import { PKT_TIME_ZONE } from "@/lib/utils/format-date";
 
 export default function ActiveProjectsPage() {
   const activeProjects = dummyStories.filter((s) =>
@@ -180,6 +181,7 @@ export default function ActiveProjectsPage() {
                     <span>
                       Started:{' '}
                       {new Date(project.production_start).toLocaleDateString('en-US', {
+                        timeZone: PKT_TIME_ZONE,
                         month: 'short',
                         day: 'numeric',
                         year: 'numeric',
@@ -189,6 +191,7 @@ export default function ActiveProjectsPage() {
                       <span>
                         Ended:{' '}
                         {new Date(project.production_end).toLocaleDateString('en-US', {
+                          timeZone: PKT_TIME_ZONE,
                           month: 'short',
                           day: 'numeric',
                           year: 'numeric',

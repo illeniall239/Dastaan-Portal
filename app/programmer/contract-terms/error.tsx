@@ -48,7 +48,7 @@ export default function ProgrammerContractTermsError({
                         Error Loading Contract Terms
                     </CardTitle>
                     <CardDescription className="text-slate-600 mt-2">
-                        We couldn't load the contract terms. Your data is safe.
+                        We couldn&apos;t load the contract terms. Your data is safe.
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">

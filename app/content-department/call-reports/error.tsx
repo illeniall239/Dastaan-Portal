@@ -48,7 +48,7 @@ export default function ContentDepartmentCallReportsError({
             Error Loading One-Liner Reports
           </CardTitle>
           <CardDescription className="text-slate-600 mt-2">
-            We couldn't load the one-liner reports. Your data is safe.
+            We couldn&apos;t load the one-liner reports. Your data is safe.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">

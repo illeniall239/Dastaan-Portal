@@ -296,18 +296,18 @@ export function ExternalEvaluationDetailModal({
 }: ExternalEvaluationDetailModalProps) {
   const [selectedIndex, setSelectedIndex] = useState(0);
 
-  if (!evaluation) return null;
-
-  // Support both grouped submissions and single evaluations (backwards compatibility)
-  const evaluations = evaluation.evaluations || [evaluation];
-  const currentEvaluation = evaluations[selectedIndex];
-
-  // Reset selected index when modal opens with new evaluation
+  // Reset selected index when modal opens with new evaluation (hooks run before any early return)
   useEffect(() => {
     if (isOpen) {
       setSelectedIndex(0);
     }
   }, [isOpen, evaluation?.id]);
+
+  if (!evaluation) return null;
+
+  // Support both grouped submissions and single evaluations (backwards compatibility)
+  const evaluations = evaluation.evaluations || [evaluation];
+  const currentEvaluation = evaluations[selectedIndex];
 
   // Normalize the data to handle both flat and nested structures
   const rawData = currentEvaluation.evaluation_data || {};
@@ -527,7 +527,7 @@ export function ExternalEvaluationDetailModal({
           </div>
           <DialogTitle className="text-2xl">External Evaluation</DialogTitle>
           <DialogDescription>
-            You've been invited to provide feedback on this {currentEvaluation.content_type === "episode" ? "episode" : "One-Liner"}
+            You&apos;ve been invited to provide feedback on this {currentEvaluation.content_type === "episode" ? "episode" : "One-Liner"}
           </DialogDescription>
         </DialogHeader>
 

@@ -5,9 +5,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { format } from "date-fns";
 import { Loader2, Inbox, Film, FileText, Share2, CheckCircle2, FilePenLine } from "lucide-react";
 import Link from "next/link";
+import { formatInTimeZone } from "date-fns-tz";
+import { PKT_TIME_ZONE } from "@/lib/utils/format-date";
 
 interface SharedEpisode {
   id: string;
@@ -179,7 +180,7 @@ export function IncomingEvaluationRequests({
                       </CardTitle>
                       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1 text-xs text-muted-foreground">
                         <span>From: <strong>{share.from_team?.name || "—"}</strong></span>
-                        <span>{format(new Date(share.shared_at), "MMM d, yyyy")}</span>
+                        <span>{formatInTimeZone(new Date(share.shared_at), PKT_TIME_ZONE, "MMM d, yyyy")}</span>
                       </div>
                     </div>
                     <div className="flex items-center gap-2 flex-shrink-0">

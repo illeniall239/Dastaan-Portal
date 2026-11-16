@@ -14,6 +14,7 @@ import {
   Loader2,
   Pencil,
 } from "lucide-react";
+import { PKT_TIME_ZONE } from "@/lib/utils/format-date";
 
 interface RevisionStatus {
   hasEvaluated: boolean;
@@ -148,6 +149,7 @@ export function RevisionEvaluateList({
 
   const formatDate = (dateStr: string) => {
     return new Date(dateStr).toLocaleDateString("en-US", {
+      timeZone: PKT_TIME_ZONE,
       month: "short",
       day: "numeric",
       year: "numeric",

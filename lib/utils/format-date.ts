@@ -5,7 +5,13 @@
 
 import { formatInTimeZone } from 'date-fns-tz';
 
-const PKT_TIMEZONE = 'Asia/Karachi';
+/**
+ * The business time zone. Every date/time the app shows or groups by is in Pakistan time, whether it
+ * is formatted on the server (UTC on Vercel) or in the browser — so both produce the same text.
+ * Pass it to every toLocaleDateString / toLocaleTimeString / toLocaleString on a date (lint-enforced).
+ */
+export const PKT_TIME_ZONE = 'Asia/Karachi';
+const PKT_TIMEZONE = PKT_TIME_ZONE;
 
 /**
  * Format date in Pakistan Time

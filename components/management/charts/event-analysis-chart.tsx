@@ -27,6 +27,18 @@ export function EventAnalysisChart({ data, dramaTitle }: EventAnalysisChartProps
   const [hoveredEvent, setHoveredEvent] = useState<EventDetail | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>("scatter");
 
+  // Hooks run on every render, before any early return
+  // Transform data into ECG frequency format
+  const ecgData = useMemo(() => {
+    return (data || []).map(ep => ({
+      episode: ep.episodeNumber,
+      highCount: ep.events.filter(e => e.impact === 'High Impact').length,
+      mediumCount: ep.events.filter(e => e.impact === 'Medium Impact').length,
+      lowCount: ep.events.filter(e => e.impact === 'Low Impact').length,
+      totalCount: ep.events.length,
+    }));
+  }, [data]);
+
   if (!data || data.length === 0) {
     return (
       <div className="text-center py-8 text-muted-foreground">
@@ -52,17 +64,6 @@ export function EventAnalysisChart({ data, dramaTitle }: EventAnalysisChartProps
   const filteredScatterData = selectedImpact === "All"
     ? scatterData
     : scatterData.filter(point => point.impact === selectedImpact);
-
-  // Transform data into ECG frequency format
-  const ecgData = useMemo(() => {
-    return data.map(ep => ({
-      episode: ep.episodeNumber,
-      highCount: ep.events.filter(e => e.impact === 'High Impact').length,
-      mediumCount: ep.events.filter(e => e.impact === 'Medium Impact').length,
-      lowCount: ep.events.filter(e => e.impact === 'Low Impact').length,
-      totalCount: ep.events.length,
-    }));
-  }, [data]);
 
   // Get color based on impact
   const getImpactColor = (impact: string) => {

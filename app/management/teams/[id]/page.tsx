@@ -16,6 +16,7 @@ import { TeamVsAverageRadar } from "@/components/management/charts/team-vs-avera
 import { TeamMemberList } from "@/components/management/team-performance/team-member-list";
 import { ExportButton } from "@/components/management/export-button";
 import { ArrowLeft, Users, FileText, CheckCircle, MessageSquare, Award, TrendingUp } from "lucide-react";
+import { PKT_TIME_ZONE } from "@/lib/utils/format-date";
 
 export const dynamic = "force-dynamic";
 
@@ -302,7 +303,7 @@ export default async function TeamDetailPage({ params }: { params: Promise<{ id:
 
       {/* Data Source Note */}
       <div className="mt-8 text-center text-sm text-gray-500">
-        Data refreshes every 5 minutes. Last updated: {new Date().toLocaleString()}
+        Data refreshes every 5 minutes. Last updated: {new Date().toLocaleString("en-US", { timeZone: PKT_TIME_ZONE })}
       </div>
     </div>
   );

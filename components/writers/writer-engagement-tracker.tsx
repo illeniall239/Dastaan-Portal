@@ -10,6 +10,8 @@ import { format, startOfMonth, endOfMonth, parseISO } from 'date-fns';
 import { Plus, Save, Trash2, Loader2, Pencil, X, Check, Download } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
+import { formatInTimeZone } from "date-fns-tz";
+import { PKT_TIME_ZONE } from "@/lib/utils/format-date";
 
 interface Writer {
   id: string;
@@ -155,7 +157,7 @@ const NewRow = memo(function NewRow({
         </Select>
       </div>
       <div className="text-sm text-muted-foreground">
-        {format(new Date(), 'MMM d, yyyy')}
+        {formatInTimeZone(new Date(), PKT_TIME_ZONE, 'MMM d, yyyy')}
       </div>
       <div>
         <Input
@@ -268,7 +270,7 @@ export function WriterEngagementTracker({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           writer_id: writerId,
-          date_engaged: format(new Date(), 'yyyy-MM-dd'),
+          date_engaged: formatInTimeZone(new Date(), PKT_TIME_ZONE, 'yyyy-MM-dd'),
           notes,
         }),
       });

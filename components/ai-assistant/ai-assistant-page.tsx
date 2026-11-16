@@ -4,6 +4,7 @@ import { useEffect, useLayoutEffect, useRef, useState, useCallback, type Compone
 import { Bot, Send, Trash2, Loader2 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { PKT_TIME_ZONE } from "@/lib/utils/format-date";
 
 interface Message {
   role: "user" | "assistant";
@@ -66,7 +67,7 @@ const MAX_MEMORY_ITEMS = 50;
 function formatTime(iso?: string): string {
   if (!iso) return "";
   const d = new Date(iso);
-  return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  return d.toLocaleTimeString("en-US", { timeZone: PKT_TIME_ZONE, hour: "2-digit", minute: "2-digit" });
 }
 
 function stripDigest(text: string): string {

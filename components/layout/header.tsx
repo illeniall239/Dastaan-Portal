@@ -17,6 +17,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import Image from "next/image";
+import { PKT_TIME_ZONE } from "@/lib/utils/format-date";
 
 interface NavItem {
   title: string;
@@ -54,7 +55,7 @@ function getTimeAgo(dateString: string) {
   if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
   if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
   if (seconds < 604800) return `${Math.floor(seconds / 86400)}d ago`;
-  return date.toLocaleDateString();
+  return date.toLocaleDateString("en-US", { timeZone: PKT_TIME_ZONE });
 }
 
 // Map icon names to icon components

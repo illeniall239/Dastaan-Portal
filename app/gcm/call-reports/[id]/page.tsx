@@ -15,7 +15,7 @@ import { getAttachmentsForEntityServer } from "@/lib/attachments/server";
 import { BackButton } from "@/components/ui/back-button";
 import { canViewPrivateFields } from "@/lib/call-reports/privacy";
 import type { User } from "@/types";
-import { formatDateTimeLong, formatDateLong } from "@/lib/utils/format-date";
+import { formatDateTimeLong, formatDateLong, PKT_TIME_ZONE } from "@/lib/utils/format-date";
 import { getSegregatedEvaluations } from "@/lib/evaluations/server";
 import { SegregatedEvaluationsDisplay } from "@/components/evaluations/segregated-evaluations-display";
 import { ContentRevisions } from "@/components/ui/content-revisions";
@@ -389,7 +389,7 @@ export default async function CallReportDetailPage({ params }: { params: Promise
                       <div>
                         <p className="font-medium text-sm text-slate-900">{attachment.file_name}</p>
                         <p className="text-xs text-slate-500 mt-0.5">
-                          {(attachment.file_size / 1024 / 1024).toFixed(2)} MB • {attachment.users?.name || 'Unknown'} • {new Date(attachment.uploaded_at).toLocaleDateString()}
+                          {(attachment.file_size / 1024 / 1024).toFixed(2)} MB • {attachment.users?.name || 'Unknown'} • {new Date(attachment.uploaded_at).toLocaleDateString("en-US", { timeZone: PKT_TIME_ZONE })}
                         </p>
                       </div>
                     </div>

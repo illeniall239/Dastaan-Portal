@@ -21,6 +21,12 @@ interface ActivityEvent {
 }
 
 export async function POST(request: Request) {
+  // Only the deployed build records activity. A local dev server — even one pointed at the production
+  // database — must not write its page views, clicks or dev-only errors into the real activity log.
+  if (process.env.NODE_ENV !== "production") {
+    return new NextResponse(null, { status: 204 });
+  }
+
   // Relaxed rate limit — this endpoint is called frequently
   const rate = await applyRateLimit(request, RateLimitPresets.relaxed);
   if (!rate.success) return rate.response!;

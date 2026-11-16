@@ -24,7 +24,8 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Download, ChevronLeft, ChevronRight, Search, Filter, Pin } from "lucide-react";
-import { format } from "date-fns";
+import { formatInTimeZone } from "date-fns-tz";
+import { PKT_TIME_ZONE } from "@/lib/utils/format-date";
 
 interface AuditLog {
   id: string;
@@ -141,7 +142,7 @@ export default function AuditLogsPage() {
   const exportToCSV = () => {
     const headers = ["Timestamp", "User", "Email", "Action", "Entity Type", "Entity ID", "IP Address"];
     const rows = logs.map(log => [
-      format(new Date(log.timestamp), "yyyy-MM-dd HH:mm:ss"),
+      formatInTimeZone(new Date(log.timestamp), PKT_TIME_ZONE, "yyyy-MM-dd HH:mm:ss"),
       log.performed_by_user?.name || "Unknown",
       log.performed_by_user?.email || "Unknown",
       log.action,
@@ -159,7 +160,7 @@ export default function AuditLogsPage() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = `audit-logs-${format(new Date(), "yyyy-MM-dd")}.csv`;
+    link.download = `audit-logs-${formatInTimeZone(new Date(), PKT_TIME_ZONE, "yyyy-MM-dd")}.csv`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -308,7 +309,7 @@ export default function AuditLogsPage() {
                     {logs.map((log) => (
                       <TableRow key={log.id}>
                         <TableCell className="font-mono text-xs bg-background">
-                          {format(new Date(log.timestamp), "yyyy-MM-dd HH:mm:ss")}
+                          {formatInTimeZone(new Date(log.timestamp), PKT_TIME_ZONE, "yyyy-MM-dd HH:mm:ss")}
                         </TableCell>
                         <TableCell>
                           <div className="flex flex-col">
@@ -385,7 +386,7 @@ export default function AuditLogsPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label className="text-muted-foreground">Timestamp</Label>
-                  <p className="font-mono text-sm">{format(new Date(selectedLog.timestamp), "PPpp")}</p>
+                  <p className="font-mono text-sm">{formatInTimeZone(new Date(selectedLog.timestamp), PKT_TIME_ZONE, "PPpp")}</p>
                 </div>
                 <div>
                   <Label className="text-muted-foreground">Performed By</Label>

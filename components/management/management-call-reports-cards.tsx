@@ -15,8 +15,9 @@ import {
 import { ShareLinkDialog } from "@/components/management/share-link-dialog";
 import { CallReportDetailDialog } from "@/components/management/call-report-detail-dialog";
 import { CalendarDays, Users, FileText, Share2, Eye, Search } from "lucide-react";
-import { format } from "date-fns";
 import { useDebounce } from "@/lib/hooks/useDebounce";
+import { formatInTimeZone } from "date-fns-tz";
+import { PKT_TIME_ZONE } from "@/lib/utils/format-date";
 
 interface ManagementCallReportsCardsProps {
   callReports: any[];
@@ -132,7 +133,7 @@ export function ManagementCallReportsCards({ callReports, userRole }: Management
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {filteredReports.map((report) => {
           const displayDate = report.original_submission_date || report.meeting_date || null;
-          const formattedDate = displayDate ? format(new Date(displayDate), "PPP") : "Not logged";
+          const formattedDate = displayDate ? formatInTimeZone(new Date(displayDate), PKT_TIME_ZONE, "PPP") : "Not logged";
           const attendees: string[] = report.meeting_attendees || [];
           const episodesCount = report.episodes ? report.episodes.length : 0;
           const storyTitle = report.stories?.title;

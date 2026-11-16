@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { applyRateLimit } from "@/lib/api-middleware";
 import { RateLimitPresets } from "@/lib/rate-limit-redis";
 import { formatTeamDisplayName } from "@/lib/management/team-display";
+import { PKT_TIME_ZONE } from "@/lib/utils/format-date";
 
 export const dynamic = "force-dynamic";
 
@@ -25,7 +26,7 @@ function fmt(d: string | null): string | null {
   if (!d) return null;
   try {
     const date = new Date(d);
-    return date.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "2-digit" });
+    return date.toLocaleDateString("en-GB", { timeZone: PKT_TIME_ZONE, day: "2-digit", month: "short", year: "2-digit" });
   } catch { return d; }
 }
 

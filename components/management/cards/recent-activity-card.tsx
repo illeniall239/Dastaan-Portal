@@ -2,6 +2,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Activity, FileText, CheckSquare, FileCheck, DollarSign, User, Film, Clock } from "lucide-react";
 import type { RecentActivity } from "@/lib/management/activity-analytics";
+import { PKT_TIME_ZONE } from "@/lib/utils/format-date";
 
 // Helper function moved from analytics (to avoid server imports in client)
 function groupActivitiesByTime(activities: RecentActivity[]) {
@@ -88,7 +89,7 @@ export function RecentActivityCard({ activities }: RecentActivityCardProps) {
     if (diffHours < 24) return `${diffHours}h ago`;
     if (diffDays === 1) return 'Yesterday';
     if (diffDays < 7) return `${diffDays}d ago`;
-    return then.toLocaleDateString();
+    return then.toLocaleDateString("en-US", { timeZone: PKT_TIME_ZONE });
   };
 
   const renderActivityGroup = (groupActivities: RecentActivity[], title: string) => {

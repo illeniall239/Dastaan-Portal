@@ -385,7 +385,7 @@ export function ExternalEvaluationsManager({
                                     <p className="font-semibold">{"freezes_score" in scores ? String(scores.freezes_score) : "N/A"}/10</p>
                                   </div>
                                   <div className="bg-gray-50 rounded p-2">
-                                    <p className="text-muted-foreground mb-1">What's Next Element</p>
+                                    <p className="text-muted-foreground mb-1">What&apos;s Next Element</p>
                                     <p className="font-semibold">{"whats_next_element_score" in scores ? String(scores.whats_next_element_score) : "N/A"}/10</p>
                                   </div>
                                   <div className="bg-gray-50 rounded p-2">
@@ -408,7 +408,7 @@ export function ExternalEvaluationsManager({
                                     <p className="font-semibold">{"story_progression_score" in scores ? String(scores.story_progression_score) : "N/A"}/10</p>
                                   </div>
                                   <div className="bg-gray-50 rounded p-2">
-                                    <p className="text-muted-foreground mb-1">What's Next Element</p>
+                                    <p className="text-muted-foreground mb-1">What&apos;s Next Element</p>
                                     <p className="font-semibold">{"whats_next_element_score" in scores ? String(scores.whats_next_element_score) : "N/A"}/10</p>
                                   </div>
                                   <div className="bg-gray-50 rounded p-2 md:col-span-2">

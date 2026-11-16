@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Loader2, AlertTriangle, CheckCircle2, Clock, TrendingDown } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, Cell } from "recharts";
+import { PKT_TIME_ZONE } from "@/lib/utils/format-date";
 
 interface ProjectDelay {
   id: string;
@@ -142,7 +143,7 @@ function TeamDrillDialog({ team, projects, onClose }: {
                   </div>
 
                   <div className="flex items-center gap-3 text-[10px] text-gray-500">
-                    <span>Started {new Date(p.initiationDate).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "2-digit" })}</span>
+                    <span>Started {new Date(p.initiationDate).toLocaleDateString("en-GB", { timeZone: PKT_TIME_ZONE, day: "numeric", month: "short", year: "2-digit" })}</span>
                     <span>{p.daysSinceInitiation} days ago</span>
                     {p.actualPaceDays != null && (
                       <span className={p.actualPaceDays > p.expectedPaceDays * 1.2 ? "text-red-500 font-medium" : "text-green-600"}>

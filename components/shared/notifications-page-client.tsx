@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 import { useNotifications } from "@/lib/hooks/queries/useNotifications";
 import { useMarkAsRead, useMarkAllAsRead } from "@/lib/hooks/mutations/useMarkAsRead";
 import { useUnreadCount } from "@/lib/hooks/queries/useUnreadCount";
+import { PKT_TIME_ZONE } from "@/lib/utils/format-date";
 
 const PAGE_SIZE = 20;
 
@@ -63,7 +64,7 @@ function getTimeAgo(dateStr: string) {
   if (diff < 60)   return "just now";
   if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
   if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
-  return date.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+  return date.toLocaleDateString("en-GB", { timeZone: PKT_TIME_ZONE, day: "numeric", month: "short" });
 }
 
 export function NotificationsPageClient() {

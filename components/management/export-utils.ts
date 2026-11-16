@@ -1,4 +1,5 @@
 import { sanitizeForPrintTitle } from "@/lib/print-utils";
+import { PKT_TIME_ZONE } from "@/lib/utils/format-date";
 
 /**
  * Export a DOM element as PNG image
@@ -125,7 +126,7 @@ export async function exportAsPDF(element: HTMLElement, filename: string) {
     pdf.addImage(imgData, "PNG", xOffset, yOffset, finalWidth, finalHeight);
 
     // Add timestamp footer
-    const timestamp = new Date().toLocaleString();
+    const timestamp = new Date().toLocaleString("en-US", { timeZone: PKT_TIME_ZONE });
     pdf.setFontSize(8);
     pdf.setTextColor(150);
     pdf.text(`Generated: ${timestamp}`, margin, pageHeight - 5);
@@ -375,7 +376,7 @@ export async function generateDashboardReport(sections: Array<{ element: HTMLEle
       pdf.addImage(imgData, "PNG", xOffset, 30, imgWidth, imgHeight);
 
       // Add footer with timestamp
-      const timestamp = new Date().toLocaleString();
+      const timestamp = new Date().toLocaleString("en-US", { timeZone: PKT_TIME_ZONE });
       pdf.setFontSize(8);
       pdf.setTextColor(150);
       pdf.text(`Generated: ${timestamp}`, margin, pageHeight - 10);

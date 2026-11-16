@@ -21,6 +21,7 @@ import {
   COMMITMENT_SCHEDULE_LABELS,
   type CommitmentSchedule,
 } from "@/lib/validations/writer-commitments";
+import { PKT_TIME_ZONE } from "@/lib/utils/format-date";
 
 interface SimpleWriter {
   id: string;
@@ -61,6 +62,7 @@ function StatusBadge({ status }: { status: "delivered" | "delayed" | "on_track" 
 function formatDate(dateStr: string | null | undefined) {
   if (!dateStr) return "—";
   return new Date(dateStr + "T00:00:00").toLocaleDateString("en-GB", {
+    timeZone: PKT_TIME_ZONE,
     day: "2-digit",
     month: "short",
     year: "numeric",

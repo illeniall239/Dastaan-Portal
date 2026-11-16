@@ -13,6 +13,7 @@ import { CalendarIcon, UserIcon, FileTextIcon, StarIcon, TrendingUp, TrendingDow
 import { getEvaluationById } from "@/lib/evaluations/server";
 import { EvaluationProgressBar } from "@/components/evaluations/evaluation-progress-bar";
 import { BackButton } from "@/components/ui/back-button";
+import { PKT_TIME_ZONE } from "@/lib/utils/format-date";
 
 // Add Next.js caching - revalidate every 30 seconds
 export const revalidate = 300; // 5 minutes for better performance
@@ -51,6 +52,7 @@ export default async function EvaluatorEvaluationDetailPage({ params }: { params
 
   const createdDate = new Date(evaluation.created_at);
   const formattedDate = createdDate.toLocaleDateString("en-US", {
+    timeZone: PKT_TIME_ZONE,
     weekday: "long",
     month: "long",
     day: "numeric",
@@ -242,6 +244,7 @@ export default async function EvaluatorEvaluationDetailPage({ params }: { params
                 {finalDecisionMadeAt ? (
                   <span className="text-green-700 font-medium">
                     ✓ Auto-decision made on {new Date(finalDecisionMadeAt).toLocaleDateString("en-US", {
+                      timeZone: PKT_TIME_ZONE,
                       month: "short",
                       day: "numeric",
                       year: "numeric"
@@ -373,7 +376,7 @@ export default async function EvaluatorEvaluationDetailPage({ params }: { params
                 <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
                   <div className="flex items-center gap-2">
                     <StarIcon className="h-4 w-4 text-[#224794]" />
-                    <span className="text-sm font-medium">What's Next Element</span>
+                    <span className="text-sm font-medium">What&apos;s Next Element</span>
                   </div>
                   <span className="text-lg font-bold text-[#224794]">
                     {evaluation.whats_next_element_score}/10

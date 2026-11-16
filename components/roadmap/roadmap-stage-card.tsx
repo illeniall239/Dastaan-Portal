@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import type { RoadmapStageData } from "@/types";
 import { STAGE_CONFIG } from "@/lib/roadmap/constants";
+import { PKT_TIME_ZONE } from "@/lib/utils/format-date";
 
 interface RoadmapStageCardProps {
   stage: RoadmapStageData;
@@ -53,6 +54,7 @@ function getStatusBadge(status: string) {
 function formatDate(date: string | null): string {
   if (!date) return "-";
   return new Date(date).toLocaleDateString("en-US", {
+    timeZone: PKT_TIME_ZONE,
     weekday: "short",
     month: "short",
     day: "numeric",

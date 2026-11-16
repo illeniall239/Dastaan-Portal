@@ -6,6 +6,7 @@ import { Card } from "@/components/ui/card";
 import { DrillDownModal, DrillDownData } from "@/components/management/drill-down-modal";
 import type { ActiveIdeaDetail } from "@/lib/management/active-ideas-details";
 import { getCategoryLabel } from "@/lib/management/color-palettes";
+import { PKT_TIME_ZONE } from "@/lib/utils/format-date";
 
 interface TimelineChartProps {
   ideas: ActiveIdeaDetail[];
@@ -40,7 +41,7 @@ export function TimelineChart({ ideas }: TimelineChartProps) {
       weekEnd.setHours(23, 59, 59, 999); // End of Sunday
 
       // Format week label (Monday's date)
-      const monthDay = weekStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      const monthDay = weekStart.toLocaleDateString('en-US', { timeZone: PKT_TIME_ZONE, month: 'short', day: 'numeric' });
 
       weeks.push({
         week: monthDay,
@@ -87,7 +88,7 @@ export function TimelineChart({ ideas }: TimelineChartProps) {
     // Format week range for title
     const endDate = new Date(weekEnd);
     endDate.setDate(endDate.getDate() - 1); // Get actual Sunday
-    const weekEndLabel = endDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    const weekEndLabel = endDate.toLocaleDateString('en-US', { timeZone: PKT_TIME_ZONE, month: 'short', day: 'numeric' });
 
     // Prepare modal data
     setModalData({
@@ -115,7 +116,7 @@ export function TimelineChart({ ideas }: TimelineChartProps) {
         {
           key: "meeting_date",
           label: "Meeting Date",
-          format: (value: string) => value ? new Date(value).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'N/A'
+          format: (value: string) => value ? new Date(value).toLocaleDateString('en-US', { timeZone: PKT_TIME_ZONE, month: 'short', day: 'numeric', year: 'numeric' }) : 'N/A'
         },
         {
           key: "status",

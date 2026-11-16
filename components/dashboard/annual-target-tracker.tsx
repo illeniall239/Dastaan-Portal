@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Loader2, TrendingDown, TrendingUp, Pencil, Check } from "lucide-react";
+import { PKT_TIME_ZONE } from "@/lib/utils/format-date";
 
 interface TeamRow {
   teamId: string;
@@ -315,7 +316,7 @@ export function AnnualTargetTracker() {
         {/* Tab 2: Target Achievement */}
         {activeTab === "achievement" && (
           <div className="overflow-x-auto">
-            <p className="text-xs text-gray-500 mb-3">Target Achievement as of {new Date().toLocaleDateString("en-US", { day: "numeric", month: "long", year: "numeric" })}</p>
+            <p className="text-xs text-gray-500 mb-3">Target Achievement as of {new Date().toLocaleDateString("en-US", { timeZone: PKT_TIME_ZONE, day: "numeric", month: "long", year: "numeric" })}</p>
             <table className="w-full text-xs">
               <thead>
                 <tr className="border-b border-gray-200 bg-gray-50">

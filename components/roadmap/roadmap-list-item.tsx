@@ -7,6 +7,7 @@ import { Calendar, Clock, ArrowRight } from "lucide-react";
 import type { RoadmapListItem } from "@/types";
 import { STAGE_CONFIG } from "@/lib/roadmap/constants";
 import { cn } from "@/lib/utils";
+import { PKT_TIME_ZONE } from "@/lib/utils/format-date";
 
 interface RoadmapListItemCardProps {
   item: RoadmapListItem;
@@ -16,6 +17,7 @@ interface RoadmapListItemCardProps {
 function formatDate(date: string | null): string {
   if (!date) return "-";
   return new Date(date).toLocaleDateString("en-US", {
+    timeZone: PKT_TIME_ZONE,
     month: "short",
     day: "numeric",
   });

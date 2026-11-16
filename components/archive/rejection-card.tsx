@@ -2,6 +2,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { RejectedArchiveItem } from "@/types";
 import { FileX, Calendar, User, TrendingDown } from "lucide-react";
+import { PKT_TIME_ZONE } from "@/lib/utils/format-date";
 
 interface RejectionCardProps {
   item: RejectedArchiveItem;
@@ -81,6 +82,7 @@ export function RejectionCard({ item, onClick }: RejectionCardProps) {
               <span className="text-muted-foreground">Meeting:</span>
               <span className="font-medium">
                 {meetingDate.toLocaleDateString("en-US", {
+                  timeZone: PKT_TIME_ZONE,
                   month: "short",
                   day: "numeric",
                   year: "numeric",
@@ -105,6 +107,7 @@ export function RejectionCard({ item, onClick }: RejectionCardProps) {
             <p className="text-xs text-red-600 mt-2">
               Archived on{" "}
               {archivedDate.toLocaleDateString("en-US", {
+                timeZone: PKT_TIME_ZONE,
                 month: "long",
                 day: "numeric",
                 year: "numeric",

@@ -12,6 +12,7 @@ import {
 } from "@/lib/management/episode-pipeline";
 import { DrillDownModal, DrillDownData } from "./drill-down-modal";
 import { EventAnalysisModal } from "./event-analysis-modal";
+import { PKT_TIME_ZONE } from "@/lib/utils/format-date";
 
 interface EvaluatorPipelineEpisodesProps {
   dramas: DramaWithEpisodes[];
@@ -68,7 +69,7 @@ export function EvaluatorPipelineEpisodes({
         status: 'Completed',
         score: ev.overallScore || '-',
         grade: ev.grade || '-',
-        date: ev.evaluatedAt ? new Date(ev.evaluatedAt).toLocaleDateString() : '-',
+        date: ev.evaluatedAt ? new Date(ev.evaluatedAt).toLocaleDateString("en-US", { timeZone: PKT_TIME_ZONE }) : '-',
       })),
       ...evaluators.pending.map(ev => ({
         evaluator: ev.evaluatorName,

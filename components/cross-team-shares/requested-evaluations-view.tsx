@@ -4,7 +4,6 @@ import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { format } from "date-fns";
 import {
   CheckCircle2,
   XCircle,
@@ -15,6 +14,8 @@ import {
   Loader2,
   Share2,
 } from "lucide-react";
+import { formatInTimeZone } from "date-fns-tz";
+import { PKT_TIME_ZONE } from "@/lib/utils/format-date";
 
 interface EpisodeResult {
   episodeId: string;
@@ -84,7 +85,7 @@ function CommentsSection({ comments }: { comments: { text: string; submittedAt: 
         <div key={i} className="bg-gray-50 rounded-md p-3 border-l-2 border-gray-300">
           <p className="text-sm text-gray-700">{c.text}</p>
           <p className="text-xs text-gray-400 mt-1">
-            {format(new Date(c.submittedAt), "MMM d, yyyy 'at' h:mm a")}
+            {formatInTimeZone(new Date(c.submittedAt), PKT_TIME_ZONE, "MMM d, yyyy 'at' h:mm a")}
           </p>
         </div>
       ))}
@@ -176,7 +177,7 @@ export function RequestedEvaluationsView() {
                         <span>ID: {share.call_report.call_report_id}</span>
                       )}
                       <span>To: <strong>{share.to_team?.name || "—"}</strong></span>
-                      <span>{format(new Date(share.shared_at), "MMM d, yyyy")}</span>
+                      <span>{formatInTimeZone(new Date(share.shared_at), PKT_TIME_ZONE, "MMM d, yyyy")}</span>
                     </div>
                   </div>
                   <div className="flex items-center gap-2 flex-shrink-0">

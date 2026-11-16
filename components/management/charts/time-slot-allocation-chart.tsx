@@ -7,6 +7,7 @@ import { Clock } from "lucide-react";
 import { DrillDownModal, DrillDownData } from "@/components/management/drill-down-modal";
 import type { ActiveIdeaDetail } from "@/lib/management/active-ideas-details";
 import { SLOT_COLORS } from "@/lib/management/color-palettes";
+import { PKT_TIME_ZONE } from "@/lib/utils/format-date";
 
 interface TimeSlotAllocationChartProps {
   ideas: ActiveIdeaDetail[];
@@ -91,7 +92,7 @@ export function TimeSlotAllocationChart({ ideas }: TimeSlotAllocationChartProps)
           {
             key: "meeting_date",
             label: "Meeting Date",
-            format: (value: string) => new Date(value).toLocaleDateString()
+            format: (value: string) => new Date(value).toLocaleDateString("en-US", { timeZone: PKT_TIME_ZONE })
           },
           {
             key: "days_active",

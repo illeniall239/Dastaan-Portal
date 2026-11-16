@@ -5,6 +5,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { TrendingUp } from "lucide-react";
 import { DrillDownModal, type DrillDownData } from "@/components/management/drill-down-modal";
+import { PKT_TIME_ZONE } from "@/lib/utils/format-date";
 
 interface TeamComparisonData {
   team_id: string;
@@ -44,13 +45,13 @@ const DRILL_DOWN_COLUMNS: Record<string, DrillDownData['columns']> = {
     { key: 'working_title', label: 'Title' },
     { key: 'writer_name', label: 'Writer' },
     { key: 'status', label: 'Status' },
-    { key: 'created_at', label: 'Date', format: (v) => v ? new Date(v).toLocaleDateString() : '—' },
+    { key: 'created_at', label: 'Date', format: (v) => v ? new Date(v).toLocaleDateString("en-US", { timeZone: PKT_TIME_ZONE }) : '—' },
   ],
   evaluations: [
     { key: 'working_title', label: 'Story' },
     { key: 'evaluator_name', label: 'Evaluator' },
     { key: 'average_score', label: 'Score', format: (v) => v != null ? Number(v).toFixed(1) : '—' },
-    { key: 'created_at', label: 'Date', format: (v) => v ? new Date(v).toLocaleDateString() : '—' },
+    { key: 'created_at', label: 'Date', format: (v) => v ? new Date(v).toLocaleDateString("en-US", { timeZone: PKT_TIME_ZONE }) : '—' },
   ],
 };
 

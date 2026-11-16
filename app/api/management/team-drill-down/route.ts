@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireApiAuth } from "@/lib/api/auth";
+import { PKT_TIME_ZONE } from "@/lib/utils/format-date";
 
 export const dynamic = "force-dynamic";
 
@@ -331,7 +332,7 @@ function fmtDecision(raw: string | null): string {
 
 function fmtDate(dateStr: string | null): string {
   if (!dateStr) return "—";
-  return new Date(dateStr).toLocaleDateString("en-PK", { day: "numeric", month: "short", year: "numeric" });
+  return new Date(dateStr).toLocaleDateString("en-PK", { timeZone: PKT_TIME_ZONE, day: "numeric", month: "short", year: "numeric" });
 }
 
 function emptyResult(columns: Column[]): DrillDownResult {

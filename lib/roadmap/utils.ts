@@ -13,6 +13,7 @@ import type {
   UserRole,
 } from '@/types';
 import { STAGE_ORDER, STAGE_CONFIG, getStageNumber } from './constants';
+import { PKT_TIME_ZONE } from "@/lib/utils/format-date";
 
 /**
  * Calculate the number of days between two dates
@@ -45,6 +46,7 @@ export function daysFromNow(startDate: string | Date | null): number {
 export function formatDateShort(date: string | Date | null): string {
   if (!date) return '-';
   return new Date(date).toLocaleDateString('en-US', {
+    timeZone: PKT_TIME_ZONE,
     month: 'short',
     day: 'numeric',
   });
@@ -253,7 +255,7 @@ export function buildContractTermsStage(
         : null,
     actor: null,
     outcome: negotiation?.agreed_price
-      ? `Agreed: ${negotiation.currency || 'PKR'} ${negotiation.agreed_price.toLocaleString()}`
+      ? `Agreed: ${negotiation.currency || 'PKR'} ${negotiation.agreed_price.toLocaleString("en-US")}`
       : negotiation
         ? `Status: ${negotiation.status}`
         : null,

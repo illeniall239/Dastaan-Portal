@@ -6,6 +6,7 @@ import { RateLimitPresets } from "@/lib/rate-limit-redis";
 import { logAuditAction, getRequestContext } from "@/lib/audit/server";
 import { logger } from "@/lib/logger";
 import { createNotifications } from "@/lib/notifications/server";
+import { PKT_TIME_ZONE } from "@/lib/utils/format-date";
 
 export const dynamic = "force-dynamic";
 
@@ -201,11 +202,13 @@ export async function POST(request: NextRequest) {
       if (recipients.length > 0) {
         const meetingDate = new Date(body.meeting_date);
         const formattedDate = meetingDate.toLocaleDateString("en-US", {
+          timeZone: PKT_TIME_ZONE,
           month: "short",
           day: "numeric",
           year: "numeric",
         });
         const formattedTime = meetingDate.toLocaleTimeString("en-US", {
+          timeZone: PKT_TIME_ZONE,
           hour: "numeric",
           minute: "2-digit",
           hour12: true,

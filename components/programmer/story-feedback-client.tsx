@@ -20,6 +20,7 @@ import {
   ChevronUp,
   Search,
 } from "lucide-react";
+import { PKT_TIME_ZONE } from "@/lib/utils/format-date";
 
 interface CallReport {
   id: string;
@@ -63,7 +64,7 @@ function getFileIcon(fileType: string) {
 
 function formatDate(dateStr: string) {
   const d = new Date(dateStr + "T00:00:00");
-  return d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+  return d.toLocaleDateString("en-GB", { timeZone: PKT_TIME_ZONE, day: "numeric", month: "short", year: "numeric" });
 }
 
 function getDownloadUrl(filePath: string, fileName?: string | null) {

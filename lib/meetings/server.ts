@@ -6,6 +6,7 @@ import {
 } from "@/lib/notifications/server";
 import { logger } from "@/lib/logger";
 import { MANDATORY_APPROVER_EMAILS } from "@/lib/approvals/config";
+import { PKT_TIME_ZONE } from "@/lib/utils/format-date";
 
 export interface MeetingWriter {
   writer_id: string;
@@ -297,11 +298,13 @@ export async function createMeeting(meetingData: CreateMeetingInput) {
     const recipientIds = await getContentActivityNotificationRecipients(meetingData.created_by);
     const meetingDate = new Date(meetingData.meeting_date);
     const formattedDate = meetingDate.toLocaleDateString("en-US", {
+      timeZone: PKT_TIME_ZONE,
       month: "short",
       day: "numeric",
       year: "numeric",
     });
     const formattedTime = meetingDate.toLocaleTimeString("en-US", {
+      timeZone: PKT_TIME_ZONE,
       hour: "numeric",
       minute: "2-digit",
       hour12: true,

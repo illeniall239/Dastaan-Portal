@@ -8,7 +8,9 @@ import { Button } from '@/components/ui/button';
 import { Pin } from 'lucide-react';
 import { useFreezeColumns } from '@/lib/hooks/useFreezeColumns';
 import { CrossTeamShare } from '@/types';
-import { formatDistanceToNow, format, differenceInHours, differenceInDays } from 'date-fns';
+import { formatDistanceToNow, differenceInHours, differenceInDays } from "date-fns";
+import { formatInTimeZone } from "date-fns-tz";
+import { PKT_TIME_ZONE } from "@/lib/utils/format-date";
 
 interface CrossTeamSharesTableProps {
   readOnly?: boolean;
@@ -222,8 +224,8 @@ export function CrossTeamSharesTable({ readOnly = false }: CrossTeamSharesTableP
                         <span className="text-gray-700">{(share as any).shared_by_user?.name || '-'}</span>
                       </td>
                       <td className="p-3">
-                        <div className="text-gray-700">{format(new Date(share.shared_at), 'MMM d, yyyy')}</div>
-                        <div className="text-xs text-gray-500">{format(new Date(share.shared_at), 'h:mm a')}</div>
+                        <div className="text-gray-700">{formatInTimeZone(new Date(share.shared_at), PKT_TIME_ZONE, 'MMM d, yyyy')}</div>
+                        <div className="text-xs text-gray-500">{formatInTimeZone(new Date(share.shared_at), PKT_TIME_ZONE, 'h:mm a')}</div>
                       </td>
                       <td className="p-3">
                         {getStatusBadge(share.status)}

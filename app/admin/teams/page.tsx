@@ -23,6 +23,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { PKT_TIME_ZONE } from "@/lib/utils/format-date";
 
 interface Team {
   id: string;
@@ -125,6 +126,7 @@ export default function AdminTeamsPage() {
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString("en-US", {
+      timeZone: PKT_TIME_ZONE,
       year: "numeric",
       month: "short",
       day: "numeric",

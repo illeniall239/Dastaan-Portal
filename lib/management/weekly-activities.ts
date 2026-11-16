@@ -1,5 +1,6 @@
 import { createAdminClient } from '@/lib/supabase/admin';
 import { handleError } from '@/lib/errors';
+import { PKT_TIME_ZONE } from "@/lib/utils/format-date";
 
 export type ActivityType = 'story' | 'evaluation' | 'approval' | 'contract' | 'payment' | 'contractTerm';
 
@@ -81,7 +82,7 @@ export async function getWeeklyActivities(): Promise<WeeklyActivity[]> {
           performedById: performerId,
           timestamp: log.timestamp,
           details: log.details,
-          dayOfWeek: timestamp.toLocaleDateString('en-US', { weekday: 'long' }),
+          dayOfWeek: timestamp.toLocaleDateString('en-US', { timeZone: PKT_TIME_ZONE, weekday: 'long' }),
           dateGroup: getDateGroup(timestamp, todayStart, yesterdayStart),
           timeAgo: formatTimeAgo(timestamp),
         });
@@ -109,7 +110,7 @@ export async function getWeeklyActivities(): Promise<WeeklyActivity[]> {
           performedById: (story.creator as any)?.id || '',
           timestamp: story.created_at,
           details: { status: story.status, story_id: story.story_id },
-          dayOfWeek: timestamp.toLocaleDateString('en-US', { weekday: 'long' }),
+          dayOfWeek: timestamp.toLocaleDateString('en-US', { timeZone: PKT_TIME_ZONE, weekday: 'long' }),
           dateGroup: getDateGroup(timestamp, todayStart, yesterdayStart),
           timeAgo: formatTimeAgo(timestamp),
         });
@@ -142,7 +143,7 @@ export async function getWeeklyActivities(): Promise<WeeklyActivity[]> {
           performedById: (evaluation.evaluator as any)?.id || '',
           timestamp: evaluation.submitted_at!,
           details: { average_score: evaluation.average_score },
-          dayOfWeek: timestamp.toLocaleDateString('en-US', { weekday: 'long' }),
+          dayOfWeek: timestamp.toLocaleDateString('en-US', { timeZone: PKT_TIME_ZONE, weekday: 'long' }),
           dateGroup: getDateGroup(timestamp, todayStart, yesterdayStart),
           timeAgo: formatTimeAgo(timestamp),
         });
@@ -167,7 +168,7 @@ export async function getWeeklyActivities(): Promise<WeeklyActivity[]> {
           performedById: (contract.creator as any)?.id || '',
           timestamp: contract.created_at,
           details: { status: contract.status, contract_id: contract.contract_id },
-          dayOfWeek: timestamp.toLocaleDateString('en-US', { weekday: 'long' }),
+          dayOfWeek: timestamp.toLocaleDateString('en-US', { timeZone: PKT_TIME_ZONE, weekday: 'long' }),
           dateGroup: getDateGroup(timestamp, todayStart, yesterdayStart),
           timeAgo: formatTimeAgo(timestamp),
         });
@@ -192,7 +193,7 @@ export async function getWeeklyActivities(): Promise<WeeklyActivity[]> {
           performedById: (payment.approved_by as any)?.id || '',
           timestamp: payment.created_at,
           details: { status: payment.status, amount: payment.payment_amount },
-          dayOfWeek: timestamp.toLocaleDateString('en-US', { weekday: 'long' }),
+          dayOfWeek: timestamp.toLocaleDateString('en-US', { timeZone: PKT_TIME_ZONE, weekday: 'long' }),
           dateGroup: getDateGroup(timestamp, todayStart, yesterdayStart),
           timeAgo: formatTimeAgo(timestamp),
         });
@@ -217,7 +218,7 @@ export async function getWeeklyActivities(): Promise<WeeklyActivity[]> {
           performedById: (contractTerm.created_by as any)?.id || '',
           timestamp: contractTerm.created_at,
           details: { status: contractTerm.status, agreed_price: contractTerm.agreed_price },
-          dayOfWeek: timestamp.toLocaleDateString('en-US', { weekday: 'long' }),
+          dayOfWeek: timestamp.toLocaleDateString('en-US', { timeZone: PKT_TIME_ZONE, weekday: 'long' }),
           dateGroup: getDateGroup(timestamp, todayStart, yesterdayStart),
           timeAgo: formatTimeAgo(timestamp),
         });
@@ -242,7 +243,7 @@ export async function getWeeklyActivities(): Promise<WeeklyActivity[]> {
           performedById: (oneLiner.executive as any)?.id || '',
           timestamp: oneLiner.created_at,
           details: { decision: oneLiner.decision },
-          dayOfWeek: timestamp.toLocaleDateString('en-US', { weekday: 'long' }),
+          dayOfWeek: timestamp.toLocaleDateString('en-US', { timeZone: PKT_TIME_ZONE, weekday: 'long' }),
           dateGroup: getDateGroup(timestamp, todayStart, yesterdayStart),
           timeAgo: formatTimeAgo(timestamp),
         });
@@ -419,5 +420,5 @@ function formatTimeAgo(date: Date): string {
   if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
   if (diffInHours < 24) return `${diffInHours}h ago`;
   if (diffInDays < 7) return `${diffInDays}d ago`;
-  return date.toLocaleDateString();
+  return date.toLocaleDateString("en-US", { timeZone: PKT_TIME_ZONE });
 }

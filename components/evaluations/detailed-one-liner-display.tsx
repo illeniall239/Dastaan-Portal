@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { CharacterRelationshipGraph } from "@/components/character-relationship-graph";
 import type { CharacterRelationship } from "@/types";
 import { ReactFlowProvider } from 'reactflow';
+import { PKT_TIME_ZONE } from "@/lib/utils/format-date";
 import 'reactflow/dist/style.css';
 
 interface NarrativeBreakdownItem {
@@ -350,6 +351,7 @@ export function DetailedOneLinerDisplay({ detailedOneLiner }: DetailedOneLinerDi
               </div>
               <div>
                 {new Date(detailedOneLiner.created_at).toLocaleDateString("en-US", {
+                  timeZone: PKT_TIME_ZONE,
                   month: "long",
                   day: "numeric",
                   year: "numeric",

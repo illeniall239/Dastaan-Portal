@@ -1,6 +1,6 @@
 "use client";
 
-import { formatDate, formatDateTime } from "@/lib/utils/format-date";
+import { formatDate, formatDateTime, PKT_TIME_ZONE } from "@/lib/utils/format-date";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -176,6 +176,7 @@ export default function WeeklyActivitiesPage() {
         <div className="space-y-1">
           <div className="text-sm font-medium">
             {new Date(row.timestamp).toLocaleTimeString('en-US', {
+              timeZone: PKT_TIME_ZONE,
               hour: '2-digit',
               minute: '2-digit'
             })}

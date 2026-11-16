@@ -54,7 +54,7 @@ export default function GlobalError({
                 Critical Error
               </h1>
               <p className="text-slate-600 mb-4">
-                We're sorry, but something unexpected happened. Our team has been notified and will investigate.
+                We&apos;re sorry, but something unexpected happened. Our team has been notified and will investigate.
               </p>
               {error.digest && (
                 <p className="text-xs text-slate-500 font-mono mb-4">
@@ -70,6 +70,9 @@ export default function GlobalError({
               >
                 Try again
               </button>
+              {/* A full page load on purpose: the root layout crashed, so client-side <Link>
+                  navigation would run inside the broken app. */}
+              {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
               <a
                 href="/"
                 className="px-4 py-2 bg-slate-200 text-slate-700 rounded-md hover:bg-slate-300 transition-colors"

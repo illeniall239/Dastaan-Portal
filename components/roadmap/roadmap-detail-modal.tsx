@@ -16,6 +16,7 @@ import { RoadmapStageCard } from "./roadmap-stage-card";
 import { STAGE_CONFIG } from "@/lib/roadmap/constants";
 import { useRoadmapData } from "@/lib/hooks/queries/useRoadmapData";
 import type { RoadmapStageData } from "@/types";
+import { PKT_TIME_ZONE } from "@/lib/utils/format-date";
 
 interface RoadmapDetailModalProps {
   open: boolean;
@@ -26,6 +27,7 @@ interface RoadmapDetailModalProps {
 function formatDate(date: string | null): string {
   if (!date) return "-";
   return new Date(date).toLocaleDateString("en-US", {
+    timeZone: PKT_TIME_ZONE,
     weekday: "short",
     month: "short",
     day: "numeric",

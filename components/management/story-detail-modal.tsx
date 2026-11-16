@@ -20,7 +20,8 @@ import {
   MessageSquare,
 } from "lucide-react";
 import type { PipelineStory, StageStatus } from "@/types";
-import { format } from "date-fns";
+import { formatInTimeZone } from "date-fns-tz";
+import { PKT_TIME_ZONE } from "@/lib/utils/format-date";
 
 interface StoryDetailModalProps {
   story: PipelineStory | null;
@@ -61,7 +62,7 @@ export function StoryDetailModal({ story, isOpen, onClose }: StoryDetailModalPro
   // Format date helper
   const formatDate = (dateString: string | null) => {
     if (!dateString) return "Not started";
-    return format(new Date(dateString), "MMM dd, yyyy");
+    return formatInTimeZone(new Date(dateString), PKT_TIME_ZONE, "MMM dd, yyyy");
   };
 
   // Calculate duration

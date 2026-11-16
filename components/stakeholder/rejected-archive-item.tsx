@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { FileX } from "lucide-react";
+import { PKT_TIME_ZONE } from "@/lib/utils/format-date";
 
 interface Evaluation {
   id: string;
@@ -76,7 +77,7 @@ export function RejectedArchiveItem({
                 {callReportId}
               </span>
               <span>Writer: {writerName}</span>
-              <span>Meeting: {meetingDateObj.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</span>
+              <span>Meeting: {meetingDateObj.toLocaleDateString("en-US", { timeZone: PKT_TIME_ZONE, month: "short", day: "numeric", year: "numeric" })}</span>
             </div>
             <p className="text-sm text-muted-foreground line-clamp-2">
               {logline}
@@ -115,7 +116,7 @@ export function RejectedArchiveItem({
                 <p className="text-xs font-semibold text-red-900 mb-1">Rejection Reason</p>
                 <p className="text-xs text-red-700">{rejectionReason}</p>
                 <p className="text-xs text-red-600 mt-2">
-                  Archived on {archivedDateObj.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}
+                  Archived on {archivedDateObj.toLocaleDateString("en-US", { timeZone: PKT_TIME_ZONE, month: "long", day: "numeric", year: "numeric" })}
                 </p>
               </div>
             </div>
@@ -140,7 +141,7 @@ export function RejectedArchiveItem({
                       </div>
                       <p className="text-xs text-muted-foreground">{evaluation.evaluatorEmail}</p>
                       <p className="text-xs text-muted-foreground mt-1">
-                        Submitted: {new Date(evaluation.submittedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                        Submitted: {new Date(evaluation.submittedAt).toLocaleDateString("en-US", { timeZone: PKT_TIME_ZONE, month: "short", day: "numeric", year: "numeric" })}
                       </p>
                     </div>
                   </div>

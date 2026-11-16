@@ -28,7 +28,7 @@ import {
   Pencil,
   Loader2,
 } from "lucide-react";
-import { formatDate } from "@/lib/utils/format-date";
+import { formatDate, PKT_TIME_ZONE } from "@/lib/utils/format-date";
 import { CallReportDetailDialog } from "@/components/management/call-report-detail-dialog";
 import type { TeamPerformanceExtended } from "@/lib/management/team-performance";
 import type { TeamProjectReport, TeamProjectGroup } from "@/lib/management/team-projects";
@@ -308,7 +308,7 @@ function formatRelativeTime(dateStr: string): string {
   if (hours < 24) return `${hours}h ago`;
   const days = Math.floor(hours / 24);
   if (days < 30) return `${days}d ago`;
-  return new Date(dateStr).toLocaleDateString("en-PK", { day: "numeric", month: "short" });
+  return new Date(dateStr).toLocaleDateString("en-PK", { timeZone: PKT_TIME_ZONE, day: "numeric", month: "short" });
 }
 
 function formatDuration(minutes: number): string {

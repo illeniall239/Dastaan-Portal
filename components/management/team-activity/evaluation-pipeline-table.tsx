@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { GitBranch, AlertTriangle, Clock, Pin } from "lucide-react";
 import { TeamBadge } from "@/components/shared/team-badge";
 import { useFreezeColumns } from "@/lib/hooks/useFreezeColumns";
+import { PKT_TIME_ZONE } from "@/lib/utils/format-date";
 
 interface PipelineItem {
   id: string;
@@ -32,6 +33,7 @@ interface EvaluationPipelineTableProps {
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString("en-US", {
+    timeZone: PKT_TIME_ZONE,
     month: "short", day: "numeric", year: "numeric",
   });
 }

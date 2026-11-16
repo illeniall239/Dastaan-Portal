@@ -16,6 +16,7 @@ import type { ActiveIdeaDetail } from "@/lib/management/active-ideas-details";
 import { toast } from "sonner";
 import { ExportButton } from "@/components/management/export-button";
 import { Button } from "@/components/ui/button";
+import { PKT_TIME_ZONE } from "@/lib/utils/format-date";
 
 const STAGE_OPTIONS = [
   { key: "discussion", label: "Discussion", statuses: ["Story Under Discussion/Development", "Contract done - Story Under Discussion/Development", "Story Discussed & Approved"] },
@@ -264,10 +265,10 @@ export function StatusUpdaterTable({ ideas, role, readOnly = false }: StatusUpda
         "Script Completion %": idea.completion_percentage != null ? `${idea.completion_percentage.toFixed(0)}%` : '',
         "Script Aging (Days)": idea.days_active,
         "First Ep. Received": idea.first_episode_received_at
-          ? new Date(idea.first_episode_received_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+          ? new Date(idea.first_episode_received_at).toLocaleDateString('en-GB', { timeZone: PKT_TIME_ZONE, day: '2-digit', month: 'short', year: 'numeric' })
           : '',
         "Last Ep. Received": idea.last_episode_received_at
-          ? new Date(idea.last_episode_received_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+          ? new Date(idea.last_episode_received_at).toLocaleDateString('en-GB', { timeZone: PKT_TIME_ZONE, day: '2-digit', month: 'short', year: 'numeric' })
           : '',
         "Days Since Last Ep.": idea.days_since_last_episode != null ? idea.days_since_last_episode : '',
         "Revised Episodes": idea.revised_episode_count != null ? idea.revised_episode_count : 0,
@@ -636,14 +637,14 @@ export function StatusUpdaterTable({ ideas, role, readOnly = false }: StatusUpda
                       {/* First Ep. Received */}
                       <TableCell className="text-center text-[11px] text-slate-600 border-b whitespace-nowrap">
                         {idea.first_episode_received_at
-                          ? new Date(idea.first_episode_received_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+                          ? new Date(idea.first_episode_received_at).toLocaleDateString('en-GB', { timeZone: PKT_TIME_ZONE, day: '2-digit', month: 'short', year: 'numeric' })
                           : <span className="text-slate-300">-</span>}
                       </TableCell>
 
                       {/* Last Ep. Received */}
                       <TableCell className="text-center text-[11px] text-slate-600 border-b whitespace-nowrap">
                         {idea.last_episode_received_at
-                          ? new Date(idea.last_episode_received_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+                          ? new Date(idea.last_episode_received_at).toLocaleDateString('en-GB', { timeZone: PKT_TIME_ZONE, day: '2-digit', month: 'short', year: 'numeric' })
                           : <span className="text-slate-300">-</span>}
                       </TableCell>
 
@@ -690,7 +691,7 @@ export function StatusUpdaterTable({ ideas, role, readOnly = false }: StatusUpda
                                   .map(([month, count]) => (
                                     <div key={month} className="flex justify-between text-xs">
                                       <span className="text-slate-600">
-                                        {new Date(month + '-01').toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
+                                        {new Date(month + '-01').toLocaleDateString('en-US', { timeZone: PKT_TIME_ZONE, month: 'short', year: 'numeric' })}
                                       </span>
                                       <span className="font-semibold text-slate-800">{count as number}</span>
                                     </div>

@@ -36,6 +36,7 @@ import { IndividualEvaluationProgress } from "@/components/evaluations/individua
 import { MANDATORY_APPROVERS } from "@/lib/approvals/config";
 import { CallReportDiscussion } from "@/components/call-reports/call-report-discussion";
 import { RevisionEvaluateList } from "@/components/episodes/revision-evaluate-list";
+import { PKT_TIME_ZONE } from "@/lib/utils/format-date";
 
 function ScoreBox({
   label,
@@ -115,11 +116,13 @@ export function EvaluationCard({
     report.inserted_at;
   const loggedDate = loggedTimestamp ? new Date(loggedTimestamp) : new Date();
   const formattedDate = loggedDate.toLocaleDateString("en-US", {
+    timeZone: PKT_TIME_ZONE,
     month: "short",
     day: "numeric",
     year: "numeric",
   });
   const formattedTime = isDateOnly ? null : loggedDate.toLocaleTimeString("en-US", {
+    timeZone: PKT_TIME_ZONE,
     hour: "numeric",
     minute: "2-digit",
     hour12: true,

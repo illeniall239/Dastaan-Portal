@@ -1,3 +1,20 @@
 {
-  "extends": "next/core-web-vitals"
+  "extends": "next/core-web-vitals",
+  "rules": {
+    "no-restricted-syntax": [
+      "error",
+      {
+        "selector": "CallExpression[callee.property.name=/^toLocale(Date|Time)String$/]:not(:has(Property[key.name='timeZone']))",
+        "message": "Pass timeZone: PKT_TIME_ZONE (lib/utils/format-date) and a locale, so the server (UTC) and browsers print the same date (React #418)."
+      },
+      {
+        "selector": "CallExpression[callee.property.name='toLocaleString'][arguments.length=0]",
+        "message": "Pass a locale (e.g. \"en-US\") — and for dates timeZone: PKT_TIME_ZONE — so the server and browsers print the same text (React #418)."
+      },
+      {
+        "selector": "CallExpression[callee.property.name='toLocaleString']:has(Property[key.name=/^(year|month|day|hour|minute|second|weekday|dateStyle|timeStyle)$/]):not(:has(Property[key.name='timeZone']))",
+        "message": "Formatting a date: pass timeZone: PKT_TIME_ZONE (lib/utils/format-date) so the server and browsers print the same date (React #418)."
+      }
+    ]
+  }
 }

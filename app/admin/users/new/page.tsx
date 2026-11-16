@@ -423,7 +423,7 @@ export default function NewUserPage() {
                     </p>
                   )}
                   <p className="text-xs text-muted-foreground">
-                    The department determines the user's role and access permissions
+                    The department determines the user&apos;s role and access permissions
                   </p>
                 </div>
 

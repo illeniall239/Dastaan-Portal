@@ -21,6 +21,7 @@ import { StatsGridSkeleton } from "@/components/skeletons/stats-grid-skeleton";
 import { ActivityCardSkeleton } from "@/components/skeletons/activity-card-skeleton";
 import { getCurrentUser } from "@/lib/auth";
 import { redirect } from "next/navigation";
+import { PKT_TIME_ZONE } from "@/lib/utils/format-date";
 
 // Mock data for testing
 const mockDashboardData = {
@@ -262,7 +263,7 @@ async function ActiveEvaluationsCard() {
                         <Badge variant="secondary">In Progress</Badge>
                       </div>
                       <p className="text-sm text-muted-foreground">
-                        Writer: {evaluation.writer} • Meeting: {meetingDate.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                        Writer: {evaluation.writer} • Meeting: {meetingDate.toLocaleDateString("en-US", { timeZone: PKT_TIME_ZONE, month: "short", day: "numeric", year: "numeric" })}
                       </p>
                     </div>
                     <div className="text-right">
@@ -406,6 +407,7 @@ async function RejectedArchiveSection() {
               {recentActivity.map((activity) => {
                 const activityDate = new Date(activity.timestamp);
                 const formattedTime = activityDate.toLocaleTimeString("en-US", {
+                  timeZone: PKT_TIME_ZONE,
                   hour: "2-digit",
                   minute: "2-digit",
                   hour12: true

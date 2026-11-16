@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import type { StoryApprovalStatus, ApprovalHistoryRound } from "@/types";
 import { MANDATORY_APPROVERS, VETO_APPROVER } from "@/lib/approvals/config";
+import { PKT_TIME_ZONE } from "@/lib/utils/format-date";
 
 interface StoryApprovalPanelProps {
   callReportId: string;
@@ -177,7 +178,7 @@ export function StoryApprovalPanel({ callReportId, evaluationCompleted }: StoryA
                   {vetoApproval?.decision === "approved" ? "Approved (Veto)" : "Pending"}
                   {vetoApproval?.created_at && (
                     <span className="text-muted-foreground ml-1">
-                      ({new Date(vetoApproval.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })})
+                      ({new Date(vetoApproval.created_at).toLocaleDateString("en-US", { timeZone: PKT_TIME_ZONE, month: "short", day: "numeric" })})
                     </span>
                   )}
                 </span>
@@ -216,7 +217,7 @@ export function StoryApprovalPanel({ callReportId, evaluationCompleted }: StoryA
                    "Pending"}
                   {currentUserApproval?.created_at && (
                     <span className="text-muted-foreground ml-1">
-                      ({new Date(currentUserApproval.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })})
+                      ({new Date(currentUserApproval.created_at).toLocaleDateString("en-US", { timeZone: PKT_TIME_ZONE, month: "short", day: "numeric" })})
                     </span>
                   )}
                 </span>
@@ -245,7 +246,7 @@ export function StoryApprovalPanel({ callReportId, evaluationCompleted }: StoryA
                      "Pending"}
                     {ms.approval?.created_at && (
                       <span className="text-muted-foreground ml-1">
-                        ({new Date(ms.approval.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })})
+                        ({new Date(ms.approval.created_at).toLocaleDateString("en-US", { timeZone: PKT_TIME_ZONE, month: "short", day: "numeric" })})
                       </span>
                     )}
                   </span>
@@ -284,7 +285,7 @@ export function StoryApprovalPanel({ callReportId, evaluationCompleted }: StoryA
                   <span className={`text-xs ${a.decision === "approved" ? "text-green-600" : "text-red-600"}`}>
                     {a.decision === "approved" ? "Approved" : "Rejected"}
                     <span className="text-muted-foreground ml-1">
-                      ({new Date(a.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })})
+                      ({new Date(a.created_at).toLocaleDateString("en-US", { timeZone: PKT_TIME_ZONE, month: "short", day: "numeric" })})
                     </span>
                   </span>
                 </div>

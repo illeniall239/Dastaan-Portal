@@ -26,6 +26,7 @@ import { ContentRevisions } from "@/components/ui/content-revisions";
 import { CallReportDiscussion } from "@/components/call-reports/call-report-discussion";
 import { ShareCrossTeamButton } from "@/components/call-report/share-cross-team-button";
 import { RevisionEvaluateList } from "@/components/episodes/revision-evaluate-list";
+import { PKT_TIME_ZONE } from "@/lib/utils/format-date";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -152,6 +153,7 @@ function timeAgo(dateStr: string) {
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString("en-US", {
+    timeZone: PKT_TIME_ZONE,
     month: "short",
     day: "numeric",
     year: "numeric",

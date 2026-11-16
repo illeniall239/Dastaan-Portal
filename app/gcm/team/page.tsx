@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Users, FileText, Star, Clock, Film } from 'lucide-react';
 import { BackButton } from '@/components/ui/back-button';
 import { cleanEmailTeamName } from '@/lib/management/team-display';
+import { PKT_TIME_ZONE } from "@/lib/utils/format-date";
 
 function getRatingColor(rating: number) {
   if (rating >= 9) return 'bg-blue-100 text-blue-800 border-blue-200';
@@ -27,7 +28,7 @@ function formatCategory(category: string | null) {
 }
 
 function formatDate(dateString: string) {
-  return new Date(dateString).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  return new Date(dateString).toLocaleDateString('en-US', { timeZone: PKT_TIME_ZONE, month: 'short', day: 'numeric', year: 'numeric' });
 }
 
 export default async function GcmTeamPage() {

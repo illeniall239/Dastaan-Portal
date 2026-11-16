@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { DollarSign, CheckCircle, Clock, AlertCircle } from 'lucide-react';
 import { dummyContracts } from '../lib/dummy-data';
+import { PKT_TIME_ZONE } from "@/lib/utils/format-date";
 
 export default function WriterPaymentsPage() {
   // Aggregate payment data
@@ -137,6 +138,7 @@ export default function WriterPaymentsPage() {
                     <p className="text-xs text-red-600 dark:text-red-400">
                       Due Date:{' '}
                       {new Date(payment.due_date).toLocaleDateString('en-US', {
+                        timeZone: PKT_TIME_ZONE,
                         month: 'long',
                         day: 'numeric',
                         year: 'numeric',
@@ -198,6 +200,7 @@ export default function WriterPaymentsPage() {
                       <p className="text-xs text-muted-foreground">
                         Due Date:{' '}
                         {new Date(payment.due_date).toLocaleDateString('en-US', {
+                          timeZone: PKT_TIME_ZONE,
                           month: 'long',
                           day: 'numeric',
                           year: 'numeric',

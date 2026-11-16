@@ -4,9 +4,11 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Users, FileText, Star, Clock, Film, User, History } from "lucide-react";
+import { PKT_TIME_ZONE } from "@/lib/utils/format-date";
 
 function formatDate(dateString: string) {
   return new Date(dateString).toLocaleDateString("en-US", {
+    timeZone: PKT_TIME_ZONE,
     month: "short",
     day: "numeric",
     year: "numeric",
@@ -424,7 +426,7 @@ export default async function EvaluatorTeamPage() {
                                   </span>
                                   {epRevisions.latest_date && (
                                     <span className="text-[11px] text-blue-400">
-                                      · {new Date(epRevisions.latest_date).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                                      · {new Date(epRevisions.latest_date).toLocaleDateString("en-US", { timeZone: PKT_TIME_ZONE, month: "short", day: "numeric" })}
                                     </span>
                                   )}
                                 </div>
@@ -446,7 +448,7 @@ export default async function EvaluatorTeamPage() {
                         </span>
                         {crRevisions.latest_date && (
                           <span className="text-xs text-blue-500">
-                            &middot; Latest: {new Date(crRevisions.latest_date).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                            &middot; Latest: {new Date(crRevisions.latest_date).toLocaleDateString("en-US", { timeZone: PKT_TIME_ZONE, month: "short", day: "numeric" })}
                           </span>
                         )}
                       </div>

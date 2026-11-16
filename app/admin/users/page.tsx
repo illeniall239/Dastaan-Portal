@@ -15,6 +15,7 @@ import { Search, UserPlus, Loader2, User, Users, Mail, Briefcase, Shield, Calend
 import { toast } from "sonner";
 import { cleanEmailTeamName } from "@/lib/management/team-display";
 import { logger } from "@/lib/logger";
+import { PKT_TIME_ZONE } from "@/lib/utils/format-date";
 
 interface User {
   id: string;
@@ -184,6 +185,7 @@ export default function AdminUsersPage() {
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString("en-US", {
+      timeZone: PKT_TIME_ZONE,
       year: "numeric",
       month: "short",
       day: "numeric",

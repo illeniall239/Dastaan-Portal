@@ -3,6 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { handleError } from "@/lib/errors";
 import type { TeamPerformance, TeamType } from "@/types";
 import { cachedQuery, CacheTags } from "@/lib/cache/request-cache";
+import { PKT_TIME_ZONE } from "@/lib/utils/format-date";
 
 /**
  * Team Performance Analytics Library
@@ -419,7 +420,7 @@ export async function getTeamPerformanceTrends(
   // 3. Bucket by month
   function monthKey(dateStr: string): string {
     const d = new Date(dateStr);
-    return d.toLocaleDateString("en-US", { year: "numeric", month: "short" });
+    return d.toLocaleDateString("en-US", { timeZone: PKT_TIME_ZONE, year: "numeric", month: "short" });
   }
 
   // Build empty month buckets
@@ -427,7 +428,7 @@ export async function getTeamPerformanceTrends(
   const cursor = new Date(startDate.getFullYear(), startDate.getMonth(), 1);
   const now = new Date();
   while (cursor <= now) {
-    const key = cursor.toLocaleDateString("en-US", { year: "numeric", month: "short" });
+    const key = cursor.toLocaleDateString("en-US", { timeZone: PKT_TIME_ZONE, year: "numeric", month: "short" });
     buckets[key] = { period: key, call_reports: 0, evaluations: 0, one_liners: 0, stories_approved: 0, stories_rejected: 0 };
     cursor.setMonth(cursor.getMonth() + 1);
   }

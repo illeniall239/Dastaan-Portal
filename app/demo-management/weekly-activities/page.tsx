@@ -20,6 +20,7 @@ import {
   TrendingUp,
 } from 'lucide-react';
 import { dummyActivities } from '../lib/dummy-data';
+import { PKT_TIME_ZONE } from "@/lib/utils/format-date";
 
 export default function WeeklyActivitiesPage() {
   // Group activities by type
@@ -192,6 +193,7 @@ export default function WeeklyActivitiesPage() {
                     <span>•</span>
                     <span>
                       {new Date(activity.timestamp).toLocaleDateString('en-US', {
+                        timeZone: PKT_TIME_ZONE,
                         month: 'short',
                         day: 'numeric',
                         hour: '2-digit',

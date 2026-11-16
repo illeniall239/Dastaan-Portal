@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo, useCallback, Fragment } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Download, Loader2, Minus, Plus, Save } from "lucide-react";
+import { PKT_TIME_ZONE } from "@/lib/utils/format-date";
 
 interface WaadaDetail {
   id: string;
@@ -65,7 +66,7 @@ function rateBg(pct: number): string {
 
 function fmtDate(d: string | null): string {
   if (!d) return "";
-  return new Date(d).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "2-digit" });
+  return new Date(d).toLocaleDateString("en-GB", { timeZone: PKT_TIME_ZONE, day: "2-digit", month: "short", year: "2-digit" });
 }
 
 function fmtNum(n: number): string {
@@ -452,7 +453,7 @@ export function DeliveryRateView() {
                               className={`${inputClass} w-[105px]`} />
                           </td>
                           <td className={tdClass}>{p.standard.weeks > 0 ? fmtNum(p.standard.weeks) : "—"}</td>
-                          <td className={`${tdClass} text-gray-400`}>{new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "2-digit" })}</td>
+                          <td className={`${tdClass} text-gray-400`}>{new Date().toLocaleDateString("en-GB", { timeZone: PKT_TIME_ZONE, day: "2-digit", month: "short", year: "2-digit" })}</td>
                           <td className={tdClass}>{p.standard.months > 0 ? fmtNum(p.standard.months) : "—"}</td>
                           <td className={`${tdClass} font-semibold`}>{p.inHandEpisodes}</td>
                           <td className={tdClass}>{p.standard.deliveryRatePerMonth > 0 ? fmtNum(p.standard.deliveryRatePerMonth) : "—"}</td>

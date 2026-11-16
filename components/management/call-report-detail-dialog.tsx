@@ -5,9 +5,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { FileText, Mail, Phone, MapPin, Target, Lightbulb, Eye, Paperclip, Film, Loader2, ClipboardCheck, ChevronDown, ChevronRight, CalendarDays } from "lucide-react";
-import { format } from "date-fns";
 import { ContentRevisions } from "@/components/ui/content-revisions";
 import { createClient } from "@/lib/supabase/client";
+import { formatInTimeZone } from "date-fns-tz";
+import { PKT_TIME_ZONE } from "@/lib/utils/format-date";
 
 interface CallReportDetailDialogProps {
   report: any | null;
@@ -19,7 +20,7 @@ interface CallReportDetailDialogProps {
 const formatDate = (date: string | null) => {
   if (!date) return "Not set";
   try {
-    return format(new Date(date), "PPP");
+    return formatInTimeZone(new Date(date), PKT_TIME_ZONE, "PPP");
   } catch {
     return "Invalid date";
   }
@@ -28,7 +29,7 @@ const formatDate = (date: string | null) => {
 const formatDateTime = (date: string | null) => {
   if (!date) return "Not set";
   try {
-    return format(new Date(date), "PPP 'at' p");
+    return formatInTimeZone(new Date(date), PKT_TIME_ZONE, "PPP 'at' p");
   } catch {
     return "Invalid date";
   }

@@ -17,6 +17,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { TeamBadge } from "@/components/shared/team-badge";
+import { PKT_TIME_ZONE } from "@/lib/utils/format-date";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -58,12 +59,14 @@ function formatDuration(minutes: number): string {
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString("en-US", {
+    timeZone: PKT_TIME_ZONE,
     month: "short", day: "numeric", year: "numeric",
   });
 }
 
 function formatDateTime(iso: string) {
   return new Date(iso).toLocaleString("en-US", {
+    timeZone: PKT_TIME_ZONE,
     month: "short", day: "numeric",
     hour: "numeric", minute: "2-digit", hour12: true,
   });
@@ -271,7 +274,7 @@ export function LoginActivityList() {
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Login Activity</h1>
           <p className="text-sm text-slate-500 mt-0.5">
-            Track who has logged in and how long they've been active
+            Track who has logged in and how long they&apos;ve been active
           </p>
         </div>
         <div className="flex items-center gap-3">

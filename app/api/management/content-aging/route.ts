@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { logger } from "@/lib/logger";
 import { applyRateLimit } from "@/lib/api-middleware";
 import { RateLimitPresets } from "@/lib/rate-limit-redis";
+import { PKT_TIME_ZONE } from "@/lib/utils/format-date";
 
 export const dynamic = "force-dynamic";
 
@@ -23,7 +24,7 @@ function getWeekLabel(isoWeek: string): string {
   const jan4 = new Date(Date.UTC(parseInt(year), 0, 4));
   const dayOfWeek = jan4.getUTCDay() || 7;
   const monday = new Date(jan4.getTime() + (1 - dayOfWeek) * 86400000 + (week - 1) * 7 * 86400000);
-  return monday.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+  return monday.toLocaleDateString("en-GB", { timeZone: PKT_TIME_ZONE, day: "numeric", month: "short", year: "numeric" });
 }
 
 function getMondayFromISOWeek(isoWeek: string): Date {

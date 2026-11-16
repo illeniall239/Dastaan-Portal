@@ -13,6 +13,7 @@ import { CheckCircle, XCircle, ArrowLeft, PaperclipIcon, Download } from "lucide
 import type { ContractTerm } from "@/lib/contract-terms/client";
 import Link from "next/link";
 import type { DeliveryEpisode } from "@/lib/validations/contract-terms";
+import { PKT_TIME_ZONE } from "@/lib/utils/format-date";
 
 interface ContractTermDetailsProps {
   contractTerm: ContractTerm;
@@ -58,6 +59,7 @@ export function ContractTermDetails({
   const formatDate = (dateString?: string) => {
     if (!dateString) return "N/A";
     return new Date(dateString).toLocaleDateString("en-PK", {
+      timeZone: PKT_TIME_ZONE,
       year: "numeric",
       month: "long",
       day: "numeric",
@@ -296,7 +298,7 @@ export function ContractTermDetails({
                           {(attachment.file_size / 1024 / 1024).toFixed(2)} MB
                           {attachment.users?.name && ` • ${attachment.users.name}`}
                           {" • "}
-                          {new Date(attachment.uploaded_at).toLocaleDateString()}
+                          {new Date(attachment.uploaded_at).toLocaleDateString("en-US", { timeZone: PKT_TIME_ZONE })}
                         </p>
                       </div>
                     </div>

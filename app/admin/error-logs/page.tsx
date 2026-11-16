@@ -34,7 +34,8 @@ import {
   ChevronUp,
   Pin,
 } from "lucide-react";
-import { format } from "date-fns";
+import { formatInTimeZone } from "date-fns-tz";
+import { PKT_TIME_ZONE } from "@/lib/utils/format-date";
 
 interface ErrorLog {
   id: string;
@@ -152,7 +153,7 @@ export default function ErrorLogsPage() {
   const exportCSV = () => {
     const headers = ["Timestamp", "Route", "Method", "Status", "Error Type", "Message", "User", "Email", "IP"];
     const rows = logs.map(l => [
-      format(new Date(l.timestamp), "yyyy-MM-dd HH:mm:ss"),
+      formatInTimeZone(new Date(l.timestamp), PKT_TIME_ZONE, "yyyy-MM-dd HH:mm:ss"),
       l.route || "",
       l.method || "",
       l.status_code,
@@ -167,7 +168,7 @@ export default function ErrorLogsPage() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `error-logs-${format(new Date(), "yyyy-MM-dd")}.csv`;
+    a.download = `error-logs-${formatInTimeZone(new Date(), PKT_TIME_ZONE, "yyyy-MM-dd")}.csv`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -275,7 +276,7 @@ export default function ErrorLogsPage() {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-base">
-            {loading ? "Loading..." : `${pagination.total.toLocaleString()} errors total`}
+            {loading ? "Loading..." : `${pagination.total.toLocaleString("en-US")} errors total`}
           </CardTitle>
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Button variant={freezePanes ? "default" : "outline"} size="sm" onClick={() => setFreezePanes(f => !f)} className="gap-1.5 h-8 text-xs">
@@ -339,7 +340,7 @@ export default function ErrorLogsPage() {
                       onClick={() => setExpandedId(expandedId === log.id ? null : log.id)}
                     >
                       <TableCell className="text-xs text-muted-foreground whitespace-nowrap bg-background">
-                        {format(new Date(log.timestamp), "MMM d, HH:mm:ss")}
+                        {formatInTimeZone(new Date(log.timestamp), PKT_TIME_ZONE, "MMM d, HH:mm:ss")}
                       </TableCell>
                       <TableCell className="font-mono text-xs max-w-[180px] truncate" title={log.route || ""}>
                         {log.route || "—"}

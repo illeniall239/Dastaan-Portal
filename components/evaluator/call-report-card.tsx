@@ -10,6 +10,7 @@ import { EvaluationProgressBar } from "@/components/evaluations/evaluation-progr
 import { TeamBadge } from "@/components/shared/team-badge";
 import { RevisionEvaluateList } from "@/components/episodes/revision-evaluate-list";
 import { ContentRevisions } from "@/components/ui/content-revisions";
+import { PKT_TIME_ZONE } from "@/lib/utils/format-date";
 
 interface CallReportCardProps {
   report: any;
@@ -35,11 +36,13 @@ export function CallReportCard({ report, portalPrefix = "evaluator", isTeamHead 
     report.inserted_at;
   const loggedDate = loggedTimestamp ? new Date(loggedTimestamp) : new Date();
   const formattedDate = loggedDate.toLocaleDateString("en-US", {
+    timeZone: PKT_TIME_ZONE,
     month: "short",
     day: "numeric",
     year: "numeric",
   });
   const formattedTime = isDateOnly ? null : loggedDate.toLocaleTimeString("en-US", {
+    timeZone: PKT_TIME_ZONE,
     hour: "numeric",
     minute: "2-digit",
     hour12: true,

@@ -2,7 +2,9 @@ import { Card, CardContent } from '@/components/ui/card';
 import { AlertTriangle, Clock, Calendar } from 'lucide-react';
 import Link from 'next/link';
 import { getPendingEvaluationsForEvaluator } from '@/lib/evaluations/assignments';
-import { format, differenceInDays } from 'date-fns';
+import { differenceInDays } from "date-fns";
+import { formatInTimeZone } from "date-fns-tz";
+import { PKT_TIME_ZONE } from "@/lib/utils/format-date";
 
 interface PendingEvaluationsNotificationProps {
   userId: string;
@@ -67,7 +69,7 @@ export async function PendingEvaluationsNotification({ userId, userName }: Pendi
                         <div className="flex items-center gap-1 text-xs mt-1">
                           <Calendar className={`h-3 w-3 ${isAssignmentUrgent ? 'text-red-600' : 'text-yellow-600'}`} />
                           <span className={isAssignmentUrgent ? 'text-red-600' : 'text-yellow-600'}>
-                            Assigned {assignedDate ? format(assignedDate, 'MMM d, yyyy') : 'Unknown'}
+                            Assigned {assignedDate ? formatInTimeZone(assignedDate, PKT_TIME_ZONE, 'MMM d, yyyy') : 'Unknown'}
                             {daysSinceAssignment !== null && daysSinceAssignment > 0 && ` (${daysSinceAssignment} day${daysSinceAssignment !== 1 ? 's' : ''} ago)`}
                           </span>
                         </div>

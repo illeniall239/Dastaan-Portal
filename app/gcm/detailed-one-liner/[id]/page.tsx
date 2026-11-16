@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Pencil } from "lucide-react";
 import { BackButton } from "@/components/ui/back-button";
+import { PKT_TIME_ZONE } from "@/lib/utils/format-date";
 
 export const metadata: Metadata = {
   title: "Detailed One-Liner | Dastaan Portal",
@@ -229,8 +230,8 @@ export default async function GcmDetailedOneLinerPage({
                   {(detailedOneLiner.created_by_user as any).name} ({(detailedOneLiner.created_by_user as any).email})
                 </div>
               )}
-              <div><span className="font-semibold">Created at:</span>{" "}{new Date(detailedOneLiner.created_at).toLocaleString()}</div>
-              <div><span className="font-semibold">Last updated:</span>{" "}{new Date(detailedOneLiner.updated_at).toLocaleString()}</div>
+              <div><span className="font-semibold">Created at:</span>{" "}{new Date(detailedOneLiner.created_at).toLocaleString("en-US", { timeZone: PKT_TIME_ZONE })}</div>
+              <div><span className="font-semibold">Last updated:</span>{" "}{new Date(detailedOneLiner.updated_at).toLocaleString("en-US", { timeZone: PKT_TIME_ZONE })}</div>
             </CardContent>
           </Card>
         </div>

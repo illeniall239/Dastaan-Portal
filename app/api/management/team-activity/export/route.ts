@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireApiAuth } from "@/lib/api/auth";
+import { PKT_TIME_ZONE } from "@/lib/utils/format-date";
 
 export const dynamic = "force-dynamic";
 
@@ -52,6 +53,7 @@ function getMonthLabel(dateStr: string): string | null {
 
 function formatDate(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString("en-GB", {
+    timeZone: PKT_TIME_ZONE,
     day: "2-digit", month: "short", year: "numeric",
   });
 }
@@ -245,6 +247,7 @@ export async function GET(request: NextRequest) {
       const lastSession = userSessions[0];
       row["Last Login"] = lastSession?.login_at
         ? new Date(lastSession.login_at).toLocaleString("en-GB", {
+            timeZone: PKT_TIME_ZONE,
             day: "2-digit", month: "short", year: "numeric",
             hour: "2-digit", minute: "2-digit",
           })

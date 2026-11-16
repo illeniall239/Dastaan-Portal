@@ -30,6 +30,7 @@ import { DemoArchiveGenreChart } from './components/charts/demo-archive-genre-ch
 import { DemoPipelineOverviewCards } from './components/demo-pipeline-overview-cards';
 import { DemoContractTermsOverview } from './components/demo-contract-terms-overview';
 import { DemoWriterFinancialSummary } from './components/demo-writer-financial-summary';
+import { PKT_TIME_ZONE } from "@/lib/utils/format-date";
 
 export default function DemoManagementDashboard() {
   // Calculate executive summary stats from dummy data
@@ -239,6 +240,7 @@ export default function DemoManagementDashboard() {
                       </p>
                       <p className="text-xs text-muted-foreground mt-2">
                         {new Date(alert.created_at).toLocaleDateString('en-US', {
+                          timeZone: PKT_TIME_ZONE,
                           month: 'short',
                           day: 'numeric',
                           hour: '2-digit',
