@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { FileText, Mail, Phone, MapPin, Target, Lightbulb, Eye, Paperclip, Film, Loader2, ClipboardCheck, ChevronDown, ChevronRight, CalendarDays } from "lucide-react";
 import { ContentRevisions } from "@/components/ui/content-revisions";
+import { FeedbackCommunicationView } from "@/components/evaluations/feedback-communication-view";
 import { createClient } from "@/lib/supabase/client";
 import { formatInTimeZone } from "date-fns-tz";
 import { PKT_TIME_ZONE } from "@/lib/utils/format-date";
@@ -128,6 +129,9 @@ const EPISODE_PARAMS: [string, string, string?][] = [
 
 interface Assessment { score: number; name: string; comment?: string | null }
 
+/** An evaluation's overall score; null for a feedback-only evaluation (written feedback, no scores) */
+const evalScore = (e: any): number | null => e.average_score ?? e.overall_average ?? null;
+
 /** A revision's initial assessment (one score, by whoever assessed it) */
 function revisionAssessments(rev: any): Assessment[] {
   return rev.initial_assessment != null
@@ -145,8 +149,9 @@ interface EvalGroup {
 /** One evaluation: who and the score; opens to show the score of each parameter (and its comment) */
 function EvalRow({ e, kind, showDecision }: { e: any; kind: "one-liner" | "episode"; showDecision?: boolean }) {
   const [open, setOpen] = useState(false);
-  const score = e.average_score ?? e.overall_average;
-  const params = (kind === "one-liner" ? ONE_LINER_PARAMS : EPISODE_PARAMS).filter(([, key]) => e[key] != null);
+  const score = evalScore(e);
+  // Feedback-only: the form's default scores are stored but were never given, so don't show them
+  const params = score == null ? [] : (kind === "one-liner" ? ONE_LINER_PARAMS : EPISODE_PARAMS).filter(([, key]) => e[key] != null);
   return (
     <div>
       <button
@@ -164,9 +169,11 @@ function EvalRow({ e, kind, showDecision }: { e: any; kind: "one-liner" | "episo
           )}
         </div>
         <div className="flex items-center gap-1.5 shrink-0">
-          <span className={`text-sm ${scoreColor(score)}`}>
-            {score?.toFixed(1) ?? '—'}/10
-          </span>
+          {score == null ? (
+            <span className="text-xs text-muted-foreground italic">Feedback only</span>
+          ) : (
+            <span className={`text-sm ${scoreColor(score)}`}>{score.toFixed(1)}/10</span>
+          )}
           {showDecision && e.decision && (
             <Badge className={`text-[10px] px-1 py-0 border ${decisionBadgeClass(e.decision)}`}>
               {decisionLabel(e.decision)}
@@ -176,7 +183,12 @@ function EvalRow({ e, kind, showDecision }: { e: any; kind: "one-liner" | "episo
       </button>
       {open && (
         <div className="px-3 pb-3 space-y-2">
-          {params.length === 0 ? (
+          {score == null ? (
+            <>
+              <p className="text-xs text-muted-foreground italic">Feedback only — no scores given.</p>
+              <FeedbackCommunicationView text={e.feedback_text} attachments={e.feedback_attachments} />
+            </>
+          ) : params.length === 0 ? (
             <p className="text-xs text-muted-foreground italic">No parameter scores recorded.</p>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
@@ -209,9 +221,9 @@ function EvalRow({ e, kind, showDecision }: { e: any; kind: "one-liner" | "episo
 
 function EvalGroupPanel({ group, kind, showDecision }: { group: EvalGroup; kind: "one-liner" | "episode"; showDecision?: boolean }) {
   const [open, setOpen] = useState(true);
-  const avg = group.items.length
-    ? (group.items.reduce((s, e) => s + (e.average_score ?? e.overall_average ?? 0), 0) / group.items.length).toFixed(1)
-    : null;
+  // Average of the scored evaluations only (feedback-only ones have no score)
+  const scores = group.items.map(evalScore).filter((v): v is number => v != null);
+  const avg = scores.length ? (scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(1) : null;
   return (
     <div className="border rounded-md overflow-hidden text-sm">
       <button
