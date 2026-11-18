@@ -32,6 +32,7 @@ import { formatDate, PKT_TIME_ZONE } from "@/lib/utils/format-date";
 import { CallReportDetailDialog } from "@/components/management/call-report-detail-dialog";
 import type { TeamPerformanceExtended } from "@/lib/management/team-performance";
 import type { TeamProjectReport, TeamProjectGroup } from "@/lib/management/team-projects";
+import { overallRatings, type OverallRating } from "@/lib/management/project-ratings";
 
 export interface TeamPendingBacklog {
   pendingOneLiners: number;
@@ -200,75 +201,25 @@ function ScriptBadge({ report }: { report: TeamProjectReport }) {
   );
 }
 
-function RatingValue({ score }: { score: number | null }) {
-  if (score == null) return <span className="text-gray-400">Not evaluated</span>;
-  const cls = score >= 7 ? "text-green-700" : score >= 5 ? "text-amber-700" : "text-red-700";
-  return <span className={`font-semibold ${cls}`}>{score.toFixed(1)}</span>;
-}
-
-/** "EP 1–6", "EP 1–3, 5" */
-function episodeRange(numbers: number[]): string {
-  const parts: string[] = [];
-  for (let i = 0; i < numbers.length; i++) {
-    let j = i;
-    while (j + 1 < numbers.length && numbers[j + 1] === numbers[j] + 1) j++;
-    parts.push(j > i ? `${numbers[i]}–${numbers[j]}` : `${numbers[i]}`);
-    i = j;
-  }
-  return `EP ${parts.join(", ")}`;
-}
-
-function EpisodeGroupValue({ rating }: { rating: TeamProjectReport["ratings"]["episodes"]["contentHead"] }) {
-  if (!rating) return <RatingValue score={null} />;
-  return <><span className="text-gray-700">{episodeRange(rating.episodes)}</span> · <RatingValue score={rating.average} /></>;
-}
-
-/** Ratings table: rows One-liner / Episodes, a column per group (Content Head, Salman's Team, Humera's Team) */
-function ProjectRatings({ ratings, hasEpisodes }: { ratings: TeamProjectReport["ratings"]; hasEpisodes: boolean }) {
-  const cell = "border border-gray-200 px-2 py-1 align-top";
+/** A project's overall rating for one stage: the score large and colored, "Not rated" when no team has */
+function RatingTile({ label, rating, none }: { label: string; rating: OverallRating | null; none?: string }) {
+  const score = rating?.score ?? null;
+  const cls = none
+    ? "bg-gray-50 border-gray-100 text-gray-400"
+    : score == null ? "bg-gray-50 border-gray-200 text-gray-400"
+      : score >= 7 ? "bg-green-50 border-green-200 text-green-800"
+        : score >= 5 ? "bg-amber-50 border-amber-200 text-amber-800"
+          : "bg-red-50 border-red-200 text-red-800";
   return (
-    <table className="mt-2 w-full table-fixed border-collapse text-[11px] text-gray-500">
-      <colgroup>
-        <col className="w-20" />
-        <col />
-        <col />
-        <col />
-      </colgroup>
-      <thead>
-        <tr className="bg-gray-50 text-gray-600">
-          <th className={`${cell} text-left font-medium`} />
-          <th className={`${cell} text-left font-medium`}>Content Head</th>
-          <th className={`${cell} text-left font-medium`}>Salman&apos;s Team</th>
-          <th className={`${cell} text-left font-medium`}>Humera&apos;s Team</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <th className={`${cell} text-left font-medium text-gray-600`}>One-liner</th>
-          <td className={cell}>
-            {ratings.contentHeads.length === 0 ? (
-              <RatingValue score={null} />
-            ) : (
-              ratings.contentHeads.map((h, i) => (
-                <div key={i}>
-                  <span className="text-gray-700">{h.name}</span> – <RatingValue score={h.score} />
-                </div>
-              ))
-            )}
-          </td>
-          <td className={cell}><RatingValue score={ratings.programming} /></td>
-          <td className={cell}><RatingValue score={ratings.contentDev} /></td>
-        </tr>
-        {hasEpisodes && (
-          <tr>
-            <th className={`${cell} text-left font-medium text-gray-600`}>Episodes</th>
-            <td className={cell}><EpisodeGroupValue rating={ratings.episodes.contentHead} /></td>
-            <td className={cell}><EpisodeGroupValue rating={ratings.episodes.programming} /></td>
-            <td className={cell}><EpisodeGroupValue rating={ratings.episodes.contentDev} /></td>
-          </tr>
-        )}
-      </tbody>
-    </table>
+    <div
+      className={`rounded-md border px-2 py-1.5 ${cls}`}
+      title={none ? undefined : rating ? `Average of ${rating.teams} of 3 teams` : "No team has rated yet"}
+    >
+      <div className="text-[10px] font-medium uppercase tracking-wide opacity-80">{label}</div>
+      <div className={none || score == null ? "text-xs font-medium mt-0.5" : "text-lg font-bold leading-tight"}>
+        {none ?? (score == null ? "Not rated" : score.toFixed(1))}
+      </div>
+    </div>
   );
 }
 
@@ -283,7 +234,7 @@ function ProjectsList({ projects, expandedReports, toggleReportEpisodes, openRep
   }
 
   return (
-    <div className="bg-white rounded-lg border border-gray-100 overflow-hidden divide-y divide-gray-50">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
       {projects.map((report) => {
         const received = report.episodes.length;
         const total = report.total_episodes || 0;
@@ -292,70 +243,84 @@ function ProjectsList({ projects, expandedReports, toggleReportEpisodes, openRep
           ? "bg-gray-300"
           : pct >= 70 ? "bg-emerald-500" : pct >= 40 ? "bg-amber-500" : "bg-red-500";
         const episodesExpanded = expandedReports.has(report.id);
+        const overall = overallRatings(report.ratings);
 
         return (
-          <div key={report.id}>
-            <div
-              className="px-3 py-2.5 hover:bg-gray-50 cursor-pointer transition-colors"
-              onClick={() => openReport(report)}
-            >
-              <div className="flex items-center justify-between gap-3 mb-1">
-                <div className="flex items-center gap-2 min-w-0">
-                  <span className="text-xs font-medium text-gray-900 truncate">
-                    {report.working_title || "Untitled"}
+          <div
+            key={report.id}
+            className="flex flex-col rounded-lg border border-gray-200 bg-white p-3 hover:border-gray-300 hover:shadow-sm cursor-pointer transition-all"
+            onClick={() => openReport(report)}
+          >
+            <div className="flex items-start justify-between gap-2 mb-2.5">
+              <span className="text-sm font-semibold text-gray-900 leading-snug line-clamp-2">
+                {report.working_title || "Untitled"}
+              </span>
+              <ScriptBadge report={report} />
+            </div>
+
+            {(report.content_type || report.target_slot) && (
+              <div className="flex flex-wrap gap-1 -mt-1 mb-2.5">
+                {report.content_type && (
+                  <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700 border border-indigo-100">
+                    {report.content_type}
                   </span>
-                  <ScriptBadge report={report} />
-                </div>
-                <div className="flex items-center gap-2 flex-shrink-0">
-                  {received > 0 && (
-                    <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${
+                )}
+                {report.target_slot && (
+                  <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200">
+                    {report.target_slot.replace(":00", "")}
+                  </span>
+                )}
+              </div>
+            )}
+
+            <div className="text-[10px] font-semibold uppercase tracking-wide text-gray-500 mb-1">Overall rating</div>
+            <div className="grid grid-cols-2 gap-2">
+              <RatingTile label="One-liner" rating={overall.oneLiner} />
+              <RatingTile label="Episodes" rating={overall.episodes} none={received === 0 ? "No episodes" : undefined} />
+            </div>
+
+            <div className="mt-auto pt-3 space-y-1.5">
+              <div className="flex items-center justify-between gap-2 text-[11px] text-gray-500">
+                <span>
+                  <span className="font-semibold text-gray-700">{total > 0 ? `${received}/${total}` : received}</span> eps
+                </span>
+                {received > 0 && (
+                  <button
+                    type="button"
+                    className={`inline-flex items-center gap-0.5 font-medium px-1.5 py-0.5 rounded ${
                       report.evaluatedEpisodes >= received
                         ? "text-green-700 bg-green-50"
                         : report.evaluatedEpisodes > 0
                           ? "text-amber-700 bg-amber-50"
                           : "text-gray-500 bg-gray-100"
-                    }`}>
-                      {report.evaluatedEpisodes}/{received} evaluated
-                    </span>
-                  )}
-                  <span className="text-[11px] font-semibold text-gray-700">
-                    {total > 0 ? `${received}/${total}` : `${received} eps`}
-                  </span>
-                  {report.episodes.length > 0 && (
-                    <button
-                      className="text-gray-400 hover:text-gray-700 p-0.5"
-                      onClick={(e) => toggleReportEpisodes(e, report.id)}
-                    >
-                      {episodesExpanded
-                        ? <ChevronDown className="h-3.5 w-3.5" />
-                        : <ChevronRight className="h-3.5 w-3.5" />}
-                    </button>
-                  )}
-                </div>
+                    }`}
+                    onClick={(e) => toggleReportEpisodes(e, report.id)}
+                  >
+                    {report.evaluatedEpisodes}/{received} evaluated
+                    {episodesExpanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+                  </button>
+                )}
               </div>
-              <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+              <div className="h-1 bg-gray-100 rounded-full overflow-hidden">
                 <div
                   className={`h-full rounded-full transition-all duration-500 ${barColor}`}
                   style={{ width: `${total > 0 ? Math.max(pct, 2) : 0}%` }}
                 />
               </div>
-              <ProjectRatings ratings={report.ratings} hasEpisodes={report.episodes.length > 0} />
             </div>
 
-            {episodesExpanded && report.episodes.length > 0 && (
-              <div className="bg-gray-50 border-t border-gray-100 px-3 py-2 space-y-1.5">
+            {episodesExpanded && received > 0 && (
+              <div className="mt-2 border-t border-gray-100 pt-2 space-y-1" onClick={(e) => e.stopPropagation()}>
                 {report.episodes.map((ep) => (
-                  <div key={ep.id} className="flex items-center gap-2 text-xs text-gray-700 pl-4">
+                  <div key={ep.id} className="flex items-center gap-1.5 text-[11px] text-gray-700">
                     <Film className="h-3 w-3 text-gray-400 flex-shrink-0" />
                     <span className="text-gray-500 flex-shrink-0">Ep {ep.episode_number}</span>
-                    <span className="truncate flex-1">
-                      {ep.title || <span className="text-gray-400 italic">Untitled</span>}
-                    </span>
+                    <span className="truncate flex-1">{ep.title || ""}</span>
                     <EpisodeApprovalBadge status={ep.approval_status} />
                     {ep.evalCompleted > 0 ? (
-                      <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded border text-green-700 bg-green-50 border-green-200">
+                      <span className="inline-flex items-center gap-0.5 text-[10px] text-green-700">
                         <CheckCircle className="h-3 w-3" />
-                        {ep.evalCompleted} eval{ep.evalCompleted > 1 ? "s" : ""}
+                        {ep.evalCompleted}
                       </span>
                     ) : (
                       <span className="text-[10px] text-gray-400">No evals</span>

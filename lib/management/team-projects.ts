@@ -1,6 +1,9 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { formatTeamDisplayName, getTeamDisplayLabel } from "@/lib/management/team-display";
 import { getProgrammingTeamMemberIds } from "@/lib/management/programming-team";
+import type { TeamProjectRatings } from "@/lib/management/project-ratings";
+
+export type { TeamProjectRatings, EpisodeGroupRating } from "@/lib/management/project-ratings";
 
 export interface TeamProjectEpisode {
   id: string;
@@ -12,27 +15,6 @@ export interface TeamProjectEpisode {
   evalStatus: "completed" | "in_progress" | "pending" | null;
 }
 
-/** A group's episode ratings: which episodes it rated, and its average across them */
-export interface EpisodeGroupRating {
-  episodes: number[]; // episode numbers, ascending
-  average: number;
-}
-
-/**
- * A project's ratings, by who gave them (each person's latest score per item, so a re-rated revision
- * counts). Grouped the same way as the drill-down badges. null = not evaluated by that group.
- */
-export interface TeamProjectRatings {
-  contentHeads: { name: string; score: number }[]; // one-liner
-  programming: number | null; // one-liner, Salman's Team (average)
-  contentDev: number | null;  // one-liner, Humera's Team (average)
-  episodes: {
-    contentHead: EpisodeGroupRating | null;
-    programming: EpisodeGroupRating | null;
-    contentDev: EpisodeGroupRating | null;
-  };
-}
-
 export interface TeamProjectReport {
   id: string;
   call_report_id: string;
@@ -42,6 +24,7 @@ export interface TeamProjectReport {
   genre: string[] | null;
   category: string | null;
   target_slot: string | null;
+  content_type: string | null;
   story_id: string | null;
   created_at: string;
   episodes: TeamProjectEpisode[];
@@ -72,7 +55,7 @@ export async function getTeamProjects(): Promise<TeamProjectGroup[]> {
         .from("call_reports")
         .select(
           `id, call_report_id, working_title, meeting_date, evaluation_status,
-          genre, category, target_slot, story_id, created_at, team_id, total_episodes,
+          genre, category, target_slot, content_type, story_id, created_at, team_id, total_episodes,
           creator:users!created_by(id, name),
           episodes(id, episode_number, title, approval_status),
           story:stories(
@@ -183,6 +166,7 @@ export async function getTeamProjects(): Promise<TeamProjectGroup[]> {
       genre: report.genre,
       category: report.category,
       target_slot: (report as any).target_slot ?? null,
+      content_type: (report as any).content_type ?? null,
       story_id: report.story_id,
       created_at: report.created_at,
       episodes,
