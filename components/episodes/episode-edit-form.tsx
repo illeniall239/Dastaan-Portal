@@ -122,7 +122,8 @@ export function EpisodeEditForm({ episode, onSuccess }: EpisodeEditFormProps) {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <div className="space-y-6">
+    <form id={`episode-edit-${episode.id}`} onSubmit={handleSubmit} className="space-y-6">
       <Card className="p-4 sm:p-6">
         <div className="space-y-4">
           {/* Episode Number */}
@@ -246,8 +247,9 @@ export function EpisodeEditForm({ episode, onSuccess }: EpisodeEditFormProps) {
           )}
         </div>
       </Card>
+    </form>
 
-      {/* Revisions */}
+      {/* Revisions — outside the form: a revision is saved on its own, and its evaluation step is a form too */}
       <EpisodeRevisions
         episodeId={episode.id}
         sourceId={episode.call_report_id || episode.story_id}
@@ -270,6 +272,7 @@ export function EpisodeEditForm({ episode, onSuccess }: EpisodeEditFormProps) {
         </Button>
         <Button
           type="submit"
+          form={`episode-edit-${episode.id}`}
           disabled={loading}
           className="flex-1 sm:flex-none"
         >
@@ -286,6 +289,6 @@ export function EpisodeEditForm({ episode, onSuccess }: EpisodeEditFormProps) {
           )}
         </Button>
       </div>
-    </form>
+    </div>
   );
 }

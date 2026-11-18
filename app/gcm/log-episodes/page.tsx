@@ -92,6 +92,8 @@ export default function LogEpisodesPage() {
   const [evaluatedEpisodeIds, setEvaluatedEpisodeIds] = useState<Set<string>>(new Set());
   const [activeEvalIndex, setActiveEvalIndex] = useState(0);
   const [finalizing, setFinalizing] = useState(false);
+  // Why the last save failed (nothing was saved; the evaluations are kept for a retry)
+  const [finalizeError, setFinalizeError] = useState<string | null>(null);
   const requiresEvaluation = mustEvaluateOnUpload(currentUserRole || "");
 
   useEffect(() => {
@@ -386,52 +388,26 @@ export default function LogEpisodesPage() {
 
   const finalizeEpisodesAndEvaluations = async (allEvaluations: Map<string, EpisodicEvaluationFormData>) => {
     setFinalizing(true);
+    setFinalizeError(null);
     try {
+      // Episodes and their evaluations are saved together in one transaction, or nothing is saved
+      const evaluations = tempEpisodes.flatMap((tempEp) => {
+        const evalData = allEvaluations.get(tempEp.id);
+        return evalData ? [{ ...evalData, episode_number: tempEp.episode_number }] : [];
+      });
       const response = await fetch("/api/episodes", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(pendingPayload),
+        body: JSON.stringify({ ...pendingPayload, evaluations }),
       });
       const result = await response.json();
       if (!response.ok) {
-        const raw = result.details || result.error || "Failed to create episodes";
+        const raw = result.details || result.error || "Failed to log episodes";
         throw new Error(typeof raw === "string" ? raw : JSON.stringify(raw));
       }
 
-      const realEpisodes: Episode[] = result.episodes;
-      const tempToReal = new Map<string, string>();
-      for (const tempEp of tempEpisodes) {
-        const realEp = realEpisodes.find((r) => r.episode_number === tempEp.episode_number);
-        if (realEp) tempToReal.set(tempEp.id, realEp.id);
-      }
-
-      const evalErrors: string[] = [];
-      await Promise.all(
-        Array.from(allEvaluations.entries()).map(async ([tempId, evalData]) => {
-          const realId = tempToReal.get(tempId);
-          if (!realId) return;
-          try {
-            const evalRes = await fetch("/api/episodic-evaluations", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ ...evalData, episode_id: realId }),
-            });
-            if (!evalRes.ok) {
-              const err = await evalRes.json();
-              evalErrors.push(err.error || "Evaluation failed");
-            }
-          } catch {
-            evalErrors.push("Network error submitting evaluation");
-          }
-        })
-      );
-
       await clearDraft();
-      if (evalErrors.length > 0) {
-        toast.warning(`Episodes logged but ${evalErrors.length} evaluation(s) failed. Please evaluate them from the episodes page.`);
-      } else {
-        toast.success("All episodes logged and evaluated!");
-      }
+      toast.success("All episodes logged and evaluated!");
       setTimeout(() => {
         router.push("/gcm/episodes");
         router.refresh();
@@ -439,6 +415,7 @@ export default function LogEpisodesPage() {
     } catch (error: any) {
       console.error("Error finalizing episodes:", error);
       toast.error(error.message || "Failed to log episodes");
+      setFinalizeError(error.message || "Failed to log episodes");
     } finally {
       setFinalizing(false);
     }
@@ -520,12 +497,17 @@ export default function LogEpisodesPage() {
           />
         )}
 
-        {(allDone || finalizing) && (
+        {(allDone || finalizing) && (finalizeError && !finalizing ? (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center space-y-3">
+            <p className="font-semibold text-red-800">Nothing was logged: {finalizeError}</p>
+            <Button onClick={() => finalizeEpisodesAndEvaluations(pendingEvaluations)}>Try again</Button>
+          </div>
+        ) : (
           <div className="bg-green-50 border border-green-200 rounded-lg p-6 text-center">
             <Loader2 className="h-8 w-8 text-green-600 mx-auto mb-2 animate-spin" />
             <p className="font-semibold text-green-800">Logging episodes and evaluations...</p>
           </div>
-        )}
+        ))}
       </div>
     );
   }
@@ -544,7 +526,8 @@ export default function LogEpisodesPage() {
         <DraftRestoreBanner hasDraft={hasDraft} draftLoaded={draftLoaded} onRestore={handleRestoreDraft} onDiscard={handleDiscardDraft} lastUpdated={draftUpdatedAt} />
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6 md:space-y-8">
+      {/* Not a <form>: it holds episode revision panels, and their evaluation step is a form of its own */}
+      <div className="space-y-4 sm:space-y-6 md:space-y-8">
         <div className="space-y-3 sm:space-y-4 md:space-y-6 bg-white p-3 sm:p-4 md:p-6 rounded-lg border">
           <div className="space-y-2">
             <Label htmlFor="source-select" className="text-sm sm:text-base">Select a story <span className="text-red-500">*</span></Label>
@@ -637,13 +620,13 @@ export default function LogEpisodesPage() {
         )}
 
         <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
-          <Button type="submit" disabled={loading || !selectedSource || newEpisodes.length === 0} className="flex-1 touch-target">
+          <Button type="button" onClick={handleSubmit} disabled={loading || !selectedSource || newEpisodes.length === 0} className="flex-1 touch-target">
             {loading ? (<><Loader2 className="mr-2 h-4 w-4 animate-spin" /><span className="hidden sm:inline">Logging Episodes...</span><span className="sm:hidden">Logging...</span></>) :
               (<><span className="hidden sm:inline">{newEpisodes.length === 1 ? "Log Episode" : `Log ${newEpisodes.length} Episodes`}</span><span className="sm:hidden">{newEpisodes.length === 1 ? "Log" : `Log ${newEpisodes.length}`}</span></>)}
           </Button>
           <Button type="button" variant="outline" onClick={() => router.push("/gcm/episodes")} disabled={loading} className="touch-target">Cancel</Button>
         </div>
-      </form>
+      </div>
     </div>
   );
 }

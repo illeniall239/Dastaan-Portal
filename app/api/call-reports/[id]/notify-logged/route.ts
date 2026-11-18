@@ -5,7 +5,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { idParamSchema } from "@/lib/validations/uuid-params";
 import { applyRateLimit } from "@/lib/api-middleware";
 import { RateLimitPresets } from "@/lib/rate-limit-redis";
-import { createNotifications, getUserIdsByRoles } from "@/lib/notifications/server";
+import { notifyOneLinerLogged } from "@/lib/evaluations/evaluate-on-log";
 
 export const dynamic = "force-dynamic";
 
@@ -37,7 +37,7 @@ export async function POST(
     const adminClient = createAdminClient();
     const { data: callReport } = await adminClient
       .from("call_reports")
-      .select("id, working_title, writer_name, created_by, team_id")
+      .select("id, created_by")
       .eq("id", id)
       .single();
 
@@ -55,37 +55,8 @@ export async function POST(
       return NextResponse.json({ error: "Already notified" }, { status: 409 });
     }
 
-    // Same recipients as a logged episode: the team head + management, content managers, programmers
-    const recipientSet = new Set<string>();
-    if (callReport.team_id) {
-      const { data: teamRecord } = await adminClient
-        .from("teams")
-        .select("team_head_id")
-        .eq("id", callReport.team_id)
-        .single();
-      if (teamRecord?.team_head_id) recipientSet.add(teamRecord.team_head_id);
-    }
-    const mgmtIds = await getUserIdsByRoles(["management", "content_manager", "programmer"]);
-    mgmtIds.forEach(uid => recipientSet.add(uid));
-    recipientSet.delete(user.id);
-
-    const recipients = Array.from(recipientSet);
-    if (recipients.length > 0) {
-      const { data: loggedBy } = await adminClient.from("users").select("name").eq("id", user.id).single();
-      const loggedByName = loggedBy?.name || "Someone";
-      const storyLabel = callReport.working_title ? ` for "${callReport.working_title}"` : "";
-      const writerLabel = callReport.writer_name ? ` (writer: ${callReport.writer_name})` : "";
-
-      await createNotifications(
-        recipients,
-        "info",
-        `New one-liner logged${storyLabel}`,
-        `${loggedByName} logged a one-liner${storyLabel}${writerLabel}.`,
-        "call_report",
-        callReport.id,
-        user.id
-      );
-    }
+    // Same recipients and wording as a logged episode
+    await notifyOneLinerLogged(callReport.id, user.id);
 
     return NextResponse.json({ success: true });
   } catch (error) {

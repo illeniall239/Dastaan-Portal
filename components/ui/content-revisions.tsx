@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useRealtimeRefresh } from "@/lib/hooks/useRealtimeRefresh";
 import { uploadAndVerify } from "@/lib/storage/verify-upload";
@@ -15,7 +15,6 @@ import { toast } from "sonner";
 import {
   Loader2,
   Plus,
-  Trash2,
   Download,
   FileText,
   History,
@@ -27,9 +26,9 @@ import {
 } from "lucide-react";
 import { formatDate } from "@/lib/utils/format-date";
 import { EpisodicEvaluationForm } from "@/components/episodic-evaluations/episodic-evaluation-form";
+import { EvaluatorEvaluationForm } from "@/app/evaluator/evaluate/[callReportId]/evaluation-form-prefilled";
 import { mustEvaluateOnUpload } from "@/lib/episodes/permissions";
 import type { Episode, EpisodeRevision, RevisionEvaluation } from "@/types";
-import type { EpisodicEvaluationFormData } from "@/lib/validations/episodic-evaluations";
 
 interface ContentRevisionsProps {
   entityId: string;
@@ -171,7 +170,6 @@ export function ContentRevisions({
   const [loading, setLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [expanded, setExpanded] = useState(!compact);
   const [savingAssessmentId, setSavingAssessmentId] = useState<string | null>(null);
   const [savingDateId, setSavingDateId] = useState<string | null>(null);
@@ -186,7 +184,23 @@ export function ContentRevisions({
   const [pendingRevisionPayload, setPendingRevisionPayload] = useState<Record<string, any> | null>(null);
   const [pendingRevisionEvalStep, setPendingRevisionEvalStep] = useState(false);
   const [finalizingRevision, setFinalizingRevision] = useState(false);
-  const requiresRevisionEval = entityType === "episode" && mustEvaluateOnUpload(userRole || "");
+  // The one-liner shown in its evaluation step
+  const [wizardCallReport, setWizardCallReport] = useState<any>(null);
+
+  // Some callers don't pass these: work them out so the evaluate-before-saving step is never skipped
+  const kind = entityType ?? (apiBasePath === "/api/episodes" ? "episode" : "call-report");
+  // The role lookup, so an upload made before it finishes waits for it instead of skipping the step
+  const sessionRole = useRef<Promise<string | null> | null>(null);
+  useEffect(() => {
+    if (userRole || !canEdit || sessionRole.current) return;
+    sessionRole.current = (async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return null;
+      const { data } = await supabase.from("users").select("role").eq("id", user.id).single();
+      return data?.role ?? null;
+    })().catch(() => null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userRole, canEdit]);
 
   const revisionsUrl = `${apiBasePath}/${entityId}/revisions`;
 
@@ -263,7 +277,17 @@ export function ContentRevisions({
         ...(revisionAssessment != null ? { initial_assessment: revisionAssessment } : {}),
       };
 
-      if (requiresRevisionEval) {
+      const role = userRole || (await sessionRole.current) || "";
+      if (mustEvaluateOnUpload(role)) {
+        if (kind === "call-report") {
+          const { data: cr, error: crError } = await supabase
+            .from("call_reports")
+            .select("id, call_report_id, working_title, writer_name, contact_email, logline, short_synopsis, episodic_synopsis, category, content_type")
+            .eq("id", entityId)
+            .single();
+          if (crError || !cr) throw new Error("Couldn't load the one-liner to evaluate");
+          setWizardCallReport(cr);
+        }
         setPendingRevisionPayload(payload);
         setPendingRevisionEvalStep(true);
         setSubmitting(false);
@@ -297,28 +321,6 @@ export function ContentRevisions({
     }
   };
 
-  const handleDeleteRevision = async (revision: EpisodeRevision) => {
-    setDeletingId(revision.id);
-    try {
-      const response = await fetch(`${revisionsUrl}/${revision.id}`, {
-        method: "DELETE",
-      });
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || "Failed to delete revision");
-      }
-
-      toast.success(`Revision ${revision.revision_number} deleted`);
-      fetchRevisions();
-    } catch (error: any) {
-      console.error("Error deleting revision:", error);
-      toast.error(error.message || "Failed to delete revision");
-    } finally {
-      setDeletingId(null);
-    }
-  };
-
   const handleDownload = (revision: EpisodeRevision) => {
     if (revision.attachment_url) {
       window.open(
@@ -328,34 +330,23 @@ export function ContentRevisions({
     }
   };
 
-  const handleRevisionEvalSubmit = async (formData: EpisodicEvaluationFormData) => {
+  // The revision and its evaluation are saved together in one transaction, or nothing is saved
+  const handleRevisionEvalSubmit = async (evaluation: object) => {
     if (!pendingRevisionPayload) return;
     setFinalizingRevision(true);
     try {
       const response = await fetch(revisionsUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(pendingRevisionPayload),
+        body: JSON.stringify({ ...pendingRevisionPayload, evaluation }),
       });
       const data = await response.json();
-      if (!response.ok) throw new Error(data.error || "Failed to create revision");
+      if (!response.ok) throw new Error(data.error || "Failed to save revision");
 
-      const realRevisionId = data.revision.id;
-
-      const evalRes = await fetch("/api/episodic-evaluations", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...formData, episode_id: entityId, revision_id: realRevisionId }),
-      });
-      if (!evalRes.ok) {
-        const err = await evalRes.json();
-        toast.warning(`Revision saved but evaluation failed: ${err.error || "Unknown error"}`);
-      } else {
-        toast.success(`Revision ${data.revision.revision_number} added and evaluated`);
-      }
-
+      toast.success(`Revision ${data.revision.revision_number} added and evaluated`);
       setPendingRevisionPayload(null);
       setPendingRevisionEvalStep(false);
+      setWizardCallReport(null);
       setFile(null);
       setComment("");
       setOriginalSubmissionDate("");
@@ -373,6 +364,7 @@ export function ContentRevisions({
   const cancelRevisionEval = () => {
     setPendingRevisionPayload(null);
     setPendingRevisionEvalStep(false);
+    setWizardCallReport(null);
     toast.warning("Revision was not saved — evaluation was not completed");
   };
 
@@ -439,26 +431,41 @@ export function ContentRevisions({
     .sort((a, b) => b.revision_number - a.revision_number)[0] || null;
 
   const renderRevisionEvalForm = () => (
-    <div className="space-y-4 p-4 border-2 border-amber-300 rounded-lg bg-amber-50/50">
+    // This panel can sit inside another form (episode edit, log episodes): its evaluation form's submit
+    // must not also submit that one
+    <div className="space-y-4 p-4 border-2 border-amber-300 rounded-lg bg-amber-50/50" onSubmit={(e) => e.stopPropagation()}>
       <div className="flex items-center justify-between">
         <p className="text-sm font-medium text-amber-800">
           Evaluate this revision before it&apos;s saved
         </p>
-        <Button size="sm" variant="ghost" onClick={cancelRevisionEval} disabled={finalizingRevision}>
+        <Button type="button" size="sm" variant="ghost" onClick={cancelRevisionEval} disabled={finalizingRevision}>
           Cancel
         </Button>
       </div>
-      {finalizingRevision ? (
+      {finalizingRevision && (
         <div className="flex items-center gap-2 p-6 justify-center text-sm text-muted-foreground">
           <Loader2 className="h-4 w-4 animate-spin" /> Saving revision and evaluation...
         </div>
-      ) : (
-        <EpisodicEvaluationForm
-          episode={{ id: entityId } as Episode}
-          onSubmit={handleRevisionEvalSubmit}
-          wizardMode
-        />
       )}
+      {/* Stays mounted while saving, so a failed save doesn't lose what was filled in */}
+      <div className={finalizingRevision ? "hidden" : undefined}>
+        {kind === "call-report" ? (
+          wizardCallReport && (
+            <EvaluatorEvaluationForm
+              callReport={wizardCallReport}
+              userId=""
+              userName=""
+              onWizardSubmit={handleRevisionEvalSubmit}
+            />
+          )
+        ) : (
+          <EpisodicEvaluationForm
+            episode={{ id: entityId } as Episode}
+            onSubmit={handleRevisionEvalSubmit}
+            wizardMode
+          />
+        )}
+      </div>
     </div>
   );
 
@@ -545,7 +552,7 @@ export function ContentRevisions({
       )}
 
       <div className="flex gap-2">
-        <Button
+        <Button type="button"
           size={size}
           onClick={handleAddRevision}
           disabled={submitting || (!file && !comment.trim())}
@@ -562,7 +569,7 @@ export function ContentRevisions({
             </>
           )}
         </Button>
-        <Button
+        <Button type="button"
           size={size}
           variant={size === "sm" ? "ghost" : "outline"}
           onClick={() => {
@@ -698,23 +705,8 @@ export function ContentRevisions({
               </Badge>
             )}
             {!isCompact && revision.attachment_url && userRole !== "management_viewer" && (
-              <Button size="sm" variant="ghost" onClick={() => handleDownload(revision)}>
+              <Button type="button" size="sm" variant="ghost" onClick={() => handleDownload(revision)}>
                 <Download className="h-4 w-4" />
-              </Button>
-            )}
-            {!isCompact && canEdit && (
-              <Button
-                size="sm"
-                variant="ghost"
-                className="text-destructive hover:text-destructive"
-                onClick={() => handleDeleteRevision(revision)}
-                disabled={deletingId === revision.id}
-              >
-                {deletingId === revision.id ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Trash2 className="h-4 w-4" />
-                )}
               </Button>
             )}
           </div>
@@ -757,7 +749,7 @@ export function ContentRevisions({
                 Evaluated
               </Badge>
             ) : null}
-            <Button
+            <Button type="button"
               size="sm"
               variant="outline"
               className="text-xs h-7"
@@ -835,7 +827,7 @@ export function ContentRevisions({
           <div className="ml-6 space-y-2">
             {revisions.map((revision) => renderRevisionRow(revision, true))}
             {canEdit && !showAddForm && (
-              <Button
+              <Button type="button"
                 size="sm"
                 variant="outline"
                 className="ml-0 mt-1"
@@ -855,7 +847,7 @@ export function ContentRevisions({
             {pendingRevisionEvalStep ? (
               renderRevisionEvalForm()
             ) : !showAddForm ? (
-              <Button
+              <Button type="button"
                 size="sm"
                 variant="outline"
                 onClick={() => setShowAddForm(true)}
@@ -887,7 +879,7 @@ export function ContentRevisions({
             )}
           </CardTitle>
           {canEdit && !showAddForm && (
-            <Button
+            <Button type="button"
               size="sm"
               variant="outline"
               onClick={() => setShowAddForm(true)}
@@ -933,7 +925,7 @@ export function ContentRevisions({
               No revisions yet
             </p>
             {canEdit && (
-              <Button
+              <Button type="button"
                 size="sm"
                 variant="outline"
                 onClick={() => setShowAddForm(true)}

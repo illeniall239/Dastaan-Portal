@@ -16,7 +16,8 @@ import {
 } from "@/components/ui/select";
 import Link from "next/link";
 import { toast } from "sonner";
-import { createMeetingClient, updateCallReportClient } from "@/lib/meetings/client";
+import { updateCallReportClient, type CreateMeetingInput } from "@/lib/meetings/client";
+import { EvaluatorEvaluationForm } from "@/app/evaluator/evaluate/[callReportId]/evaluation-form-prefilled";
 import { FileUpload } from "@/components/ui/file-upload";
 import { ProjectTagFields } from "@/components/call-reports/project-tag-fields";
 import type { CommercialPositioning, AudienceFocus } from "@/lib/project-tags";
@@ -81,6 +82,8 @@ export function CallReportForm({
   );
 
   const [isLoading, setIsLoading] = useState(false);
+  // Create mode: the validated one-liner, waiting for this user's evaluation before it's logged
+  const [pendingOneLiner, setPendingOneLiner] = useState<CreateMeetingInput | null>(null);
   const [writers, setWriters] = useState<Array<{
     writer_id: string;
     writer_name: string;
@@ -337,6 +340,123 @@ export function CallReportForm({
     }
   };
 
+  // The one-liner and this user's evaluation of it are saved together in one transaction, or nothing is saved
+  const handleOneLinerEvalSubmit = async (evaluation: Record<string, unknown>) => {
+    if (!pendingOneLiner) return;
+    const response = await fetch("/api/call-reports", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ oneLiner: pendingOneLiner, evaluation }),
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || "Failed to log the one-liner");
+    await completeCreate(data.callReport);
+  };
+
+  // After the one-liner is saved: its writers and attachments, then back to the list
+  const completeCreate = async (result: { id: string }) => {
+    // Add writers to call report
+    if (result.id && writers.length > 0) {
+      try {
+        const response = await fetch(`/api/call-reports/${result.id}/writers`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ writers })
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to add writers');
+        }
+      } catch (error) {
+        console.error("Error adding writers:", error);
+        toast.error("One-liner created but failed to add writers. Please edit to add them.");
+      }
+    }
+
+    // Upload files if any
+    if (filesToUpload.length > 0 && result.id) {
+      for (const file of filesToUpload) {
+        try {
+          await uploadFile(file, "call_report", result.id, (progress) => {
+            setUploadProgress(prev => ({ ...prev, [file.name]: progress }));
+          });
+          // Remove from progress tracking when complete
+          setUploadProgress(prev => {
+            const newProgress = { ...prev };
+            delete newProgress[file.name];
+            return newProgress;
+          });
+        } catch (error) {
+          console.error("Error uploading file:", error);
+          toast.error(`Failed to upload file: ${file.name}. ${error instanceof Error ? error.message : 'Please try again.'}`);
+          // Remove from progress tracking on error
+          setUploadProgress(prev => {
+            const newProgress = { ...prev };
+            delete newProgress[file.name];
+            return newProgress;
+          });
+        }
+      }
+    }
+
+    // Link draft-uploaded attachments to the new call report
+    let linkedDraftCount = 0;
+    if (draftAttachments.length > 0 && result.id) {
+      const supabase = createClient();
+      const linkResult = await linkDraftAttachments(supabase, "call_report", result.id, userId, draftAttachments);
+      linkedDraftCount = linkResult.linked;
+      for (const f of linkResult.failed) {
+        toast.error(`Failed to attach ${f.fileName}`);
+      }
+    }
+
+    const totalAttachments = filesToUpload.length + linkedDraftCount;
+    if (totalAttachments > 0) {
+      toast.success(`One-Liner Report logged successfully with ${totalAttachments} attachment(s)!`);
+    } else {
+      toast.success("One-Liner Report logged successfully!");
+    }
+
+    // Clear autosave draft on success
+    await clearDraft();
+
+    // Redirect to call reports list with fresh data
+    router.push("/evaluator/call-reports");
+    router.refresh(); // Force cache revalidation to show new report
+
+    // Reset form
+    setFormData({
+      category: "",
+      writerId: "",
+      suggestedWriter: "",
+      contactPhone: "",
+      contactAddress: "",
+      workingTitle: "",
+      director: "",
+      totalEpisodes: "",
+      receivedEpisodes: "",
+      logline: "",
+      shortSynopsis: "",
+      episodicSynopsis: "",
+      genre: [],
+      theme: "",
+      targetSlot: "",
+      contentType: "",
+      commercialPositioning: "",
+      audienceFocus: "",
+      notes: "",
+      nextSteps: "",
+      status: "ready_for_evaluation",
+      overallRating: 5,
+      ideaBy: "",
+      developedBy: "",
+      managementMemberName: "",
+      originalSubmissionDate: "",
+    });
+    setWriters([]);
+    setFilesToUpload([]);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -484,8 +604,8 @@ export function CallReportForm({
           router.push("/evaluator/call-reports");
         }
       } else {
-        // Create meeting/call report
-        const result = await createMeetingClient({
+        // This role evaluates what it logs: the one-liner is logged together with the evaluation (next step)
+        const oneLiner: CreateMeetingInput = {
           logged_by: userName,
           category: formData.category,
           writer_name: writers.length > 0 ? writers[0].writer_name : (formData.suggestedWriter || "In-house Content"), // Deprecated field
@@ -517,108 +637,10 @@ export function CallReportForm({
           status: formData.status,
           created_by: userId,
           original_submission_date: formData.originalSubmissionDate || undefined,
-        });
-
-        // Add writers to call report
-        if (result.id && writers.length > 0) {
-          try {
-            const response = await fetch(`/api/call-reports/${result.id}/writers`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ writers })
-            });
-
-            if (!response.ok) {
-              throw new Error('Failed to add writers');
-            }
-          } catch (error) {
-            console.error("Error adding writers:", error);
-            toast.error("One-liner created but failed to add writers. Please edit to add them.");
-          }
-        }
-
-        // Upload files if any
-        if (filesToUpload.length > 0 && result.id) {
-          for (const file of filesToUpload) {
-            try {
-              await uploadFile(file, "call_report", result.id, (progress) => {
-                setUploadProgress(prev => ({ ...prev, [file.name]: progress }));
-              });
-              // Remove from progress tracking when complete
-              setUploadProgress(prev => {
-                const newProgress = { ...prev };
-                delete newProgress[file.name];
-                return newProgress;
-              });
-            } catch (error) {
-              console.error("Error uploading file:", error);
-              toast.error(`Failed to upload file: ${file.name}. ${error instanceof Error ? error.message : 'Please try again.'}`);
-              // Remove from progress tracking on error
-              setUploadProgress(prev => {
-                const newProgress = { ...prev };
-                delete newProgress[file.name];
-                return newProgress;
-              });
-            }
-          }
-        }
-
-        // Link draft-uploaded attachments to the new call report
-        let linkedDraftCount = 0;
-        if (draftAttachments.length > 0 && result.id) {
-          const supabase = createClient();
-          const linkResult = await linkDraftAttachments(supabase, "call_report", result.id, userId, draftAttachments);
-          linkedDraftCount = linkResult.linked;
-          for (const f of linkResult.failed) {
-            toast.error(`Failed to attach ${f.fileName}`);
-          }
-        }
-
-        const totalAttachments = filesToUpload.length + linkedDraftCount;
-        if (totalAttachments > 0) {
-          toast.success(`One-Liner Report logged successfully with ${totalAttachments} attachment(s)!`);
-        } else {
-          toast.success("One-Liner Report logged successfully!");
-        }
-
-        // Clear autosave draft on success
-        await clearDraft();
-
-        // Redirect to call reports list with fresh data
-        router.push("/evaluator/call-reports");
-        router.refresh(); // Force cache revalidation to show new report
-
-        // Reset form
-        setFormData({
-          category: "",
-          writerId: "",
-          suggestedWriter: "",
-          contactPhone: "",
-          contactAddress: "",
-          workingTitle: "",
-          director: "",
-          totalEpisodes: "",
-          receivedEpisodes: "",
-          logline: "",
-          shortSynopsis: "",
-          episodicSynopsis: "",
-          genre: [],
-          theme: "",
-          targetSlot: "",
-          contentType: "",
-          commercialPositioning: "",
-          audienceFocus: "",
-          notes: "",
-          nextSteps: "",
-          status: "ready_for_evaluation",
-          overallRating: 5,
-          ideaBy: "",
-          developedBy: "",
-          managementMemberName: "",
-          originalSubmissionDate: "",
-        });
-        setWriters([]);
-        setFilesToUpload([]);
+        };
+        setPendingOneLiner(oneLiner);
+        toast.info("Now evaluate this one-liner — it will be logged once your evaluation is submitted");
+        window.scrollTo({ top: 0, behavior: "smooth" });
       }
     } catch (error: any) {
       console.error(`Error ${mode === "edit" ? "updating" : "logging"} call report:`, error);
@@ -628,7 +650,41 @@ export function CallReportForm({
     }
   };
 
+  if (pendingOneLiner) {
+    return (
+      <div className="space-y-4 max-w-4xl mx-auto">
+        <div className="flex items-center justify-between gap-3 p-4 border-2 border-amber-300 rounded-lg bg-amber-50/50">
+          <p className="text-sm font-medium text-amber-800">
+            Evaluate this one-liner — it&apos;s logged together with your evaluation
+          </p>
+          <Button type="button" size="sm" variant="outline" onClick={() => setPendingOneLiner(null)}>
+            Back to one-liner
+          </Button>
+        </div>
+        <EvaluatorEvaluationForm
+          callReport={{
+            id: "",
+            call_report_id: "New one-liner",
+            working_title: pendingOneLiner.working_title,
+            writer_name: pendingOneLiner.writer_name,
+            contact_email: pendingOneLiner.writer_email,
+            logline: pendingOneLiner.logline,
+            short_synopsis: pendingOneLiner.short_synopsis,
+            episodic_synopsis: pendingOneLiner.episodic_synopsis,
+            category: pendingOneLiner.category,
+            content_type: pendingOneLiner.content_type,
+            writers,
+          }}
+          userId={userId}
+          userName={userName}
+          onWizardSubmit={handleOneLinerEvalSubmit}
+        />
+      </div>
+    );
+  }
+
   return (
+    <>
     <form onSubmit={handleSubmit}>
       <div className="space-y-4 sm:space-y-6 md:space-y-8 max-w-4xl mx-auto px-0">
         {/* Draft restore banner */}
@@ -1071,16 +1127,6 @@ export function CallReportForm({
           </Card>
         )}
 
-        {/* Revisions (Edit Mode) */}
-        {mode === "edit" && callReportId && (
-          <ContentRevisions
-            entityId={callReportId}
-            apiBasePath="/api/call-reports"
-            storageBucket="attachments"
-            canEdit={true}
-          />
-        )}
-
         {/* File Upload Section */}
         <FileUpload
           onFileUpload={handleFileUpload}
@@ -1129,5 +1175,19 @@ export function CallReportForm({
         </div>
       </div>
     </form>
+
+    {/* Revisions (edit mode) — outside the form: a revision is saved on its own, and its evaluation step is a form too */}
+    {mode === "edit" && callReportId && (
+      <div className="max-w-4xl mx-auto mt-6">
+        <ContentRevisions
+          entityId={callReportId}
+          apiBasePath="/api/call-reports"
+          storageBucket="attachments"
+          canEdit={true}
+          entityType="call-report"
+        />
+      </div>
+    )}
+    </>
   );
 }

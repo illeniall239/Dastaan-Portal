@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/client";
 import type { UpdateCallReportFormData } from "@/lib/validations/call-reports";
-import type { CommercialPositioning, AudienceFocus } from "@/lib/project-tags";
+import { oneLinerRows, type CreateMeetingInput } from "@/lib/meetings/one-liner-rows";
 import type { Meeting as MeetingType } from "@/types";
 
 export type Meeting = MeetingType;
@@ -23,48 +23,7 @@ export interface CreateSimpleMeetingInput {
   category?: string;
 }
 
-/**
- * Input for creating a call report (One-Liner Report — enters story pipeline)
- */
-export interface CreateMeetingInput {
-  logged_by: string;
-  category: string;
-  writer_name: string;
-  writer_email: string;
-  contact_type?: string;
-  suggested_writer?: string;
-  contact_phone?: string;
-  contact_address?: string;
-  working_title: string;
-  director?: string;
-  total_episodes?: number;
-  received_episodes?: number;
-  logline: string;
-  logline_image_url?: string;
-  short_synopsis?: string;
-  episodic_synopsis?: string;
-  genre?: string[];
-  theme?: string;
-  slot?: string;
-  content_type?: "Serial" | "Long Serial" | "Telefilm" | "Mini-serial" | "Ramadan Serial" | "Series Sitcom" | "Soap";
-  commercial_positioning?: CommercialPositioning;
-  audience_focus?: AudienceFocus;
-  idea_by?: string;
-  developed_by?: string;
-  management_member_name?: string;
-  meeting_date: string;
-  duration_minutes?: number;
-  attendees: string[];
-  location?: string;
-  notes: string;
-  next_steps?: string;
-  status: string;
-  created_by: string;
-  overall_rating?: number;
-  time_spent_minutes?: number;
-  form_started_at?: string;
-  original_submission_date?: string;
-}
+export type { CreateMeetingInput } from "@/lib/meetings/one-liner-rows";
 
 /**
  * Create a simple calendar meeting (no story creation, no evaluation pipeline).
@@ -141,58 +100,10 @@ export async function createMeetingClient(meetingData: CreateMeetingInput) {
     .padStart(4, "0");
   const call_report_id = `CR-${year}-${randomNum}`;
 
-  // Convert the meeting data to call report format
+  // Convert the meeting data to call report format (shared with the server path)
   const loggedAt = new Date().toISOString();
-
-  const callReportData = {
-    call_report_id: call_report_id,
-    meeting_type: "call_report",
-    team_id: teamId,
-    created_at: loggedAt,
-    logged_by: meetingData.logged_by,
-    category: meetingData.category || null,
-    writer_name: meetingData.writer_name,
-    suggested_writer: meetingData.suggested_writer || null,
-    contact_email: meetingData.writer_email,
-    contact_phone: meetingData.contact_phone || null,
-    contact_address: meetingData.contact_address || null,
-    contact_type: meetingData.contact_type || "Direct",
-    working_title: meetingData.working_title,
-    director: meetingData.director || null,
-    total_episodes: meetingData.total_episodes || null,
-    received_episodes: meetingData.received_episodes || null,
-    logline: meetingData.logline,
-    logline_image_url: meetingData.logline_image_url || null,
-    short_synopsis: meetingData.short_synopsis || null,
-    episodic_synopsis: meetingData.episodic_synopsis || null,
-    // target_audience removed from schema
-    genre: meetingData.genre && meetingData.genre.length > 0 ? meetingData.genre : null,
-    theme: meetingData.theme || null,
-    // Map UI-provided slot to DB column target_slot
-    target_slot: meetingData.slot || null,
-    content_type: meetingData.content_type || null,
-    commercial_positioning: meetingData.commercial_positioning || null,
-    audience_focus: meetingData.audience_focus || null,
-    idea_by: meetingData.idea_by || null,
-    developed_by: meetingData.developed_by || null,
-    management_member_name: meetingData.management_member_name || null,
-    meeting_date: meetingData.meeting_date,
-    duration_minutes: meetingData.duration_minutes || 60, // Default to 60 minutes if not specified
-    meeting_attendees: meetingData.attendees,
-    location: meetingData.location || null,
-    meeting_notes: meetingData.notes,
-    next_steps: meetingData.next_steps || null,
-    status: meetingData.status,
-    created_by: meetingData.created_by,
-    // Evaluation deadline tracking (5 days from creation)
-    evaluation_deadline: new Date(now.getTime() + 5 * 24 * 60 * 60 * 1000).toISOString(),
-    required_evaluations: 5,
-    minimum_evaluations_for_deadline: 3,
-    overall_rating: meetingData.overall_rating || null,
-    time_spent_minutes: meetingData.time_spent_minutes || null,
-    form_started_at: meetingData.form_started_at || null,
-    original_submission_date: meetingData.original_submission_date || null,
-  };
+  const rows = oneLinerRows(meetingData, teamId, loggedAt);
+  const callReportData = { call_report_id: call_report_id, ...rows.callReport };
 
   // First, create a story record for this call report
   // Generate unique story_id in format ST-YYYY-NNNN
@@ -207,22 +118,7 @@ export async function createMeetingClient(meetingData: CreateMeetingInput) {
       .padStart(4, "0");
     const story_id = `ST-${year}-${storyRandomNum}`;
 
-    const storyData = {
-      story_id: story_id,
-      title: meetingData.working_title,
-      team_id: teamId,
-      created_at: loggedAt,
-      logged_by: meetingData.logged_by,
-      category: meetingData.category || null,
-      writer_originator_name: meetingData.writer_name,
-      suggested_writer: meetingData.suggested_writer || null,
-      synopsis: meetingData.short_synopsis || meetingData.logline,
-    genre: meetingData.genre && meetingData.genre.length > 0 ? meetingData.genre[0] : null, // Take first genre for story
-      target_audience: meetingData.slot || 'general', // Use slot as target_audience fallback
-      status: 'submitted',
-      current_stage: 'evaluation',
-      created_by: meetingData.created_by,
-    };
+    const storyData = { story_id: story_id, ...rows.story };
 
     // Insert and select the created record
     // Note: We must ensure the user has permission to SELECT the record they just created

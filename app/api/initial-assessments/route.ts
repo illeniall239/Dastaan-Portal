@@ -27,7 +27,8 @@ const ALLOWED_ROLES = [
 
 /**
  * GET /api/initial-assessments?entity_type=X&entity_id=Y
- * Fetch all assessments for an entity
+ * Fetch all assessments for an entity. entity_id may be a comma-separated list (e.g. all of a
+ * project's episodes in one request); myAssessment/stats then cover the whole list.
  */
 export async function GET(request: NextRequest) {
     const supabase = await createClient();
@@ -43,6 +44,10 @@ export async function GET(request: NextRequest) {
 
     if (!entity_type || !entity_id) {
         return validationError("entity_type and entity_id are required");
+    }
+    const entityIds = entity_id.split(",");
+    if (entityIds.length > 200 || !entityIds.every((id) => z.string().uuid().safeParse(id).success)) {
+        return validationError("entity_id must be up to 200 comma-separated UUIDs");
     }
 
     if (!["call_report", "episode"].includes(entity_type)) {
@@ -64,7 +69,7 @@ export async function GET(request: NextRequest) {
         assessor:users!assessor_id(name, email, role)
       `)
             .eq("entity_type", entity_type)
-            .eq("entity_id", entity_id)
+            .in("entity_id", entityIds)
             .order("created_at", { ascending: false });
 
         if (error) {

@@ -7,7 +7,8 @@ import { RateLimitPresets } from "@/lib/rate-limit-redis";
 import { logAuditAction, getRequestContext } from "@/lib/audit/server";
 import { createNotifications, excludeUserFromList } from "@/lib/notifications/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { canUploadRevision, mustEvaluateOnUpload, getUnevaluatedEpisodes } from "@/lib/episodes/permissions";
+import { canUploadRevision, mustEvaluateOnUpload } from "@/lib/episodes/permissions";
+import { loggedEpisodeEvaluationSchema, episodicEvaluationRow, notifyEpisodicEvaluation, evaluationRequiredMessage } from "@/lib/evaluations/evaluate-on-log";
 import { z } from "zod";
 
 export const dynamic = "force-dynamic";
@@ -208,64 +209,77 @@ export async function POST(
       );
     }
 
-    // Gate: roles that must evaluate can't upload revisions until prior episodes are evaluated
-    if (mustEvaluateOnUpload(userData.role)) {
-      const adminForGate = createAdminClient();
-      const pending = await getUnevaluatedEpisodes(adminForGate, user.id);
-      if (pending.length > 0) {
-        const labels = pending.slice(0, 5).map(p => `EP ${p.episode_number} (${p.working_title})`).join(", ");
-        const suffix = pending.length > 5 ? ` and ${pending.length - 5} more` : "";
+    // Roles that must evaluate what they upload send the revision's evaluation with it; both are saved
+    // together or not at all (the database refuses an unevaluated revision from these roles).
+    const mustEvaluate = mustEvaluateOnUpload(userData.role);
+    let evaluationRow: Record<string, unknown> | null = null;
+    if (mustEvaluate) {
+      const evalValidation = loggedEpisodeEvaluationSchema.safeParse(body.evaluation);
+      if (!evalValidation.success) {
         return NextResponse.json(
-          { error: `You have ${pending.length} un-evaluated episode(s): ${labels}${suffix}. Please evaluate them before uploading revisions.` },
-          { status: 403 },
+          { error: "Evaluate this revision before uploading it", details: evalValidation.error.format() },
+          { status: 400 },
         );
       }
+      evaluationRow = episodicEvaluationRow(evalValidation.data, user.id);
     }
 
-    // Auto-calculate next revision number
-    const { data: maxRevision } = await supabase
-      .from("episode_revisions")
-      .select("revision_number")
-      .eq("episode_id", id)
-      .order("revision_number", { ascending: false })
-      .limit(1)
-      .single();
+    const revisionRow = {
+      episode_id: id,
+      attachment_url: validation.data.attachment_url || null,
+      attachment_name: validation.data.attachment_name || null,
+      attachment_type: validation.data.attachment_type || null,
+      comment: validation.data.comment || null,
+      original_submission_date: validation.data.original_submission_date || null,
+      uploaded_by: user.id,
+      ...(validation.data.initial_assessment != null ? {
+        initial_assessment: validation.data.initial_assessment,
+        assessed_by: user.id,
+        assessed_at: new Date().toISOString(),
+      } : {}),
+    };
 
-    const nextRevisionNumber = (maxRevision?.revision_number || 0) + 1;
+    // One transaction: the revision number is assigned under a lock, and the evaluation (if required) is
+    // saved with the revision or neither is saved.
+    const admin = createAdminClient();
+    const { data: saved, error: saveError } = await admin.rpc("log_episode_revision_with_evaluation", {
+      p_revision: revisionRow,
+      p_evaluation: evaluationRow,
+    });
 
-    // Insert revision
-    const { data: revision, error: insertError } = await supabase
-      .from("episode_revisions")
-      .insert({
-        episode_id: id,
-        revision_number: nextRevisionNumber,
-        attachment_url: validation.data.attachment_url || null,
-        attachment_name: validation.data.attachment_name || null,
-        attachment_type: validation.data.attachment_type || null,
-        comment: validation.data.comment || null,
-        original_submission_date: validation.data.original_submission_date || null,
-        uploaded_by: user.id,
-        ...(validation.data.initial_assessment != null ? {
-          initial_assessment: validation.data.initial_assessment,
-          assessed_by: user.id,
-          assessed_at: new Date().toISOString(),
-        } : {}),
-      })
-      .select(
-        `
-        *,
-        uploaded_by_user:users!uploaded_by(name, email),
-        assessed_by_user:users!assessed_by(name)
-      `
-      )
-      .single();
-
-    if (insertError) {
-      logger.error("Error creating episode revision:", insertError);
+    if (saveError || !saved) {
+      const required = evaluationRequiredMessage(saveError);
+      if (required) return NextResponse.json({ error: required }, { status: 400 });
+      logger.error("Error creating episode revision:", saveError);
       return NextResponse.json(
         { error: "Failed to create revision" },
         { status: 500 }
       );
+    }
+
+    const { data: revisionWithUsers } = await admin
+      .from("episode_revisions")
+      .select(`
+        *,
+        uploaded_by_user:users!uploaded_by(name, email),
+        assessed_by_user:users!assessed_by(name)
+      `)
+      .eq("id", (saved as any).revision.id)
+      .single();
+    const revision = revisionWithUsers ?? (saved as any).revision;
+    const nextRevisionNumber = (saved as any).revision.revision_number as number;
+    const savedEvaluation = (saved as any).evaluation as { id: string } | null;
+
+    if (savedEvaluation) {
+      await logAuditAction({
+        entityType: "episodic_evaluation",
+        entityId: savedEvaluation.id,
+        action: "created",
+        performedBy: user.id,
+        details: { episode_id: id, revision_id: (saved as any).revision.id, logged_with_revision: true },
+      }).catch((err) => logger.error("Audit log failed", { error: err }));
+      await notifyEpisodicEvaluation(id, user.id)
+        .catch((err) => logger.error("Failed to send episodic evaluation notifications", { error: err }));
     }
 
     // Audit log

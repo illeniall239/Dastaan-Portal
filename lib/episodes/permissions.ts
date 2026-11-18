@@ -54,47 +54,11 @@ export function canUploadRevision(
   return canEditEpisode(userId, userRole, episode, userTeamId);
 }
 
+// Roles that must evaluate whatever they log (one-liners, episodes, revisions). Keep in sync with the
+// database's must_evaluate_on_log() (migration 20261118000001), which enforces it: the item and its
+// logger's evaluation are saved in one transaction or not at all.
 const MUST_EVALUATE_ROLES = ["evaluator", "programmer", "management", "executive"];
 
 export function mustEvaluateOnUpload(role: string): boolean {
   return MUST_EVALUATE_ROLES.includes(role);
-}
-
-/**
- * Server-side: check if user has episodes they logged but haven't evaluated.
- * Returns the un-evaluated episode numbers (empty array = all clear).
- */
-export async function getUnevaluatedEpisodes(
-  adminClient: any,
-  userId: string,
-): Promise<{ episode_number: number; working_title: string }[]> {
-  const { data: episodes } = await adminClient
-    .from("episodes")
-    .select("id, episode_number, call_report:call_reports!call_report_id(working_title)")
-    .eq("logged_by", userId)
-    .eq("is_current", true)
-    .is("archived_at", null)
-    .order("created_at", { ascending: false })
-    .limit(200);
-
-  if (!episodes || episodes.length === 0) return [];
-
-  const episodeIds = episodes.map((e: any) => e.id);
-
-  const { data: evaluations } = await adminClient
-    .from("episodic_evaluations")
-    .select("episode_id")
-    .eq("evaluator_id", userId)
-    .in("episode_id", episodeIds);
-
-  const evaluatedSet = new Set((evaluations || []).map((e: any) => e.episode_id));
-
-  return episodes
-    .filter((ep: any) => !evaluatedSet.has(ep.id))
-    .map((ep: any) => ({
-      episode_number: ep.episode_number,
-      working_title: Array.isArray(ep.call_report)
-        ? ep.call_report[0]?.working_title || "Unknown"
-        : ep.call_report?.working_title || "Unknown",
-    }));
 }

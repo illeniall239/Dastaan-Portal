@@ -11,6 +11,7 @@ import { idParamSchema } from "@/lib/validations/uuid-params";
 import { updateEpisodicEvaluationSchema } from "@/lib/validations/episodic-evaluations";
 import { revalidatePath } from 'next/cache';
 import { logAuditAction, getRequestContext } from "@/lib/audit/server";
+import { evaluationRequiredMessage } from "@/lib/evaluations/evaluate-on-log";
 
 /**
  * GET /api/episodic-evaluations/[id]
@@ -235,6 +236,10 @@ export async function DELETE(
       .eq("id", id);
 
     if (deleteError) {
+      const required = evaluationRequiredMessage(deleteError);
+      if (required) {
+        return withCors(request, NextResponse.json({ error: required }, { status: 409 }));
+      }
       logger.error("Error deleting episodic evaluation", { error: deleteError, context: "DELETE /api/episodic-evaluations/[id]" });
       return NextResponse.json(
         { error: "Failed to delete episodic evaluation" },

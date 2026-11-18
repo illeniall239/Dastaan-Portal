@@ -21,7 +21,9 @@ import {
   createSuccessResponse,
   internalError,
 } from "@/lib/api/errors";
-import { mustEvaluateOnUpload, getUnevaluatedEpisodes } from "@/lib/episodes/permissions";
+import { mustEvaluateOnUpload } from "@/lib/episodes/permissions";
+import { z } from "zod";
+import { loggedEpisodeEvaluationSchema, episodicEvaluationRow, notifyEpisodicEvaluation, evaluationRequiredMessage } from "@/lib/evaluations/evaluate-on-log";
 
 // Force dynamic rendering - prevent Vercel/Next.js from caching GET responses
 export const dynamic = 'force-dynamic';
@@ -53,19 +55,9 @@ export async function POST(request: Request) {
     return forbiddenError();
   }
 
-  // Gate: roles that must evaluate can't log new episodes until prior ones are evaluated
-  if (mustEvaluateOnUpload(userData.role)) {
-    const admin = createAdminClient();
-    const pending = await getUnevaluatedEpisodes(admin, user.id);
-    if (pending.length > 0) {
-      const labels = pending.slice(0, 5).map(p => `EP ${p.episode_number} (${p.working_title})`).join(", ");
-      const suffix = pending.length > 5 ? ` and ${pending.length - 5} more` : "";
-      return NextResponse.json(
-        { error: `You have ${pending.length} un-evaluated episode(s): ${labels}${suffix}. Please evaluate them before logging new episodes.` },
-        { status: 403 }
-      );
-    }
-  }
+  // Roles that must evaluate what they log send one evaluation per episode; both are saved together
+  // or not at all (the database refuses an unevaluated episode from these roles).
+  const mustEvaluate = mustEvaluateOnUpload(userData.role);
 
   const hasGlobalAccess = userData.role && ['admin', 'management', 'programmer'].includes(userData.role);
 
@@ -78,6 +70,25 @@ export async function POST(request: Request) {
     }
 
     const { call_report_id, story_id, episodes } = validation.data;
+
+    let evaluationRows: Record<string, unknown>[] = [];
+    if (mustEvaluate) {
+      const evalValidation = z
+        .array(loggedEpisodeEvaluationSchema.extend({ episode_number: z.number().int().positive() }))
+        .safeParse(body.evaluations);
+      if (!evalValidation.success) {
+        return validationError("Evaluate each episode before logging it", evalValidation.error.format());
+      }
+      const evaluated = evalValidation.data.map((e) => e.episode_number).sort((a, b) => a - b).join(",");
+      const logged = episodes.map((e) => e.episode_number).sort((a, b) => a - b).join(",");
+      if (evaluated !== logged) {
+        return validationError("Evaluate each episode before logging it — one evaluation per episode");
+      }
+      evaluationRows = evalValidation.data.map((e) => ({
+        episode_number: e.episode_number,
+        ...episodicEvaluationRow(e, user.id),
+      }));
+    }
 
     // Verify the source exists and capture title info for notifications
     let storyTitle: string | null = null;
@@ -168,13 +179,28 @@ export async function POST(request: Request) {
       logged_by: user.id,
     }));
 
-    // Insert episodes
-    const { data: createdEpisodes, error } = await supabase
-      .from("episodes")
-      .insert(episodesToInsert)
-      .select();
+    // Insert episodes — with their evaluations in one transaction for roles that must evaluate
+    let createdEpisodes: any[] | null = null;
+    let createdEvaluations: any[] = [];
+    let error: any = null;
+    if (mustEvaluate) {
+      const { data, error: rpcError } = await createAdminClient().rpc("log_episodes_with_evaluations", {
+        p_episodes: episodesToInsert,
+        p_evaluations: evaluationRows,
+      });
+      createdEpisodes = (data as any)?.episodes ?? null;
+      createdEvaluations = (data as any)?.evaluations ?? [];
+      error = rpcError;
+    } else {
+      ({ data: createdEpisodes, error } = await supabase
+        .from("episodes")
+        .insert(episodesToInsert)
+        .select());
+    }
 
-    if (error) {
+    if (error || !createdEpisodes) {
+      const required = evaluationRequiredMessage(error);
+      if (required) return validationError(required);
       logger.error(`Error creating episodes:`, error);
       logger.error(`Attempted to create episodes for story_id: ${story_id}, call_report_id: ${call_report_id}`);
       logger.error(`Episode numbers attempted: ${episodeNumbers.join(', ')}`);
@@ -244,6 +270,19 @@ export async function POST(request: Request) {
       }).catch(err => logger.error("Audit log failed", { error: err }));
     }
 
+    // The evaluations saved with them: audit + the usual "new episodic evaluation" notification
+    for (const ev of createdEvaluations) {
+      await logAuditAction({
+        entityType: "episodic_evaluation",
+        entityId: ev.id,
+        action: "created",
+        performedBy: user.id,
+        details: { ...requestContext, newValues: { episode_id: ev.episode_id, logged_with_episode: true } },
+      }).catch(err => logger.error("Audit log failed", { error: err }));
+      await notifyEpisodicEvaluation(ev.episode_id, user.id)
+        .catch(err => logger.error("Failed to send episodic evaluation notifications", { error: err }));
+    }
+
     // Notify team head + management when episodes are logged
     try {
       const adminClient = createAdminClient();
@@ -294,6 +333,7 @@ export async function POST(request: Request) {
     const res = NextResponse.json({
       message: `Successfully created ${createdEpisodes.length} episode(s)`,
       episodes: createdEpisodes,
+      evaluations: createdEvaluations,
     }, { status: 201 });
 
     // Revalidate episode list pages to show new episodes immediately

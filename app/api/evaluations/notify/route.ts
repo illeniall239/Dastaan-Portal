@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { createNotifications, getUserIdsByRoles, getProjectTeamMemberIds, excludeUserFromList } from "@/lib/notifications/server";
+import { notifyOneLinerEvaluation } from "@/lib/evaluations/evaluate-on-log";
 import { applyRateLimit } from "@/lib/api-middleware";
 import { RateLimitPresets } from "@/lib/rate-limit-redis";
 
@@ -31,13 +31,6 @@ export async function POST(request: NextRequest) {
 
     const adminClient = createAdminClient();
 
-    // Fetch call report title for notification content
-    const { data: callReport } = await adminClient
-      .from("call_reports")
-      .select("working_title, call_report_id")
-      .eq("id", callReportId)
-      .single();
-
     // Only the evaluator who just submitted this evaluation can announce it
     const { data: evaluation } = await adminClient
       .from("evaluator_forms")
@@ -48,27 +41,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 
-    const storyTitle = callReport?.working_title || callReport?.call_report_id || "Unknown";
-
-    // Notify the team, same wording and recipients as an episodic evaluation,
-    // plus the team that owns the project. Team anonymity: no evaluator name in notification
-    const [roleIds, projectTeamIds] = await Promise.all([
-      getUserIdsByRoles(["management", "content_manager", "content_creator"]),
-      getProjectTeamMemberIds(callReportId),
-    ]);
-    const teamRecipients = excludeUserFromList([...new Set([...roleIds, ...projectTeamIds])], user.id);
-
-    if (teamRecipients.length > 0) {
-      await createNotifications(
-        teamRecipients,
-        "success",
-        `New one-liner evaluation: ${storyTitle}`,
-        `"${storyTitle}" has been evaluated. Review the scores in the evaluation section.`,
-        "call_report",
-        callReportId,
-        user.id
-      );
-    }
+    // Notify the team + the project's own team (anonymous — no evaluator name)
+    await notifyOneLinerEvaluation(callReportId, user.id);
 
     return NextResponse.json({ success: true });
   } catch (error) {

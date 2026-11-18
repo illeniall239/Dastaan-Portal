@@ -84,6 +84,7 @@ export function EvaluatorEvaluationForm({
   revisionId,
   canEdit = true,
   viewOnly = false,
+  onWizardSubmit,
 }: {
   callReport: CallReport;
   userId: string;
@@ -99,6 +100,12 @@ export function EvaluatorEvaluationForm({
   revisionId?: string;
   canEdit?: boolean;
   viewOnly?: boolean;
+  /**
+   * Wizard mode: the one-liner (or revision) isn't saved yet — it's saved together with this evaluation.
+   * The form hands the evaluation to the caller instead of saving it, and skips drafts, the discussion
+   * and the revisions panel (none exist before the item does).
+   */
+  onWizardSubmit?: (evaluation: Record<string, unknown>) => Promise<void>;
 }) {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
@@ -307,6 +314,39 @@ export function EvaluatorEvaluationForm({
     try {
       const noOfTracks = formData.noOfTracks ? parseInt(formData.noOfTracks) : undefined;
 
+      if (onWizardSubmit) {
+        await onWizardSubmit({
+          target_writer: selectedWriter?.name || null,
+          per_ep_price_range: formData.perEpPriceRange || null,
+          slot: formData.slot || null,
+          conflict_of_content_score: formData.conflictOfContentScore,
+          characterization_score: formData.characterizationScore,
+          story_progression_score: formData.storyProgressionScore,
+          whats_next_element_score: formData.whatsNextElementScore,
+          overall_oneliner_grade_score: formData.overallOnelinerGradeScore,
+          conflict_of_content_comment: formData.conflictOfContentComment || null,
+          characterization_comment: formData.characterizationComment || null,
+          story_progression_comment: formData.storyProgressionComment || null,
+          whats_next_element_comment: formData.whatsNextElementComment || null,
+          overall_oneliner_grade_comment: formData.overallOnelinerGradeComment || null,
+          themes_of_drama: formData.themesOfDrama,
+          corresponding_dramas: formData.correspondingDramas,
+          no_of_tracks: noOfTracks ?? null,
+          closing_remarks: formData.closingRemarks || null,
+          first_2_eps_required: formData.first2EpsRequired,
+          decision: formData.decision,
+          decision_notes: (formData.decision === "reject" || formData.decision === "needs_improvement") ? formData.decisionNotes : null,
+          time_spent_minutes: timeSpentMinutes,
+          started_at: new Date().toISOString(),
+          is_late: isEvaluationLate,
+          delay_reason: isEvaluationLate ? formData.delayReason : null,
+          original_submission_date: formData.originalSubmissionDate || null,
+          feedback_text: feedbackText || null,
+          feedback_attachments: feedbackAttachments,
+        });
+        return;
+      }
+
       if (existingEvaluation && isEditing) {
         await updateEvaluationClient({
           id: existingEvaluation.id,
@@ -411,7 +451,9 @@ export function EvaluatorEvaluationForm({
       router.push(crossTeamShareId ? `/${portalPrefix}/cross-team-shares` : `/${portalPrefix}/evaluations-list`);
     } catch (error: any) {
       console.error("Error submitting evaluation:", error);
-      toast.error(`Failed to submit evaluation: ${error.message || "Please try again."}`);
+      toast.error(onWizardSubmit
+        ? error.message || "Failed to save. Please try again."
+        : `Failed to submit evaluation: ${error.message || "Please try again."}`);
     } finally {
       setIsLoading(false);
     }
@@ -534,6 +576,8 @@ export function EvaluatorEvaluationForm({
       }));
       return;
     }
+    // Wizard mode: nothing is saved yet, so there's no evaluation or draft to load
+    if (onWizardSubmit) return;
 
     const fetchExisting = async () => {
       try {
@@ -584,14 +628,14 @@ export function EvaluatorEvaluationForm({
     <form onSubmit={handleSubmit}>
       {/* Header — always interactive, never dimmed */}
       <div className="flex flex-col gap-4 sm:gap-6 mb-8 max-w-4xl mx-auto px-4 sm:px-6 py-6">
-        <div className="flex items-center justify-between">
+        {!onWizardSubmit && <div className="flex items-center justify-between">
           <BackButton fallbackHref={`/${portalPrefix}/evaluations-list`} variant="outline" size="sm" className="w-fit" />
           {isReadOnly && (
             <Button type="button" variant="outline" size="sm" onClick={() => setIsEditing(true)}>
               Edit
             </Button>
           )}
-        </div>
+        </div>}
         <div className="space-y-1">
           <h1 className="text-xl sm:text-2xl font-bold tracking-tight">
             {isReadOnly ? "Evaluation Details" : "Evaluate Project"}
@@ -610,7 +654,7 @@ export function EvaluatorEvaluationForm({
       </div>
 
       {/* Which version is being evaluated, then all revisions — always visible, never dimmed */}
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 space-y-4">
+      {!onWizardSubmit && <div className="max-w-4xl mx-auto px-4 sm:px-6 space-y-4">
         <EvaluatingVersionBanner
           apiBasePath="/api/call-reports"
           storageBucket="attachments"
@@ -626,7 +670,7 @@ export function EvaluatorEvaluationForm({
           entityType="call-report"
           activeRevisionId={revisionId}
         />
-      </div>
+      </div>}
 
       {/* Form body — dimmed + non-interactive when read-only */}
       <div className={isReadOnly ? "pointer-events-none select-none opacity-60" : ""}>
@@ -1330,13 +1374,13 @@ export function EvaluatorEvaluationForm({
         )}
 
         {/* Discussion Thread */}
-        <CallReportDiscussion
+        {!onWizardSubmit && <CallReportDiscussion
           callReportId={callReport.id}
           currentUserId={userId}
           currentUserRole={isManagementEvaluation ? "management" : "evaluator"}
           compact={true}
           defaultExpanded={true}
-        />
+        />}
 
         {/* Form Actions */}
         {!isReadOnly && (
@@ -1345,10 +1389,10 @@ export function EvaluatorEvaluationForm({
               {/* Mobile: Stacked buttons */}
               <div className="flex flex-col gap-2 sm:hidden">
                 <div className="flex gap-2">
-                  <Button asChild variant="outline" type="button" className="flex-1 text-xs px-2">
+                  {!onWizardSubmit && <Button asChild variant="outline" type="button" className="flex-1 text-xs px-2">
                     <Link href={`/${portalPrefix}/evaluations-list`}>Cancel</Link>
-                  </Button>
-                  {!existingEvaluation || isEditing ? (
+                  </Button>}
+                  {!onWizardSubmit && (!existingEvaluation || isEditing) ? (
                     <Button
                       type="button"
                       variant="outline"
@@ -1377,7 +1421,9 @@ export function EvaluatorEvaluationForm({
                 >
                   {isLoading
                     ? "Saving..."
-                    : existingEvaluation && isEditing
+                    : onWizardSubmit
+                      ? "Submit Evaluation & Log"
+                      : existingEvaluation && isEditing
                       ? "Update Evaluation"
                       : isManagementEvaluation
                         ? "Submit Management Evaluation"
@@ -1394,12 +1440,12 @@ export function EvaluatorEvaluationForm({
               {/* Tablet & Desktop: Horizontal layout */}
               <div className="hidden sm:flex justify-between items-center gap-3">
                 <div className="flex gap-3">
-                  <Button asChild variant="outline" type="button">
+                  {!onWizardSubmit && <Button asChild variant="outline" type="button">
                     <Link href={`/${portalPrefix}/evaluations-list`}>Cancel</Link>
-                  </Button>
+                  </Button>}
                 </div>
                 <div className="flex gap-3">
-                  {!existingEvaluation || isEditing ? (
+                  {!onWizardSubmit && (!existingEvaluation || isEditing) ? (
                     <Button
                       type="button"
                       variant="outline"
@@ -1427,7 +1473,9 @@ export function EvaluatorEvaluationForm({
                   >
                     {isLoading
                       ? "Saving..."
-                      : existingEvaluation && isEditing
+                      : onWizardSubmit
+                        ? "Submit Evaluation & Log"
+                        : existingEvaluation && isEditing
                         ? "Update Evaluation"
                         : isManagementEvaluation
                           ? "Submit Management Evaluation"

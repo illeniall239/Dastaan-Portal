@@ -631,6 +631,7 @@ export function CallReportForm({
   };
 
   return (
+    <>
     <form onSubmit={handleSubmit}>
       <div className="space-y-4 sm:space-y-6 md:space-y-8 max-w-4xl mx-auto px-0">
         {/* Draft restore banner */}
@@ -1081,16 +1082,6 @@ export function CallReportForm({
           </Card>
         )}
 
-        {/* Revisions (Edit Mode) */}
-        {mode === "edit" && callReportId && (
-          <ContentRevisions
-            entityId={callReportId}
-            apiBasePath="/api/call-reports"
-            storageBucket="attachments"
-            canEdit={true}
-          />
-        )}
-
         {/* File Upload Section */}
         <FileUpload
           onFileUpload={handleFileUpload}
@@ -1139,5 +1130,19 @@ export function CallReportForm({
         </div>
       </div>
     </form>
+
+    {/* Revisions (edit mode) — outside the form: a revision is saved on its own, and its evaluation step is a form too */}
+    {mode === "edit" && callReportId && (
+      <div className="max-w-4xl mx-auto mt-6">
+        <ContentRevisions
+          entityId={callReportId}
+          apiBasePath="/api/call-reports"
+          storageBucket="attachments"
+          canEdit={true}
+          entityType="call-report"
+        />
+      </div>
+    )}
+    </>
   );
 }

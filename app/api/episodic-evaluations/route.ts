@@ -12,7 +12,7 @@ import { revalidatePath } from 'next/cache';
 import { applyRateLimit } from '@/lib/api-middleware';
 import { RateLimitPresets } from '@/lib/rate-limit-redis';
 import { logAuditAction, getRequestContext } from "@/lib/audit/server";
-import { createNotifications, getUserIdsByRoles, getProjectTeamMemberIds, excludeUserFromList } from "@/lib/notifications/server";
+import { episodicEvaluationRow, notifyEpisodicEvaluation } from "@/lib/evaluations/evaluate-on-log";
 
 /**
  * POST /api/episodic-evaluations
@@ -170,50 +170,9 @@ export async function POST(request: Request) {
       .from("episodic_evaluations")
       .insert({
         episode_id: evaluationData.episode_id,
-        evaluator_id: user.id,
         revision_id: evaluationData.revision_id || null,
         cross_team_share_id: evaluationData.cross_team_share_id || null,
-        is_feedback_only: evaluationData.is_feedback_only || false,
-        no_of_pages: evaluationData.no_of_pages,
-        no_of_scenes: evaluationData.no_of_scenes,
-        events: evaluationData.events || [],
-        freeze_ending_scene: evaluationData.freeze_ending_scene || null,
-        summary_analysis: evaluationData.summary_analysis || null,
-        remarks: evaluationData.remarks || null,
-        // 9 scoring criteria
-        conflict_of_content_score: evaluationData.conflict_of_content_score,
-        characterization_score: evaluationData.characterization_score,
-        story_progression_score: evaluationData.story_progression_score,
-        main_event_score: evaluationData.main_event_score,
-        small_event_score: evaluationData.small_event_score,
-        dragness_score: evaluationData.dragness_score,
-        freezes_score: evaluationData.freezes_score,
-        whats_next_element_score: evaluationData.whats_next_element_score,
-        overall_assessment_score: evaluationData.overall_assessment_score,
-        // Per-criterion comments
-        conflict_of_content_comment: evaluationData.conflict_of_content_comment || null,
-        characterization_comment: evaluationData.characterization_comment || null,
-        story_progression_comment: evaluationData.story_progression_comment || null,
-        main_event_comment: evaluationData.main_event_comment || null,
-        small_event_comment: evaluationData.small_event_comment || null,
-        dragness_comment: evaluationData.dragness_comment || null,
-        freezes_comment: evaluationData.freezes_comment || null,
-        whats_next_element_comment: evaluationData.whats_next_element_comment || null,
-        overall_assessment_comment: evaluationData.overall_assessment_comment || null,
-        // Qualitative remarks
-        scenes_remarks: evaluationData.scenes_remarks || null,
-        characterization_remarks: evaluationData.characterization_remarks || null,
-        time_spent_minutes: evaluationData.time_spent_minutes || null,
-        started_at: evaluationData.started_at || null,
-        // Final decision
-        decision: evaluationData.decision || null,
-        decision_notes: evaluationData.decision_notes || null,
-        // Feedback communication
-        feedback_text: evaluationData.feedback_text || null,
-        feedback_attachment_url: evaluationData.feedback_attachment_url || null,
-        feedback_attachment_name: evaluationData.feedback_attachment_name || null,
-        feedback_attachments: evaluationData.feedback_attachments || [],
-        original_submission_date: evaluationData.original_submission_date || null,
+        ...episodicEvaluationRow(evaluationData, user.id),
       })
       .select(`
         *,
@@ -246,30 +205,8 @@ export async function POST(request: Request) {
 
     // Notify the team about the new episodic evaluation, plus the team that owns the project
     // (anonymous — no evaluator name revealed)
-    try {
-      const projectId = (evaluation.episode as any)?.call_report?.id;
-      const [roleIds, projectTeamIds] = await Promise.all([
-        getUserIdsByRoles(["management", "content_manager", "content_creator"]),
-        projectId ? getProjectTeamMemberIds(projectId) : Promise.resolve([] as string[]),
-      ]);
-      const filtered = excludeUserFromList([...new Set([...roleIds, ...projectTeamIds])], user.id);
-      if (filtered.length > 0) {
-        const epNum = (evaluation.episode as any)?.episode_number;
-        const dramaTitle = (evaluation.episode as any)?.call_report?.working_title || "Unknown";
-        const epLabel = epNum ? `EP${epNum}` : "Episode";
-        await createNotifications(
-          filtered,
-          "success",
-          `New episodic evaluation: ${dramaTitle} — ${epLabel}`,
-          `${epLabel} of "${dramaTitle}" has been evaluated. Review the scores in the evaluation section.`,
-          "episode",
-          evaluationData.episode_id,
-          user.id
-        );
-      }
-    } catch (notifErr) {
-      logger.error("Failed to send episodic evaluation notifications", { error: notifErr });
-    }
+    await notifyEpisodicEvaluation(evaluationData.episode_id, user.id)
+      .catch((notifErr) => logger.error("Failed to send episodic evaluation notifications", { error: notifErr }));
 
     // Revalidate evaluation list pages to show new evaluations immediately
     revalidatePath('/content-department/episodic-evaluations');

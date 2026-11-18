@@ -87,16 +87,118 @@ function scoreColor(score: number | null) {
   return 'text-red-700 font-semibold';
 }
 
+// The parameters behind an evaluation's score. Older one-liner evaluations used the legacy criteria,
+// so each list includes those too; only the ones the evaluation actually has are shown.
+const ONE_LINER_PARAMS: [string, string, string?][] = [
+  ["Conflict of Content", "conflict_of_content_score", "conflict_of_content_comment"],
+  ["Characterization", "characterization_score", "characterization_comment"],
+  ["Story Progression", "story_progression_score", "story_progression_comment"],
+  ["What's Next Element", "whats_next_element_score", "whats_next_element_comment"],
+  ["Overall One-liner Grade", "overall_oneliner_grade_score", "overall_oneliner_grade_comment"],
+  ["Premise / Conflict", "premise_conflict_score"],
+  ["Storyline / Plot", "storyline_plot_score"],
+  ["Episodic Progression", "episodic_progression_score"],
+  ["Characters", "characters_score"],
+  ["Dialogues", "dialogues_score"],
+  ["What's Next", "whats_next_score"],
+  ["Freezes", "freezes_score"],
+  ["Overall Assessment", "overall_assessment_score"],
+];
+const EPISODE_PARAMS: [string, string, string?][] = [
+  ["Conflict of Content", "conflict_of_content_score", "conflict_of_content_comment"],
+  ["Characterization", "characterization_score", "characterization_comment"],
+  ["Story Progression", "story_progression_score", "story_progression_comment"],
+  ["Main Event", "main_event_score", "main_event_comment"],
+  ["Small Event", "small_event_score", "small_event_comment"],
+  ["Dragness", "dragness_score", "dragness_comment"],
+  ["Freezes", "freezes_score", "freezes_comment"],
+  ["What's Next Element", "whats_next_element_score", "whats_next_element_comment"],
+  ["Overall Assessment", "overall_assessment_score", "overall_assessment_comment"],
+];
+
+interface Assessment { score: number; name: string; comment?: string | null }
+
+/** A revision's initial assessment (one score, by whoever assessed it) */
+function revisionAssessments(rev: any): Assessment[] {
+  return rev.initial_assessment != null
+    ? [{ score: rev.initial_assessment, name: rev.assessed_by_user?.name || "Unknown" }]
+    : [];
+}
+
 interface EvalGroup {
   label: string;       // "Original" | "Revision N"
   revisionId: string | null;
   items: any[];
+  assessments: Assessment[];
 }
 
-function EvalGroupPanel({ group, showDecision }: { group: EvalGroup; showDecision?: boolean }) {
+/** One evaluation: who and the score; opens to show the score of each parameter (and its comment) */
+function EvalRow({ e, kind, showDecision }: { e: any; kind: "one-liner" | "episode"; showDecision?: boolean }) {
+  const [open, setOpen] = useState(false);
+  const score = e.average_score ?? e.overall_average;
+  const params = (kind === "one-liner" ? ONE_LINER_PARAMS : EPISODE_PARAMS).filter(([, key]) => e[key] != null);
+  return (
+    <div>
+      <button
+        type="button"
+        onClick={() => setOpen(v => !v)}
+        className="w-full flex items-center justify-between px-3 py-2 gap-2 hover:bg-slate-50 transition-colors text-left"
+      >
+        <div className="flex items-center gap-1.5 min-w-0">
+          {open ? <ChevronDown className="h-3 w-3 text-slate-400 shrink-0" /> : <ChevronRight className="h-3 w-3 text-slate-400 shrink-0" />}
+          <span className="font-medium truncate">{e.evaluator_name || 'Unknown'}</span>
+          <Badge className={`text-[10px] px-1 py-0 border ${evalTypeBadgeClass(e.evaluation_type)}`}>
+            {evalTypeLabel(e.evaluation_type)}
+          </Badge>
+        </div>
+        <div className="flex items-center gap-1.5 shrink-0">
+          <span className={`text-sm ${scoreColor(score)}`}>
+            {score?.toFixed(1) ?? '—'}/10
+          </span>
+          {showDecision && e.decision && (
+            <Badge className={`text-[10px] px-1 py-0 border ${decisionBadgeClass(e.decision)}`}>
+              {decisionLabel(e.decision)}
+            </Badge>
+          )}
+        </div>
+      </button>
+      {open && (
+        <div className="px-3 pb-3 space-y-2">
+          {params.length === 0 ? (
+            <p className="text-xs text-muted-foreground italic">No parameter scores recorded.</p>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+              {params.map(([label, key, commentKey]) => (
+                <div key={key} className="bg-slate-50 rounded px-2 py-1.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-xs text-muted-foreground">{label}</span>
+                    <span className={`text-xs ${scoreColor(e[key])}`}>{e[key]}/10</span>
+                  </div>
+                  {commentKey && e[commentKey] && (
+                    <p className="text-[11px] text-slate-600 italic mt-0.5 whitespace-pre-wrap">{e[commentKey]}</p>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+          {kind === "episode" && (e.no_of_pages != null || e.no_of_scenes != null) && (
+            <p className="text-xs text-slate-600">
+              {[e.no_of_pages != null && `${e.no_of_pages} pages`, e.no_of_scenes != null && `${e.no_of_scenes} scenes`].filter(Boolean).join(" · ")}
+            </p>
+          )}
+          {e.decision_notes && (
+            <p className="text-xs text-slate-600"><span className="font-medium">Decision notes:</span> {e.decision_notes}</p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function EvalGroupPanel({ group, kind, showDecision }: { group: EvalGroup; kind: "one-liner" | "episode"; showDecision?: boolean }) {
   const [open, setOpen] = useState(true);
   const avg = group.items.length
-    ? (group.items.reduce((s, e) => s + (e.average_score || e.overall_average || 0), 0) / group.items.length).toFixed(1)
+    ? (group.items.reduce((s, e) => s + (e.average_score ?? e.overall_average ?? 0), 0) / group.items.length).toFixed(1)
     : null;
   return (
     <div className="border rounded-md overflow-hidden text-sm">
@@ -114,27 +216,26 @@ function EvalGroupPanel({ group, showDecision }: { group: EvalGroup; showDecisio
       </button>
       {open && (
         <div className="divide-y">
+          {group.assessments.length > 0 && (
+            <div className="px-3 py-2 bg-blue-50/40">
+              <p className="text-[11px] font-medium text-slate-500 mb-1">Initial Assessment</p>
+              <div className="space-y-1">
+                {group.assessments.map((a, i) => (
+                  <div key={i} className="flex items-start justify-between gap-2 text-xs">
+                    <div className="min-w-0">
+                      <span className="font-medium">{a.name}</span>
+                      {a.comment && <p className="text-[11px] text-slate-600 italic whitespace-pre-wrap">{a.comment}</p>}
+                    </div>
+                    <span className={`shrink-0 ${scoreColor(a.score)}`}>{a.score}/10</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
           {group.items.length === 0 ? (
             <p className="px-3 py-2 text-xs text-muted-foreground italic">No evaluations yet</p>
           ) : group.items.map((e: any) => (
-            <div key={e.id} className="flex items-center justify-between px-3 py-2 gap-2">
-              <div className="flex items-center gap-1.5 min-w-0">
-                <span className="font-medium truncate">{e.evaluator_name || 'Unknown'}</span>
-                <Badge className={`text-[10px] px-1 py-0 border ${evalTypeBadgeClass(e.evaluation_type)}`}>
-                  {evalTypeLabel(e.evaluation_type)}
-                </Badge>
-              </div>
-              <div className="flex items-center gap-1.5 shrink-0">
-                <span className={`text-sm ${scoreColor(e.average_score || e.overall_average)}`}>
-                  {(e.average_score || e.overall_average)?.toFixed(1) ?? '—'}/10
-                </span>
-                {showDecision && e.decision && (
-                  <Badge className={`text-[10px] px-1 py-0 border ${decisionBadgeClass(e.decision)}`}>
-                    {decisionLabel(e.decision)}
-                  </Badge>
-                )}
-              </div>
-            </div>
+            <EvalRow key={e.id} e={e} kind={kind} showDecision={showDecision} />
           ))}
         </div>
       )}
@@ -153,6 +254,8 @@ export function CallReportDetailDialog({ report, isOpen, onClose }: CallReportDe
   const [crRevisions, setCrRevisions] = useState<any[]>([]);
   const [epRevisionsMap, setEpRevisionsMap] = useState<Record<string, any[]>>({});
   const [loadingEvals, setLoadingEvals] = useState(false);
+  // Initial assessments of the one-liner and its episodes, by entity id
+  const [assessmentsMap, setAssessmentsMap] = useState<Record<string, Assessment[]>>({});
   const [userRole, setUserRole] = useState<string>("");
 
   useEffect(() => {
@@ -199,7 +302,7 @@ export function CallReportDetailDialog({ report, isOpen, onClose }: CallReportDe
 
   useEffect(() => {
     if (!isOpen || !report?.id) {
-      setCrEvals([]); setEpEvalsMap({}); setCrRevisions([]); setEpRevisionsMap({});
+      setCrEvals([]); setEpEvalsMap({}); setCrRevisions([]); setEpRevisionsMap({}); setAssessmentsMap({});
       return;
     }
     setLoadingEvals(true);
@@ -214,6 +317,7 @@ export function CallReportDetailDialog({ report, isOpen, onClose }: CallReportDe
         ...(crReport?.segregatedEvaluations?.evaluatorEvaluations || []),
         ...(crReport?.segregatedEvaluations?.managementEvaluations || []),
         ...(crReport?.segregatedEvaluations?.programmerEvaluations || []),
+        ...(crReport?.segregatedEvaluations?.contentTeamEvaluations || []).flatMap((g: any) => g.evaluations || []),
       ];
       setCrEvals(allCrEvals);
       setCrRevisions(crRevData.revisions || []);
@@ -225,12 +329,28 @@ export function CallReportDetailDialog({ report, isOpen, onClose }: CallReportDe
           ...(ep.segregatedEvaluations?.evaluatorEvaluations || []),
           ...(ep.segregatedEvaluations?.managementEvaluations || []),
           ...(ep.segregatedEvaluations?.programmerEvaluations || []),
+          ...(ep.segregatedEvaluations?.contentTeamEvaluations || []).flatMap((g: any) => g.evaluations || []),
         ];
       }
       setEpEvalsMap(epMap);
 
-      // Fetch episode revisions for any episode that has revision evals
-      const epIds = Object.keys(epMap).filter(id => epMap[id].some((e: any) => e.revision_id));
+      // Initial assessments (who gave which score) for the one-liner and each episode
+      const epIds: string[] = (epData.episodes || []).map((ep: any) => ep.id);
+      const toAssessments = (d: any) => (d?.assessments || []) as any[];
+      Promise.all([
+        fetch(`/api/initial-assessments?entity_type=call_report&entity_id=${report.id}&_t=${t}`).then(r => r.ok ? r.json() : null),
+        epIds.length > 0
+          ? fetch(`/api/initial-assessments?entity_type=episode&entity_id=${epIds.join(",")}&_t=${t}`).then(r => r.ok ? r.json() : null)
+          : Promise.resolve(null),
+      ]).then(([crA, epA]) => {
+        const map: Record<string, Assessment[]> = {};
+        for (const a of [...toAssessments(crA), ...toAssessments(epA)]) {
+          (map[a.entity_id] ||= []).push({ score: a.score, comment: a.comment, name: a.assessor?.name || "Unknown" });
+        }
+        setAssessmentsMap(map);
+      }).catch(() => {});
+
+      // Every episode's revisions (their evaluations and initial assessments)
       if (epIds.length > 0) {
         Promise.all(epIds.map(id =>
           fetch(`/api/episodes/${id}/revisions?_t=${t}`).then(r => r.json()).then(d => ({ id, revs: d.revisions || [] })).catch(() => ({ id, revs: [] }))
@@ -434,7 +554,9 @@ export function CallReportDetailDialog({ report, isOpen, onClose }: CallReportDe
           )}
 
           {/* Evaluation Status */}
-          {(report.average_initial_assessment || report.overall_rating || report.evaluation_status || report.evaluation_deadline) && (
+          {/* Only when there's something to show (Team Overview projects carry none of these) */}
+          {(report.average_initial_assessment || report.overall_rating || report.evaluation_deadline
+            || (report.required_evaluators && report.completed_evaluations !== undefined)) && (
             <Card>
               <CardHeader>
                 <CardTitle className="text-lg flex items-center gap-2">
@@ -546,15 +668,16 @@ export function CallReportDetailDialog({ report, isOpen, onClose }: CallReportDe
                   <p className="text-sm font-semibold text-slate-600 uppercase tracking-wide text-xs">One-Liner</p>
                   {(() => {
                     const groups: EvalGroup[] = [
-                      { label: 'Original', revisionId: null, items: crEvals.filter(e => !e.revision_id) },
+                      { label: 'Original', revisionId: null, items: crEvals.filter(e => !e.revision_id), assessments: assessmentsMap[report.id] || [] },
                       ...crRevisions.map((rev: any) => ({
                         label: `Revision ${rev.revision_number}${rev.attachment_name ? ` — ${rev.attachment_name}` : ''}`,
                         revisionId: rev.id,
                         items: crEvals.filter(e => e.revision_id === rev.id),
+                        assessments: revisionAssessments(rev),
                       })),
-                    ].filter(g => g.items.length > 0 || g.revisionId === null);
+                    ].filter(g => g.items.length > 0 || g.assessments.length > 0 || g.revisionId === null);
                     return groups.length > 0 ? groups.map(g => (
-                      <EvalGroupPanel key={g.revisionId ?? 'base'} group={g} showDecision={true} />
+                      <EvalGroupPanel key={g.revisionId ?? 'base'} group={g} kind="one-liner" showDecision={true} />
                     )) : (
                       <p className="text-sm text-muted-foreground italic">No evaluations submitted yet.</p>
                     );
@@ -570,13 +693,14 @@ export function CallReportDetailDialog({ report, isOpen, onClose }: CallReportDe
                     const epEvals = epEvalsMap[ep.id] || [];
                     const epRevs = epRevisionsMap[ep.id] || [];
                     const groups: EvalGroup[] = [
-                      { label: 'Original', revisionId: null, items: epEvals.filter(e => !e.revision_id) },
+                      { label: 'Original', revisionId: null, items: epEvals.filter(e => !e.revision_id), assessments: assessmentsMap[ep.id] || [] },
                       ...epRevs.map((rev: any) => ({
                         label: `Revision ${rev.revision_number}${rev.attachment_name ? ` — ${rev.attachment_name}` : ''}`,
                         revisionId: rev.id,
                         items: epEvals.filter(e => e.revision_id === rev.id),
+                        assessments: revisionAssessments(rev),
                       })),
-                    ].filter(g => g.items.length > 0);
+                    ].filter(g => g.items.length > 0 || g.assessments.length > 0);
                     return (
                       <div key={ep.id} className="space-y-1.5">
                         <div className="text-sm font-medium">
@@ -584,9 +708,9 @@ export function CallReportDetailDialog({ report, isOpen, onClose }: CallReportDe
                           {ep.title || ''}
                         </div>
                         {groups.length > 0 ? groups.map(g => (
-                          <EvalGroupPanel key={g.revisionId ?? 'base'} group={g} />
+                          <EvalGroupPanel key={g.revisionId ?? 'base'} group={g} kind="episode" />
                         )) : (
-                          <p className="text-xs text-muted-foreground italic pl-1">No evaluations yet.</p>
+                          <p className="text-xs text-muted-foreground italic pl-1">No assessments or evaluations yet.</p>
                         )}
                       </div>
                     );
