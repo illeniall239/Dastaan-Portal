@@ -223,38 +223,52 @@ function EpisodeGroupValue({ rating }: { rating: TeamProjectReport["ratings"]["e
   return <><span className="text-gray-700">{episodeRange(rating.episodes)}</span> · <RatingValue score={rating.average} /></>;
 }
 
-/** One-liner: Content Head (name – rating each), Salman's Team, Humera's Team. Episodes: each group's
- *  rated episodes and average. */
+/** Ratings table: rows One-liner / Episodes, a column per group (Content Head, Salman's Team, Humera's Team) */
 function ProjectRatings({ ratings, hasEpisodes }: { ratings: TeamProjectReport["ratings"]; hasEpisodes: boolean }) {
+  const cell = "border border-gray-200 px-2 py-1 align-top";
   return (
-    <div className="mt-1.5 space-y-0.5 text-[11px] text-gray-500">
-    <div className="flex flex-wrap gap-x-4 gap-y-0.5">
-      <span className="font-medium text-gray-600">One-liner</span>
-      <span>
-        Content Head:{" "}
-        {ratings.contentHeads.length === 0 ? (
-          <RatingValue score={null} />
-        ) : (
-          ratings.contentHeads.map((h, i) => (
-            <span key={i}>
-              {i > 0 && ", "}
-              <span className="text-gray-700">{h.name}</span> – <RatingValue score={h.score} />
-            </span>
-          ))
+    <table className="mt-2 w-full table-fixed border-collapse text-[11px] text-gray-500">
+      <colgroup>
+        <col className="w-20" />
+        <col />
+        <col />
+        <col />
+      </colgroup>
+      <thead>
+        <tr className="bg-gray-50 text-gray-600">
+          <th className={`${cell} text-left font-medium`} />
+          <th className={`${cell} text-left font-medium`}>Content Head</th>
+          <th className={`${cell} text-left font-medium`}>Salman&apos;s Team</th>
+          <th className={`${cell} text-left font-medium`}>Humera&apos;s Team</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <th className={`${cell} text-left font-medium text-gray-600`}>One-liner</th>
+          <td className={cell}>
+            {ratings.contentHeads.length === 0 ? (
+              <RatingValue score={null} />
+            ) : (
+              ratings.contentHeads.map((h, i) => (
+                <div key={i}>
+                  <span className="text-gray-700">{h.name}</span> – <RatingValue score={h.score} />
+                </div>
+              ))
+            )}
+          </td>
+          <td className={cell}><RatingValue score={ratings.programming} /></td>
+          <td className={cell}><RatingValue score={ratings.contentDev} /></td>
+        </tr>
+        {hasEpisodes && (
+          <tr>
+            <th className={`${cell} text-left font-medium text-gray-600`}>Episodes</th>
+            <td className={cell}><EpisodeGroupValue rating={ratings.episodes.contentHead} /></td>
+            <td className={cell}><EpisodeGroupValue rating={ratings.episodes.programming} /></td>
+            <td className={cell}><EpisodeGroupValue rating={ratings.episodes.contentDev} /></td>
+          </tr>
         )}
-      </span>
-      <span>Salman&apos;s Team: <RatingValue score={ratings.programming} /></span>
-      <span>Humera&apos;s Team: <RatingValue score={ratings.contentDev} /></span>
-    </div>
-    {hasEpisodes && (
-      <div className="flex flex-wrap gap-x-4 gap-y-0.5">
-        <span className="font-medium text-gray-600">Episodes</span>
-        <span>Content Head: <EpisodeGroupValue rating={ratings.episodes.contentHead} /></span>
-        <span>Salman&apos;s Team: <EpisodeGroupValue rating={ratings.episodes.programming} /></span>
-        <span>Humera&apos;s Team: <EpisodeGroupValue rating={ratings.episodes.contentDev} /></span>
-      </div>
-    )}
-    </div>
+      </tbody>
+    </table>
   );
 }
 
