@@ -58,15 +58,25 @@ const getStatusColor = (status: string): string => {
 };
 
 // ── helpers for the eval section ──────────────────────────────────────────
-function evalTypeLabel(type: string) {
-  if (type === 'management') return 'Management';
-  if (type === 'programmer') return 'Programmer';
-  return 'Evaluator';
-}
-function evalTypeBadgeClass(type: string) {
-  if (type === 'management') return 'bg-purple-100 text-purple-700 border-purple-200';
-  if (type === 'programmer') return 'bg-green-100 text-green-700 border-green-200';
-  return 'bg-blue-100 text-blue-700 border-blue-200';
+// Who an evaluation is from, by the team the API sorted it into (not the person's role: e.g. Salman is
+// management but evaluates with the Programming Team)
+type EvalGroupKey = 'content_head' | 'programming' | 'content_dev' | 'management';
+const EVAL_GROUP_BADGE: Record<EvalGroupKey, { label: string; cls: string }> = {
+  content_head: { label: 'Content Head', cls: 'bg-blue-100 text-blue-700 border-blue-200' },
+  programming:  { label: "Salman's Team", cls: 'bg-green-100 text-green-700 border-green-200' },
+  content_dev:  { label: "Humera's Team", cls: 'bg-amber-100 text-amber-700 border-amber-200' },
+  management:   { label: 'Management', cls: 'bg-purple-100 text-purple-700 border-purple-200' },
+};
+/** All evaluations from the API's segregated lists, each tagged with its group */
+function groupedEvaluations(seg: any): any[] {
+  if (!seg) return [];
+  const tag = (list: any[] | undefined, group: EvalGroupKey) => (list || []).map((e) => ({ ...e, evalGroup: group }));
+  return [
+    ...tag(seg.evaluatorEvaluations, 'content_head'),
+    ...tag(seg.managementEvaluations, 'management'),
+    ...tag(seg.programmerEvaluations, 'programming'),
+    ...tag((seg.contentTeamEvaluations || []).flatMap((g: any) => g.evaluations || []), 'content_dev'),
+  ];
 }
 function decisionBadgeClass(decision: string | null) {
   if (decision === 'approve') return 'bg-green-100 text-green-700 border-green-200';
@@ -147,9 +157,11 @@ function EvalRow({ e, kind, showDecision }: { e: any; kind: "one-liner" | "episo
         <div className="flex items-center gap-1.5 min-w-0">
           {open ? <ChevronDown className="h-3 w-3 text-slate-400 shrink-0" /> : <ChevronRight className="h-3 w-3 text-slate-400 shrink-0" />}
           <span className="font-medium truncate">{e.evaluator_name || 'Unknown'}</span>
-          <Badge className={`text-[10px] px-1 py-0 border ${evalTypeBadgeClass(e.evaluation_type)}`}>
-            {evalTypeLabel(e.evaluation_type)}
-          </Badge>
+          {EVAL_GROUP_BADGE[e.evalGroup as EvalGroupKey] && (
+            <Badge className={`text-[10px] px-1 py-0 border ${EVAL_GROUP_BADGE[e.evalGroup as EvalGroupKey].cls}`}>
+              {EVAL_GROUP_BADGE[e.evalGroup as EvalGroupKey].label}
+            </Badge>
+          )}
         </div>
         <div className="flex items-center gap-1.5 shrink-0">
           <span className={`text-sm ${scoreColor(score)}`}>
@@ -313,24 +325,14 @@ export function CallReportDetailDialog({ report, isOpen, onClose }: CallReportDe
       fetch(`/api/call-reports/${report.id}/revisions?_t=${t}`).then(r => { if (!r.ok) throw new Error(); return r.json(); }),
     ]).then(([crData, epData, crRevData]) => {
       const crReport = crData.callReports?.[0];
-      const allCrEvals = [
-        ...(crReport?.segregatedEvaluations?.evaluatorEvaluations || []),
-        ...(crReport?.segregatedEvaluations?.managementEvaluations || []),
-        ...(crReport?.segregatedEvaluations?.programmerEvaluations || []),
-        ...(crReport?.segregatedEvaluations?.contentTeamEvaluations || []).flatMap((g: any) => g.evaluations || []),
-      ];
+      const allCrEvals = groupedEvaluations(crReport?.segregatedEvaluations);
       setCrEvals(allCrEvals);
       setCrRevisions(crRevData.revisions || []);
 
       // Episode evaluations: map episodeId → flat list
       const epMap: Record<string, any[]> = {};
       for (const ep of (epData.episodes || [])) {
-        epMap[ep.id] = [
-          ...(ep.segregatedEvaluations?.evaluatorEvaluations || []),
-          ...(ep.segregatedEvaluations?.managementEvaluations || []),
-          ...(ep.segregatedEvaluations?.programmerEvaluations || []),
-          ...(ep.segregatedEvaluations?.contentTeamEvaluations || []).flatMap((g: any) => g.evaluations || []),
-        ];
+        epMap[ep.id] = groupedEvaluations(ep.segregatedEvaluations);
       }
       setEpEvalsMap(epMap);
 
