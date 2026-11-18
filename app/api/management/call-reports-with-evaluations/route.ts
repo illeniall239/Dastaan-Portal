@@ -69,7 +69,9 @@ export async function GET(request: NextRequest) {
         writer_name,
         meeting_date,
         created_at,
-        updated_at
+        updated_at,
+        overall_rating,
+        average_initial_assessment
       `)
       .in("id", uniqueCallReportIds)
       .order("created_at", { ascending: false });
@@ -188,6 +190,7 @@ export async function GET(request: NextRequest) {
         meetingDate: callReport.meeting_date,
         createdAt: callReport.created_at,
         updatedAt: callReport.updated_at,
+        initialAssessment: callReport.average_initial_assessment ?? callReport.overall_rating ?? null,
         evaluationCount: segregatedEvaluations.total,
         segregatedEvaluations,
         attachments: attachmentsByCallReport.get(callReport.id) || [],

@@ -200,6 +200,64 @@ function ScriptBadge({ report }: { report: TeamProjectReport }) {
   );
 }
 
+function RatingValue({ score }: { score: number | null }) {
+  if (score == null) return <span className="text-gray-400">Not evaluated</span>;
+  const cls = score >= 7 ? "text-green-700" : score >= 5 ? "text-amber-700" : "text-red-700";
+  return <span className={`font-semibold ${cls}`}>{score.toFixed(1)}</span>;
+}
+
+/** "EP 1–6", "EP 1–3, 5" */
+function episodeRange(numbers: number[]): string {
+  const parts: string[] = [];
+  for (let i = 0; i < numbers.length; i++) {
+    let j = i;
+    while (j + 1 < numbers.length && numbers[j + 1] === numbers[j] + 1) j++;
+    parts.push(j > i ? `${numbers[i]}–${numbers[j]}` : `${numbers[i]}`);
+    i = j;
+  }
+  return `EP ${parts.join(", ")}`;
+}
+
+function EpisodeGroupValue({ rating }: { rating: TeamProjectReport["ratings"]["episodes"]["contentHead"] }) {
+  if (!rating) return <RatingValue score={null} />;
+  return <><span className="text-gray-700">{episodeRange(rating.episodes)}</span> · <RatingValue score={rating.average} /></>;
+}
+
+/** One-liner: Content Head (name – rating each), Salman's Team, Humera's Team. Episodes: each group's
+ *  rated episodes and average. */
+function ProjectRatings({ ratings, hasEpisodes }: { ratings: TeamProjectReport["ratings"]; hasEpisodes: boolean }) {
+  return (
+    <div className="mt-1.5 space-y-0.5 text-[11px] text-gray-500">
+    <div className="flex flex-wrap gap-x-4 gap-y-0.5">
+      <span className="font-medium text-gray-600">One-liner</span>
+      <span>
+        Content Head:{" "}
+        {ratings.contentHeads.length === 0 ? (
+          <RatingValue score={null} />
+        ) : (
+          ratings.contentHeads.map((h, i) => (
+            <span key={i}>
+              {i > 0 && ", "}
+              <span className="text-gray-700">{h.name}</span> – <RatingValue score={h.score} />
+            </span>
+          ))
+        )}
+      </span>
+      <span>Salman&apos;s Team: <RatingValue score={ratings.programming} /></span>
+      <span>Humera&apos;s Team: <RatingValue score={ratings.contentDev} /></span>
+    </div>
+    {hasEpisodes && (
+      <div className="flex flex-wrap gap-x-4 gap-y-0.5">
+        <span className="font-medium text-gray-600">Episodes</span>
+        <span>Content Head: <EpisodeGroupValue rating={ratings.episodes.contentHead} /></span>
+        <span>Salman&apos;s Team: <EpisodeGroupValue rating={ratings.episodes.programming} /></span>
+        <span>Humera&apos;s Team: <EpisodeGroupValue rating={ratings.episodes.contentDev} /></span>
+      </div>
+    )}
+    </div>
+  );
+}
+
 function ProjectsList({ projects, expandedReports, toggleReportEpisodes, openReport }: {
   projects: TeamProjectReport[];
   expandedReports: Set<string>;
@@ -267,6 +325,7 @@ function ProjectsList({ projects, expandedReports, toggleReportEpisodes, openRep
                   style={{ width: `${total > 0 ? Math.max(pct, 2) : 0}%` }}
                 />
               </div>
+              <ProjectRatings ratings={report.ratings} hasEpisodes={report.episodes.length > 0} />
             </div>
 
             {episodesExpanded && report.episodes.length > 0 && (

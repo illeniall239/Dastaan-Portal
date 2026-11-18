@@ -1,5 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { formatTeamDisplayName, getTeamDisplayLabel } from "@/lib/management/team-display";
+import { getProgrammingTeamMemberIds } from "@/lib/management/programming-team";
 
 export interface TeamProjectEpisode {
   id: string;
@@ -9,6 +10,27 @@ export interface TeamProjectEpisode {
   evalCompleted: number;
   evalTotal: number;
   evalStatus: "completed" | "in_progress" | "pending" | null;
+}
+
+/** A group's episode ratings: which episodes it rated, and its average across them */
+export interface EpisodeGroupRating {
+  episodes: number[]; // episode numbers, ascending
+  average: number;
+}
+
+/**
+ * A project's ratings, by who gave them (each person's latest score per item, so a re-rated revision
+ * counts). Grouped the same way as the drill-down badges. null = not evaluated by that group.
+ */
+export interface TeamProjectRatings {
+  contentHeads: { name: string; score: number }[]; // one-liner
+  programming: number | null; // one-liner, Salman's Team (average)
+  contentDev: number | null;  // one-liner, Humera's Team (average)
+  episodes: {
+    contentHead: EpisodeGroupRating | null;
+    programming: EpisodeGroupRating | null;
+    contentDev: EpisodeGroupRating | null;
+  };
 }
 
 export interface TeamProjectReport {
@@ -29,6 +51,7 @@ export interface TeamProjectReport {
   scriptStatus: "on_schedule" | "on_hold" | "behind_schedule" | null;
   scriptCurrentPhase: string | null;
   evaluatedEpisodes: number;
+  ratings: TeamProjectRatings;
 }
 
 export interface TeamProjectGroup {
@@ -72,6 +95,8 @@ export async function getTeamProjects(): Promise<TeamProjectGroup[]> {
     console.error("Error fetching teams:", teamsError);
     return [];
   }
+
+  const ratingsByReport = await getRatings(admin, reports ?? [], allTeams ?? []);
   if (reportsError) {
     console.error("Error fetching team projects:", reportsError);
   }
@@ -167,6 +192,7 @@ export async function getTeamProjects(): Promise<TeamProjectGroup[]> {
       scriptStatus,
       scriptCurrentPhase,
       evaluatedEpisodes,
+      ratings: ratingsByReport.get(report.id) ?? NO_RATINGS,
     });
   }
 
@@ -181,4 +207,109 @@ export async function getTeamProjects(): Promise<TeamProjectGroup[]> {
       display_label: getTeamDisplayLabel(teamHead?.email),
     };
   });
+}
+
+const NO_RATINGS: TeamProjectRatings = {
+  contentHeads: [], programming: null, contentDev: null,
+  episodes: { contentHead: null, programming: null, contentDev: null },
+};
+
+type Group = "contentHead" | "programming" | "contentDev" | null;
+
+/**
+ * Ratings per project, from the one-liner's and the episodes' evaluations, grouped like the management
+ * drill-down (call-reports-with-evaluations): Content Development (Humera's team) and Programming Team
+ * members by team, whatever their role; otherwise content heads (evaluator role). Management's own
+ * ratings aren't part of this summary; feedback-only evaluations have no score and don't count.
+ */
+async function getRatings(
+  admin: ReturnType<typeof createAdminClient>,
+  reports: any[],
+  allTeams: any[]
+): Promise<Map<string, TeamProjectRatings>> {
+  const result = new Map<string, TeamProjectRatings>();
+  if (reports.length === 0) return result;
+
+  // episode id -> its project and number
+  const episodeInfo = new Map<string, { reportId: string; number: number }>();
+  for (const r of reports) for (const ep of r.episodes ?? []) episodeInfo.set(ep.id, { reportId: r.id, number: ep.episode_number });
+
+  const contentDevTeamIds = allTeams
+    .filter((t) => t.team_type === "management" && t.team_head?.email === "humera.safder@geo.tv")
+    .map((t) => t.id);
+  const [{ data: crEvals }, { data: epEvals }, programmingIds, { data: contentDevUsers }] = await Promise.all([
+    admin
+      .from("call_report_evaluations_with_type")
+      .select("call_report_id, evaluator_id, evaluator_name, evaluation_type, average_score, submitted_at, created_at")
+      .in("call_report_id", reports.map((r) => r.id))
+      .not("average_score", "is", null),
+    // All scored episode evaluations (filtering by ~1000 episode ids would overflow the request URL)
+    admin
+      .from("episodic_evaluations_with_type")
+      .select("episode_id, evaluator_id, evaluation_type, overall_average, submitted_at, created_at")
+      .not("overall_average", "is", null),
+    getProgrammingTeamMemberIds(admin),
+    contentDevTeamIds.length
+      ? admin.from("users").select("id").in("team_id", contentDevTeamIds)
+      : Promise.resolve({ data: [] as { id: string }[] }),
+  ]);
+  const contentDevIds = new Set((contentDevUsers || []).map((u) => u.id));
+  const groupOf = (e: any): Group =>
+    contentDevIds.has(e.evaluator_id) ? "contentDev"
+      : programmingIds.has(e.evaluator_id) || e.evaluation_type === "programmer" ? "programming"
+        : e.evaluation_type === "evaluator" ? "contentHead"
+          : null;
+
+  // Each person's latest score per item
+  const latestOf = (rows: any[], itemKey: string) => {
+    const latest = new Map<string, any>();
+    for (const e of rows) {
+      const key = `${e[itemKey]}:${e.evaluator_id}`;
+      const when = e.submitted_at || e.created_at;
+      const prev = latest.get(key);
+      if (!prev || when > (prev.submitted_at || prev.created_at)) latest.set(key, e);
+    }
+    return latest.values();
+  };
+  const avg = (xs: number[]) => Math.round((xs.reduce((a, b) => a + b, 0) / xs.length) * 10) / 10;
+  const ratingsFor = (id: string) => {
+    if (!result.has(id)) result.set(id, structuredClone(NO_RATINGS));
+    return result.get(id)!;
+  };
+
+  // One-liner
+  const oneLiner = new Map<string, { prog: number[]; dev: number[] }>();
+  for (const e of latestOf(crEvals || [], "call_report_id")) {
+    const group = groupOf(e);
+    const score = Number(e.average_score);
+    const r = ratingsFor(e.call_report_id);
+    const g = oneLiner.get(e.call_report_id) ?? { prog: [], dev: [] };
+    if (group === "contentHead") r.contentHeads.push({ name: e.evaluator_name || "Unknown", score });
+    else if (group === "programming") g.prog.push(score);
+    else if (group === "contentDev") g.dev.push(score);
+    oneLiner.set(e.call_report_id, g);
+  }
+  for (const [id, g] of oneLiner) {
+    const r = ratingsFor(id);
+    r.programming = g.prog.length ? avg(g.prog) : null;
+    r.contentDev = g.dev.length ? avg(g.dev) : null;
+  }
+
+  // Episodes: per project and group, the episodes rated and the average of those scores
+  const episodes = new Map<string, { numbers: Set<number>; scores: number[] }>();
+  for (const e of latestOf(epEvals || [], "episode_id")) {
+    const info = episodeInfo.get(e.episode_id);
+    const group = groupOf(e);
+    if (!info || !group) continue;
+    const key = `${info.reportId}:${group}`;
+    const g = episodes.get(key) ?? { numbers: new Set<number>(), scores: [] };
+    g.numbers.add(info.number);
+    g.scores.push(Number(e.overall_average));
+    episodes.set(key, g);
+  }
+  for (const [key, g] of episodes) {
+    const [reportId, group] = key.split(":") as [string, Exclude<Group, null>];
+    ratingsFor(reportId).episodes[group] = { episodes: [...g.numbers].sort((a, b) => a - b), average: avg(g.scores) };
+  }
+  return result;
 }

@@ -127,16 +127,18 @@ const EPISODE_PARAMS: [string, string, string?][] = [
   ["Overall Assessment", "overall_assessment_score", "overall_assessment_comment"],
 ];
 
-interface Assessment { score: number; name: string; comment?: string | null }
+// An initial assessment as stored on the item itself (one-liner, episode or revision); the name only
+// where it's recorded (revisions)
+interface Assessment { score: number; name?: string | null }
+const assessment = (score: unknown, name?: string | null): Assessment[] =>
+  score != null && score !== "" ? [{ score: Number(score), name }] : [];
 
 /** An evaluation's overall score; null for a feedback-only evaluation (written feedback, no scores) */
 const evalScore = (e: any): number | null => e.average_score ?? e.overall_average ?? null;
 
 /** A revision's initial assessment (one score, by whoever assessed it) */
 function revisionAssessments(rev: any): Assessment[] {
-  return rev.initial_assessment != null
-    ? [{ score: rev.initial_assessment, name: rev.assessed_by_user?.name || "Unknown" }]
-    : [];
+  return assessment(rev.initial_assessment, rev.assessed_by_user?.name);
 }
 
 interface EvalGroup {
@@ -241,19 +243,15 @@ function EvalGroupPanel({ group, kind, showDecision }: { group: EvalGroup; kind:
       {open && (
         <div className="divide-y">
           {group.assessments.length > 0 && (
-            <div className="px-3 py-2 bg-blue-50/40">
-              <p className="text-[11px] font-medium text-slate-500 mb-1">Initial Assessment</p>
-              <div className="space-y-1">
-                {group.assessments.map((a, i) => (
-                  <div key={i} className="flex items-start justify-between gap-2 text-xs">
-                    <div className="min-w-0">
-                      <span className="font-medium">{a.name}</span>
-                      {a.comment && <p className="text-[11px] text-slate-600 italic whitespace-pre-wrap">{a.comment}</p>}
-                    </div>
-                    <span className={`shrink-0 ${scoreColor(a.score)}`}>{a.score}/10</span>
-                  </div>
-                ))}
-              </div>
+            <div className="px-3 py-2 bg-blue-50/40 space-y-1">
+              {group.assessments.map((a, i) => (
+                <div key={i} className="flex items-center justify-between gap-2 text-xs">
+                  <span className="text-slate-500">
+                    Initial Assessment{a.name && <span className="text-slate-400"> · by {a.name}</span>}
+                  </span>
+                  <span className={`shrink-0 ${scoreColor(a.score)}`}>{+a.score.toFixed(1)}/10</span>
+                </div>
+              ))}
             </div>
           )}
           {group.items.length === 0 ? (
@@ -278,8 +276,8 @@ export function CallReportDetailDialog({ report, isOpen, onClose }: CallReportDe
   const [crRevisions, setCrRevisions] = useState<any[]>([]);
   const [epRevisionsMap, setEpRevisionsMap] = useState<Record<string, any[]>>({});
   const [loadingEvals, setLoadingEvals] = useState(false);
-  // Initial assessments of the one-liner and its episodes, by entity id
-  const [assessmentsMap, setAssessmentsMap] = useState<Record<string, Assessment[]>>({});
+  // The one-liner's initial assessment (stored on the call report)
+  const [crAssessment, setCrAssessment] = useState<number | null>(null);
   const [userRole, setUserRole] = useState<string>("");
 
   useEffect(() => {
@@ -326,7 +324,7 @@ export function CallReportDetailDialog({ report, isOpen, onClose }: CallReportDe
 
   useEffect(() => {
     if (!isOpen || !report?.id) {
-      setCrEvals([]); setEpEvalsMap({}); setCrRevisions([]); setEpRevisionsMap({}); setAssessmentsMap({});
+      setCrEvals([]); setEpEvalsMap({}); setCrRevisions([]); setEpRevisionsMap({}); setCrAssessment(null);
       return;
     }
     setLoadingEvals(true);
@@ -339,6 +337,7 @@ export function CallReportDetailDialog({ report, isOpen, onClose }: CallReportDe
       const crReport = crData.callReports?.[0];
       const allCrEvals = groupedEvaluations(crReport?.segregatedEvaluations);
       setCrEvals(allCrEvals);
+      setCrAssessment(crReport?.initialAssessment ?? null);
       setCrRevisions(crRevData.revisions || []);
 
       // Episode evaluations: map episodeId → flat list
@@ -348,21 +347,7 @@ export function CallReportDetailDialog({ report, isOpen, onClose }: CallReportDe
       }
       setEpEvalsMap(epMap);
 
-      // Initial assessments (who gave which score) for the one-liner and each episode
       const epIds: string[] = (epData.episodes || []).map((ep: any) => ep.id);
-      const toAssessments = (d: any) => (d?.assessments || []) as any[];
-      Promise.all([
-        fetch(`/api/initial-assessments?entity_type=call_report&entity_id=${report.id}&_t=${t}`).then(r => r.ok ? r.json() : null),
-        epIds.length > 0
-          ? fetch(`/api/initial-assessments?entity_type=episode&entity_id=${epIds.join(",")}&_t=${t}`).then(r => r.ok ? r.json() : null)
-          : Promise.resolve(null),
-      ]).then(([crA, epA]) => {
-        const map: Record<string, Assessment[]> = {};
-        for (const a of [...toAssessments(crA), ...toAssessments(epA)]) {
-          (map[a.entity_id] ||= []).push({ score: a.score, comment: a.comment, name: a.assessor?.name || "Unknown" });
-        }
-        setAssessmentsMap(map);
-      }).catch(() => {});
 
       // Every episode's revisions (their evaluations and initial assessments)
       if (epIds.length > 0) {
@@ -682,7 +667,7 @@ export function CallReportDetailDialog({ report, isOpen, onClose }: CallReportDe
                   <p className="text-sm font-semibold text-slate-600 uppercase tracking-wide text-xs">One-Liner</p>
                   {(() => {
                     const groups: EvalGroup[] = [
-                      { label: 'Original', revisionId: null, items: crEvals.filter(e => !e.revision_id), assessments: assessmentsMap[report.id] || [] },
+                      { label: 'Original', revisionId: null, items: crEvals.filter(e => !e.revision_id), assessments: assessment(crAssessment) },
                       ...crRevisions.map((rev: any) => ({
                         label: `Revision ${rev.revision_number}${rev.attachment_name ? ` — ${rev.attachment_name}` : ''}`,
                         revisionId: rev.id,
@@ -707,7 +692,7 @@ export function CallReportDetailDialog({ report, isOpen, onClose }: CallReportDe
                     const epEvals = epEvalsMap[ep.id] || [];
                     const epRevs = epRevisionsMap[ep.id] || [];
                     const groups: EvalGroup[] = [
-                      { label: 'Original', revisionId: null, items: epEvals.filter(e => !e.revision_id), assessments: assessmentsMap[ep.id] || [] },
+                      { label: 'Original', revisionId: null, items: epEvals.filter(e => !e.revision_id), assessments: assessment(ep.average_initial_assessment ?? ep.initial_assessment) },
                       ...epRevs.map((rev: any) => ({
                         label: `Revision ${rev.revision_number}${rev.attachment_name ? ` — ${rev.attachment_name}` : ''}`,
                         revisionId: rev.id,

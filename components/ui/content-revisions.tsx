@@ -215,7 +215,7 @@ export function ContentRevisions({
   const canViewAssessment = userRole && [
     "content_manager", "content_creator", "content_head", "admin", "management", "programmer", "gcm", "evaluator"
   ].includes(userRole);
-  const canAssess = userRole && [
+  const canAssess = canEdit && userRole && [
     "content_manager", "content_creator", "content_head", "admin", "management"
   ].includes(userRole);
 
