@@ -33,10 +33,11 @@ export function UnifiedEvaluationsDashboard({
   userRole,
 }: UnifiedEvaluationsDashboardProps) {
   const [activeTab, setActiveTab] = useState("pending");
+  const [pending, setPending] = useState<{ oneLiners: number; episodes: number } | null>(null);
 
   return (
     <div className="space-y-4">
-      <CompactStatsStrip teams={teams} externalEvaluations={evaluations} />
+      <CompactStatsStrip teams={teams} externalEvaluations={evaluations} pending={pending} />
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="grid w-full grid-cols-3">
@@ -46,7 +47,7 @@ export function UnifiedEvaluationsDashboard({
         </TabsList>
 
         <TabsContent value="pending" className="mt-4">
-          <PendingApprovalsUnified userId={userId} userRole={userRole} />
+          <PendingApprovalsUnified userId={userId} userRole={userRole} onPendingCount={setPending} />
         </TabsContent>
 
         <TabsContent value="internal" className="mt-4">

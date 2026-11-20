@@ -351,9 +351,11 @@ function mergeProjects(
 interface Props {
   userId: string;
   userRole: string;
+  /** Called with what's pending once the queue loads (for the stats strip above the tabs) */
+  onPendingCount?: (pending: { oneLiners: number; episodes: number }) => void;
 }
 
-export function PendingApprovalsUnified({ userId, userRole }: Props) {
+export function PendingApprovalsUnified({ userId, userRole, onPendingCount }: Props) {
   const [projects, setProjects] = useState<UnifiedProject[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -386,6 +388,7 @@ export function PendingApprovalsUnified({ userId, userRole }: Props) {
       if (!olRes.ok) throw new Error(olData.error || "Failed to load one-liners");
       if (!epRes.ok) throw new Error(epData.error || "Failed to load episodes");
 
+      onPendingCount?.({ oneLiners: (olData.callReports || []).length, episodes: (epData.episodes || []).length });
       setProjects(
         mergeProjects(
           olData.callReports || [],
@@ -399,6 +402,7 @@ export function PendingApprovalsUnified({ userId, userRole }: Props) {
     } finally {
       setLoading(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- report once per load, not when the parent re-renders
   }, []);
 
   useEffect(() => { fetchAll(); }, [fetchAll]);

@@ -7,29 +7,24 @@ import { FileText, Users, Clock, Loader2 } from "lucide-react";
 interface CompactStatsStripProps {
   teams: any[];
   externalEvaluations: any[];
+  /** What the Pending Evaluations tab lists for this manager (null while it loads) */
+  pending: { oneLiners: number; episodes: number } | null;
 }
 
-export function CompactStatsStrip({ teams, externalEvaluations }: CompactStatsStripProps) {
+export function CompactStatsStrip({ teams, externalEvaluations, pending }: CompactStatsStripProps) {
   const [stats, setStats] = useState({
     totalCallReportEvals: 0,
     totalEpisodicEvals: 0,
     activeEvaluators: 0,
-    pendingEvals: 0,
   });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function fetchStats() {
       try {
-        const [statsRes, pendingRes] = await Promise.all([
-          fetch("/api/management/evaluator-stats"),
-          fetch("/api/management/pending-evaluations"),
-        ]);
-
-        if (!statsRes.ok || !pendingRes.ok) throw new Error("Failed to fetch");
-
+        const statsRes = await fetch("/api/management/evaluator-stats");
+        if (!statsRes.ok) throw new Error("Failed to fetch");
         const { stats: evaluatorStats } = await statsRes.json();
-        const { pendingCount } = await pendingRes.json();
 
         const totalCallReportEvals = evaluatorStats.reduce(
           (sum: number, s: any) => sum + (s.oneLinerEvaluations || 0),
@@ -44,14 +39,12 @@ export function CompactStatsStrip({ teams, externalEvaluations }: CompactStatsSt
           totalCallReportEvals,
           totalEpisodicEvals,
           activeEvaluators: teams.reduce((sum, team) => sum + (team.member_count || 0), 0),
-          pendingEvals: pendingCount ?? 0,
         });
       } catch {
         setStats({
           totalCallReportEvals: 0,
           totalEpisodicEvals: 0,
           activeEvaluators: teams.reduce((sum, team) => sum + (team.member_count || 0), 0),
-          pendingEvals: 0,
         });
       } finally {
         setLoading(false);
@@ -61,11 +54,17 @@ export function CompactStatsStrip({ teams, externalEvaluations }: CompactStatsSt
     fetchStats();
   }, [teams, externalEvaluations]);
 
-  const items = [
+  const items: { label: string; value: number | null; sub?: string; icon: typeof Clock; color: string }[] = [
     { label: "One-Liner Evals", value: stats.totalCallReportEvals, icon: FileText, color: "text-blue-600" },
     { label: "Episodic Evals", value: stats.totalEpisodicEvals, icon: FileText, color: "text-purple-600" },
     { label: "Active Evaluators", value: stats.activeEvaluators, icon: Users, color: "text-green-600" },
-    { label: "Pending", value: stats.pendingEvals, icon: Clock, color: "text-amber-600" },
+    {
+      label: "Pending for you",
+      value: pending ? pending.oneLiners + pending.episodes : null,
+      sub: pending ? `${pending.oneLiners} one-liners · ${pending.episodes} episodes` : undefined,
+      icon: Clock,
+      color: "text-amber-600",
+    },
   ];
 
   return (
@@ -75,12 +74,13 @@ export function CompactStatsStrip({ teams, externalEvaluations }: CompactStatsSt
           <CardContent className="p-3 flex items-center gap-3">
             <item.icon className={`h-4 w-4 ${item.color} flex-shrink-0`} />
             <div className="min-w-0">
-              {loading ? (
+              {loading || item.value == null ? (
                 <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
               ) : (
                 <div className="text-lg font-bold text-gray-900">{item.value}</div>
               )}
               <p className="text-[11px] text-muted-foreground truncate">{item.label}</p>
+              {item.sub && <p className="text-[10px] text-muted-foreground/80 truncate">{item.sub}</p>}
             </div>
           </CardContent>
         </Card>
