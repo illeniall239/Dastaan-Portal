@@ -48,12 +48,14 @@ interface PendingCallReport {
   createdAt: string;
   averageScore: number | null;
   finalDecision: string | null;
-  lastEvaluatedAt: string;
+  lastEvaluatedAt: string | null; // null = nobody has evaluated it yet
   evaluationCount: number;
   discussionCount: number;
   revisionCount: number;
   originalSubmissionDate: string | null;
   attachments: AttachmentItem[];
+  evaluatedByMe: boolean;
+  myScore: number | null; // null with evaluatedByMe = feedback only
 }
 
 interface ReviewedCallReport extends PendingCallReport {
@@ -78,6 +80,8 @@ interface EpisodeQueueItem {
   attachmentName: string | null;
   originalSubmissionDate: string | null;
   revisionCount: number;
+  evaluatedByMe: boolean;
+  myScore: number | null;
 }
 
 interface UnifiedProject {
@@ -269,6 +273,16 @@ function ScoreBox({ label, score, comment }: { label: string; score: number | nu
       <p className="font-semibold text-sm">{score !== null && score !== undefined ? `${score}/10` : "N/A"}</p>
       {comment && <p className="text-xs text-muted-foreground mt-1 italic">{comment}</p>}
     </div>
+  );
+}
+
+/** "You evaluated" — the signed-in manager has already evaluated this (their own score) */
+function YouEvaluatedBadge({ score }: { score: number | null }) {
+  return (
+    <Badge variant="outline" className="text-xs shrink-0 bg-emerald-50 text-emerald-700 border-emerald-200 gap-1">
+      <CheckCircle2 className="h-3 w-3" />
+      You evaluated{score != null && <span className="font-semibold">· {score.toFixed(1)}</span>}
+    </Badge>
   );
 }
 
@@ -626,7 +640,8 @@ function UnifiedProjectCard({
                           Avg {p.oneLiner.averageScore.toFixed(1)}
                         </span>
                       )}
-                      <span>Evaluated {timeAgo(p.oneLiner.lastEvaluatedAt)}</span>
+                      <span>{p.oneLiner.lastEvaluatedAt ? `Evaluated ${timeAgo(p.oneLiner.lastEvaluatedAt)}` : "Not evaluated yet"}</span>
+                      {p.oneLiner.evaluatedByMe && <YouEvaluatedBadge score={p.oneLiner.myScore} />}
                     </div>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
@@ -782,6 +797,7 @@ function EpisodeSubCard({
             {statusInfo && (
               <Badge variant="outline" className={`text-xs shrink-0 ${statusInfo.className}`}>{statusInfo.label}</Badge>
             )}
+            {ep.evaluatedByMe && <YouEvaluatedBadge score={ep.myScore} />}
           </div>
           <div className="flex items-center gap-3 mt-0.5 text-xs text-slate-500">
             {ep.evaluationCount > 0 && <span>{ep.evaluationCount} eval{ep.evaluationCount !== 1 ? "s" : ""}</span>}

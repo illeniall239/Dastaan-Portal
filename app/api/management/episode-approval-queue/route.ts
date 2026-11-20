@@ -6,9 +6,21 @@ export const dynamic = "force-dynamic";
 
 /**
  * GET /api/management/episode-approval-queue
- * Returns episodes that have ≥1 submitted episodic evaluation,
- * split into pending (no approval_status) and reviewed (approval set).
+ * Every current episode of an active one-liner, split into pending (no approval_status) and
+ * reviewed (approval set). Management evaluates everything, whether or not anyone else has
+ * evaluated it yet; evaluation counts/scores are shown where there are some.
  */
+
+/** All rows of a query, page by page (the API returns at most 1000 rows per request) */
+async function allRows<T>(page: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: { message: string } | null }>): Promise<T[]> {
+  const rows: T[] = [];
+  for (let from = 0; ; from += 1000) {
+    const { data, error } = await page(from, from + 999);
+    if (error) throw new Error(error.message);
+    rows.push(...(data || []));
+    if (!data || data.length < 1000) return rows;
+  }
+}
 export async function GET(_request: NextRequest) {
   try {
     const supabase = await createClient();
@@ -30,20 +42,37 @@ export async function GET(_request: NextRequest) {
 
     const adminClient = createAdminClient();
 
-    // Step 1: Get all submitted episodic evaluations (episode_id + score + timestamp)
-    const { data: evalRows, error: evalErr } = await adminClient
-      .from("episodic_evaluations_with_type")
-      .select("episode_id, overall_average, created_at")
-      .not("episode_id", "is", null);
+    // Step 1: every current episode of an active one-liner, and the evaluations so far (if any).
+    // Related tables are read whole and matched in memory: ~1000 episode ids won't fit in a request URL.
+    const [episodesData, evalRows, discussionRows, epRevisionRows] = await Promise.all([
+      allRows<any>((from, to) => adminClient
+        .from("episodes")
+        .select("id, episode_number, title, approval_status, approved_at, call_report_id, attachment_name, original_submission_date, created_at, call_report:call_reports!inner(archived_at)")
+        .eq("is_current", true)
+        .is("archived_at", null)
+        .is("call_report.archived_at", null)
+        .order("episode_number", { ascending: true })
+        .range(from, to)),
+      allRows<any>((from, to) => adminClient
+        .from("episodic_evaluations_with_type")
+        .select("episode_id, evaluator_id, overall_average, created_at")
+        .not("episode_id", "is", null)
+        .range(from, to)),
+      allRows<any>((from, to) => adminClient.from("episode_discussions").select("episode_id").range(from, to)),
+      allRows<any>((from, to) => adminClient.from("episode_revisions").select("episode_id").range(from, to)),
+    ]);
 
-    if (evalErr) throw new Error(`Failed to fetch episodic evaluations: ${evalErr.message}`);
-
-    const evaluatedEpisodeIds = [
-      ...new Set((evalRows || []).map((r) => r.episode_id as string)),
-    ];
-
-    if (evaluatedEpisodeIds.length === 0) {
+    if (episodesData.length === 0) {
       return NextResponse.json({ success: true, episodes: [], reviewedEpisodes: [] });
+    }
+
+    // This manager's own evaluation per episode (their latest, original or a revision)
+    const myScore = new Map<string, { score: number | null; at: string }>();
+    for (const row of evalRows) {
+      if (row.evaluator_id !== user.id) continue;
+      const at = row.created_at || "";
+      const prev = myScore.get(row.episode_id);
+      if (!prev || at > prev.at) myScore.set(row.episode_id, { score: row.overall_average != null ? Number(row.overall_average) : null, at });
     }
 
     // Build per-episode stats
@@ -57,33 +86,15 @@ export async function GET(_request: NextRequest) {
       }
     }
 
-    // Step 2: Batch-fetch discussion counts
-    const { data: discussionRows } = await adminClient
-      .from("episode_discussions")
-      .select("episode_id")
-      .in("episode_id", evaluatedEpisodeIds);
-
+    // Step 2: discussion counts
     const discussionCountMap: Record<string, number> = {};
     for (const row of discussionRows || []) {
       const eid = row.episode_id as string;
       discussionCountMap[eid] = (discussionCountMap[eid] || 0) + 1;
     }
 
-    // Step 3: Fetch episode details with parent call report title
-    const { data: episodesData, error: epErr } = await adminClient
-      .from("episodes")
-      .select("id, episode_number, title, approval_status, approved_at, call_report_id, attachment_name, original_submission_date, created_at")
-      .in("id", evaluatedEpisodeIds)
-      .order("episode_number", { ascending: true });
-
-    if (epErr) throw new Error(`Failed to fetch episodes: ${epErr.message}`);
-
-    // Batch-fetch revision counts for episodes
+    // Step 3: revision counts
     const revisionCountMap: Record<string, number> = {};
-    const { data: epRevisionRows } = await adminClient
-      .from("episode_revisions")
-      .select("episode_id")
-      .in("episode_id", evaluatedEpisodeIds);
     for (const row of epRevisionRows || []) {
       const eid = row.episode_id as string;
       revisionCountMap[eid] = (revisionCountMap[eid] || 0) + 1;
@@ -133,6 +144,8 @@ export async function GET(_request: NextRequest) {
         attachmentName: ep.attachment_name || null,
         originalSubmissionDate: ep.original_submission_date || ep.created_at || null,
         revisionCount: revisionCountMap[ep.id] || 0,
+        evaluatedByMe: myScore.has(ep.id),
+        myScore: myScore.get(ep.id)?.score ?? null,
       };
     });
 

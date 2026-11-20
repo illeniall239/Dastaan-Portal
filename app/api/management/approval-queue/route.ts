@@ -6,8 +6,9 @@ export const dynamic = "force-dynamic";
 
 /**
  * GET /api/management/approval-queue
- * Returns call reports that have been evaluated (have evaluator_form entries)
- * but the current management user has not yet submitted a story_approval for.
+ * Every active one-liner, split into pending (the current management user hasn't submitted a
+ * story_approval yet) and reviewed. Management evaluates everything, whether or not anyone else
+ * has evaluated it yet; evaluation counts/scores are shown where there are some.
  */
 export async function GET(_request: NextRequest) {
   try {
@@ -32,21 +33,27 @@ export async function GET(_request: NextRequest) {
 
     const adminClient = createAdminClient();
 
-    // Step 1: Get evaluated call_report_ids + scores from the view (same pattern as
-    // other management endpoints — avoids fragile nested selects)
-    const { data: viewRows, error: viewErr } = await adminClient
-      .from("call_report_evaluations_with_type")
-      .select("call_report_id, average_score, submitted_at")
-      .not("call_report_id", "is", null);
+    // Step 1: every active one-liner, and the evaluations it has so far (if any)
+    const [{ data: activeRows, error: activeErr }, { data: viewRows, error: viewErr }] = await Promise.all([
+      adminClient
+        .from("call_reports")
+        .select("id")
+        .eq("meeting_type", "call_report")
+        .is("archived_at", null),
+      adminClient
+        .from("call_report_evaluations_with_type")
+        .select("call_report_id, evaluator_id, average_score, submitted_at")
+        .not("call_report_id", "is", null),
+    ]);
 
+    if (activeErr) throw new Error(`Failed to fetch one-liners: ${activeErr.message}`);
     if (viewErr) throw new Error(`Failed to fetch evaluations view: ${viewErr.message}`);
 
-    const evaluatedIds = [
-      ...new Set((viewRows || []).map((r) => r.call_report_id as string)),
-    ];
+    // (named evaluatedIds historically: now all active one-liners, evaluated or not)
+    const evaluatedIds = (activeRows || []).map((r) => r.id as string);
 
     if (evaluatedIds.length === 0) {
-      return NextResponse.json({ success: true, callReports: [] });
+      return NextResponse.json({ success: true, callReports: [], reviewedCallReports: [] });
     }
 
     // Batch query discussion counts for all evaluated call reports
@@ -59,6 +66,16 @@ export async function GET(_request: NextRequest) {
     for (const row of discussionRows || []) {
       const crid = row.call_report_id as string;
       discussionCountMap[crid] = (discussionCountMap[crid] || 0) + 1;
+    }
+
+    // This manager's own evaluation per one-liner (their latest, original or a revision)
+    const myScore = new Map<string, { score: number | null; at: string }>();
+    for (const row of viewRows || []) {
+      if (row.evaluator_id !== user.id) continue;
+      const id = row.call_report_id as string;
+      const at = row.submitted_at || "";
+      const prev = myScore.get(id);
+      if (!prev || at > prev.at) myScore.set(id, { score: row.average_score != null ? Number(row.average_score) : null, at });
     }
 
     // Build per-call-report stats from the view rows
@@ -84,6 +101,17 @@ export async function GET(_request: NextRequest) {
       const list = attachmentsByCallReport.get(att.entity_id) || [];
       list.push({ id: att.id, fileName: att.file_name, filePath: att.file_path });
       attachmentsByCallReport.set(att.entity_id, list);
+    }
+
+    // Revision counts (used by both the reviewed and the pending lists)
+    const revisionCountMap: Record<string, number> = {};
+    const { data: revisionRows } = await adminClient
+      .from("call_report_revisions")
+      .select("call_report_id")
+      .in("call_report_id", evaluatedIds);
+    for (const row of revisionRows || []) {
+      const crid = row.call_report_id as string;
+      revisionCountMap[crid] = (revisionCountMap[crid] || 0) + 1;
     }
 
     // Step 2: IDs the current user has already acted on in story_approvals
@@ -131,7 +159,7 @@ export async function GET(_request: NextRequest) {
           callReportId: cr.call_report_id,
           createdAt: cr.created_at,
           averageScore: avgScore,
-          lastEvaluatedAt: stats?.latestAt || cr.created_at,
+          lastEvaluatedAt: stats?.latestAt || null,
           evaluationCount: scores.length,
           myDecision: dec?.decision ?? null,
           myNotes: dec?.notes ?? null,
@@ -140,23 +168,14 @@ export async function GET(_request: NextRequest) {
           revisionCount: revisionCountMap[cr.id] || 0,
           originalSubmissionDate: cr.original_submission_date || cr.created_at || null,
           attachments: attachmentsByCallReport.get(cr.id) || [],
+        evaluatedByMe: myScore.has(cr.id),
+        myScore: myScore.get(cr.id)?.score ?? null,
         };
       });
     }
 
     if (pendingIds.length === 0) {
       return NextResponse.json({ success: true, callReports: [], reviewedCallReports: reviewedResult });
-    }
-
-    // Batch-fetch revision counts for all evaluated call reports
-    const revisionCountMap: Record<string, number> = {};
-    const { data: revisionRows } = await adminClient
-      .from("call_report_revisions")
-      .select("call_report_id")
-      .in("call_report_id", evaluatedIds);
-    for (const row of revisionRows || []) {
-      const crid = row.call_report_id as string;
-      revisionCountMap[crid] = (revisionCountMap[crid] || 0) + 1;
     }
 
     // Step 3b: Fetch pending call report details
@@ -182,12 +201,14 @@ export async function GET(_request: NextRequest) {
         callReportId: cr.call_report_id,
         createdAt: cr.created_at,
         averageScore: avgScore,
-        lastEvaluatedAt: stats?.latestAt || cr.created_at,
+        lastEvaluatedAt: stats?.latestAt || null,
         evaluationCount: scores.length,
         discussionCount: discussionCountMap[cr.id] || 0,
         revisionCount: revisionCountMap[cr.id] || 0,
         originalSubmissionDate: cr.original_submission_date || cr.created_at || null,
         attachments: attachmentsByCallReport.get(cr.id) || [],
+        evaluatedByMe: myScore.has(cr.id),
+        myScore: myScore.get(cr.id)?.score ?? null,
       };
     });
 
