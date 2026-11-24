@@ -126,6 +126,7 @@ export function CallReportForm({
         nextSteps: initialData.next_steps || "",
         status: initialData.status || "draft",
         overallRating: initialData.overall_rating || 5,
+        overallRatingSet: true, // an existing one-liner already has its initial assessment
         ideaBy: initialData.idea_by || "",
         developedBy: initialData.developed_by || "",
         managementMemberName: initialData.management_member_name || "",
@@ -155,6 +156,7 @@ export function CallReportForm({
       nextSteps: "",
       status: "ready_for_evaluation",
       overallRating: 5,
+      overallRatingSet: false, // must be set by the logger: no silent default 5
       ideaBy: "",
       developedBy: "",
       managementMemberName: "",
@@ -259,6 +261,7 @@ export function CallReportForm({
         nextSteps: d.nextSteps || "",
         status: d.status || "ready_for_evaluation",
         overallRating: d.overallRating || 5,
+        overallRatingSet: !!d.overallRatingSet, // drafts saved before this marker must set it again
         ideaBy: d.ideaBy || "",
         developedBy: d.developedBy || "",
         managementMemberName: d.managementMemberName || "",
@@ -353,6 +356,8 @@ export function CallReportForm({
     if (!formData.theme.trim()) missingFields.push("Theme");
     if (!formData.targetSlot) missingFields.push("Target Slot");
     if (!formData.contentType) missingFields.push("Content Type");
+    // The initial assessment must be given, not left at the starting 5
+    if (mode === "create" && !formData.overallRatingSet) missingFields.push("Initial Assessment");
     // Required for new one-liners; optional on edit so older projects can still be saved
     if (mode === "create" && !formData.commercialPositioning) missingFields.push("Commercial Positioning");
     if (mode === "create" && !formData.audienceFocus) missingFields.push("Gender POV");
@@ -614,6 +619,7 @@ export function CallReportForm({
           nextSteps: "",
           status: "ready_for_evaluation",
           overallRating: 5,
+      overallRatingSet: false, // must be set by the logger: no silent default 5
           ideaBy: "",
           developedBy: "",
           managementMemberName: "",
@@ -977,10 +983,10 @@ export function CallReportForm({
             />
 
             <ScoreCard
-              label="Initial Assessment"
+              label={mode === "create" ? "Initial Assessment *" : "Initial Assessment"}
               description="Your initial rating of this story (1-10). Evaluators will see this when they evaluate."
               score={formData.overallRating}
-              onChange={(score) => setFormData(prev => ({ ...prev, overallRating: score }))}
+              onChange={(score) => setFormData(prev => ({ ...prev, overallRating: score, overallRatingSet: true }))}
               disabled={isLoading}
               showGrade={true}
             />
