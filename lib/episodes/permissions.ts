@@ -55,9 +55,9 @@ export function canUploadRevision(
 }
 
 // Roles that must evaluate whatever they log (one-liners, episodes, revisions). Keep in sync with the
-// database's must_evaluate_on_log() (migration 20261118000001), which enforces it: the item and its
+// database's must_evaluate_on_log() (migrations 20261118000001, 20261124000001), which enforces it: the item and its
 // logger's evaluation are saved in one transaction or not at all.
-const MUST_EVALUATE_ROLES = ["evaluator", "programmer", "management", "executive"];
+const MUST_EVALUATE_ROLES = ["evaluator", "programmer", "management", "executive", "gcm"];
 
 export function mustEvaluateOnUpload(role: string): boolean {
   return MUST_EVALUATE_ROLES.includes(role);

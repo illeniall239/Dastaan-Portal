@@ -18,6 +18,10 @@ describe("mustEvaluateOnUpload", () => {
     expect(mustEvaluateOnUpload("executive")).toBe(true);
   });
 
+  it("returns true for gcm", () => {
+    expect(mustEvaluateOnUpload("gcm")).toBe(true);
+  });
+
   it("returns false for content_manager", () => {
     expect(mustEvaluateOnUpload("content_manager")).toBe(false);
   });
