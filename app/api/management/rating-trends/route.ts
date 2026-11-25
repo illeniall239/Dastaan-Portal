@@ -48,10 +48,10 @@ export async function GET() {
         .not("overall_average", "is", null),
       admin.from("teams")
         .select("id, name, team_type, team_head:users!teams_team_head_id_fkey(name)"),
-      // Each point is the item's rating (Team Overview rule); the Content Team Assessment is listed with the evaluators
+      // Each point is the item's rating (Team Overview rule); the content team member's own score is listed with the evaluators
       getProjectRatings(),
     ]);
-    const CONTENT_TEAM = { name: "Content Team Assessment", teamName: "Content Team" };
+    const memberScore = (a: { byName: string; score: number }) => ({ name: a.byName, teamName: "Content Team", score: a.score });
 
     // Team display names (for project labels)
     const teamMap = new Map(
@@ -124,7 +124,7 @@ export async function GET() {
         const olAvg = overall.get(cr.id)?.oneLiner?.score ?? null;
         const olTeam = contentTeamAssessments.get(cr.id);
         const olEvaluators = [
-          ...(olTeam ? [{ ...CONTENT_TEAM, score: olTeam.score }] : []),
+          ...(olTeam ? [memberScore(olTeam)] : []),
           ...(olScores?.map((e) => ({ name: e.name, score: Math.round(e.score * 10) / 10, teamName: e.teamName })) || []),
         ];
 
@@ -134,7 +134,7 @@ export async function GET() {
           if (rating == null) continue;
           const team = contentTeamAssessments.get(ep.id);
           const evaluators = [
-            ...(team ? [{ ...CONTENT_TEAM, score: team.score }] : []),
+            ...(team ? [memberScore(team)] : []),
             ...(epScoresMap?.get(ep.epNum) ?? []).map((e) => ({ name: e.name, score: Math.round(e.score * 10) / 10, teamName: e.teamName })),
           ];
           episodeTrend.push({ episode: ep.epNum, avgScore: rating, evalCount: evaluators.length, evaluators });

@@ -207,11 +207,10 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // The content department's own scores show as one more "evaluator" (Content Team Assessment); each
-    // project's rating follows the Team Overview rule
-    const { overall, contentTeamAssessments } = await getProjectRatings();
-    const CONTENT_TEAM_ID = "content-team";
-    const CONTENT_TEAM = { name: "Content Team Assessment", email: "", role: "content_team", group: "Content" };
+    // Each project's rating follows the Team Overview rule; the content team's own scores (Content Team
+    // Assessments) are shown in their content head's column, with the Content Head average
+    const { overall, ratings, contentTeamAssessments } = await getProjectRatings();
+    const firstName = (name: string) => (name || "").split(" ")[0];
 
     // Build one-liner lookup maps
     const oneLinerByReport = new Map<string, Map<string, number>>();
@@ -229,13 +228,6 @@ export async function GET(request: NextRequest) {
           : "Content";
         globalOneLinerAssessorMap.set(row.evaluator_id, { name: assessor.name, email: assessor.email, role: assessor.role, group });
       }
-    }
-
-    for (const a of contentTeamAssessments.values()) {
-      if (a.itemType !== "call_report") continue;
-      if (!oneLinerByReport.has(a.callReportId)) oneLinerByReport.set(a.callReportId, new Map());
-      oneLinerByReport.get(a.callReportId)!.set(CONTENT_TEAM_ID, a.score);
-      globalOneLinerAssessorMap.set(CONTENT_TEAM_ID, CONTENT_TEAM);
     }
 
     const allWeeks = new Set<string>();
@@ -358,22 +350,11 @@ export async function GET(request: NextRequest) {
         }
       }
 
-      // The content team's scores of these episodes
-      const teamEps = crEpisodes.filter((ep: any) => contentTeamAssessments.has(ep.id));
-      if (teamEps.length) {
-        evaluatorMap.set(CONTENT_TEAM_ID, {
-          ...CONTENT_TEAM,
-          epNums: teamEps.map((ep: any) => ep.episode_number),
-          scores: teamEps.map((ep: any) => contentTeamAssessments.get(ep.id)!.score),
-        });
-      }
-
       // Build allEvaluatorGrades (all evaluators, keyed by ID) and populate global map
       const allEvaluatorGrades: Record<string, { epRange: string; avgScore: number | null }> = {};
       for (const [id, data] of evaluatorMap.entries()) {
         allEvaluatorGrades[id] = buildEvaluatorGrade(data);
-        if (id === CONTENT_TEAM_ID) globalEvaluatorMap.set(id, CONTENT_TEAM);
-        else if (!globalEvaluatorMap.has(id)) {
+        if (!globalEvaluatorMap.has(id)) {
           const group = contentDevIds.has(id) ? "Content Development"
             : programmingIds.has(id) || data.role === "programmer" ? "Programming"
             : ["admin", "management", "executive"].includes(data.role) ? "Management"
@@ -411,6 +392,31 @@ export async function GET(request: NextRequest) {
       const team = Array.isArray((cr as any).team) ? (cr as any).team[0] : (cr as any).team;
       const teamHead = team ? (Array.isArray(team.head) ? team.head[0] : team.head) : null;
 
+      // The content team's assessments, shown in the team head's (content head's) column
+      const olTeam = contentTeamAssessments.get(cr.id);
+      const epMembers = new Map<string, { epNums: number[]; scores: number[] }>();
+      for (const ep of crEpisodes) {
+        const a = contentTeamAssessments.get(ep.id);
+        if (!a) continue;
+        const m = epMembers.get(a.byName) ?? { epNums: [], scores: [] };
+        m.epNums.push(ep.episode_number);
+        m.scores.push(a.score);
+        epMembers.set(a.byName, m);
+      }
+      const r = ratings.get(cr.id);
+      const contentTeam = teamHead?.id && (olTeam || epMembers.size) ? {
+        headId: teamHead.id as string,
+        oneLiner: olTeam ? { members: [{ name: firstName(olTeam.byName), score: olTeam.score }], avg: r?.contentHead ?? null } : null,
+        episodes: epMembers.size ? {
+          members: [...epMembers].map(([name, m]) => ({ name: firstName(name), ...buildEvaluatorGrade(m) })),
+          avg: r?.episodes.contentHead?.average ?? null,
+        } : null,
+      } : null;
+      // The head gets a column even before rating anything themselves
+      const headEntry = { name: teamHead?.name, email: teamHead?.email, role: "evaluator", group: "Content" };
+      if (contentTeam?.oneLiner && !globalOneLinerAssessorMap.has(contentTeam.headId)) globalOneLinerAssessorMap.set(contentTeam.headId, headEntry);
+      if (contentTeam?.episodes && !globalEvaluatorMap.has(contentTeam.headId)) globalEvaluatorMap.set(contentTeam.headId, headEntry);
+
       return {
         id: cr.id,
         workingTitle: cr.working_title || "Untitled",
@@ -426,6 +432,7 @@ export async function GET(request: NextRequest) {
         deadline,
         onAirDate: (cr as any).aired_date || null,
         oneLinerGrades: Object.fromEntries(oneLinerByReport.get(cr.id) || []),
+        contentTeam,
         // The project's rating (Team Overview rule), one-liner and episodes
         rating: overall.get(cr.id)?.oneLiner?.score ?? null,
         episodesRating: overall.get(cr.id)?.episodes?.score ?? null,

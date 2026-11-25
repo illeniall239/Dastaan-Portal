@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
       { data: evalForms },
       episodes,
       epEvals,
-      { contentTeamAssessments },
+      { contentTeamAssessments, contentHeadScore },
     ] = await Promise.all([
       admin.from("teams").select("id, name, team_head_id"),
       admin.from("users").select("id, name, role, team_id, email").eq("status", "active").order("name"),
@@ -136,7 +136,15 @@ export async function GET(request: NextRequest) {
       ]);
 
       // The content department's own score of each item (newest version), as in the Team Overview rating
-      const contentTeamAssessment = (itemId: string) => contentTeamAssessments.get(itemId)?.score ?? null;
+      // The content team member's own score of each item (newest version), shown with the evaluations; for
+      // a content head, with the Content Head average when they have rated it too (Team Overview rule)
+      const isContentHead = ev.role === "evaluator" || ev.role === "gcm";
+      const contentTeam = (itemId: string) => {
+        const a = contentTeamAssessments.get(itemId);
+        return a ? { name: a.byName.split(" ")[0], score: a.score } : null;
+      };
+      const avgWith = (itemId: string, evaluations: unknown[]) =>
+        isContentHead && evaluations.length > 0 && contentTeamAssessments.has(itemId) ? contentHeadScore.get(itemId) ?? null : null;
 
       // Build episode → revision count map
       const revCountMap = new Map<string, number>();
@@ -190,7 +198,7 @@ export async function GET(request: NextRequest) {
         .map((cr) => ({
           id: cr.id,
           title: cr.working_title,
-          contentTeamAssessment: contentTeamAssessment(cr.id),
+          contentTeam: contentTeam(cr.id),
           date: cr.original_submission_date || cr.created_at,
           daysPending: Math.floor((Date.now() - new Date(cr.original_submission_date || cr.created_at).getTime()) / 86400000),
         }))
@@ -202,7 +210,8 @@ export async function GET(request: NextRequest) {
         .map((cr) => ({
           id: cr.id,
           title: cr.working_title,
-          contentTeamAssessment: contentTeamAssessment(cr.id),
+          contentTeam: contentTeam(cr.id),
+          avg: avgWith(cr.id, crEvalsMap.get(cr.id) || []),
           date: cr.original_submission_date || cr.created_at,
           evaluations: crEvalsMap.get(cr.id) || [],
         }))
@@ -219,7 +228,7 @@ export async function GET(request: NextRequest) {
             episodeNumber: ep.episode_number,
             title: ep.title,
             projectTitle: cr?.working_title || "Unknown",
-            contentTeamAssessment: contentTeamAssessment(ep.id),
+            contentTeam: contentTeam(ep.id),
             date: ep.original_submission_date || ep.created_at,
             daysPending: Math.floor((Date.now() - new Date(ep.original_submission_date || ep.created_at).getTime()) / 86400000),
             revisions: revCountMap.get(ep.id) || 0,
@@ -237,7 +246,8 @@ export async function GET(request: NextRequest) {
             episodeNumber: ep.episode_number,
             title: ep.title,
             projectTitle: cr?.working_title || "Unknown",
-            contentTeamAssessment: contentTeamAssessment(ep.id),
+            contentTeam: contentTeam(ep.id),
+            avg: avgWith(ep.id, epEvalsMap.get(ep.id) || []),
             date: ep.original_submission_date || ep.created_at,
             evaluations: epEvalsMap.get(ep.id) || [],
             revisions: revCountMap.get(ep.id) || 0,

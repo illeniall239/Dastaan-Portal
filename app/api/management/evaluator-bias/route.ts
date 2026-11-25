@@ -214,7 +214,7 @@ export async function GET(request: NextRequest) {
       }));
     }
 
-    // The content department's own one-liner scores (Content Team Assessment), as one more row
+    // The content team members' own one-liner scores (Content Team Assessments), a row per member
     const { contentTeamAssessments } = await getProjectRatings();
     const teamScores = [...contentTeamAssessments.values()].filter((a) =>
       a.itemType === "call_report" && (!from || a.at >= from) && (!to || a.at <= to + "T23:59:59"));
@@ -232,19 +232,20 @@ export async function GET(request: NextRequest) {
         const { data } = await adminClient.from("call_reports").select(`id, ${col}`).in("id", ids);
         for (const cr of (data as any[]) || []) if (cr[col]) dimsByCr.set(cr.id, [cr[col]]);
       }
-      const grouped = new Map<string, { dimension_value: any; total: number; count: number }>();
+      const grouped = new Map<string, { by: string; byName: string; dimension_value: any; total: number; count: number }>();
       for (const a of teamScores) {
         for (const v of dimsByCr.get(a.callReportId) ?? []) {
-          const g = grouped.get(`${v}`) ?? { dimension_value: v, total: 0, count: 0 };
+          const key = `${a.by}__${v}`;
+          const g = grouped.get(key) ?? { by: a.by, byName: a.byName, dimension_value: v, total: 0, count: 0 };
           g.total += a.score;
           g.count += 1;
-          grouped.set(`${v}`, g);
+          grouped.set(key, g);
         }
       }
       for (const g of grouped.values()) {
         rows.push({
-          evaluator_id: "content-team",
-          evaluator_name: "Content Team Assessment",
+          evaluator_id: g.by,
+          evaluator_name: g.byName,
           dimension_value: g.dimension_value,
           avg_score: Math.round((g.total / g.count) * 100) / 100,
           eval_count: g.count,

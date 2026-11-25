@@ -44,7 +44,7 @@ export async function GET() {
           .not("overall_average", "is", null),
         admin.from("teams")
           .select("id, name, team_head:users!teams_team_head_id_fkey(name)"),
-        // Quality uses each project's ratings (Team Overview rule); the Content Team Assessment is listed too
+        // Quality uses each project's ratings (Team Overview rule); content team members' own scores are listed too
         getProjectRatings(),
       ]);
 
@@ -92,10 +92,9 @@ export async function GET() {
     }
 
     // The content department's own scores, listed like an evaluator
-    const CONTENT_TEAM = { name: "Content Team Assessment", team: "Content Team" };
     for (const a of contentTeamAssessments.values()) {
       const list = a.itemType === "call_report" ? crOneLinerEvaluators : crEpEvaluators;
-      list.set(a.callReportId, [...(list.get(a.callReportId) ?? []), { ...CONTENT_TEAM, score: a.score }]);
+      list.set(a.callReportId, [...(list.get(a.callReportId) ?? []), { name: a.byName, team: "Content Team", score: a.score }]);
     }
 
     // Collect distinct slots

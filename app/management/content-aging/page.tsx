@@ -69,6 +69,12 @@ interface Project {
   deadline: string | null;
   onAirDate: string | null;
   oneLinerGrades: Record<string, number>;
+  /** The content team's assessments, shown in their content head's (headId) column, with the Content Head average */
+  contentTeam: {
+    headId: string;
+    oneLiner: { members: { name: string; score: number }[]; avg: number | null } | null;
+    episodes: { members: { name: string; epRange: string; avgScore: number | null }[]; avg: number | null } | null;
+  } | null;
   /** The project's rating (Team Overview rule) */
   rating: number | null;
   episodesRating: number | null;
@@ -210,6 +216,50 @@ function commitmentScheduleLabel(schedule: string, custom?: string | null): stri
     "custom": custom || "Custom",
   };
   return map[schedule] ?? schedule;
+}
+
+const first = (name: string) => (name || "").split(" ")[0];
+const fmt1 = (n: number | null | undefined) => (n == null ? "—" : Number(n).toFixed(1));
+
+/** A one-liner cell: the person's score; in the content head's column also their team's Content Team
+ *  Assessments and, when both exist, the Content Head average. null = a plain score cell. */
+function headOneLinerParts(p: Project, assessor: { id: string; name: string }) {
+  const ct = p.contentTeam;
+  if (!ct || ct.headId !== assessor.id || !ct.oneLiner) return null;
+  const head = p.oneLinerGrades[assessor.id] ?? null;
+  return [
+    ...(head != null ? [{ label: first(assessor.name), score: head }] : []),
+    ...ct.oneLiner.members.map((m) => ({ label: m.name, score: m.score as number | null })),
+    ...(head != null && ct.oneLiner.avg != null ? [{ label: "Avg", score: ct.oneLiner.avg }] : []),
+  ];
+}
+
+/** Episodes, the same way: each person's range and grade, and the Content Head average */
+function headEpisodeParts(p: Project, evaluator: { id: string; name: string }) {
+  const ct = p.contentTeam;
+  if (!ct || ct.headId !== evaluator.id || !ct.episodes) return null;
+  const head = p.allEvaluatorGrades[evaluator.id];
+  return [
+    ...(head ? [{ label: first(evaluator.name), range: head.epRange, score: head.avgScore }] : []),
+    ...ct.episodes.members.map((m) => ({ label: m.name, range: m.epRange, score: m.avgScore })),
+    ...(head && ct.episodes.avg != null ? [{ label: "Avg", range: "", score: ct.episodes.avg }] : []),
+  ];
+}
+
+const partsText = (parts: { label: string; score: number | null; range?: string }[]) =>
+  parts.map((x) => `${x.label}${x.range ? ` ${x.range}` : ""} ${fmt1(x.score)}`).join(" · ");
+
+function PartsCell({ parts }: { parts: { label: string; score: number | null }[] }) {
+  return (
+    <div className="flex flex-wrap items-center justify-center gap-1">
+      {parts.map((x) => (
+        <span key={x.label} className="inline-flex items-center gap-0.5 text-[11px] whitespace-nowrap">
+          <span className={x.label === "Avg" ? "font-semibold text-gray-700" : "text-gray-500"}>{x.label}</span>
+          {scoreBadge(x.score)}
+        </span>
+      ))}
+    </div>
+  );
 }
 
 function getProjectAvgOneLiner(grades: Record<string, number>): number | null {
@@ -631,6 +681,8 @@ export default function ContentAgingPage() {
       p.slot ?? "",
       ...visibleEvaluators.flatMap((e) => {
         const g = p.allEvaluatorGrades[e.id];
+        const parts = headEpisodeParts(p, e);
+        if (parts) return [parts.filter((x) => x.range).map((x) => `${x.label} ${x.range}`).join(" · "), partsText(parts.map((x) => ({ ...x, range: "" })))];
         return [g?.epRange ?? "", g?.avgScore ?? ""];
       }),
       p.totalEps ?? "",
@@ -644,7 +696,7 @@ export default function ContentAgingPage() {
       fmt(p.firstEpDate),
       fmt(p.lastEpDate),
       p.status ?? "",
-      ...visibleOneLinerAssessors.map((a) => p.oneLinerGrades[a.id] ?? ""),
+      ...visibleOneLinerAssessors.map((a) => { const parts = headOneLinerParts(p, a); return parts ? partsText(parts) : p.oneLinerGrades[a.id] ?? ""; }),
       ...(() => {
         const projCum = cumulativeData.get(p.id);
         return monthGroups.flatMap((mg) => {
@@ -683,9 +735,11 @@ export default function ContentAgingPage() {
       getProductionPhase(p.totalEps, p.epsReceived) ?? "",
       fmt(p.deadline),
       fmt(p.onAirDate),
-      ...visibleOneLinerAssessors.map((a) => p.oneLinerGrades[a.id] ?? ""),
+      ...visibleOneLinerAssessors.map((a) => { const parts = headOneLinerParts(p, a); return parts ? partsText(parts) : p.oneLinerGrades[a.id] ?? ""; }),
       ...visibleEvaluators.flatMap((e) => {
         const g = p.allEvaluatorGrades[e.id];
+        const parts = headEpisodeParts(p, e);
+        if (parts) return [parts.filter((x) => x.range).map((x) => `${x.label} ${x.range}`).join(" · "), partsText(parts.map((x) => ({ ...x, range: "" })))];
         return [g?.epRange ?? "", g?.avgScore ?? ""];
       }),
       p.commitment?.delay_notes ?? "",
@@ -1244,6 +1298,11 @@ export default function ContentAgingPage() {
                       .filter((e) => e.group === group)
                       .flatMap((e) => {
                         const g = project.allEvaluatorGrades[e.id];
+                        const parts = headEpisodeParts(project, e);
+                        if (parts) return [
+                          <Td key={`${e.id}-ep`} width={90} center className="text-xs text-muted-foreground">{parts.filter((x) => x.range).map((x) => `${x.label} ${x.range}`).join(" · ")}</Td>,
+                          <Td key={`${e.id}-gr`} width={70} center><PartsCell parts={parts} /></Td>,
+                        ];
                         return [
                           <Td key={`${e.id}-ep`} width={90} center className="text-xs text-muted-foreground">{g?.epRange || "—"}</Td>,
                           <Td key={`${e.id}-gr`} width={70} center>{scoreBadge(g?.avgScore ?? null)}</Td>,
@@ -1255,11 +1314,14 @@ export default function ContentAgingPage() {
                   {GROUPS.flatMap((group) =>
                     visibleOneLinerAssessors
                       .filter((a) => a.group === group)
-                      .map((a) => (
-                        <Td key={`ol-${a.id}`} width={115} center>
-                          {scoreBadge(project.oneLinerGrades[a.id] ?? null)}
-                        </Td>
-                      ))
+                      .map((a) => {
+                        const parts = headOneLinerParts(project, a);
+                        return (
+                          <Td key={`ol-${a.id}`} width={115} center>
+                            {parts ? <PartsCell parts={parts} /> : scoreBadge(project.oneLinerGrades[a.id] ?? null)}
+                          </Td>
+                        );
+                      })
                   )}
 
                   {/* Episode tracking */}
@@ -1537,11 +1599,14 @@ function TargetAgingTable({ projects, visibleEvaluators, visibleOneLinerAssessor
             {GROUPS.flatMap((group) =>
               visibleOneLinerAssessors
                 .filter((a) => a.group === group)
-                .map((a) => (
-                  <Td key={`ol-${a.id}`} width={90} center>
-                    {scoreBadge(project.oneLinerGrades[a.id] ?? null)}
-                  </Td>
-                ))
+                .map((a) => {
+                  const parts = headOneLinerParts(project, a);
+                  return (
+                    <Td key={`ol-${a.id}`} width={90} center>
+                      {parts ? <PartsCell parts={parts} /> : scoreBadge(project.oneLinerGrades[a.id] ?? null)}
+                    </Td>
+                  );
+                })
             )}
             {GROUPS.flatMap((group) =>
               visibleEvaluators
@@ -1549,6 +1614,11 @@ function TargetAgingTable({ projects, visibleEvaluators, visibleOneLinerAssessor
                 .flatMap((e) => {
                   const g = project.allEvaluatorGrades[e.id];
                   const color = group === "Management" ? "text-purple-700" : group === "Programming" ? "text-blue-700" : "text-amber-700";
+                  const parts = headEpisodeParts(project, e);
+                  if (parts) return [
+                    <Td key={`${e.id}-ep`} width={80} center className={`text-xs ${color}`}>{parts.filter((x) => x.range).map((x) => `${x.label} ${x.range}`).join(" · ")}</Td>,
+                    <Td key={`${e.id}-gr`} width={65} center><PartsCell parts={parts} /></Td>,
+                  ];
                   return [
                     <Td key={`${e.id}-ep`} width={80} center className={`text-xs ${color}`}>{g?.epRange || "—"}</Td>,
                     <Td key={`${e.id}-gr`} width={65} center>{scoreBadge(g?.avgScore ?? null)}</Td>,

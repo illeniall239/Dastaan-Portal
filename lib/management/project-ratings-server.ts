@@ -11,6 +11,7 @@ export interface ContentTeamAssessment {
   callReportId: string;
   score: number;
   by: string;   // user id
+  byName: string; // who gave it (a content team member)
   at: string;   // when it was given (the version's upload time)
 }
 
@@ -21,6 +22,8 @@ export interface ProjectRatingsData {
   overall: Map<string, { oneLiner: OverallRating | null; episodes: OverallRating | null }>;
   /** episode id -> that episode's overall rating (average of the teams that rated it), 1 decimal */
   episodeOverall: Map<string, number>;
+  /** call report / episode id -> its Content Head score (Content Team Assessment and heads' evaluation averaged), 1 decimal */
+  contentHeadScore: Map<string, number>;
   /** call report and episode ids that have a Content Head rating (a Content Team Assessment and/or a head's evaluation) */
   contentHeadRated: Set<string>;
   /** call report / episode id -> its Content Team Assessment */
@@ -71,7 +74,7 @@ export const getProjectRatings = cache(async (): Promise<ProjectRatingsData> => 
     fetchAll<any>((f, t) => admin.from("episode_revisions")
       .select("id, episode_id, revision_number, initial_assessment, assessed_by, created_at").order("id").range(f, t)),
     getProgrammingTeamMemberIds(admin),
-    admin.from("users").select("id, role, team_id"),
+    admin.from("users").select("id, name, role, team_id"),
     admin.from("teams").select("id, team_type, team_head:users!teams_team_head_id_fkey(email)"),
   ]);
 
@@ -79,6 +82,7 @@ export const getProjectRatings = cache(async (): Promise<ProjectRatingsData> => 
     .filter((t: any) => t.team_type === "management" && t.team_head?.email === CONTENT_DEV_HEAD_EMAIL)
     .map((t: any) => t.id));
   const roleOf = new Map((users || []).map((u: any) => [u.id, u.role as string]));
+  const nameOf = new Map((users || []).map((u: any) => [u.id, (u.name as string) || "Unknown"]));
   const contentDevIds = new Set((users || []).filter((u: any) => u.team_id && contentDevTeamIds.has(u.team_id)).map((u: any) => u.id));
   const groupOf = (e: any): Group =>
     contentDevIds.has(e.evaluator_id) ? "contentDev"
@@ -110,6 +114,7 @@ export const getProjectRatings = cache(async (): Promise<ProjectRatingsData> => 
     return ratings.get(id)!;
   };
   const contentHeadRated = new Set<string>();
+  const contentHeadScore = new Map<string, number>();
   const contentTeamAssessments = new Map<string, ContentTeamAssessment>();
 
   // Content Head of an item: its newest version with a Content Team Assessment and/or heads' scores, averaged
@@ -138,13 +143,14 @@ export const getProjectRatings = cache(async (): Promise<ProjectRatingsData> => 
     ].sort((a, b) => b.n - a.n);
     // The item's Content Team Assessment: its newest version the content team scored
     const team = versions.find((v) => v.score != null && isContentTeam(v.by));
-    if (team) contentTeamAssessments.set(item.id, { itemType: item.type, itemId: item.id, callReportId: item.callReportId, score: Number(team.score), by: team.by!, at: team.at });
+    if (team) contentTeamAssessments.set(item.id, { itemType: item.type, itemId: item.id, callReportId: item.callReportId, score: Number(team.score), by: team.by!, byName: nameOf.get(team.by!) ?? "Unknown", at: team.at });
     for (const v of versions) {
       const h = heads.get(versionKey(item.id, v.id));
       const initial = v.score != null && isContentTeam(v.by) ? Number(v.score) : null;
       const parts = [initial, h?.length ? mean(h) : null].filter((x): x is number => x != null);
       if (parts.length) {
         contentHeadRated.add(item.id);
+        contentHeadScore.set(item.id, Math.round(mean(parts) * 10) / 10);
         return { score: mean(parts), evaluated: !!h?.length };
       }
     }
@@ -218,5 +224,5 @@ export const getProjectRatings = cache(async (): Promise<ProjectRatingsData> => 
 
   const overall = new Map<string, { oneLiner: OverallRating | null; episodes: OverallRating | null }>();
   for (const [id, r] of ratings) overall.set(id, overallRatings(r));
-  return { ratings, overall, episodeOverall, contentHeadRated, contentTeamAssessments };
+  return { ratings, overall, episodeOverall, contentHeadScore, contentHeadRated, contentTeamAssessments };
 });

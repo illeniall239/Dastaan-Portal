@@ -20,7 +20,8 @@ interface PersonPending {
 interface PendingOneLiner {
   id: string;
   title: string;
-  contentTeamAssessment: number | null;
+  contentTeam: { name: string; score: number } | null; // the content team member's own score
+  avg?: number | null; // Content Head average (head's evaluation + content team), when both exist
   date: string;
   daysPending: number;
 }
@@ -30,7 +31,8 @@ interface PendingEpisode {
   episodeNumber: number;
   title: string | null;
   projectTitle: string;
-  contentTeamAssessment: number | null;
+  contentTeam: { name: string; score: number } | null; // the content team member's own score
+  avg?: number | null; // Content Head average (head's evaluation + content team), when both exist
   date: string;
   daysPending: number;
   revisions: number;
@@ -52,7 +54,8 @@ interface EpEvalEntry {
 interface EvaluatedOneLiner {
   id: string;
   title: string;
-  contentTeamAssessment: number | null;
+  contentTeam: { name: string; score: number } | null; // the content team member's own score
+  avg?: number | null; // Content Head average (head's evaluation + content team), when both exist
   date: string;
   evaluations: EvalEntry[];
 }
@@ -62,7 +65,8 @@ interface EvaluatedEpisode {
   episodeNumber: number;
   title: string | null;
   projectTitle: string;
-  contentTeamAssessment: number | null;
+  contentTeam: { name: string; score: number } | null; // the content team member's own score
+  avg?: number | null; // Content Head average (head's evaluation + content team), when both exist
   date: string;
   evaluations: EpEvalEntry[];
   revisions: number;
@@ -110,16 +114,23 @@ function gradeColor(grade: string): string {
   return "bg-red-100 text-red-700 border-red-200";
 }
 
-/** The content department's own score for the item (shown beside what the head still has to evaluate) */
-function ContentTeamCell({ score }: { score: number | null }) {
+/** The content team member's own score (Content Team Assessment), e.g. "Beena: 9.0" */
+function ContentTeamChip({ ct }: { ct: { name: string; score: number } | null }) {
+  if (!ct) return null;
   return (
-    <td className="py-2 px-3">
-      {score != null ? (
-        <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${scoreColor(score)}`}>{score}/10</Badge>
-      ) : (
-        <span className="text-gray-300">—</span>
-      )}
-    </td>
+    <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${scoreColor(ct.score)}`}>
+      {ct.name}: {ct.score.toFixed(1)}
+    </Badge>
+  );
+}
+
+/** The Content Head average of the head's evaluation and the content team's score */
+function AvgChip({ avg }: { avg?: number | null }) {
+  if (avg == null) return null;
+  return (
+    <Badge variant="outline" className="text-[10px] px-1.5 py-0 font-semibold bg-gray-100 text-gray-800 border-gray-300">
+      Avg: {avg.toFixed(1)}
+    </Badge>
   );
 }
 
@@ -228,7 +239,6 @@ function PendingDetailDialog({ userId, personName, personRole, onClose }: {
                         <thead>
                           <tr className="border-b bg-amber-50/50">
                             <th className="text-left py-2 px-3 font-medium text-gray-500">Title</th>
-                            <th className="text-left py-2 px-3 font-medium text-gray-500">Content Team Assessment</th>
                             <th className="text-left py-2 px-3 font-medium text-gray-500">Submitted</th>
                             <th className="text-right py-2 px-3 font-medium text-gray-500">Waiting</th>
                           </tr>
@@ -236,8 +246,10 @@ function PendingDetailDialog({ userId, personName, personRole, onClose }: {
                         <tbody>
                           {pendingOL.map((ol) => (
                             <tr key={ol.id} className="border-b border-gray-50 last:border-0 hover:bg-gray-50/50">
-                              <td className="py-2 px-3 font-medium text-gray-800">{ol.title || "Untitled"}</td>
-                              <ContentTeamCell score={ol.contentTeamAssessment} />
+                              <td className="py-2 px-3 font-medium text-gray-800">
+                                {ol.title || "Untitled"}
+                                {ol.contentTeam && <span className="ml-1.5"><ContentTeamChip ct={ol.contentTeam} /></span>}
+                              </td>
                               <td className="py-2 px-3 text-gray-500">{formatDate(ol.date)}</td>
                               <td className="py-2 px-3 text-right">
                                 <span className={`inline-flex items-center gap-1 font-semibold ${daysColor(ol.daysPending)}`}>
@@ -263,7 +275,6 @@ function PendingDetailDialog({ userId, personName, personRole, onClose }: {
                         <thead>
                           <tr className="border-b bg-green-50/50">
                             <th className="text-left py-2 px-3 font-medium text-gray-500">Title</th>
-                            <th className="text-left py-2 px-3 font-medium text-gray-500">Content Team Assessment</th>
                             <th className="text-left py-2 px-3 font-medium text-gray-500">Submitted</th>
                             <th className="text-left py-2 px-3 font-medium text-gray-500">Evaluations</th>
                           </tr>
@@ -272,16 +283,16 @@ function PendingDetailDialog({ userId, personName, personRole, onClose }: {
                           {evaluatedOL.map((ol) => (
                             <tr key={ol.id} className="border-b border-gray-50 last:border-0 hover:bg-gray-50/50">
                               <td className="py-2 px-3 font-medium text-gray-800">{ol.title || "Untitled"}</td>
-                              <ContentTeamCell score={ol.contentTeamAssessment} />
                               <td className="py-2 px-3 text-gray-500">{formatDate(ol.date)}</td>
                               <td className="py-2 px-3">
                                 <div className="flex flex-wrap gap-1">
-                                  {ol.evaluations.length === 0 && <span className="text-gray-400">Content Team Assessment only</span>}
                                   {ol.evaluations.map((ev, i) => (
                                     <Badge key={i} variant="outline" className={`text-[10px] px-1.5 py-0 ${scoreColor(ev.averageScore ?? 0)}`}>
                                       {ev.evaluatorName.split(" ")[0]}: {ev.averageScore != null ? ev.averageScore.toFixed(1) : "—"}
                                     </Badge>
                                   ))}
+                                  <ContentTeamChip ct={ol.contentTeam} />
+                                  <AvgChip avg={ol.avg} />
                                 </div>
                               </td>
                             </tr>
@@ -312,7 +323,6 @@ function PendingDetailDialog({ userId, personName, personRole, onClose }: {
                           <tr className="border-b bg-amber-50/50">
                             <th className="text-left py-2 px-3 font-medium text-gray-500">Project</th>
                             <th className="text-left py-2 px-3 font-medium text-gray-500">Episode</th>
-                            <th className="text-left py-2 px-3 font-medium text-gray-500">Content Team Assessment</th>
                             <th className="text-left py-2 px-3 font-medium text-gray-500">Submitted</th>
                             <th className="text-right py-2 px-3 font-medium text-gray-500">Waiting</th>
                           </tr>
@@ -331,8 +341,8 @@ function PendingDetailDialog({ userId, personName, personRole, onClose }: {
                                   </Badge>
                                 )}
                                 {ep.title && <span className="ml-1.5 text-gray-500">{ep.title}</span>}
+                                {ep.contentTeam && <span className="ml-1.5"><ContentTeamChip ct={ep.contentTeam} /></span>}
                               </td>
-                              <ContentTeamCell score={ep.contentTeamAssessment} />
                               <td className="py-2 px-3 text-gray-500">{formatDate(ep.date)}</td>
                               <td className="py-2 px-3 text-right">
                                 <span className={`inline-flex items-center gap-1 font-semibold ${daysColor(ep.daysPending)}`}>
@@ -359,7 +369,6 @@ function PendingDetailDialog({ userId, personName, personRole, onClose }: {
                           <tr className="border-b bg-green-50/50">
                             <th className="text-left py-2 px-3 font-medium text-gray-500">Project</th>
                             <th className="text-left py-2 px-3 font-medium text-gray-500">Episode</th>
-                            <th className="text-left py-2 px-3 font-medium text-gray-500">Content Team Assessment</th>
                             <th className="text-left py-2 px-3 font-medium text-gray-500">Evaluations</th>
                           </tr>
                         </thead>
@@ -378,10 +387,8 @@ function PendingDetailDialog({ userId, personName, personRole, onClose }: {
                                 )}
                                 {ep.title && <span className="ml-1.5 text-gray-500">{ep.title}</span>}
                               </td>
-                              <ContentTeamCell score={ep.contentTeamAssessment} />
                               <td className="py-2 px-3">
                                 <div className="flex flex-wrap gap-1">
-                                  {ep.evaluations.length === 0 && <span className="text-gray-400">Content Team Assessment only</span>}
                                   {ep.evaluations.map((ev, i) => (
                                     <span key={i} className="inline-flex items-center gap-1">
                                       <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${scoreColor(ev.overallAverage ?? 0)}`}>
@@ -394,6 +401,8 @@ function PendingDetailDialog({ userId, personName, personRole, onClose }: {
                                       )}
                                     </span>
                                   ))}
+                                  <ContentTeamChip ct={ep.contentTeam} />
+                                  <AvgChip avg={ep.avg} />
                                 </div>
                               </td>
                             </tr>
