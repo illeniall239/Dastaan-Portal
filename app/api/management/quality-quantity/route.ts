@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireApiAuth } from "@/lib/api/auth";
+import { fetchAll } from "@/lib/supabase/fetch-all";
+import { getProjectRatings } from "@/lib/management/project-ratings-server";
 
 export const dynamic = "force-dynamic";
 
@@ -21,7 +23,7 @@ export async function GET() {
 
     const admin = createAdminClient();
 
-    const [{ data: callReports }, { data: evalForms }, { data: episodes }, { data: epEvals }, { data: teams }] =
+    const [{ data: callReports }, { data: evalForms }, episodes, { data: epEvals }, { data: teams }, { overall, contentTeamAssessments }] =
       await Promise.all([
         admin.from("call_reports")
           .select("id, working_title, writer_name, team_id, target_slot, content_type, total_episodes, received_episodes")
@@ -32,16 +34,18 @@ export async function GET() {
           .select("call_report_id, average_score, evaluator:users!evaluator_forms_evaluator_id_fkey(name, team_id)")
           .not("submitted_at", "is", null)
           .not("average_score", "is", null),
-        admin.from("episodes")
+        fetchAll<any>((f, t) => admin.from("episodes")
           .select("id, call_report_id")
           .eq("is_current", true)
-          .not("call_report_id", "is", null),
+          .not("call_report_id", "is", null).order("id").range(f, t)),
         admin.from("episodic_evaluations")
           .select("episode_id, overall_average, evaluator:users!episodic_evaluations_evaluator_id_fkey(name, team_id)")
           .not("submitted_at", "is", null)
           .not("overall_average", "is", null),
         admin.from("teams")
           .select("id, name, team_head:users!teams_team_head_id_fkey(name)"),
+        // Quality uses each project's ratings (Team Overview rule); the Content Team Assessment is listed too
+        getProjectRatings(),
       ]);
 
     // Team display names
@@ -54,14 +58,9 @@ export async function GET() {
 
     // One-liner scores + evaluator details per CR
     type EvalDetail = { name: string; score: number; team?: string };
-    const crOneLinerScores = new Map<string, number[]>();
     const crOneLinerEvaluators = new Map<string, EvalDetail[]>();
     for (const ef of evalForms || []) {
-      if (!crOneLinerScores.has(ef.call_report_id)) {
-        crOneLinerScores.set(ef.call_report_id, []);
-        crOneLinerEvaluators.set(ef.call_report_id, []);
-      }
-      crOneLinerScores.get(ef.call_report_id)!.push(ef.average_score);
+      if (!crOneLinerEvaluators.has(ef.call_report_id)) crOneLinerEvaluators.set(ef.call_report_id, []);
       const evaluator: any = Array.isArray(ef.evaluator) ? ef.evaluator[0] : ef.evaluator;
       crOneLinerEvaluators.get(ef.call_report_id)!.push({
         name: evaluator?.name || "Unknown",
@@ -73,22 +72,17 @@ export async function GET() {
     // Episode count per CR + episode → CR map
     const epToCr = new Map<string, string>();
     const crEpCount = new Map<string, number>();
-    for (const ep of episodes || []) {
+    for (const ep of episodes) {
       epToCr.set(ep.id, ep.call_report_id);
       crEpCount.set(ep.call_report_id, (crEpCount.get(ep.call_report_id) || 0) + 1);
     }
 
     // Episode eval scores + evaluator details per CR
-    const crEpScores = new Map<string, number[]>();
     const crEpEvaluators = new Map<string, EvalDetail[]>();
     for (const ee of epEvals || []) {
       const crId = epToCr.get(ee.episode_id);
       if (!crId) continue;
-      if (!crEpScores.has(crId)) {
-        crEpScores.set(crId, []);
-        crEpEvaluators.set(crId, []);
-      }
-      crEpScores.get(crId)!.push(ee.overall_average);
+      if (!crEpEvaluators.has(crId)) crEpEvaluators.set(crId, []);
       const evaluator: any = Array.isArray(ee.evaluator) ? ee.evaluator[0] : ee.evaluator;
       crEpEvaluators.get(crId)!.push({
         name: evaluator?.name || "Unknown",
@@ -97,21 +91,21 @@ export async function GET() {
       });
     }
 
+    // The content department's own scores, listed like an evaluator
+    const CONTENT_TEAM = { name: "Content Team Assessment", team: "Content Team" };
+    for (const a of contentTeamAssessments.values()) {
+      const list = a.itemType === "call_report" ? crOneLinerEvaluators : crEpEvaluators;
+      list.set(a.callReportId, [...(list.get(a.callReportId) ?? []), { ...CONTENT_TEAM, score: a.score }]);
+    }
+
     // Collect distinct slots
     const slotSet = new Set<string>();
 
     // Build per-project data
     const projects: any[] = [];
     for (const cr of callReports || []) {
-      const olScores = crOneLinerScores.get(cr.id);
-      const epScores = crEpScores.get(cr.id);
-
-      const olAvg = olScores
-        ? Math.round((olScores.reduce((a, b) => a + b, 0) / olScores.length) * 10) / 10
-        : null;
-      const epAvg = epScores
-        ? Math.round((epScores.reduce((a, b) => a + b, 0) / epScores.length) * 10) / 10
-        : null;
+      const olAvg = overall.get(cr.id)?.oneLiner?.score ?? null;
+      const epAvg = overall.get(cr.id)?.episodes?.score ?? null;
 
       // Skip projects with no evaluations at all
       if (olAvg === null && epAvg === null) continue;
@@ -155,10 +149,10 @@ export async function GET() {
         slot: cr.target_slot || null,
         quality,
         onelinerAvg: olAvg,
-        onelinerEvalCount: olScores?.length || 0,
+        onelinerEvalCount: crOneLinerEvaluators.get(cr.id)?.length || 0,
         onelinerEvaluators: dedup(crOneLinerEvaluators.get(cr.id) || []),
         episodeAvg: epAvg,
-        episodicEvalCount: epScores?.length || 0,
+        episodicEvalCount: crEpEvaluators.get(cr.id)?.length || 0,
         episodicEvaluators: dedup(crEpEvaluators.get(cr.id) || []),
         quantity,
         totalEpisodes: cr.total_episodes || null,

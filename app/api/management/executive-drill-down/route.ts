@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getProjectRatings } from "@/lib/management/project-ratings-server";
 import { requireApiAuth } from "@/lib/api/auth";
 import { PKT_TIME_ZONE } from "@/lib/utils/format-date";
 
@@ -46,20 +47,23 @@ async function fetchMetricData(
     case "active_projects": {
       // Single query on call_reports (the actual "ideas") instead of
       // 2 sequential queries (all CRs for story_ids → stories)
-      const { data } = await admin
-        .from("call_reports")
-        .select("id, working_title, writer_name, created_at, evaluation_status, current_average_score")
-        .eq("meeting_type", "call_report")
-        .is("archived_at", null)
-        .order("created_at", { ascending: false })
-        .limit(200);
+      const [{ data }, { overall }] = await Promise.all([
+        admin
+          .from("call_reports")
+          .select("id, working_title, writer_name, created_at, evaluation_status")
+          .eq("meeting_type", "call_report")
+          .is("archived_at", null)
+          .order("created_at", { ascending: false })
+          .limit(200),
+        getProjectRatings(),
+      ]);
 
       return {
         columns: activeProjectCols,
         rows: (data || []).map((r: any) => ({
           title: r.working_title || "—",
           writer: r.writer_name || "—",
-          score: r.current_average_score != null ? Number(r.current_average_score).toFixed(1) : "—",
+          score: overall.get(r.id)?.oneLiner?.score.toFixed(1) ?? "—", // the project's rating (Team Overview rule)
           status: fmt(r.evaluation_status || "pending"),
           created_at: fmtDate(r.created_at),
         })),
@@ -195,7 +199,7 @@ async function fetchMetricData(
 const activeProjectCols: Column[] = [
   { key: "title", label: "Title" },
   { key: "writer", label: "Writer" },
-  { key: "score", label: "Avg Score" },
+  { key: "score", label: "Rating" },
   { key: "status", label: "Status" },
   { key: "created_at", label: "Created" },
 ];

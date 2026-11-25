@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getProjectRatings } from "@/lib/management/project-ratings-server";
 
 export const dynamic = "force-dynamic";
 
@@ -126,6 +127,7 @@ export async function GET(_request: NextRequest) {
 
     // Step 3a: Fetch reviewed items (already voted on) with their decisions
     const reviewedIds = evaluatedIds.filter((id) => myApprovedIds.has(id));
+    const { overall } = await getProjectRatings();
     let reviewedResult: any[] = [];
 
     if (reviewedIds.length > 0) {
@@ -149,16 +151,12 @@ export async function GET(_request: NextRequest) {
         const dec = decisionMap.get(cr.id);
         const stats = statsByCallReport[cr.id];
         const scores = stats?.scores || [];
-        const avgScore =
-          scores.length > 0
-            ? Math.round((scores.reduce((a: number, b: number) => a + b, 0) / scores.length) * 10) / 10
-            : null;
         return {
           id: cr.id,
           workingTitle: cr.working_title || cr.call_report_id,
           callReportId: cr.call_report_id,
           createdAt: cr.created_at,
-          averageScore: avgScore,
+          averageScore: overall.get(cr.id)?.oneLiner?.score ?? null, // the project's rating (Team Overview rule)
           lastEvaluatedAt: stats?.latestAt || null,
           evaluationCount: scores.length,
           myDecision: dec?.decision ?? null,
@@ -191,16 +189,12 @@ export async function GET(_request: NextRequest) {
     const result = (callReports || []).map((cr: any) => {
       const stats = statsByCallReport[cr.id];
       const scores = stats?.scores || [];
-      const avgScore =
-        scores.length > 0
-          ? Math.round((scores.reduce((a, b) => a + b, 0) / scores.length) * 10) / 10
-          : null;
       return {
         id: cr.id,
         workingTitle: cr.working_title || cr.call_report_id,
         callReportId: cr.call_report_id,
         createdAt: cr.created_at,
-        averageScore: avgScore,
+        averageScore: overall.get(cr.id)?.oneLiner?.score ?? null, // the project's rating (Team Overview rule)
         lastEvaluatedAt: stats?.latestAt || null,
         evaluationCount: scores.length,
         discussionCount: discussionCountMap[cr.id] || 0,

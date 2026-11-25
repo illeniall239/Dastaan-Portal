@@ -69,6 +69,9 @@ interface Project {
   deadline: string | null;
   onAirDate: string | null;
   oneLinerGrades: Record<string, number>;
+  /** The project's rating (Team Overview rule) */
+  rating: number | null;
+  episodesRating: number | null;
   agreementDate: string | null;
   perEpAmount: number | null;
   paymentStructure: string | null;
@@ -553,8 +556,8 @@ export default function ContentAgingPage() {
       if (teamHeadFilter !== "all" && p.teamHeadName !== teamHeadFilter) return false;
       if (scheduleFilter !== "all" && p.commitment?.commitment_schedule !== scheduleFilter) return false;
       if (writerFilter !== "all" && p.writerName !== writerFilter) return false;
-      if (!matchesRatingBucket(getProjectAvgOneLiner(p.oneLinerGrades), oneLinerRatingFilter)) return false;
-      if (!matchesRatingBucket(getProjectAvgEpisodic(p.allEvaluatorGrades), episodicRatingFilter)) return false;
+      if (!matchesRatingBucket(p.rating, oneLinerRatingFilter)) return false;
+      if (!matchesRatingBucket(p.episodesRating, episodicRatingFilter)) return false;
       if (feedbackDelayFilter !== "all") {
         const d = p.maxFeedbackDays;
         if (feedbackDelayFilter === "7plus" && (d === null || d < 7)) return false;

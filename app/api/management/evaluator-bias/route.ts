@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { logger } from "@/lib/logger";
 import { applyRateLimit } from "@/lib/api-middleware";
 import { RateLimitPresets } from "@/lib/rate-limit-redis";
+import { getProjectRatings } from "@/lib/management/project-ratings-server";
 
 export const dynamic = "force-dynamic";
 
@@ -211,6 +212,44 @@ export async function GET(request: NextRequest) {
         avg_score: Math.round((g.total / g.count) * 100) / 100,
         eval_count: g.count,
       }));
+    }
+
+    // The content department's own one-liner scores (Content Team Assessment), as one more row
+    const { contentTeamAssessments } = await getProjectRatings();
+    const teamScores = [...contentTeamAssessments.values()].filter((a) =>
+      a.itemType === "call_report" && (!from || a.at >= from) && (!to || a.at <= to + "T23:59:59"));
+    if (teamScores.length) {
+      const ids = teamScores.map((a) => a.callReportId);
+      const dimsByCr = new Map<string, any[]>();
+      if (dimension === "writer") {
+        const { data } = await adminClient.from("call_report_writers").select("call_report_id, writer:writers(name)").in("call_report_id", ids);
+        for (const w of (data as any[]) || []) {
+          const writer = Array.isArray(w.writer) ? w.writer[0] : w.writer;
+          if (writer?.name) dimsByCr.set(w.call_report_id, [...(dimsByCr.get(w.call_report_id) ?? []), writer.name]);
+        }
+      } else {
+        const col = DIMENSION_COLUMN[dimension];
+        const { data } = await adminClient.from("call_reports").select(`id, ${col}`).in("id", ids);
+        for (const cr of (data as any[]) || []) if (cr[col]) dimsByCr.set(cr.id, [cr[col]]);
+      }
+      const grouped = new Map<string, { dimension_value: any; total: number; count: number }>();
+      for (const a of teamScores) {
+        for (const v of dimsByCr.get(a.callReportId) ?? []) {
+          const g = grouped.get(`${v}`) ?? { dimension_value: v, total: 0, count: 0 };
+          g.total += a.score;
+          g.count += 1;
+          grouped.set(`${v}`, g);
+        }
+      }
+      for (const g of grouped.values()) {
+        rows.push({
+          evaluator_id: "content-team",
+          evaluator_name: "Content Team Assessment",
+          dimension_value: g.dimension_value,
+          avg_score: Math.round((g.total / g.count) * 100) / 100,
+          eval_count: g.count,
+        });
+      }
     }
 
     // Build unique sorted dimension values ("Unknown"/"Unassigned" last)

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getProgrammingTeamMemberIds } from "@/lib/management/programming-team";
+import { getProjectRatings } from "@/lib/management/project-ratings-server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { logger } from "@/lib/logger";
@@ -206,6 +207,12 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    // The content department's own scores show as one more "evaluator" (Content Team Assessment); each
+    // project's rating follows the Team Overview rule
+    const { overall, contentTeamAssessments } = await getProjectRatings();
+    const CONTENT_TEAM_ID = "content-team";
+    const CONTENT_TEAM = { name: "Content Team Assessment", email: "", role: "content_team", group: "Content" };
+
     // Build one-liner lookup maps
     const oneLinerByReport = new Map<string, Map<string, number>>();
     const globalOneLinerAssessorMap = new Map<string, { name: string; email: string; role: string; group: string }>();
@@ -222,6 +229,13 @@ export async function GET(request: NextRequest) {
           : "Content";
         globalOneLinerAssessorMap.set(row.evaluator_id, { name: assessor.name, email: assessor.email, role: assessor.role, group });
       }
+    }
+
+    for (const a of contentTeamAssessments.values()) {
+      if (a.itemType !== "call_report") continue;
+      if (!oneLinerByReport.has(a.callReportId)) oneLinerByReport.set(a.callReportId, new Map());
+      oneLinerByReport.get(a.callReportId)!.set(CONTENT_TEAM_ID, a.score);
+      globalOneLinerAssessorMap.set(CONTENT_TEAM_ID, CONTENT_TEAM);
     }
 
     const allWeeks = new Set<string>();
@@ -344,11 +358,22 @@ export async function GET(request: NextRequest) {
         }
       }
 
+      // The content team's scores of these episodes
+      const teamEps = crEpisodes.filter((ep: any) => contentTeamAssessments.has(ep.id));
+      if (teamEps.length) {
+        evaluatorMap.set(CONTENT_TEAM_ID, {
+          ...CONTENT_TEAM,
+          epNums: teamEps.map((ep: any) => ep.episode_number),
+          scores: teamEps.map((ep: any) => contentTeamAssessments.get(ep.id)!.score),
+        });
+      }
+
       // Build allEvaluatorGrades (all evaluators, keyed by ID) and populate global map
       const allEvaluatorGrades: Record<string, { epRange: string; avgScore: number | null }> = {};
       for (const [id, data] of evaluatorMap.entries()) {
         allEvaluatorGrades[id] = buildEvaluatorGrade(data);
-        if (!globalEvaluatorMap.has(id)) {
+        if (id === CONTENT_TEAM_ID) globalEvaluatorMap.set(id, CONTENT_TEAM);
+        else if (!globalEvaluatorMap.has(id)) {
           const group = contentDevIds.has(id) ? "Content Development"
             : programmingIds.has(id) || data.role === "programmer" ? "Programming"
             : ["admin", "management", "executive"].includes(data.role) ? "Management"
@@ -401,6 +426,9 @@ export async function GET(request: NextRequest) {
         deadline,
         onAirDate: (cr as any).aired_date || null,
         oneLinerGrades: Object.fromEntries(oneLinerByReport.get(cr.id) || []),
+        // The project's rating (Team Overview rule), one-liner and episodes
+        rating: overall.get(cr.id)?.oneLiner?.score ?? null,
+        episodesRating: overall.get(cr.id)?.episodes?.score ?? null,
         agreementDate: neg?.project_start_date || cr.meeting_date || null,
         perEpAmount: neg?.agreed_price || neg?.proposed_price || null,
         paymentStructure: neg?.payment_structure || null,

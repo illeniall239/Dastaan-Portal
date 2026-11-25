@@ -20,6 +20,7 @@ interface PersonPending {
 interface PendingOneLiner {
   id: string;
   title: string;
+  contentTeamAssessment: number | null;
   date: string;
   daysPending: number;
 }
@@ -29,6 +30,7 @@ interface PendingEpisode {
   episodeNumber: number;
   title: string | null;
   projectTitle: string;
+  contentTeamAssessment: number | null;
   date: string;
   daysPending: number;
   revisions: number;
@@ -50,6 +52,7 @@ interface EpEvalEntry {
 interface EvaluatedOneLiner {
   id: string;
   title: string;
+  contentTeamAssessment: number | null;
   date: string;
   evaluations: EvalEntry[];
 }
@@ -59,6 +62,7 @@ interface EvaluatedEpisode {
   episodeNumber: number;
   title: string | null;
   projectTitle: string;
+  contentTeamAssessment: number | null;
   date: string;
   evaluations: EpEvalEntry[];
   revisions: number;
@@ -104,6 +108,19 @@ function gradeColor(grade: string): string {
   if (grade === "A+" || grade === "A") return "bg-green-100 text-green-700 border-green-200";
   if (grade === "B+" || grade === "B") return "bg-amber-100 text-amber-700 border-amber-200";
   return "bg-red-100 text-red-700 border-red-200";
+}
+
+/** The content department's own score for the item (shown beside what the head still has to evaluate) */
+function ContentTeamCell({ score }: { score: number | null }) {
+  return (
+    <td className="py-2 px-3">
+      {score != null ? (
+        <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${scoreColor(score)}`}>{score}/10</Badge>
+      ) : (
+        <span className="text-gray-300">—</span>
+      )}
+    </td>
+  );
 }
 
 function formatDate(dateStr: string): string {
@@ -158,7 +175,7 @@ function PendingDetailDialog({ userId, personName, personRole, onClose }: {
       <DialogContent className="max-w-[95vw] sm:max-w-3xl max-h-[80vh] flex flex-col overflow-hidden">
         <DialogHeader>
           <div className="flex items-center gap-2">
-            <DialogTitle className="text-base">{personName}</DialogTitle>
+            <DialogTitle className="text-base">{personName}&apos;s Team</DialogTitle>
             <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${badge.color}`}>
               {badge.label}
             </Badge>
@@ -211,6 +228,7 @@ function PendingDetailDialog({ userId, personName, personRole, onClose }: {
                         <thead>
                           <tr className="border-b bg-amber-50/50">
                             <th className="text-left py-2 px-3 font-medium text-gray-500">Title</th>
+                            <th className="text-left py-2 px-3 font-medium text-gray-500">Content Team Assessment</th>
                             <th className="text-left py-2 px-3 font-medium text-gray-500">Submitted</th>
                             <th className="text-right py-2 px-3 font-medium text-gray-500">Waiting</th>
                           </tr>
@@ -219,6 +237,7 @@ function PendingDetailDialog({ userId, personName, personRole, onClose }: {
                           {pendingOL.map((ol) => (
                             <tr key={ol.id} className="border-b border-gray-50 last:border-0 hover:bg-gray-50/50">
                               <td className="py-2 px-3 font-medium text-gray-800">{ol.title || "Untitled"}</td>
+                              <ContentTeamCell score={ol.contentTeamAssessment} />
                               <td className="py-2 px-3 text-gray-500">{formatDate(ol.date)}</td>
                               <td className="py-2 px-3 text-right">
                                 <span className={`inline-flex items-center gap-1 font-semibold ${daysColor(ol.daysPending)}`}>
@@ -238,12 +257,13 @@ function PendingDetailDialog({ userId, personName, personRole, onClose }: {
                     <div>
                       <div className="flex items-center gap-2 mb-2">
                         <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />
-                        <span className="text-xs font-semibold text-green-600">Evaluated ({evaluatedOL.length})</span>
+                        <span className="text-xs font-semibold text-green-600">Rated ({evaluatedOL.length})</span>
                       </div>
                       <table className="w-full text-xs">
                         <thead>
                           <tr className="border-b bg-green-50/50">
                             <th className="text-left py-2 px-3 font-medium text-gray-500">Title</th>
+                            <th className="text-left py-2 px-3 font-medium text-gray-500">Content Team Assessment</th>
                             <th className="text-left py-2 px-3 font-medium text-gray-500">Submitted</th>
                             <th className="text-left py-2 px-3 font-medium text-gray-500">Evaluations</th>
                           </tr>
@@ -252,9 +272,11 @@ function PendingDetailDialog({ userId, personName, personRole, onClose }: {
                           {evaluatedOL.map((ol) => (
                             <tr key={ol.id} className="border-b border-gray-50 last:border-0 hover:bg-gray-50/50">
                               <td className="py-2 px-3 font-medium text-gray-800">{ol.title || "Untitled"}</td>
+                              <ContentTeamCell score={ol.contentTeamAssessment} />
                               <td className="py-2 px-3 text-gray-500">{formatDate(ol.date)}</td>
                               <td className="py-2 px-3">
                                 <div className="flex flex-wrap gap-1">
+                                  {ol.evaluations.length === 0 && <span className="text-gray-400">Content Team Assessment only</span>}
                                   {ol.evaluations.map((ev, i) => (
                                     <Badge key={i} variant="outline" className={`text-[10px] px-1.5 py-0 ${scoreColor(ev.averageScore ?? 0)}`}>
                                       {ev.evaluatorName.split(" ")[0]}: {ev.averageScore != null ? ev.averageScore.toFixed(1) : "—"}
@@ -290,6 +312,7 @@ function PendingDetailDialog({ userId, personName, personRole, onClose }: {
                           <tr className="border-b bg-amber-50/50">
                             <th className="text-left py-2 px-3 font-medium text-gray-500">Project</th>
                             <th className="text-left py-2 px-3 font-medium text-gray-500">Episode</th>
+                            <th className="text-left py-2 px-3 font-medium text-gray-500">Content Team Assessment</th>
                             <th className="text-left py-2 px-3 font-medium text-gray-500">Submitted</th>
                             <th className="text-right py-2 px-3 font-medium text-gray-500">Waiting</th>
                           </tr>
@@ -309,6 +332,7 @@ function PendingDetailDialog({ userId, personName, personRole, onClose }: {
                                 )}
                                 {ep.title && <span className="ml-1.5 text-gray-500">{ep.title}</span>}
                               </td>
+                              <ContentTeamCell score={ep.contentTeamAssessment} />
                               <td className="py-2 px-3 text-gray-500">{formatDate(ep.date)}</td>
                               <td className="py-2 px-3 text-right">
                                 <span className={`inline-flex items-center gap-1 font-semibold ${daysColor(ep.daysPending)}`}>
@@ -328,13 +352,14 @@ function PendingDetailDialog({ userId, personName, personRole, onClose }: {
                     <div>
                       <div className="flex items-center gap-2 mb-2">
                         <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />
-                        <span className="text-xs font-semibold text-green-600">Evaluated ({evaluatedEp.length})</span>
+                        <span className="text-xs font-semibold text-green-600">Rated ({evaluatedEp.length})</span>
                       </div>
                       <table className="w-full text-xs">
                         <thead>
                           <tr className="border-b bg-green-50/50">
                             <th className="text-left py-2 px-3 font-medium text-gray-500">Project</th>
                             <th className="text-left py-2 px-3 font-medium text-gray-500">Episode</th>
+                            <th className="text-left py-2 px-3 font-medium text-gray-500">Content Team Assessment</th>
                             <th className="text-left py-2 px-3 font-medium text-gray-500">Evaluations</th>
                           </tr>
                         </thead>
@@ -353,8 +378,10 @@ function PendingDetailDialog({ userId, personName, personRole, onClose }: {
                                 )}
                                 {ep.title && <span className="ml-1.5 text-gray-500">{ep.title}</span>}
                               </td>
+                              <ContentTeamCell score={ep.contentTeamAssessment} />
                               <td className="py-2 px-3">
                                 <div className="flex flex-wrap gap-1">
+                                  {ep.evaluations.length === 0 && <span className="text-gray-400">Content Team Assessment only</span>}
                                   {ep.evaluations.map((ev, i) => (
                                     <span key={i} className="inline-flex items-center gap-1">
                                       <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${scoreColor(ev.overallAverage ?? 0)}`}>
@@ -442,7 +469,7 @@ export function PendingByPerson() {
                       <User className="h-4 w-4 text-gray-500" />
                     </div>
                     <div className="min-w-0">
-                      <p className="text-sm font-semibold truncate">{person.name}</p>
+                      <p className="text-sm font-semibold truncate">{person.name}&apos;s Team</p>
                       {(() => {
                         const badge = getBadgeProps(person.name, person.role);
                         return (

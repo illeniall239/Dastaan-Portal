@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { fetchAll } from "@/lib/supabase/fetch-all";
+import { getProjectRatings } from "@/lib/management/project-ratings-server";
 import { requireApiAuth } from "@/lib/api/auth";
 
 export const dynamic = "force-dynamic";
@@ -27,7 +29,7 @@ export async function GET() {
 
     const admin = createAdminClient();
 
-    const [{ data: callReports }, { data: evalForms }, { data: episodes }, { data: epEvals }, { data: teams }] = await Promise.all([
+    const [{ data: callReports }, { data: evalForms }, episodes, { data: epEvals }, { data: teams }, { overall, episodeOverall, contentTeamAssessments }] = await Promise.all([
       admin.from("call_reports")
         .select("id, working_title, team_id")
         .is("archived_at", null)
@@ -37,16 +39,19 @@ export async function GET() {
         .select("call_report_id, average_score, evaluator:users!evaluator_forms_evaluator_id_fkey(name, team_id)")
         .not("submitted_at", "is", null)
         .not("average_score", "is", null),
-      admin.from("episodes")
+      fetchAll<any>((f, t) => admin.from("episodes")
         .select("id, call_report_id, episode_number")
-        .not("call_report_id", "is", null),
+        .not("call_report_id", "is", null).order("id").range(f, t)),
       admin.from("episodic_evaluations")
         .select("episode_id, overall_average, evaluator:users!episodic_evaluations_evaluator_id_fkey(name, team_id)")
         .not("submitted_at", "is", null)
         .not("overall_average", "is", null),
       admin.from("teams")
         .select("id, name, team_type, team_head:users!teams_team_head_id_fkey(name)"),
+      // Each point is the item's rating (Team Overview rule); the Content Team Assessment is listed with the evaluators
+      getProjectRatings(),
     ]);
+    const CONTENT_TEAM = { name: "Content Team Assessment", teamName: "Content Team" };
 
     // Team display names (for project labels)
     const teamMap = new Map(
@@ -88,8 +93,10 @@ export async function GET() {
 
     // Episode → CR map + episode_number
     const epInfo = new Map<string, { crId: string; epNum: number }>();
-    for (const ep of episodes || []) {
+    const crEpisodes = new Map<string, { id: string; epNum: number }[]>();
+    for (const ep of episodes) {
       epInfo.set(ep.id, { crId: ep.call_report_id, epNum: ep.episode_number });
+      crEpisodes.set(ep.call_report_id, [...(crEpisodes.get(ep.call_report_id) ?? []), { id: ep.id, epNum: ep.episode_number }]);
     }
 
     // Per CR, per episode_number: collect scores with evaluator names
@@ -114,22 +121,23 @@ export async function GET() {
         const olScores = crOneLiner.get(cr.id);
         const epScoresMap = crEpScores.get(cr.id);
 
-        const olAvg = olScores
-          ? Math.round((olScores.reduce((a, b) => a + b.score, 0) / olScores.length) * 10) / 10
-          : null;
-        const olEvaluators = olScores?.map((e) => ({ name: e.name, score: Math.round(e.score * 10) / 10, teamName: e.teamName })) || [];
+        const olAvg = overall.get(cr.id)?.oneLiner?.score ?? null;
+        const olTeam = contentTeamAssessments.get(cr.id);
+        const olEvaluators = [
+          ...(olTeam ? [{ ...CONTENT_TEAM, score: olTeam.score }] : []),
+          ...(olScores?.map((e) => ({ name: e.name, score: Math.round(e.score * 10) / 10, teamName: e.teamName })) || []),
+        ];
 
         const episodeTrend: { episode: number; avgScore: number; evalCount: number; evaluators: { name: string; score: number }[] }[] = [];
-        if (epScoresMap) {
-          const sortedEps = Array.from(epScoresMap.entries()).sort((a, b) => a[0] - b[0]);
-          for (const [epNum, evals] of sortedEps) {
-            episodeTrend.push({
-              episode: epNum,
-              avgScore: Math.round((evals.reduce((a, b) => a + b.score, 0) / evals.length) * 10) / 10,
-              evalCount: evals.length,
-              evaluators: evals.map((e) => ({ name: e.name, score: Math.round(e.score * 10) / 10, teamName: e.teamName })),
-            });
-          }
+        for (const ep of [...(crEpisodes.get(cr.id) ?? [])].sort((a, b) => a.epNum - b.epNum)) {
+          const rating = episodeOverall.get(ep.id);
+          if (rating == null) continue;
+          const team = contentTeamAssessments.get(ep.id);
+          const evaluators = [
+            ...(team ? [{ ...CONTENT_TEAM, score: team.score }] : []),
+            ...(epScoresMap?.get(ep.epNum) ?? []).map((e) => ({ name: e.name, score: Math.round(e.score * 10) / 10, teamName: e.teamName })),
+          ];
+          episodeTrend.push({ episode: ep.epNum, avgScore: rating, evalCount: evaluators.length, evaluators });
         }
 
         // Skip projects with no ratings at all
@@ -149,7 +157,7 @@ export async function GET() {
           teamName: teamMap.get(cr.team_id) || "Unknown",
           onelinerAvg: olAvg,
           onelinerEvaluators: olEvaluators,
-          onelinerEvalCount: olScores?.length || 0,
+          onelinerEvalCount: olEvaluators.length,
           episodeTrend,
           trendDirection,
           latestScore,

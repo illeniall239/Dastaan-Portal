@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireApiAuth } from "@/lib/api/auth";
+import { fetchAll } from "@/lib/supabase/fetch-all";
+import { getProjectRatings } from "@/lib/management/project-ratings-server";
 
 export const dynamic = "force-dynamic";
 
@@ -26,15 +28,18 @@ export async function GET(request: NextRequest) {
       { data: allUsers },
       { data: callReports },
       { data: evalForms },
-      { data: episodes },
-      { data: epEvals },
+      episodes,
+      epEvals,
+      { contentTeamAssessments },
     ] = await Promise.all([
       admin.from("teams").select("id, name, team_head_id"),
       admin.from("users").select("id, name, role, team_id, email").eq("status", "active").order("name"),
       admin.from("call_reports").select("id, team_id, working_title, created_at, original_submission_date").is("archived_at", null).eq("meeting_type", "call_report"),
       admin.from("evaluator_forms").select("evaluator_id, call_report_id").not("submitted_at", "is", null),
-      admin.from("episodes").select("id, call_report_id, episode_number, title, created_at, original_submission_date").not("call_report_id", "is", null),
-      admin.from("episodic_evaluations").select("evaluator_id, episode_id").not("submitted_at", "is", null).not("overall_average", "is", null),
+      // More than 1000 rows: read every page
+      fetchAll((from, to) => admin.from("episodes").select("id, call_report_id, episode_number, title, created_at, original_submission_date").not("call_report_id", "is", null).order("id").range(from, to)),
+      fetchAll((from, to) => admin.from("episodic_evaluations").select("evaluator_id, episode_id").not("submitted_at", "is", null).not("overall_average", "is", null).order("id").range(from, to)),
+      getProjectRatings(),
     ]);
 
     const teamHeadIds = new Set((teamsData || []).map((t) => t.team_head_id).filter(Boolean));
@@ -78,8 +83,10 @@ export async function GET(request: NextRequest) {
       return allCrs.filter((cr) => cr.team_id === ev.team_id);
     }
 
-    // Helper: get eval sets — team-level for EVALUATES_ALL, personal for others
-    function getEvalSets(ev: { id: string; email: string; team_id: string }) {
+    // Helper: get "done" sets — team-level for EVALUATES_ALL, personal for others. For a content head
+    // (evaluator / GCM), an item the content team has assessed is done too: the Content Team Assessment
+    // counts as the Content Head rating (the head can still rate it; theirs is then averaged in).
+    function getEvalSets(ev: { id: string; email: string; team_id: string; role: string }) {
       if (EVALUATES_ALL_EMAILS.has(ev.email)) {
         // Get ALL teams this person heads (a person can head more than one)
         const headedTeamIds = (teamsData || [])
@@ -94,10 +101,12 @@ export async function GET(request: NextRequest) {
         }
         return { crEvals, epEvals: epEvalSet };
       }
-      return {
-        crEvals: submittedCrEvals.get(ev.id) || new Set<string>(),
-        epEvals: submittedEpEvals.get(ev.id) || new Set<string>(),
-      };
+      const crEvals = new Set(submittedCrEvals.get(ev.id) || []);
+      const epEvalSet = new Set(submittedEpEvals.get(ev.id) || []);
+      if (ev.role === "evaluator" || ev.role === "gcm") {
+        for (const a of contentTeamAssessments.values()) (a.itemType === "call_report" ? crEvals : epEvalSet).add(a.itemId);
+      }
+      return { crEvals, epEvals: epEvalSet };
     }
 
     // ── DETAIL MODE ─────────────────────────────────────────────────────
@@ -114,7 +123,7 @@ export async function GET(request: NextRequest) {
       const crMap = new Map(allCrs.map((cr) => [cr.id, cr]));
 
       // Fetch detailed eval data with scores and evaluator names + revision counts
-      const [{ data: detailedCrEvals }, { data: detailedEpEvals }, { data: epRevisions }] = await Promise.all([
+      const [{ data: detailedCrEvals }, { data: detailedEpEvals }, epRevisions] = await Promise.all([
         admin.from("evaluator_forms")
           .select("call_report_id, average_score, submitted_at, evaluator:users!evaluator_id(id, name)")
           .not("submitted_at", "is", null),
@@ -122,13 +131,16 @@ export async function GET(request: NextRequest) {
           .select("episode_id, overall_average, overall_grade, submitted_at, evaluator:users!evaluator_id(id, name)")
           .not("submitted_at", "is", null)
           .not("overall_average", "is", null),
-        admin.from("episode_revisions")
-          .select("episode_id"),
+        fetchAll((from, to) => admin.from("episode_revisions")
+          .select("episode_id").order("id").range(from, to)),
       ]);
+
+      // The content department's own score of each item (newest version), as in the Team Overview rating
+      const contentTeamAssessment = (itemId: string) => contentTeamAssessments.get(itemId)?.score ?? null;
 
       // Build episode → revision count map
       const revCountMap = new Map<string, number>();
-      for (const r of epRevisions || []) {
+      for (const r of epRevisions) {
         revCountMap.set(r.episode_id, (revCountMap.get(r.episode_id) || 0) + 1);
       }
 
@@ -178,6 +190,7 @@ export async function GET(request: NextRequest) {
         .map((cr) => ({
           id: cr.id,
           title: cr.working_title,
+          contentTeamAssessment: contentTeamAssessment(cr.id),
           date: cr.original_submission_date || cr.created_at,
           daysPending: Math.floor((Date.now() - new Date(cr.original_submission_date || cr.created_at).getTime()) / 86400000),
         }))
@@ -189,6 +202,7 @@ export async function GET(request: NextRequest) {
         .map((cr) => ({
           id: cr.id,
           title: cr.working_title,
+          contentTeamAssessment: contentTeamAssessment(cr.id),
           date: cr.original_submission_date || cr.created_at,
           evaluations: crEvalsMap.get(cr.id) || [],
         }))
@@ -205,6 +219,7 @@ export async function GET(request: NextRequest) {
             episodeNumber: ep.episode_number,
             title: ep.title,
             projectTitle: cr?.working_title || "Unknown",
+            contentTeamAssessment: contentTeamAssessment(ep.id),
             date: ep.original_submission_date || ep.created_at,
             daysPending: Math.floor((Date.now() - new Date(ep.original_submission_date || ep.created_at).getTime()) / 86400000),
             revisions: revCountMap.get(ep.id) || 0,
@@ -222,6 +237,7 @@ export async function GET(request: NextRequest) {
             episodeNumber: ep.episode_number,
             title: ep.title,
             projectTitle: cr?.working_title || "Unknown",
+            contentTeamAssessment: contentTeamAssessment(ep.id),
             date: ep.original_submission_date || ep.created_at,
             evaluations: epEvalsMap.get(ep.id) || [],
             revisions: revCountMap.get(ep.id) || 0,

@@ -1,5 +1,6 @@
 import { createAdminClient } from '@/lib/supabase/admin';
 import { handleError } from '@/lib/errors';
+import { getProjectRatings } from '@/lib/management/project-ratings-server';
 
 export interface EvaluatorScores {
   nadeem?: number | null;
@@ -22,12 +23,15 @@ export interface ActiveIdeaDetail {
   days_active: number;
   logline: string | null;
   created_at: string;
+  /** The project's rating (one-liner): the overall rating, as on the Team Overview cards */
   overall_rating: number | null;
+  /** Not used any more: overall_rating already counts the Content Team Assessment */
   average_initial_assessment?: number | null;
   assessment_count?: number;
   slot: string | null;
   content_type: string | null;
   theme: string | null;
+  /** Same as overall_rating (the project's rating under the current rules) */
   average_score: number | null;
   evaluation_deadline: string | null;
   total_episodes: number | null;
@@ -172,6 +176,9 @@ export async function getActiveIdeasByGenre(
       }
     }
 
+    // The project's rating under the current rules (Content Team Assessment + evaluations, by team)
+    const { overall } = await getProjectRatings();
+
     const now = new Date();
 
     const msPerDay = 1000 * 60 * 60 * 24;
@@ -184,9 +191,13 @@ export async function getActiveIdeasByGenre(
       const lastEpDate = report.last_episode_received_at ? new Date(report.last_episode_received_at) : null;
 
       const desc = descMap.get(report.id);
+      const rating = overall.get(report.id)?.oneLiner?.score ?? null;
 
       return {
         ...report,
+        overall_rating: rating,
+        average_initial_assessment: null,
+        average_score: rating,
         days_active: daysActive,
         days_since_first_episode: firstEpDate ? Math.floor((now.getTime() - firstEpDate.getTime()) / msPerDay) : null,
         days_since_last_episode: lastEpDate ? Math.floor((now.getTime() - lastEpDate.getTime()) / msPerDay) : null,

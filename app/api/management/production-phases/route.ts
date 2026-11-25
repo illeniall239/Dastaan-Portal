@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireApiAuth } from "@/lib/api/auth";
+import { getProjectRatings } from "@/lib/management/project-ratings-server";
 import { getProductionPhase } from "@/lib/production-phase";
 
 export const dynamic = "force-dynamic";
@@ -13,7 +14,7 @@ export async function GET() {
     const admin = createAdminClient();
 
     // Fetch call reports with total_episodes + negotiations for estimated_episodes
-    const [{ data: callReports }, { data: episodes }, { data: negotiations }, { data: evalForms }] = await Promise.all([
+    const [{ data: callReports }, { data: episodes }, { data: negotiations }, { overall }] = await Promise.all([
       admin.from("call_reports")
         .select("id, working_title, writer_name, total_episodes, team_id, target_slot, team:teams!call_reports_team_id_fkey(name, team_head:users!teams_team_head_id_fkey(name))")
         .is("archived_at", null)
@@ -25,10 +26,7 @@ export async function GET() {
       admin.from("negotiations")
         .select("call_report_id, estimated_episodes")
         .not("call_report_id", "is", null),
-      admin.from("evaluator_forms")
-        .select("call_report_id, average_score")
-        .not("submitted_at", "is", null)
-        .not("average_score", "is", null),
+      getProjectRatings(),
     ]);
 
     // Build episode count per CR
@@ -45,16 +43,9 @@ export async function GET() {
       }
     }
 
-    // Build CR → average eval score
-    const crScores = new Map<string, number[]>();
-    for (const ef of evalForms || []) {
-      if (!crScores.has(ef.call_report_id)) crScores.set(ef.call_report_id, []);
-      crScores.get(ef.call_report_id)!.push(ef.average_score);
-    }
+    // The project's rating (Team Overview rule)
     const crAvgScore = new Map<string, number>();
-    for (const [crId, scores] of crScores) {
-      crAvgScore.set(crId, Math.round((scores.reduce((a, b) => a + b, 0) / scores.length) * 10) / 10);
-    }
+    for (const [crId, o] of overall) if (o.oneLiner) crAvgScore.set(crId, o.oneLiner.score);
 
     type ProjectEntry = {
       id: string;

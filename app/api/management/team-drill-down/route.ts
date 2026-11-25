@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getProjectRatings } from "@/lib/management/project-ratings-server";
 import { requireApiAuth } from "@/lib/api/auth";
 import { PKT_TIME_ZONE } from "@/lib/utils/format-date";
 
@@ -61,25 +62,26 @@ async function fetchMetricData(
     case "ideas_logged": {
       const { data } = await admin
         .from("call_reports")
-        .select("id, working_title, writer_name, created_at, current_average_score, evaluation_status")
+        .select("id, working_title, writer_name, created_at, evaluation_status")
         .eq("team_id", teamId)
         .eq("meeting_type", "call_report")
         .is("archived_at", null)
         .order("created_at", { ascending: false })
         .limit(200);
+      const { overall } = await getProjectRatings();
 
       return {
         columns: [
           { key: "working_title", label: "Title" },
           { key: "writer_name", label: "Writer" },
           { key: "created_at", label: "Submitted" },
-          { key: "current_average_score", label: "Avg Score" },
+          { key: "current_average_score", label: "Rating" },
           { key: "evaluation_status", label: "Status" },
         ],
         rows: (data || []).map((r: any) => ({
           ...r,
           created_at: fmtDate(r.created_at),
-          current_average_score: r.current_average_score != null ? Number(r.current_average_score).toFixed(1) : "—",
+          current_average_score: overall.get(r.id)?.oneLiner?.score.toFixed(1) ?? "—", // the project's rating (Team Overview rule)
           evaluation_status: fmtDecision(r.evaluation_status || "pending"),
         })),
       };
@@ -166,20 +168,21 @@ async function fetchMetricData(
       // Single query — no need to fetch CR IDs first
       const { data } = await admin
         .from("call_reports")
-        .select("id, working_title, writer_name, created_at, current_average_score")
+        .select("id, working_title, writer_name, created_at")
         .eq("team_id", teamId)
         .eq("meeting_type", "call_report")
         .is("archived_at", null)
         .eq("evaluation_status", metric === "approved" ? "approved" : "rejected")
         .order("created_at", { ascending: false })
         .limit(200);
+      const { overall } = await getProjectRatings();
 
       return {
         columns: approvalCols,
         rows: (data || []).map((r: any) => ({
           working_title: r.working_title || "—",
           writer_name: r.writer_name || "—",
-          current_average_score: r.current_average_score != null ? Number(r.current_average_score).toFixed(1) : "—",
+          current_average_score: overall.get(r.id)?.oneLiner?.score.toFixed(1) ?? "—", // the project's rating (Team Overview rule)
           created_at: fmtDate(r.created_at),
         })),
       };
@@ -290,7 +293,7 @@ const episodeReceivedCols: Column[] = [
 const approvalCols: Column[] = [
   { key: "working_title", label: "Title" },
   { key: "writer_name", label: "Writer" },
-  { key: "current_average_score", label: "Avg Score" },
+  { key: "current_average_score", label: "Rating" },
   { key: "created_at", label: "Date" },
 ];
 

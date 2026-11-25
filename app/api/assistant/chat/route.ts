@@ -314,7 +314,7 @@ const DATA_TOOLS = [
     function: {
       name: "query_projects",
       description:
-        "Every one-liner / project with its genres, theme, content type, commercial positioning, gender POV, slot, episodes received vs total, production phase, average evaluation score and approval status. Production phase is the same as the management dashboard's Production Phases chart: Pre Cast, Pre Production, Production Start (= ready for / in production). Use for: genres of one-liners and which have no genre ('Not classified'), which projects are in a phase or ready for production, counts or breakdowns by genre / theme / content type / slot / team / phase / approval, and listing or filtering projects by any of these.",
+        "Every one-liner / project with its genres, theme, content type, commercial positioning, gender POV, slot, episodes received vs total, production phase, rating (avg_score: the project's overall rating — the average of the teams that rated it, where the Content Head part counts the Content Team Assessment, same as the Team Overview cards) and approval status. Production phase is the same as the management dashboard's Production Phases chart: Pre Cast, Pre Production, Production Start (= ready for / in production). Use for: genres of one-liners and which have no genre ('Not classified'), which projects are in a phase or ready for production, counts or breakdowns by genre / theme / content type / slot / team / phase / approval, and listing or filtering projects by any of these.",
       parameters: {
         type: "object",
         properties: {

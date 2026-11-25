@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireApiAuth } from "@/lib/api/auth";
+import { getProjectRatings } from "@/lib/management/project-ratings-server";
 import { fetchAll } from "@/lib/supabase/fetch-all";
 
 export const dynamic = "force-dynamic";
@@ -35,7 +36,7 @@ export async function GET() {
 
     const admin = createAdminClient();
 
-    const [callReports, episodes, negotiations, evalForms] = await Promise.all([
+    const [callReports, episodes, negotiations, { overall }] = await Promise.all([
       fetchAll<any>((f, t) => admin.from("call_reports")
         .select("id, working_title, writer_name, theme, genre, content_type, target_slot, total_episodes, team_id, commercial_positioning, team:teams!call_reports_team_id_fkey(name, team_head:users!teams_team_head_id_fkey(name))")
         .is("archived_at", null)
@@ -46,8 +47,7 @@ export async function GET() {
         .eq("is_current", true).not("call_report_id", "is", null).order("id").range(f, t)),
       fetchAll<any>((f, t) => admin.from("negotiations").select("id, call_report_id, estimated_episodes")
         .not("call_report_id", "is", null).order("id").range(f, t)),
-      fetchAll<any>((f, t) => admin.from("evaluator_forms").select("id, call_report_id, average_score")
-        .not("submitted_at", "is", null).not("average_score", "is", null).order("id").range(f, t)),
+      getProjectRatings(),
     ]);
 
     // Details shown for each project in the drill-downs, like the Production Phases drill-down
@@ -55,13 +55,10 @@ export async function GET() {
     for (const ep of episodes) epsReceived.set(ep.call_report_id, (epsReceived.get(ep.call_report_id) || 0) + 1);
     const estimatedEps = new Map<string, number>();
     for (const n of negotiations) if (n.estimated_episodes) estimatedEps.set(n.call_report_id, n.estimated_episodes);
-    const scores = new Map<string, number[]>();
-    for (const ef of evalForms) scores.set(ef.call_report_id, [...(scores.get(ef.call_report_id) || []), ef.average_score]);
 
     const projectInfo = (cr: any): ProjectInfo => {
       const team: any = Array.isArray(cr.team) ? cr.team[0] : cr.team;
       const head: any = team?.team_head ? (Array.isArray(team.team_head) ? team.team_head[0] : team.team_head) : null;
-      const s = scores.get(cr.id);
       return {
         id: cr.id,
         title: cr.working_title || "Untitled",
@@ -73,7 +70,8 @@ export async function GET() {
         theme: cr.theme?.trim() || null,
         epsReceived: epsReceived.get(cr.id) || 0,
         totalEps: cr.total_episodes || estimatedEps.get(cr.id) || null,
-        avgScore: s ? Math.round((s.reduce((x, y) => x + y, 0) / s.length) * 10) / 10 : null,
+        // The project's rating (Team Overview rule)
+        avgScore: overall.get(cr.id)?.oneLiner?.score ?? null,
       };
     };
 

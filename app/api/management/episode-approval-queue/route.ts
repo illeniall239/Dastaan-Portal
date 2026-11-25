@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getProjectRatings } from "@/lib/management/project-ratings-server";
 
 export const dynamic = "force-dynamic";
 
@@ -120,13 +121,10 @@ export async function GET(_request: NextRequest) {
     }
 
     // Step 5: Shape and split into pending / reviewed
+    const { episodeOverall } = await getProjectRatings();
     const allShaped = (episodesData || []).map((ep: any) => {
       const stats = statsByEpisode[ep.id];
       const scores = stats?.scores || [];
-      const avgScore =
-        scores.length > 0
-          ? Math.round((scores.reduce((a: number, b: number) => a + b, 0) / scores.length) * 10) / 10
-          : null;
       const cr = callReportMap[ep.call_report_id] || { workingTitle: "", displayId: "" };
       return {
         id: ep.id,
@@ -136,7 +134,7 @@ export async function GET(_request: NextRequest) {
         callReportTitle: cr.workingTitle,
         callReportDisplayId: cr.displayId,
         evaluationCount: scores.length,
-        averageScore: avgScore,
+        averageScore: episodeOverall.get(ep.id) ?? null, // the episode's rating (Team Overview rule)
         lastEvaluatedAt: stats?.latestAt || "",
         discussionCount: discussionCountMap[ep.id] || 0,
         approvalStatus: ep.approval_status || null,

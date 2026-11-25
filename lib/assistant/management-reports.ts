@@ -61,7 +61,7 @@ export const MANAGEMENT_REPORTS: Record<string, Report> = {
   pov_breakdown: { path: "/api/management/pov-breakdown", about: "Gender POV / audience focus breakdown of projects (the project's tag set at logging): male centric, female centric, both, and how many are not classified yet" },
   production_phases: { path: "/api/management/production-phases", about: "Projects in Pre Cast, Pre Production and Production Start" },
   quality_quantity: { path: "/api/management/quality-quantity", about: "Quality vs quantity per team: one-liner scores against episode output" },
-  rating_comparison: { path: "/api/management/rating-comparison", about: "One-liner evaluation scores compared with episode evaluation scores per project" },
+  rating_comparison: { path: "/api/management/rating-comparison", about: "Each project's one-liner rating compared with its episodes rating (both the overall rating, as on the Team Overview cards)" },
   rating_trends: { path: "/api/management/rating-trends", about: "Rating trends: whether projects' scores are improving or declining" },
   revision_ranking: { path: "/api/management/revision-ranking", about: "Episode revision counts per project and per team (who needs the most rewrites)" },
   story_evaluations: { path: "/api/management/story-evaluations", about: "Per-story evaluator coverage: who has and hasn't rated each story" },

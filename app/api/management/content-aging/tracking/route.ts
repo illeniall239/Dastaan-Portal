@@ -5,6 +5,7 @@ import { applyRateLimit } from "@/lib/api-middleware";
 import { RateLimitPresets } from "@/lib/rate-limit-redis";
 import { formatTeamDisplayName } from "@/lib/management/team-display";
 import { PKT_TIME_ZONE } from "@/lib/utils/format-date";
+import { getProjectRatings } from "@/lib/management/project-ratings-server";
 
 export const dynamic = "force-dynamic";
 
@@ -60,6 +61,10 @@ export async function GET(request: NextRequest) {
     }
 
     const admin = createAdminClient();
+
+    // Each project's rating (Team Overview rule)
+    const { overall } = await getProjectRatings();
+    const rating = (crId: string) => overall.get(crId)?.oneLiner?.score ?? null;
 
     // 1. Fetch active call reports with team + slot info
     const { data: callReports, error: crErr } = await admin
@@ -163,7 +168,7 @@ export async function GET(request: NextRequest) {
             id: cr.id, workingTitle: cr.working_title, writerName: cr.writer_name,
             trackingNotes: cr.tracking_notes, targetSlot: cr.target_slot || null,
             teamName: formatTeamDisplayName(td?.name || "", th?.name),
-            avgScore: cr.average_initial_assessment ?? null,
+            avgScore: rating(cr.id),
             oneLiner: { loggedDate: fmt(cr.meeting_date || cr.created_at), teamFeedback: olFb, teamScores: olScores },
             episodes: [], maxRevisions: 0, monthlySummary: [],
           };
@@ -196,7 +201,7 @@ export async function GET(request: NextRequest) {
             id: cr.id, workingTitle: cr.working_title, writerName: cr.writer_name,
             trackingNotes: cr.tracking_notes, targetSlot: cr.target_slot || null,
             teamName: formatTeamDisplayName(td?.name || "", th?.name),
-            avgScore: cr.average_initial_assessment ?? null,
+            avgScore: rating(cr.id),
             oneLiner: { loggedDate: fmt(cr.meeting_date || cr.created_at), teamFeedback: olFb, teamScores: olScores },
             episodes: [], maxRevisions: 0, monthlySummary: [],
           };
@@ -418,7 +423,7 @@ export async function GET(request: NextRequest) {
         trackingNotes: cr.tracking_notes || null,
         targetSlot: cr.target_slot || null,
         teamName: formatTeamDisplayName(teamData?.name || "", teamHead?.name),
-        avgScore: cr.average_initial_assessment ?? null,
+        avgScore: rating(cr.id),
         oneLiner: {
           loggedDate: fmt(rawCrLogged),
           teamFeedback: oneLinerTeamFeedback,

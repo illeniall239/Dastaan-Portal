@@ -3,6 +3,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { getProductionPhase } from "@/lib/production-phase";
 import { fetchAll } from "@/lib/supabase/fetch-all";
+import { getProjectRatings } from "@/lib/management/project-ratings-server";
 import { COMMERCIAL_POSITIONING_OPTIONS, AUDIENCE_FOCUS_OPTIONS } from "@/lib/project-tags";
 
 export const NOT_CLASSIFIED = "Not classified";
@@ -281,7 +282,7 @@ export async function loadProjectSummaries(
   crIdsInScope: string[] | null,
   includeApprovals: boolean
 ): Promise<ProjectSummary[]> {
-  const [crs, episodes, negotiations, evalForms, evalLogs, users] = await Promise.all([
+  const [crs, episodes, negotiations, { overall }, evalLogs, users] = await Promise.all([
     fetchAll<any>((f, t) => admin.from("call_reports")
       .select(`id, call_report_id, working_title, writer_name, genre, theme, content_type, target_slot, total_episodes, created_at, created_by, ${TEXT_FIELDS.join(", ")}, team:teams!call_reports_team_id_fkey(name, team_head:users!teams_team_head_id_fkey(name)), commercial_positioning, audience_focus`)
       .eq("meeting_type", "call_report").is("archived_at", null).order("id").range(f, t)),
@@ -290,8 +291,8 @@ export async function loadProjectSummaries(
       .eq("is_current", true).not("call_report_id", "is", null).order("id").range(f, t)),
     fetchAll<any>((f, t) => admin.from("negotiations").select("id, call_report_id, estimated_episodes")
       .not("call_report_id", "is", null).order("id").range(f, t)),
-    fetchAll<any>((f, t) => admin.from("evaluator_forms").select("id, call_report_id, average_score")
-      .not("submitted_at", "is", null).not("average_score", "is", null).order("id").range(f, t)),
+    // The project's rating: the same rule as the Team Overview cards
+    getProjectRatings(),
     includeApprovals
       ? fetchAll<any>((f, t) => admin.from("evaluation_logs").select("id, call_report_id, final_decision").order("id").range(f, t))
       : Promise.resolve([] as any[]),
@@ -307,10 +308,8 @@ export async function loadProjectSummaries(
   const estimatedEpsByCr = new Map<string, number>();
   for (const n of negotiations) if (n.estimated_episodes) estimatedEpsByCr.set(n.call_report_id, n.estimated_episodes);
 
-  const scores = new Map<string, number[]>();
-  for (const ef of evalForms) scores.set(ef.call_report_id, [...(scores.get(ef.call_report_id) || []), ef.average_score]);
   const avgScoreByCr = new Map<string, number>();
-  for (const [crId, s] of scores) avgScoreByCr.set(crId, Math.round((s.reduce((a, b) => a + b, 0) / s.length) * 10) / 10);
+  for (const [crId, o] of overall) if (o.oneLiner) avgScoreByCr.set(crId, o.oneLiner.score);
 
   const decisionByCr = includeApprovals ? new Map<string, string>() : null;
   if (decisionByCr) for (const l of evalLogs) if (l.final_decision) decisionByCr.set(l.call_report_id, l.final_decision);

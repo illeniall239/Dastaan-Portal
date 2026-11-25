@@ -1,4 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
+import { fetchAll } from "@/lib/supabase/fetch-all";
+import { getProjectRatings } from "@/lib/management/project-ratings-server";
 
 export interface TeamPendingBacklog {
   pendingOneLiners: number;
@@ -28,7 +30,8 @@ function daysSince(date: Date): number {
 
 /**
  * Compute pending backlog data:
- * - byTeam: per logging-team counts (their CRs/episodes, evaluated by anyone)
+ * - byTeam: per logging-team counts (their CRs/episodes; rated = their own team evaluated it, or it has a
+ *   Content Team Assessment, which counts as the Content Head rating)
  * - global: totals across ALL teams
  * - teamEvalCounts: how many distinct CRs/episodes each evaluator team has evaluated
  */
@@ -38,8 +41,9 @@ export async function getPendingBacklogByTeam(): Promise<PendingBacklogResult> {
   const [
     { data: callReports },
     { data: evalForms },
-    { data: episodes },
-    { data: episodicEvals },
+    episodes,
+    episodicEvals,
+    { contentTeamAssessments },
   ] = await Promise.all([
     admin
       .from("call_reports")
@@ -51,15 +55,17 @@ export async function getPendingBacklogByTeam(): Promise<PendingBacklogResult> {
       .from("evaluator_forms")
       .select("call_report_id, team_id")
       .not("submitted_at", "is", null),
-    admin
+    // More than 1000 rows: read every page
+    fetchAll<any>((f, t) => admin
       .from("episodes")
       .select("id, created_at, original_submission_date, call_report:call_reports!call_report_id(team_id)")
-      .not("call_report_id", "is", null),
+      .not("call_report_id", "is", null).order("id").range(f, t)),
     // Submitted episodic evaluations — include evaluator's team_id (denormalized)
-    admin
+    fetchAll<any>((f, t) => admin
       .from("episodic_evaluations")
       .select("episode_id, team_id")
-      .not("submitted_at", "is", null),
+      .not("submitted_at", "is", null).order("id").range(f, t)),
+    getProjectRatings(),
   ]);
 
   // ── Build CR lookup ──────────────────────────────────────────────────────────
@@ -79,11 +85,11 @@ export async function getPendingBacklogByTeam(): Promise<PendingBacklogResult> {
 
   // ── Episodes evaluated by own team (ee.team_id === cr.team_id) ─────────────
   const epCrTeam = new Map<string, string>(); // episode_id → cr.team_id
-  for (const ep of (episodes || []) as any[]) {
+  for (const ep of episodes) {
     if (ep.call_report?.team_id) epCrTeam.set(ep.id, ep.call_report.team_id);
   }
   const ownTeamEvalEpIds = new Set<string>();
-  for (const ee of (episodicEvals || []) as any[]) {
+  for (const ee of episodicEvals) {
     if (!ee.team_id || !ee.episode_id) continue;
     const crTeamId = epCrTeam.get(ee.episode_id);
     if (crTeamId === ee.team_id) {
@@ -106,12 +112,12 @@ export async function getPendingBacklogByTeam(): Promise<PendingBacklogResult> {
     return byTeam.get(teamId)!;
   };
 
-  // One-liners grouped by logging team — evaluated only if own team evaluated
+  // One-liners grouped by logging team — rated if own team evaluated it or the content team assessed it
   for (const cr of (callReports || []) as any[]) {
     if (!cr.team_id) continue;
     const b = ensureTeam(cr.team_id);
     b.totalOneLiners++;
-    if (ownTeamEvalCrIds.has(cr.id)) {
+    if (ownTeamEvalCrIds.has(cr.id) || contentTeamAssessments.has(cr.id)) {
       b.evaluatedOneLiners++;
     } else {
       b.pendingOneLiners++;
@@ -122,13 +128,13 @@ export async function getPendingBacklogByTeam(): Promise<PendingBacklogResult> {
     }
   }
 
-  // Episodes grouped by logging team — evaluated only if own team evaluated
-  for (const ep of (episodes || []) as any[]) {
+  // Episodes grouped by logging team — rated if own team evaluated it or the content team assessed it
+  for (const ep of episodes) {
     const teamId = ep.call_report?.team_id;
     if (!teamId) continue;
     const b = ensureTeam(teamId);
     b.totalEpisodes++;
-    if (ownTeamEvalEpIds.has(ep.id)) {
+    if (ownTeamEvalEpIds.has(ep.id) || contentTeamAssessments.has(ep.id)) {
       b.evaluatedEpisodes++;
     } else {
       b.pendingEpisodes++;
@@ -179,7 +185,7 @@ export async function getPendingBacklogByTeam(): Promise<PendingBacklogResult> {
 
   // Episode evals grouped by evaluator's team_id
   const epsByEvalTeam = new Map<string, Set<string>>();
-  for (const ee of (episodicEvals || []) as any[]) {
+  for (const ee of episodicEvals) {
     if (!ee.team_id || !ee.episode_id) continue;
     if (!epsByEvalTeam.has(ee.team_id)) epsByEvalTeam.set(ee.team_id, new Set());
     epsByEvalTeam.get(ee.team_id)!.add(ee.episode_id);
