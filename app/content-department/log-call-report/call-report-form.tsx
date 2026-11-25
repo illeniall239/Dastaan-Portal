@@ -25,6 +25,7 @@ import { uploadFile } from "@/lib/attachments/client";
 import { formatFileSize } from "@/lib/validations/episodes";
 import { MentionInput } from "@/components/ui/mention-input";
 import { ScoreCard } from "@/components/episodic-evaluations/score-card";
+import { InitialAssessmentNote } from "@/components/ui/initial-assessment-note";
 import { GenreMultiSelect } from "@/components/ui/genre-multi-select";
 import { WriterMultiSelect } from "@/components/writers/writer-multi-select";
 import { LoglineImageUpload } from "@/components/ui/logline-image-upload";
@@ -357,7 +358,7 @@ export function CallReportForm({
     if (!formData.targetSlot) missingFields.push("Target Slot");
     if (!formData.contentType) missingFields.push("Content Type");
     // The initial assessment must be given, not left at the starting 5
-    if (mode === "create" && !formData.overallRatingSet) missingFields.push("Initial Assessment");
+    if (mode === "create" && !formData.overallRatingSet) missingFields.push("Content Team Assessment");
     // Required for new one-liners; optional on edit so older projects can still be saved
     if (mode === "create" && !formData.commercialPositioning) missingFields.push("Commercial Positioning");
     if (mode === "create" && !formData.audienceFocus) missingFields.push("Gender POV");
@@ -983,13 +984,14 @@ export function CallReportForm({
             />
 
             <ScoreCard
-              label={mode === "create" ? "Initial Assessment *" : "Initial Assessment"}
+              label={mode === "create" ? "Content Team Assessment *" : "Content Team Assessment"}
               description="Your initial rating of this story (1-10). Evaluators will see this when they evaluate."
               score={formData.overallRating}
               onChange={(score) => setFormData(prev => ({ ...prev, overallRating: score, overallRatingSet: true }))}
               disabled={isLoading}
               showGrade={true}
             />
+            <InitialAssessmentNote />
           </CardContent>
         </Card>
 

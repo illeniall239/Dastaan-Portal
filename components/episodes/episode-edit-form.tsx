@@ -15,6 +15,7 @@ import { createClient } from "@/lib/supabase/client";
 import { uploadAndVerify } from "@/lib/storage/verify-upload";
 import { toast } from "sonner";
 import { ScoreCard } from "@/components/episodic-evaluations/score-card";
+import { InitialAssessmentNote } from "@/components/ui/initial-assessment-note";
 import { Loader2, Save, ArrowLeft, FileText } from "lucide-react";
 import type { Episode } from "@/types";
 
@@ -237,13 +238,16 @@ export function EpisodeEditForm({ episode, onSuccess }: EpisodeEditFormProps) {
 
           {/* Initial Assessment - content department only */}
           {canAssess && (
-            <ScoreCard
-              label="Initial Assessment"
-              description="Your initial rating of this episode (1-10)"
-              score={initialAssessment}
-              onChange={(score) => { setInitialAssessment(score); setAssessmentChanged(true); }}
-              disabled={loading}
-            />
+            <>
+              <ScoreCard
+                label="Content Team Assessment"
+                description="Your initial rating of this episode (1-10)"
+                score={initialAssessment}
+                onChange={(score) => { setInitialAssessment(score); setAssessmentChanged(true); }}
+                disabled={loading}
+              />
+              <InitialAssessmentNote />
+            </>
           )}
         </div>
       </Card>

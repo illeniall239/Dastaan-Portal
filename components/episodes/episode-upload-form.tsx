@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { EpisodeFileUpload } from "./episode-file-upload";
 import { ScoreCard } from "@/components/episodic-evaluations/score-card";
+import { InitialAssessmentNote } from "@/components/ui/initial-assessment-note";
 import { Plus, Trash2, AlertCircle } from "lucide-react";
 import { Card } from "@/components/ui/card";
 
@@ -185,14 +186,17 @@ export function EpisodeUploadForm({
 
             {/* Initial Assessment */}
             {episode.initial_assessment !== undefined && (
-              <ScoreCard
-                label="Initial Assessment"
-                description="Your initial rating of this episode (1-10)"
-                score={episode.initial_assessment}
-                onChange={(score) => { onAssessmentTouch?.(episode.episode_number); updateEpisode(index, "initial_assessment", score); }}
-                disabled={disabled}
-                showGrade={true}
-              />
+              <>
+                <ScoreCard
+                  label="Content Team Assessment"
+                  description="Your initial rating of this episode (1-10)"
+                  score={episode.initial_assessment}
+                  onChange={(score) => { onAssessmentTouch?.(episode.episode_number); updateEpisode(index, "initial_assessment", score); }}
+                  disabled={disabled}
+                  showGrade={true}
+                />
+                <InitialAssessmentNote />
+              </>
             )}
           </div>
         </Card>

@@ -19,6 +19,7 @@ import { EpisodeUploadForm, type EpisodeFormEntry } from "@/components/episodes/
 import { EpisodeFileUpload } from "@/components/episodes/episode-file-upload";
 import { EpisodeRevisions } from "@/components/episodes/episode-revisions";
 import { ScoreCard } from "@/components/episodic-evaluations/score-card";
+import { InitialAssessmentNote } from "@/components/ui/initial-assessment-note";
 import { createClient } from "@/lib/supabase/client";
 import { uploadAndVerify } from "@/lib/storage/verify-upload";
 import { uploadEpisodeFile } from "@/lib/episodes/upload-client";
@@ -321,14 +322,18 @@ export default function LogEpisodesPage() {
     loadExistingEpisodes();
   }, [loadExistingEpisodes]);
 
-  // Scroll to new episodes section when source is pre-selected via query param
+  // Scroll to new episodes section when source is pre-selected via query param — once per source, not on
+  // every edit of an existing episode (those change existingEpisodesForSource too)
+  const sourceParam = searchParams.get("source");
+  const scrolledForSource = useRef<string | null>(null);
   useEffect(() => {
-    if (searchParams.get("source") && existingEpisodesForSource.length > 0 && !existingEpisodesLoading) {
-      setTimeout(() => {
-        newEpisodesSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-      }, 300);
-    }
-  }, [existingEpisodesForSource, existingEpisodesLoading]);
+    if (!sourceParam || scrolledForSource.current === sourceParam) return;
+    if (existingEpisodesLoading || existingEpisodesForSource.length === 0) return;
+    scrolledForSource.current = sourceParam;
+    setTimeout(() => {
+      newEpisodesSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 300);
+  }, [sourceParam, existingEpisodesForSource.length, existingEpisodesLoading]);
 
   const updateExistingEpisode = (episodeId: string, updates: Partial<ExistingEpisodeEdit>) => {
     setExistingEpisodesForSource((prev) =>
@@ -371,7 +376,7 @@ export default function LogEpisodesPage() {
     }
 
     if (!touchedAssessments.current.has(episodeId)) {
-      toast.error("Please set the Initial Assessment score before saving");
+      toast.error("Please set the Content Team Assessment score before saving");
       return;
     }
 
@@ -469,7 +474,7 @@ export default function LogEpisodesPage() {
       ep.initial_assessment !== undefined && !touchedAssessments.current.has(`new-${ep.episode_number}`)
     );
     if (untouchedNew.length > 0) {
-      toast.error(`Please set the Initial Assessment for Episode ${untouchedNew.map(e => e.episode_number).join(", ")}`);
+      toast.error(`Please set the Content Team Assessment for Episode ${untouchedNew.map(e => e.episode_number).join(", ")}`);
       return;
     }
 
@@ -767,9 +772,9 @@ export default function LogEpisodesPage() {
 
                           {/* Initial Assessment */}
                           <div className="space-y-2">
-                            <Label>Initial Assessment</Label>
+                            <Label>Content Team Assessment</Label>
                             <ScoreCard
-                              label="Initial Assessment"
+                              label="Content Team Assessment"
                               description="Your initial rating of this episode (1-10)"
                               score={episode.initial_assessment ?? 5}
                               onChange={(score) => {
@@ -780,6 +785,7 @@ export default function LogEpisodesPage() {
                               }}
                               disabled={episode._isSaving}
                             />
+                            <InitialAssessmentNote />
                           </div>
 
                           {/* Revisions */}

@@ -1592,7 +1592,7 @@ Writers assigned to your team with engagement tracking. Click to see profile.
 Log post-meeting reports. Button: "Log New Report". Fields: Logged By, Source of Idea, Writers/Originators, Working Title, Director, Total Episodes, Logline, Synopsis, Genre, Theme, Slot, Content Type, Commercial Positioning, Gender POV, Notes, Next Steps, file attachments. Drafts are not saved: leaving the form clears it. No "Log Detailed One-Liner" button in this portal.
 
 ━━ EPISODES ━━
-Two tabs: Episodes List, Log Episodes. Log new episodes with file upload and Initial Assessment score (1-10).
+Two tabs: Episodes List, Log Episodes. Log new episodes with file upload and Content Team Assessment score (1-10).
 
 ━━ NOTIFICATIONS ━━
 Alerts for new assignments and feedback.`,

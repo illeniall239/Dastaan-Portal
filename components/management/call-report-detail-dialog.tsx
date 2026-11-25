@@ -247,7 +247,7 @@ function EvalGroupPanel({ group, kind, showDecision }: { group: EvalGroup; kind:
               {group.assessments.map((a, i) => (
                 <div key={i} className="flex items-center justify-between gap-2 text-xs">
                   <span className="text-slate-500">
-                    Initial Assessment{a.name && <span className="text-slate-400"> · by {a.name}</span>}
+                    Content Team Assessment{a.name && <span className="text-slate-400"> · by {a.name}</span>}
                   </span>
                   <span className={`shrink-0 ${scoreColor(a.score)}`}>{+a.score.toFixed(1)}/10</span>
                 </div>
@@ -567,7 +567,7 @@ export function CallReportDetailDialog({ report, isOpen, onClose }: CallReportDe
                 <div className="grid grid-cols-2 gap-4">
                   {(report.average_initial_assessment ?? report.overall_rating) && (
                     <div>
-                      <span className="text-sm text-muted-foreground">Initial Assessment:</span>
+                      <span className="text-sm text-muted-foreground">Content Team Assessment:</span>
                       <p className="font-bold text-xl mt-1">{(report.average_initial_assessment ?? report.overall_rating).toFixed(1)} / 10</p>
                       {report.assessment_count > 0 && (
                         <span className="text-xs text-muted-foreground">{report.assessment_count} assessor{report.assessment_count !== 1 ? 's' : ''}</span>

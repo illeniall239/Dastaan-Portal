@@ -278,7 +278,7 @@ export function EvaluationCard({
                   <div className="inline-flex items-center px-3 py-2 rounded-lg text-sm font-bold border-2 bg-amber-100 text-amber-800 border-amber-300">
                     {initialAssessment.toFixed(1)}/10
                   </div>
-                  <p className="text-xs text-muted-foreground mt-1">Your Assessment</p>
+                  <p className="text-xs text-muted-foreground mt-1">Content Team Assessment</p>
                 </div>
               )}
               <div
@@ -411,7 +411,7 @@ export function EvaluationCard({
                   </div>
                   {(ep.average_initial_assessment ?? ep.initial_assessment) != null && (
                     <Badge variant="secondary" className="text-[10px] px-1 py-0 h-4 bg-blue-50 text-blue-700">
-                      Initial Assessment {(ep.average_initial_assessment ?? ep.initial_assessment)}/10
+                      Content Team Assessment {(ep.average_initial_assessment ?? ep.initial_assessment)}/10
                     </Badge>
                   )}
                 </div>

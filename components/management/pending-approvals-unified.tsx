@@ -909,7 +909,7 @@ function OLReviewContent({ data, userId, userRole }: { data: OLReviewData; userI
         {/* Initial Assessments */}
         {cr.initialAssessments.length > 0 && (
           <div className="bg-blue-50 p-3 rounded-lg border-2 border-blue-200 space-y-2">
-            <p className="text-xs font-semibold text-blue-800">Team Initial Assessments ({cr.initialAssessments.length})</p>
+            <p className="text-xs font-semibold text-blue-800">Content Team Assessments ({cr.initialAssessments.length})</p>
             {cr.initialAssessments.map((a) => (
               <div key={a.id} className="flex items-start justify-between gap-2">
                 <div className="flex items-center gap-2">

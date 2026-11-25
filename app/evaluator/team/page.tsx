@@ -354,7 +354,7 @@ export default async function EvaluatorTeamPage() {
                   {crAssessments.length > 0 && (
                     <div className="border-t pt-3">
                       <span className="text-xs font-medium text-muted-foreground">
-                        Initial Assessments
+                        Content Team Assessments
                       </span>
                       <div className="flex flex-wrap gap-2 mt-1.5">
                         {crAssessments.map((a) => (

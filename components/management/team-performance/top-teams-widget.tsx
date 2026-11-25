@@ -213,12 +213,13 @@ function RatingTile({ label, rating, none }: { label: string; rating: OverallRat
   return (
     <div
       className={`rounded-md border px-2 py-1.5 ${cls}`}
-      title={none ? undefined : rating ? `Average of ${rating.teams} of 3 teams` : "No team has rated yet"}
+      title={none ? undefined : rating ? (rating.assessmentOnly ? "Not evaluated yet: only the Content Team Assessment" : `Average of ${rating.teams} of 3 teams`) : "No team has rated yet"}
     >
       <div className="text-[10px] font-medium uppercase tracking-wide opacity-80">{label}</div>
       <div className={none || score == null ? "text-xs font-medium mt-0.5" : "text-lg font-bold leading-tight"}>
         {none ?? (score == null ? "Not rated" : score.toFixed(1))}
       </div>
+      {!none && rating?.assessmentOnly && <div className="text-[10px] font-medium leading-tight opacity-80">Content Team Assessment only</div>}
     </div>
   );
 }

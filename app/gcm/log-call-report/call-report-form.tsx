@@ -25,7 +25,6 @@ import { ContentRevisions } from "@/components/ui/content-revisions";
 import { uploadFile } from "@/lib/attachments/client";
 import { formatFileSize } from "@/lib/validations/episodes";
 import { MentionInput } from "@/components/ui/mention-input";
-import { ScoreCard } from "@/components/episodic-evaluations/score-card";
 import { GenreMultiSelect } from "@/components/ui/genre-multi-select";
 import { WriterMultiSelect } from "@/components/writers/writer-multi-select";
 import { LoglineImageUpload } from "@/components/ui/logline-image-upload";
@@ -518,7 +517,6 @@ export function CallReportForm({
           meeting_notes: formData.notes || undefined,
           next_steps: formData.nextSteps || undefined,
           status: formData.status || undefined,
-          overall_rating: formData.overallRating,
           attachments_to_delete: attachmentsMarkedForDeletion.length > 0 ? attachmentsMarkedForDeletion : undefined,
         };
 
@@ -637,7 +635,6 @@ export function CallReportForm({
           next_steps: formData.nextSteps,
           status: formData.status,
           created_by: userId,
-          overall_rating: formData.overallRating,
           original_submission_date: formData.originalSubmissionDate || undefined,
         };
         setPendingOneLiner(oneLiner);
@@ -1031,17 +1028,6 @@ export function CallReportForm({
               required={mode === "create"}
               disabled={isLoading}
             />
-
-            <div className="space-y-2">
-              <ScoreCard
-                label="Initial Assessment"
-                description="Your initial rating of this story (1-10). Evaluators will see this when they evaluate."
-                score={formData.overallRating}
-                onChange={(score) => setFormData(prev => ({ ...prev, overallRating: score }))}
-                disabled={isLoading}
-                showGrade={true}
-              />
-            </div>
           </CardContent>
         </Card>
 

@@ -754,7 +754,7 @@ export function EvaluatorEvaluationForm({
 
               {callReport.overall_rating && (
                 <div className="bg-blue-50 p-4 rounded-lg border-2 border-blue-200">
-                  <span className="text-sm font-medium">Initial Assessment:</span>
+                  <span className="text-sm font-medium">Content Team Assessment:</span>
                   <div className="flex items-center gap-3 mt-2">
                     <span className="text-3xl font-bold text-blue-600">{callReport.overall_rating}/10</span>
                     <div className={`text-sm px-3 py-1 rounded-md border ${callReport.overall_rating >= 9 ? 'text-green-700 bg-green-50 border-green-300' :

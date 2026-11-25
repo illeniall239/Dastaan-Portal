@@ -55,7 +55,7 @@ function getGradeColor(score: number): string {
 export function InitialAssessmentPanel({
     entityId,
     entityType,
-    label = "Initial Assessment",
+    label = "Content Team Assessment",
     description = "Your assessment of this content (1-10). Other team members can also score.",
     canAssess = true,
     compact = false,

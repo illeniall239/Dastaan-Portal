@@ -29,6 +29,7 @@ import { EpisodicEvaluationForm } from "@/components/episodic-evaluations/episod
 import { EvaluatorEvaluationForm } from "@/app/evaluator/evaluate/[callReportId]/evaluation-form-prefilled";
 import { mustEvaluateOnUpload } from "@/lib/episodes/permissions";
 import type { Episode, EpisodeRevision, RevisionEvaluation } from "@/types";
+import { InitialAssessmentNote } from "@/components/ui/initial-assessment-note";
 
 interface ContentRevisionsProps {
   entityId: string;
@@ -125,7 +126,7 @@ function InlineScoreSelector({
 }) {
   return (
     <div className="flex items-center gap-1.5">
-      <span className="text-xs text-muted-foreground whitespace-nowrap">Assessment:</span>
+      <span className="text-xs text-muted-foreground whitespace-nowrap">Content Team Assessment:</span>
       <div className="flex gap-0.5">
         {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((value) => (
           <button
@@ -542,12 +543,13 @@ export function ContentRevisions({
 
       {canAssess && size === "default" && (
         <div className="space-y-2">
-          <Label>Initial Assessment <span className="text-slate-400 font-normal text-xs">(optional)</span></Label>
+          <Label>Content Team Assessment <span className="text-slate-400 font-normal text-xs">(optional)</span></Label>
           <InlineScoreSelector
             score={revisionAssessment}
             onChange={setRevisionAssessment}
             disabled={submitting}
           />
+          {(userRole === "content_creator" || userRole === "content_manager") && <InitialAssessmentNote />}
         </div>
       )}
 
@@ -730,7 +732,7 @@ export function ContentRevisions({
         {/* Show read-only assessment badge for users who can view but not set */}
         {!canAssess && canViewAssessment && revision.initial_assessment && (
           <div className="flex items-center gap-1.5">
-            <span className="text-xs text-muted-foreground">Assessment:</span>
+            <span className="text-xs text-muted-foreground">Content Team Assessment:</span>
             <Badge variant="outline" className="text-xs">
               {revision.initial_assessment}/10
             </Badge>

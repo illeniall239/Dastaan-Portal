@@ -41,13 +41,13 @@ export function AssessmentVsEvaluationChart({ data, bare }: AssessmentVsEvaluati
     <div className={bare ? "space-y-6" : "grid grid-cols-1 md:grid-cols-2 gap-4"}>
       <ComparisonChart
         title="One-Liner: Assessment vs Evaluation"
-        subtitle="Your initial assessment vs content head's score"
+        subtitle="Your Content Team Assessment vs content head's score"
         items={oneLiners}
         bare={bare}
       />
       <ComparisonChart
         title="Episodic: Assessment vs Evaluation"
-        subtitle="Your initial assessment vs content head's score"
+        subtitle="Your Content Team Assessment vs content head's score"
         items={episodics}
         bare={bare}
       />
@@ -109,7 +109,7 @@ function ComparisonChart({
 
     return [
       {
-        name: "Initial Assessment",
+        name: "Content Team Assessment",
         score: avgInitial,
         color: "#f59e0b",
         count: initials.length,

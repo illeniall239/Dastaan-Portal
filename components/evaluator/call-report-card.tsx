@@ -298,7 +298,7 @@ export function CallReportCard({ report, portalPrefix = "evaluator", isTeamHead 
                       </div>
                       {(ep.average_initial_assessment ?? ep.initial_assessment) != null && (
                         <Badge variant="secondary" className="text-[10px] px-1 py-0 h-4 bg-blue-50 text-blue-700">
-                          Initial Assessment {(ep.average_initial_assessment ?? ep.initial_assessment)}/10
+                          Content Team Assessment {(ep.average_initial_assessment ?? ep.initial_assessment)}/10
                         </Badge>
                       )}
                     </div>
