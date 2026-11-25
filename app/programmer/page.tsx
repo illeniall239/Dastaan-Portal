@@ -136,7 +136,7 @@ async function DashboardContent({ userId, userRole, teamId, teamType }: { userId
       (async () => {
         let q = adminClient
           .from("consolidated_cms_view")
-          .select("total_episodes, received_episodes");
+          .select("total_episodes, actual_received_episodes");
         if (isRestrictedProgrammer && teamId) q = q.eq("team_id", teamId);
         return q;
       })(),
@@ -250,7 +250,8 @@ async function DashboardContent({ userId, userRole, teamId, teamType }: { userId
   // Episode totals
   const episodeData = (episodeStatsRes.data || []) as any[];
   const totalEpisodesAvailable = episodeData.reduce((s: number, r: any) => s + (r.total_episodes || 0), 0);
-  const totalEpisodesReceived = episodeData.reduce((s: number, r: any) => s + (r.received_episodes || 0), 0);
+  // Episodes actually logged (not the "episodes received so far" number typed on the one-liner, which isn't kept up to date)
+  const totalEpisodesReceived = episodeData.reduce((s: number, r: any) => s + (r.actual_received_episodes || 0), 0);
 
   // One-liner breakdown
   const oneLinerData = (oneLinerBreakdownRes.data || []) as any[];
