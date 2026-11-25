@@ -307,6 +307,7 @@ export default function ContentAgingPage() {
   const [trackingLoading, setTrackingLoading] = useState(false);
   const trackingLoaded = useRef(false);
   const [trackingTeamFilter, setTrackingTeamFilter] = useState<string>("all");
+  const [trackingSearch, setTrackingSearch] = useState<string>("");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [slotFilter, setSlotFilter] = useState<string>("all");
@@ -374,9 +375,16 @@ export default function ContentAgingPage() {
   }, [trackingProjects]);
 
   const filteredTrackingProjects = useMemo(() => {
-    if (trackingTeamFilter === "all") return trackingProjects;
-    return trackingProjects.filter(p => p.teamName === trackingTeamFilter);
-  }, [trackingProjects, trackingTeamFilter]);
+    let result = trackingProjects;
+    if (trackingTeamFilter !== "all") {
+      result = result.filter(p => p.teamName === trackingTeamFilter);
+    }
+    if (trackingSearch.trim()) {
+      const q = trackingSearch.trim().toLowerCase();
+      result = result.filter(p => p.workingTitle.toLowerCase().includes(q) || (p.writerName && p.writerName.toLowerCase().includes(q)));
+    }
+    return result;
+  }, [trackingProjects, trackingTeamFilter, trackingSearch]);
 
   const monthGroups = useMemo(() => groupWeeksByMonth(weeks), [weeks]);
   const visibleEvaluators = useMemo(
@@ -987,6 +995,15 @@ export default function ContentAgingPage() {
           ) : (
             <div className="space-y-4">
               <div className="flex items-center gap-3 flex-wrap">
+                <div className="relative">
+                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                  <Input
+                    placeholder="Search projects or writers..."
+                    value={trackingSearch}
+                    onChange={(e) => setTrackingSearch(e.target.value)}
+                    className="h-8 text-xs pl-8 w-[220px]"
+                  />
+                </div>
                 <Select value={trackingTeamFilter} onValueChange={setTrackingTeamFilter}>
                   <SelectTrigger className="h-8 text-xs w-[180px]"><SelectValue placeholder="Team" /></SelectTrigger>
                   <SelectContent>
