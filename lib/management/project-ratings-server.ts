@@ -12,6 +12,7 @@ export interface ContentTeamAssessment {
   score: number;
   by: string;   // user id
   byName: string; // who gave it (a content team member)
+  byTeamId: string | null; // their team
   at: string;   // when it was given (the version's upload time)
 }
 
@@ -83,6 +84,7 @@ export const getProjectRatings = cache(async (): Promise<ProjectRatingsData> => 
     .map((t: any) => t.id));
   const roleOf = new Map((users || []).map((u: any) => [u.id, u.role as string]));
   const nameOf = new Map((users || []).map((u: any) => [u.id, (u.name as string) || "Unknown"]));
+  const teamOf = new Map((users || []).map((u: any) => [u.id, (u.team_id as string | null) ?? null]));
   const contentDevIds = new Set((users || []).filter((u: any) => u.team_id && contentDevTeamIds.has(u.team_id)).map((u: any) => u.id));
   const groupOf = (e: any): Group =>
     contentDevIds.has(e.evaluator_id) ? "contentDev"
@@ -143,7 +145,7 @@ export const getProjectRatings = cache(async (): Promise<ProjectRatingsData> => 
     ].sort((a, b) => b.n - a.n);
     // The item's Content Team Assessment: its newest version the content team scored
     const team = versions.find((v) => v.score != null && isContentTeam(v.by));
-    if (team) contentTeamAssessments.set(item.id, { itemType: item.type, itemId: item.id, callReportId: item.callReportId, score: Number(team.score), by: team.by!, byName: nameOf.get(team.by!) ?? "Unknown", at: team.at });
+    if (team) contentTeamAssessments.set(item.id, { itemType: item.type, itemId: item.id, callReportId: item.callReportId, score: Number(team.score), by: team.by!, byName: nameOf.get(team.by!) ?? "Unknown", byTeamId: teamOf.get(team.by!) ?? null, at: team.at });
     for (const v of versions) {
       const h = heads.get(versionKey(item.id, v.id));
       const initial = v.score != null && isContentTeam(v.by) ? Number(v.score) : null;

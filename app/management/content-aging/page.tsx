@@ -246,14 +246,26 @@ function headEpisodeParts(p: Project, evaluator: { id: string; name: string }) {
   ];
 }
 
+/** Content heads whose column also shows their team's scores ("Parisa 6.0 · Beena 8.0 · Avg 7.0") get wider columns */
+const WIDE_GRADE = 220;
+const WIDE_RANGE = 170;
+function wideHeadColumns(projects: Project[]) {
+  const ol = new Set<string>(), ep = new Set<string>();
+  for (const p of projects) {
+    if (p.contentTeam?.oneLiner) ol.add(p.contentTeam.headId);
+    if (p.contentTeam?.episodes) ep.add(p.contentTeam.headId);
+  }
+  return { ol, ep };
+}
+
 const partsText = (parts: { label: string; score: number | null; range?: string }[]) =>
   parts.map((x) => `${x.label}${x.range ? ` ${x.range}` : ""} ${fmt1(x.score)}`).join(" · ");
 
 function PartsCell({ parts }: { parts: { label: string; score: number | null }[] }) {
   return (
     <div className="flex flex-wrap items-center justify-center gap-1">
-      {parts.map((x) => (
-        <span key={x.label} className="inline-flex items-center gap-0.5 text-[11px] whitespace-nowrap">
+      {parts.map((x, i) => (
+        <span key={`${i}-${x.label}`} className="inline-flex items-center gap-0.5 text-[11px] whitespace-nowrap">
           <span className={x.label === "Avg" ? "font-semibold text-gray-700" : "text-gray-500"}>{x.label}</span>
           {scoreBadge(x.score)}
         </span>
@@ -639,6 +651,7 @@ export default function ContentAgingPage() {
       return true;
     });
   }, [projects, statusFilter, slotFilter, teamHeadFilter, scheduleFilter, writerFilter, oneLinerRatingFilter, episodicRatingFilter, feedbackDelayFilter, crossTeamFilter, evaluators, search, deliveryRank, writerDeliveryRanking]);
+  const wide = useMemo(() => wideHeadColumns(filtered), [filtered]);
 
   const stats = useMemo(() => ({
     total: projects.length,
@@ -1216,7 +1229,7 @@ export default function ContentAgingPage() {
                   visibleOneLinerAssessors
                     .filter((a) => a.group === group)
                     .map((a) => (
-                      <th key={`ol-name-${a.id}`} className={`px-2 py-1.5 text-xs font-semibold text-center border-b border-r border-border whitespace-nowrap ${GROUP_HEADER_COLORS[group]}`} style={{ minWidth: 90, maxWidth: 90, width: 90 }}>
+                      <th key={`ol-name-${a.id}`} className={`px-2 py-1.5 text-xs font-semibold text-center border-b border-r border-border whitespace-nowrap ${GROUP_HEADER_COLORS[group]}`} style={wide.ol.has(a.id) ? { minWidth: WIDE_GRADE, maxWidth: WIDE_GRADE, width: WIDE_GRADE } : { minWidth: 90, maxWidth: 90, width: 90 }}>
                         {a.name.split(" ")[0]}
                       </th>
                     ))
@@ -1235,8 +1248,8 @@ export default function ContentAgingPage() {
                   visibleEvaluators
                     .filter((e) => e.group === group)
                     .flatMap((e) => [
-                      <Th key={`${e.id}-ep`} width={90} center>Episodes</Th>,
-                      <Th key={`${e.id}-gr`} width={70} center>Grade</Th>,
+                      <Th key={`${e.id}-ep`} width={wide.ep.has(e.id) ? WIDE_RANGE : 90} center>Episodes</Th>,
+                      <Th key={`${e.id}-gr`} width={wide.ep.has(e.id) ? WIDE_GRADE : 70} center>Grade</Th>,
                     ])
                 )}
                 {/* One-Liner Grade per assessor — before Episode Tracking */}
@@ -1244,7 +1257,7 @@ export default function ContentAgingPage() {
                   visibleOneLinerAssessors
                     .filter((a) => a.group === group)
                     .map((a) => (
-                      <Th key={`ol-grade-${a.id}`} width={115} center className={GROUP_HEADER_COLORS[group]}>One-Liner Grade</Th>
+                      <Th key={`ol-grade-${a.id}`} width={wide.ol.has(a.id) ? WIDE_GRADE : 115} center className={GROUP_HEADER_COLORS[group]}>One-Liner Grade</Th>
                     ))
                 )}
                 {/* Episode tracking sub-cols */}
@@ -1300,12 +1313,12 @@ export default function ContentAgingPage() {
                         const g = project.allEvaluatorGrades[e.id];
                         const parts = headEpisodeParts(project, e);
                         if (parts) return [
-                          <Td key={`${e.id}-ep`} width={90} center className="text-xs text-muted-foreground">{parts.filter((x) => x.range).map((x) => `${x.label} ${x.range}`).join(" · ")}</Td>,
-                          <Td key={`${e.id}-gr`} width={70} center><PartsCell parts={parts} /></Td>,
+                          <Td key={`${e.id}-ep`} width={wide.ep.has(e.id) ? WIDE_RANGE : 90} center className="text-xs text-muted-foreground">{parts.filter((x) => x.range).map((x) => `${x.label} ${x.range}`).join(" · ")}</Td>,
+                          <Td key={`${e.id}-gr`} width={wide.ep.has(e.id) ? WIDE_GRADE : 70} center><PartsCell parts={parts} /></Td>,
                         ];
                         return [
-                          <Td key={`${e.id}-ep`} width={90} center className="text-xs text-muted-foreground">{g?.epRange || "—"}</Td>,
-                          <Td key={`${e.id}-gr`} width={70} center>{scoreBadge(g?.avgScore ?? null)}</Td>,
+                          <Td key={`${e.id}-ep`} width={wide.ep.has(e.id) ? WIDE_RANGE : 90} center className="text-xs text-muted-foreground">{g?.epRange || "—"}</Td>,
+                          <Td key={`${e.id}-gr`} width={wide.ep.has(e.id) ? WIDE_GRADE : 70} center>{scoreBadge(g?.avgScore ?? null)}</Td>,
                         ];
                       })
                   )}
@@ -1317,7 +1330,7 @@ export default function ContentAgingPage() {
                       .map((a) => {
                         const parts = headOneLinerParts(project, a);
                         return (
-                          <Td key={`ol-${a.id}`} width={115} center>
+                          <Td key={`ol-${a.id}`} width={wide.ol.has(a.id) ? WIDE_GRADE : 115} center>
                             {parts ? <PartsCell parts={parts} /> : scoreBadge(project.oneLinerGrades[a.id] ?? null)}
                           </Td>
                         );
@@ -1482,6 +1495,7 @@ export default function ContentAgingPage() {
 }
 
 function TargetAgingTable({ projects, visibleEvaluators, visibleOneLinerAssessors }: { projects: Project[]; visibleEvaluators: Evaluator[]; visibleOneLinerAssessors: OneLinerAssessor[] }) {
+  const wide = wideHeadColumns(projects);
   const minWidth = STICKY_TOTAL + 740 + visibleOneLinerAssessors.length * 90 + visibleEvaluators.length * 2 * 80;
 
   return (
@@ -1522,7 +1536,7 @@ function TargetAgingTable({ projects, visibleEvaluators, visibleOneLinerAssessor
             visibleOneLinerAssessors
               .filter((a) => a.group === group)
               .map((a) => (
-                <th key={`ol-name-r2-${a.id}`} className={`px-2 py-1.5 text-xs font-semibold text-center border-b border-r border-border whitespace-nowrap ${GROUP_HEADER_COLORS[group]}`} style={{ minWidth: 90, maxWidth: 90, width: 90 }}>
+                <th key={`ol-name-r2-${a.id}`} className={`px-2 py-1.5 text-xs font-semibold text-center border-b border-r border-border whitespace-nowrap ${GROUP_HEADER_COLORS[group]}`} style={wide.ol.has(a.id) ? { minWidth: WIDE_GRADE, maxWidth: WIDE_GRADE, width: WIDE_GRADE } : { minWidth: 90, maxWidth: 90, width: 90 }}>
                   {a.name.split(" ")[0]}
                 </th>
               ))
@@ -1561,8 +1575,8 @@ function TargetAgingTable({ projects, visibleEvaluators, visibleOneLinerAssessor
             visibleEvaluators
               .filter((e) => e.group === group)
               .flatMap((e) => [
-                <Th key={`${e.id}-ep`} width={80} center>Episodes</Th>,
-                <Th key={`${e.id}-gr`} width={65} center>Grade</Th>,
+                <Th key={`${e.id}-ep`} width={wide.ep.has(e.id) ? WIDE_RANGE : 80} center>Episodes</Th>,
+                <Th key={`${e.id}-gr`} width={wide.ep.has(e.id) ? WIDE_GRADE : 65} center>Grade</Th>,
               ])
           )}
         </tr>
@@ -1602,7 +1616,7 @@ function TargetAgingTable({ projects, visibleEvaluators, visibleOneLinerAssessor
                 .map((a) => {
                   const parts = headOneLinerParts(project, a);
                   return (
-                    <Td key={`ol-${a.id}`} width={90} center>
+                    <Td key={`ol-${a.id}`} width={wide.ol.has(a.id) ? WIDE_GRADE : 90} center>
                       {parts ? <PartsCell parts={parts} /> : scoreBadge(project.oneLinerGrades[a.id] ?? null)}
                     </Td>
                   );
@@ -1616,12 +1630,12 @@ function TargetAgingTable({ projects, visibleEvaluators, visibleOneLinerAssessor
                   const color = group === "Management" ? "text-purple-700" : group === "Programming" ? "text-blue-700" : "text-amber-700";
                   const parts = headEpisodeParts(project, e);
                   if (parts) return [
-                    <Td key={`${e.id}-ep`} width={80} center className={`text-xs ${color}`}>{parts.filter((x) => x.range).map((x) => `${x.label} ${x.range}`).join(" · ")}</Td>,
-                    <Td key={`${e.id}-gr`} width={65} center><PartsCell parts={parts} /></Td>,
+                    <Td key={`${e.id}-ep`} width={wide.ep.has(e.id) ? WIDE_RANGE : 80} center className={`text-xs ${color}`}>{parts.filter((x) => x.range).map((x) => `${x.label} ${x.range}`).join(" · ")}</Td>,
+                    <Td key={`${e.id}-gr`} width={wide.ep.has(e.id) ? WIDE_GRADE : 65} center><PartsCell parts={parts} /></Td>,
                   ];
                   return [
-                    <Td key={`${e.id}-ep`} width={80} center className={`text-xs ${color}`}>{g?.epRange || "—"}</Td>,
-                    <Td key={`${e.id}-gr`} width={65} center>{scoreBadge(g?.avgScore ?? null)}</Td>,
+                    <Td key={`${e.id}-ep`} width={wide.ep.has(e.id) ? WIDE_RANGE : 80} center className={`text-xs ${color}`}>{g?.epRange || "—"}</Td>,
+                    <Td key={`${e.id}-gr`} width={wide.ep.has(e.id) ? WIDE_GRADE : 65} center>{scoreBadge(g?.avgScore ?? null)}</Td>,
                   ];
                 })
             )}

@@ -135,16 +135,18 @@ export async function GET(request: NextRequest) {
           .select("episode_id").order("id").range(from, to)),
       ]);
 
-      // The content department's own score of each item (newest version), as in the Team Overview rating
-      // The content team member's own score of each item (newest version), shown with the evaluations; for
-      // a content head, with the Content Head average when they have rated it too (Team Overview rule)
+      // Only this team's ratings are shown. For a content head that includes their own team members'
+      // Content Team Assessments (newest version), with the Content Head average when they rated it too
+      // (Team Overview rule); Programming / Content Development show their team's evaluations only.
       const isContentHead = ev.role === "evaluator" || ev.role === "gcm";
+      const ownTeamIds = new Set([ev.team_id, ...(teamsData || []).filter((t) => t.team_head_id === ev.id).map((t) => t.id)]);
       const contentTeam = (itemId: string) => {
         const a = contentTeamAssessments.get(itemId);
-        return a ? { name: a.byName.split(" ")[0], score: a.score } : null;
+        if (!isContentHead || !a || !a.byTeamId || !ownTeamIds.has(a.byTeamId)) return null;
+        return { name: a.byName.split(" ")[0], score: a.score };
       };
       const avgWith = (itemId: string, evaluations: unknown[]) =>
-        isContentHead && evaluations.length > 0 && contentTeamAssessments.has(itemId) ? contentHeadScore.get(itemId) ?? null : null;
+        evaluations.length > 0 && contentTeam(itemId) ? contentHeadScore.get(itemId) ?? null : null;
 
       // Build episode → revision count map
       const revCountMap = new Map<string, number>();
