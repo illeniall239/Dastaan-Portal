@@ -164,7 +164,7 @@ export async function GET(request: NextRequest) {
       ? await admin
           .from("episodic_evaluations")
           .select(`
-            episode_id, evaluator_id, overall_average, submitted_at,
+            episode_id, evaluator_id, overall_average, submitted_at, original_submission_date,
             evaluator:users!evaluator_id(id, name, email, role)
           `)
           .in("episode_id", episodeIds)
@@ -376,7 +376,8 @@ export async function GET(request: NextRequest) {
       for (const ep of crEpisodes) {
         const evals = evalsByEpisode.get(ep.id) || [];
         const submittedDates = evals
-          .map((ev: any) => ev.submitted_at)
+          // the evaluation's date: its original submission date when one was given (backdated entry)
+          .map((ev: any) => (ev.submitted_at ? ev.original_submission_date ?? ev.submitted_at : null))
           .filter((d: string | null): d is string => !!d);
         if (submittedDates.length > 0) {
           const earliest = submittedDates.sort()[0];
