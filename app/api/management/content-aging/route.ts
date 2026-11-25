@@ -210,7 +210,6 @@ export async function GET(request: NextRequest) {
     // Each project's rating follows the Team Overview rule; the content team's own scores (Content Team
     // Assessments) are shown in their content head's column, with the Content Head average
     const { overall, ratings, contentTeamAssessments } = await getProjectRatings();
-    const firstName = (name: string) => (name || "").split(" ")[0];
 
     // Build one-liner lookup maps
     const oneLinerByReport = new Map<string, Map<string, number>>();
@@ -406,9 +405,9 @@ export async function GET(request: NextRequest) {
       const r = ratings.get(cr.id);
       const contentTeam = teamHead?.id && (olTeam || epMembers.size) ? {
         headId: teamHead.id as string,
-        oneLiner: olTeam ? { members: [{ name: firstName(olTeam.byName), score: olTeam.score }], avg: r?.contentHead ?? null } : null,
+        oneLiner: olTeam ? { members: [{ name: olTeam.byName, score: olTeam.score }], avg: r?.contentHead ?? null } : null,
         episodes: epMembers.size ? {
-          members: [...epMembers].map(([name, m]) => ({ name: firstName(name), ...buildEvaluatorGrade(m) })),
+          members: [...epMembers].map(([name, m]) => ({ name, ...buildEvaluatorGrade(m) })),
           avg: r?.episodes.contentHead?.average ?? null,
         } : null,
       } : null;

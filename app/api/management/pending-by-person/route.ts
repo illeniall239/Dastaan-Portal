@@ -143,7 +143,7 @@ export async function GET(request: NextRequest) {
       const contentTeam = (itemId: string) => {
         const a = contentTeamAssessments.get(itemId);
         if (!isContentHead || !a || !a.byTeamId || !ownTeamIds.has(a.byTeamId)) return null;
-        return { name: a.byName.split(" ")[0], score: a.score };
+        return { name: a.byName, score: a.score };
       };
       const avgWith = (itemId: string, evaluations: unknown[]) =>
         evaluations.length > 0 && contentTeam(itemId) ? contentHeadScore.get(itemId) ?? null : null;

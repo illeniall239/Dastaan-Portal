@@ -218,7 +218,6 @@ function commitmentScheduleLabel(schedule: string, custom?: string | null): stri
   return map[schedule] ?? schedule;
 }
 
-const first = (name: string) => (name || "").split(" ")[0];
 const fmt1 = (n: number | null | undefined) => (n == null ? "—" : Number(n).toFixed(1));
 
 /** A one-liner cell: the person's score; in the content head's column also their team's Content Team
@@ -228,7 +227,7 @@ function headOneLinerParts(p: Project, assessor: { id: string; name: string }) {
   if (!ct || ct.headId !== assessor.id || !ct.oneLiner) return null;
   const head = p.oneLinerGrades[assessor.id] ?? null;
   return [
-    ...(head != null ? [{ label: first(assessor.name), score: head }] : []),
+    ...(head != null ? [{ label: assessor.name, score: head }] : []),
     ...ct.oneLiner.members.map((m) => ({ label: m.name, score: m.score as number | null })),
     ...(head != null && ct.oneLiner.avg != null ? [{ label: "Avg", score: ct.oneLiner.avg }] : []),
   ];
@@ -240,15 +239,15 @@ function headEpisodeParts(p: Project, evaluator: { id: string; name: string }) {
   if (!ct || ct.headId !== evaluator.id || !ct.episodes) return null;
   const head = p.allEvaluatorGrades[evaluator.id];
   return [
-    ...(head ? [{ label: first(evaluator.name), range: head.epRange, score: head.avgScore }] : []),
+    ...(head ? [{ label: evaluator.name, range: head.epRange, score: head.avgScore }] : []),
     ...ct.episodes.members.map((m) => ({ label: m.name, range: m.epRange, score: m.avgScore })),
     ...(head && ct.episodes.avg != null ? [{ label: "Avg", range: "", score: ct.episodes.avg }] : []),
   ];
 }
 
 /** Content heads whose column also shows their team's scores ("Parisa 6.0 · Beena 8.0 · Avg 7.0") get wider columns */
-const WIDE_GRADE = 220;
-const WIDE_RANGE = 170;
+const WIDE_GRADE = 300;
+const WIDE_RANGE = 230;
 function wideHeadColumns(projects: Project[]) {
   const ol = new Set<string>(), ep = new Set<string>();
   for (const p of projects) {
@@ -1229,8 +1228,8 @@ export default function ContentAgingPage() {
                   visibleOneLinerAssessors
                     .filter((a) => a.group === group)
                     .map((a) => (
-                      <th key={`ol-name-${a.id}`} className={`px-2 py-1.5 text-xs font-semibold text-center border-b border-r border-border whitespace-nowrap ${GROUP_HEADER_COLORS[group]}`} style={wide.ol.has(a.id) ? { minWidth: WIDE_GRADE, maxWidth: WIDE_GRADE, width: WIDE_GRADE } : { minWidth: 90, maxWidth: 90, width: 90 }}>
-                        {a.name.split(" ")[0]}
+                      <th key={`ol-name-${a.id}`} className={`px-2 py-1.5 text-xs font-semibold text-center border-b border-r border-border ${GROUP_HEADER_COLORS[group]}`} style={wide.ol.has(a.id) ? { minWidth: WIDE_GRADE, maxWidth: WIDE_GRADE, width: WIDE_GRADE } : { minWidth: 90, maxWidth: 90, width: 90 }}>
+                        {a.name}
                       </th>
                     ))
                 )}
@@ -1536,8 +1535,8 @@ function TargetAgingTable({ projects, visibleEvaluators, visibleOneLinerAssessor
             visibleOneLinerAssessors
               .filter((a) => a.group === group)
               .map((a) => (
-                <th key={`ol-name-r2-${a.id}`} className={`px-2 py-1.5 text-xs font-semibold text-center border-b border-r border-border whitespace-nowrap ${GROUP_HEADER_COLORS[group]}`} style={wide.ol.has(a.id) ? { minWidth: WIDE_GRADE, maxWidth: WIDE_GRADE, width: WIDE_GRADE } : { minWidth: 90, maxWidth: 90, width: 90 }}>
-                  {a.name.split(" ")[0]}
+                <th key={`ol-name-r2-${a.id}`} className={`px-2 py-1.5 text-xs font-semibold text-center border-b border-r border-border ${GROUP_HEADER_COLORS[group]}`} style={wide.ol.has(a.id) ? { minWidth: WIDE_GRADE, maxWidth: WIDE_GRADE, width: WIDE_GRADE } : { minWidth: 90, maxWidth: 90, width: 90 }}>
+                  {a.name}
                 </th>
               ))
           )}

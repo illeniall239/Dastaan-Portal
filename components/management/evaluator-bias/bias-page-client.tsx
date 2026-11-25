@@ -191,7 +191,7 @@ export function BiasPageClient() {
                               title={`${ev.name} (${ev.team})`}
                             >
                               <span className={`inline-block h-1.5 w-1.5 rounded-full mr-1 ${TEAM_DOT[ev.team]}`} />
-                              {ev.name.split(" ")[0]}: {ev.score.toFixed(1)}
+                              {ev.name}: {ev.score.toFixed(1)}
                             </Badge>
                           ))}
                       </div>

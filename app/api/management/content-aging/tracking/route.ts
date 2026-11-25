@@ -122,7 +122,7 @@ export async function GET(request: NextRequest) {
       } else if (t.team_type === "evaluator") {
         label = "Content Head's Feedback";
       } else if (head?.name) {
-        label = `${head.name.split(" ")[0]}'s Team Feedback`;
+        label = `${head.name}'s Team Feedback`;
       } else {
         label = t.name;
       }

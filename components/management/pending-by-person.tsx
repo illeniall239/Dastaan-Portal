@@ -288,7 +288,7 @@ function PendingDetailDialog({ userId, personName, personRole, onClose }: {
                                 <div className="flex flex-wrap gap-1">
                                   {ol.evaluations.map((ev, i) => (
                                     <Badge key={i} variant="outline" className={`text-[10px] px-1.5 py-0 ${scoreColor(ev.averageScore ?? 0)}`}>
-                                      {ev.evaluatorName.split(" ")[0]}: {ev.averageScore != null ? ev.averageScore.toFixed(1) : "—"}
+                                      {ev.evaluatorName}: {ev.averageScore != null ? ev.averageScore.toFixed(1) : "—"}
                                     </Badge>
                                   ))}
                                   <ContentTeamChip ct={ol.contentTeam} />
@@ -392,7 +392,7 @@ function PendingDetailDialog({ userId, personName, personRole, onClose }: {
                                   {ep.evaluations.map((ev, i) => (
                                     <span key={i} className="inline-flex items-center gap-1">
                                       <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${scoreColor(ev.overallAverage ?? 0)}`}>
-                                        {ev.evaluatorName.split(" ")[0]}: {ev.overallAverage != null ? ev.overallAverage.toFixed(1) : "—"}
+                                        {ev.evaluatorName}: {ev.overallAverage != null ? ev.overallAverage.toFixed(1) : "—"}
                                       </Badge>
                                       {ev.overallGrade && (
                                         <Badge variant="outline" className={`text-[10px] px-1 py-0 font-bold ${gradeColor(ev.overallGrade)}`}>
