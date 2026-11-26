@@ -37,15 +37,6 @@ const LONG_SERIAL_BUCKETS = [
   { min: 10, max: 20, label: "10–19" },
 ];
 
-// Episodes in hand, per content head
-const HAND_BUCKETS = [
-  { label: "One-liner only", test: (n: number) => n === 0, color: "bg-slate-300" },
-  { label: "1–10 eps", test: (n: number) => n >= 1 && n <= 10, color: "bg-sky-300" },
-  { label: "11–15 eps", test: (n: number) => n >= 11 && n <= 15, color: "bg-sky-500" },
-  { label: "16–20 eps", test: (n: number) => n >= 16 && n <= 20, color: "bg-blue-600" },
-  { label: "21+ eps", test: (n: number) => n >= 21, color: "bg-indigo-800" },
-];
-
 const SLOTS: Slot[] = ["8PM", "7/9PM", "No slot"];
 
 function DrillDownDialog({ title, projects, onClose }: DrillDown & { onClose: () => void }) {
@@ -115,81 +106,6 @@ function MilestoneRow({
               <div className="text-2xl font-bold tabular-nums">{inBucket.length}</div>
               <div className="text-xs text-muted-foreground mt-1">{b.label} eps</div>
             </button>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-/** One bar per content head: their scripts split by episodes in hand, plus their 8PM / 7/9PM split */
-function ByContentHead({
-  projects, onOpen, onPickHead,
-}: {
-  projects: TrackerProject[];
-  onOpen: (d: DrillDown) => void;
-  onPickHead: (head: string) => void;
-}) {
-  const heads = useMemo(() => {
-    const byHead = new Map<string, TrackerProject[]>();
-    for (const p of projects) byHead.set(p.head, [...(byHead.get(p.head) ?? []), p]);
-    return [...byHead].sort((a, b) => (a[0] === "(no team)" ? 1 : 0) - (b[0] === "(no team)" ? 1 : 0) || b[1].length - a[1].length);
-  }, [projects]);
-  const max = Math.max(1, ...heads.map(([, ps]) => ps.length));
-
-  if (heads.length === 0) return <p className="text-sm text-muted-foreground py-4 text-center">No projects match these filters</p>;
-
-  return (
-    <div className="space-y-3">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h3 className="text-sm font-semibold">By content head — episodes in hand</h3>
-        <div className="flex flex-wrap gap-3 text-[11px] text-muted-foreground">
-          {HAND_BUCKETS.map((b) => (
-            <span key={b.label} className="inline-flex items-center gap-1">
-              <span className={`inline-block h-2.5 w-2.5 rounded-sm ${b.color}`} />{b.label}
-            </span>
-          ))}
-        </div>
-      </div>
-      <div className="space-y-2">
-        {heads.map(([head, ps]) => {
-          const slots = SLOTS.map((s) => [s, ps.filter((p) => p.slot === s).length] as const).filter(([, n]) => n > 0);
-          return (
-            <div key={head} className="grid grid-cols-[minmax(0,10rem)_1fr_auto] items-center gap-3">
-              <button
-                type="button"
-                onClick={() => onPickHead(head)}
-                className="text-left text-sm font-medium text-gray-800 truncate hover:underline"
-                title={`Show only ${head}`}
-              >
-                {head}
-              </button>
-              <div className="h-6 flex rounded overflow-hidden bg-gray-50" style={{ width: `${Math.max(8, (ps.length / max) * 100)}%` }}>
-                {HAND_BUCKETS.map((b) => {
-                  const inBucket = ps.filter((p) => b.test(p.episodes));
-                  if (inBucket.length === 0) return null;
-                  return (
-                    <button
-                      key={b.label}
-                      type="button"
-                      onClick={() => onOpen({ title: `${head} — ${b.label}`, projects: inBucket })}
-                      className={`${b.color} h-full text-[10px] font-semibold text-white/90 hover:brightness-110 transition`}
-                      style={{ width: `${(inBucket.length / ps.length) * 100}%` }}
-                      title={`${b.label}: ${inBucket.length}`}
-                    >
-                      {inBucket.length / ps.length >= 0.08 ? inBucket.length : ""}
-                    </button>
-                  );
-                })}
-              </div>
-              <div className="text-xs text-muted-foreground whitespace-nowrap tabular-nums">
-                <span className="font-semibold text-gray-800">{ps.length}</span>
-                {" · "}
-                {slots.map(([s, n], i) => (
-                  <span key={s}>{i > 0 && " · "}{s} {n}</span>
-                ))}
-              </div>
-            </div>
           );
         })}
       </div>
@@ -275,12 +191,6 @@ export function EpisodeMilestones() {
           </CardContent>
         </Card>
       </div>
-
-      <Card className="mt-4">
-        <CardContent className="pt-5">
-          <ByContentHead projects={filtered} onOpen={setDrillDown} onPickHead={setHead} />
-        </CardContent>
-      </Card>
 
       {drillDown && <DrillDownDialog {...drillDown} onClose={() => setDrillDown(null)} />}
     </>
