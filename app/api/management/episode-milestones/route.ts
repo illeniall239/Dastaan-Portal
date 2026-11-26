@@ -4,6 +4,45 @@ import { requireApiAuth } from "@/lib/api/auth";
 import { applyRateLimit } from "@/lib/api-middleware";
 import { RateLimitPresets } from "@/lib/rate-limit-redis";
 import { CACHE_DURATION, createCacheControl } from "@/lib/constants";
+import { fetchAll } from "@/lib/supabase/fetch-all";
+
+type Admin = ReturnType<typeof createAdminClient>;
+
+/** Current episodes per project (all pages: there are more than 1000 episodes) */
+async function episodeCounts(admin: Admin) {
+  const episodes = await fetchAll<{ call_report_id: string }>((f, t) => admin
+    .from("episodes").select("id, call_report_id").eq("is_current", true)
+    .not("call_report_id", "is", null).order("id").range(f, t));
+  const count: Record<string, number> = {};
+  for (const ep of episodes) count[ep.call_report_id] = (count[ep.call_report_id] || 0) + 1;
+  return count;
+}
+
+/**
+ * Every active project with what the tracker filters and groups by: its content head (the project
+ * team's head; "Programming" for the Programming Team), slot (8PM, 7/9PM or No slot) and episodes in hand.
+ */
+async function trackerProjects(admin: Admin, countByProject: Record<string, number>) {
+  const [projects, { data: teams }] = await Promise.all([
+    fetchAll<any>((f, t) => admin.from("call_reports")
+      .select("id, working_title, writer_name, target_slot, content_type, team_id")
+      .eq("meeting_type", "call_report").is("archived_at", null).order("id").range(f, t)),
+    admin.from("teams").select("id, name, team_type, team_head:users!teams_team_head_id_fkey(name)"),
+  ]);
+  const headOfTeam = new Map((teams || []).map((t: any) => {
+    const head = Array.isArray(t.team_head) ? t.team_head[0] : t.team_head;
+    return [t.id, t.team_type === "programmer" ? "Programming" : head?.name || t.name];
+  }));
+  return projects.map((p) => ({
+    id: p.id as string,
+    title: (p.working_title as string) || "Untitled",
+    writer: (p.writer_name as string) || "—",
+    head: (p.team_id && headOfTeam.get(p.team_id)) || "(no team)",
+    slot: p.target_slot === "8:00 PM" ? "8PM" : p.target_slot === "7:00 PM" || p.target_slot === "9:00 PM" ? "7/9PM" : "No slot",
+    contentType: (p.content_type as string) || null,
+    episodes: countByProject[p.id] || 0,
+  }));
+}
 
 // Buckets: [min, max) — last bucket has no upper bound
 const SERIAL_BUCKETS = [
@@ -82,22 +121,7 @@ async function handleDrillDown(params: URLSearchParams) {
     return NextResponse.json({ success: true, columns: [], rows: [] });
   }
 
-  const projectIds = projects.map((p) => p.id);
-
-  const { data: episodes, error: epError } = await admin
-    .from("episodes")
-    .select("call_report_id")
-    .in("call_report_id", projectIds)
-    .eq("is_current", true);
-
-  if (epError) {
-    return NextResponse.json({ error: "Failed to fetch episodes" }, { status: 500 });
-  }
-
-  const countByProject: Record<string, number> = {};
-  for (const ep of episodes || []) {
-    countByProject[ep.call_report_id] = (countByProject[ep.call_report_id] || 0) + 1;
-  }
+  const countByProject = await episodeCounts(admin);
 
   const rows = projects
     .filter((p) => inBucket(countByProject[p.id] || 0, bucket.min, bucket.max))
@@ -142,27 +166,13 @@ async function handleSummary() {
     return NextResponse.json({
       serials: SERIAL_BUCKETS.map((b) => ({ min: b.min, label: b.label, count: 0 })),
       longSerials: LONG_SERIAL_BUCKETS.map((b) => ({ min: b.min, label: b.label, count: 0 })),
+      projects: await trackerProjects(admin, await episodeCounts(admin)),
     }, {
       headers: { "Cache-Control": createCacheControl(CACHE_DURATION.ANALYTICS) },
     });
   }
 
-  const projectIds = projects.map((p) => p.id);
-
-  const { data: episodes, error: epError } = await admin
-    .from("episodes")
-    .select("call_report_id")
-    .in("call_report_id", projectIds)
-    .eq("is_current", true);
-
-  if (epError) {
-    return NextResponse.json({ error: "Failed to fetch episodes" }, { status: 500 });
-  }
-
-  const countByProject: Record<string, number> = {};
-  for (const ep of episodes || []) {
-    countByProject[ep.call_report_id] = (countByProject[ep.call_report_id] || 0) + 1;
-  }
+  const countByProject = await episodeCounts(admin);
 
   // Count into distinct buckets
   const serialCounts: Record<number, number> = {};
@@ -186,6 +196,7 @@ async function handleSummary() {
   return NextResponse.json({
     serials: SERIAL_BUCKETS.map((b) => ({ min: b.min, label: b.label, count: serialCounts[b.min] })),
     longSerials: LONG_SERIAL_BUCKETS.map((b) => ({ min: b.min, label: b.label, count: longSerialCounts[b.min] })),
+    projects: await trackerProjects(admin, countByProject),
   }, {
     headers: { "Cache-Control": createCacheControl(CACHE_DURATION.ANALYTICS) },
   });
