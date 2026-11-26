@@ -204,6 +204,18 @@ export function RevisionEvaluateList({
               Evaluated
             </Badge>
           )}
+          {/* Read-only (the content team): view their content head's evaluation, no editing */}
+          {readOnly && (
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-7 text-xs gap-1"
+              onClick={() => router.push(getEvaluateUrl(revisionId))}
+            >
+              <Eye className="h-3 w-3" />
+              View Evaluation
+            </Button>
+          )}
           {!readOnly && (
             <>
               <Button

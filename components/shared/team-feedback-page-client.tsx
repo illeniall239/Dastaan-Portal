@@ -437,10 +437,14 @@ function EvaluatorRow({ ev }: { ev: EvalEntry }) {
   return (
     <>
       <div className="bg-white border rounded-lg overflow-hidden">
-        <button
-          type="button"
+        {/* A div, not a <button>: it holds the "View" button, and buttons can't be nested */}
+        <div
+          role="button"
+          tabIndex={0}
+          aria-expanded={open}
           onClick={() => setOpen(v => !v)}
-          className="w-full flex items-center justify-between px-3 py-2.5 hover:bg-slate-50 transition-colors text-sm"
+          onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setOpen(v => !v); } }}
+          className="w-full flex items-center justify-between px-3 py-2.5 hover:bg-slate-50 transition-colors text-sm cursor-pointer"
         >
           <div className="flex items-center gap-2">
             {open ? <ChevronDown className="h-3.5 w-3.5 text-slate-400" /> : <ChevronRight className="h-3.5 w-3.5 text-slate-400" />}
@@ -459,6 +463,7 @@ function EvaluatorRow({ ev }: { ev: EvalEntry }) {
                 size="sm"
                 className="h-6 px-2 text-xs text-slate-500 hover:text-slate-800 hover:bg-slate-100"
                 onClick={e => { e.stopPropagation(); setDialogOpen(true); }}
+                onKeyDown={e => e.stopPropagation()}
               >
                 <Eye className="h-3 w-3 mr-1" />
                 View
@@ -468,7 +473,7 @@ function EvaluatorRow({ ev }: { ev: EvalEntry }) {
               {ev.averageScore !== null ? `${ev.averageScore.toFixed(1)}/10` : <span className="text-xs text-slate-400 italic font-normal">not rated</span>}
             </span>
           </div>
-        </button>
+        </div>
 
         {open && (hasCriteria || ev.closingRemarks || ev.decisionNotes) && (
           <div className="px-4 pb-3 pt-2 border-t bg-slate-50/60 space-y-3 text-xs">

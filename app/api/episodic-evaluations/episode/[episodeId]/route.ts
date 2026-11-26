@@ -56,11 +56,23 @@ export async function GET(
     );
   }
 
-  if (!userData || !["evaluator", "programmer", "content_manager", "gcm", "admin", "management", "executive"].includes(userData.role)) {
+  if (!userData || !["evaluator", "programmer", "content_manager", "content_creator", "gcm", "admin", "management", "executive"].includes(userData.role)) {
     return NextResponse.json(
       { error: "Forbidden - Insufficient permissions" },
       { status: 403 }
     );
+  }
+
+  // The content team sees exactly what their content head sees: the head's evaluation
+  let viewerId = user.id;
+  if (["content_creator", "content_manager"].includes(userData.role)) {
+    const adminClient = createAdminClient();
+    const { data: me } = await adminClient.from("users").select("team_id").eq("id", user.id).single();
+    const { data: team } = me?.team_id
+      ? await adminClient.from("teams").select("team_head_id").eq("id", me.team_id).single()
+      : { data: null };
+    if (!team?.team_head_id) return NextResponse.json({ evaluation: null });
+    viewerId = team.team_head_id;
   }
 
   // Check if user is on a management-type team (team-isolated episode evaluations)
@@ -109,7 +121,7 @@ export async function GET(
     const revisionId = url.searchParams.get("revision_id");
     const crossTeamShareId = url.searchParams.get("cross_team_share_id");
 
-    let evalQuery = supabase
+    let evalQuery = (viewerId !== user.id ? createAdminClient() : supabase)
       .from("episodic_evaluations")
       .select(`
         *,
@@ -144,7 +156,7 @@ export async function GET(
         evalQuery = evalQuery.not("evaluator_id", "in", `(${contentDevUserIds.join(",")})`);
       }
     } else {
-      evalQuery = evalQuery.eq("evaluator_id", user.id);
+      evalQuery = evalQuery.eq("evaluator_id", viewerId);
     }
 
     if (revisionId) {

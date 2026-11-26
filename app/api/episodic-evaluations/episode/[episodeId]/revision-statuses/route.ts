@@ -52,12 +52,29 @@ export async function GET(
       return NextResponse.json({ error: "Failed to verify user permissions" }, { status: 500 });
     }
 
-    if (!["evaluator", "programmer", "content_manager", "admin", "management", "executive", "gcm"].includes(userData.role)) {
+    if (!["evaluator", "programmer", "content_manager", "content_creator", "admin", "management", "executive", "gcm"].includes(userData.role)) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
+    // The content team sees exactly what their content head sees: the head's evaluations
+    let viewerId = user.id;
+    let viewer: { role: string; team_id: string | null } = userData;
+    let reader = supabase;
+    if (["content_creator", "content_manager"].includes(userData.role)) {
+      const { data: team } = userData.team_id
+        ? await adminClient.from("teams").select("team_head_id, head:users!teams_team_head_id_fkey(role, team_id)").eq("id", userData.team_id).single()
+        : { data: null };
+      const head: any = Array.isArray(team?.head) ? team?.head[0] : team?.head;
+      if (!team?.team_head_id || !head) {
+        return NextResponse.json({ statuses: { original: { hasEvaluated: false }, revisions: {} } });
+      }
+      viewerId = team.team_head_id;
+      viewer = { role: head.role, team_id: head.team_id };
+      reader = adminClient;
+    }
+
     // Same team rules as "next episode" (lib/episodic-evaluations/scoped.ts)
-    const { evaluations, error } = await getScopedEpisodicEvaluations(supabase, adminClient, user.id, userData, [episodeId]);
+    const { evaluations, error } = await getScopedEpisodicEvaluations(reader, adminClient, viewerId, viewer, [episodeId]);
 
     if (error) {
       logger.error("Error fetching revision statuses", { error, episodeId });

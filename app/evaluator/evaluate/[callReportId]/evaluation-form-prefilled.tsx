@@ -630,7 +630,7 @@ export function EvaluatorEvaluationForm({
       <div className="flex flex-col gap-4 sm:gap-6 mb-8 max-w-4xl mx-auto px-4 sm:px-6 py-6">
         {!onWizardSubmit && <div className="flex items-center justify-between">
           <BackButton fallbackHref={`/${portalPrefix}/evaluations-list`} variant="outline" size="sm" className="w-fit" />
-          {isReadOnly && (
+          {isReadOnly && !viewOnly && (
             <Button type="button" variant="outline" size="sm" onClick={() => setIsEditing(true)}>
               Edit
             </Button>

@@ -59,6 +59,11 @@ export default async function ContentDepartmentLayout({
       icon: "film",
       highlight: true,
     },
+    {
+      title: "Team Feedback",
+      href: "/content-department/team-feedback",
+      icon: "users",
+    },
   ];
 
   return (
