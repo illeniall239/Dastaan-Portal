@@ -182,8 +182,9 @@ export function EvaluatorScoresBreakdown({
 }
 
 // Helper component for individual score items
-function ScoreItem({ label, score }: { label: string; score: number }) {
-  const getScoreBgColor = (score: number) => {
+function ScoreItem({ label, score }: { label: string; score: number | null }) {
+  const getScoreBgColor = (score: number | null) => {
+    if (score == null) return "bg-gray-100 text-gray-500";
     if (score >= 7) return "bg-green-100 text-green-800";
     if (score >= 5) return "bg-yellow-100 text-yellow-800";
     return "bg-red-100 text-red-800";
@@ -197,7 +198,7 @@ function ScoreItem({ label, score }: { label: string; score: number }) {
           score
         )}`}
       >
-        {score}
+        {score ?? "—"}
       </span>
     </div>
   );

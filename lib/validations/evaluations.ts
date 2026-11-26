@@ -15,11 +15,12 @@ export const createEvaluationSchema = z.object({
   evaluator_id: z.string().uuid({ message: "Invalid evaluator ID" }),
   revision_id: z.string().uuid().optional().nullable(),
 
-  // New evaluation scores (1-10 scale)
-  conflict_of_content_score: scoreField,
-  characterization_score: scoreField,
-  story_progression_score: scoreField,
-  whats_next_element_score: scoreField,
+  // Evaluation scores (1-10 scale); only the Overall One-liner Grade is required. The score used is
+  // the average of all 5 when every one is filled, otherwise the Overall One-liner Grade.
+  conflict_of_content_score: scoreField.nullable().optional(),
+  characterization_score: scoreField.nullable().optional(),
+  story_progression_score: scoreField.nullable().optional(),
+  whats_next_element_score: scoreField.nullable().optional(),
   overall_oneliner_grade_score: scoreField,
 
   // Per-criterion comments
@@ -70,11 +71,11 @@ export const submitEvaluationSchema = createEvaluationSchema.extend({
  * All fields are optional since it's a partial update
  */
 export const updateEvaluationSchema = z.object({
-  // New evaluation scores (1-10 scale) - all optional for partial updates
-  conflict_of_content_score: optionalScoreField,
-  characterization_score: optionalScoreField,
-  story_progression_score: optionalScoreField,
-  whats_next_element_score: optionalScoreField,
+  // New evaluation scores (1-10 scale) - all optional for partial updates (and can be cleared)
+  conflict_of_content_score: optionalScoreField.nullable(),
+  characterization_score: optionalScoreField.nullable(),
+  story_progression_score: optionalScoreField.nullable(),
+  whats_next_element_score: optionalScoreField.nullable(),
   overall_oneliner_grade_score: optionalScoreField,
 
   // Per-criterion comments

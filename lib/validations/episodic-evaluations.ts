@@ -6,6 +6,8 @@ const scoreField = z
   .max(10, "Score must be at most 10");
 
 const optionalScoreField = scoreField.optional();
+// Optional on a new evaluation: only the Overall Assessment is required
+const notRequiredScore = scoreField.nullable().optional();
 
 /**
  * Validation schema for creating episodic evaluation
@@ -14,20 +16,23 @@ export const episodicEvaluationSchema = z.object({
   episode_id: z.string().uuid("Invalid episode ID"),
   revision_id: z.string().uuid().optional().nullable(),
   cross_team_share_id: z.string().uuid().optional().nullable(),
-  is_feedback_only: z.boolean().optional().default(false),
+  // There are no feedback-only evaluations any more (the database ignores this for new ones)
+  is_feedback_only: z.literal(false).optional().default(false),
 
-  // Episode Details
+  // Episode Details (optional)
   no_of_pages: z
     .number()
     .int("Number of pages must be an integer")
     .positive("Number of pages must be positive")
-    .min(1, "At least 1 page is required"),
+    .nullable()
+    .optional(),
 
   no_of_scenes: z
     .number()
     .int("Number of scenes must be an integer")
     .positive("Number of scenes must be positive")
-    .min(1, "At least 1 scene is required"),
+    .nullable()
+    .optional(),
 
   // Events (optional - kept for backward compat but no longer required)
   events: z
@@ -52,15 +57,16 @@ export const episodicEvaluationSchema = z.object({
   // Remarks (optional free-form text)
   remarks: z.string().optional(),
 
-  // Evaluation Scores (1-10 scale) - 9 criteria
-  conflict_of_content_score: scoreField,
-  characterization_score: scoreField,
-  story_progression_score: scoreField,
-  main_event_score: scoreField,
-  small_event_score: scoreField,
-  dragness_score: scoreField,
-  freezes_score: scoreField,
-  whats_next_element_score: scoreField,
+  // Evaluation Scores (1-10 scale) - 9 criteria; only the Overall Assessment is required. The score
+  // used is the average of all 9 when every one is filled, otherwise the Overall Assessment.
+  conflict_of_content_score: notRequiredScore,
+  characterization_score: notRequiredScore,
+  story_progression_score: notRequiredScore,
+  main_event_score: notRequiredScore,
+  small_event_score: notRequiredScore,
+  dragness_score: notRequiredScore,
+  freezes_score: notRequiredScore,
+  whats_next_element_score: notRequiredScore,
   overall_assessment_score: scoreField,
 
   // Per-criterion comments
@@ -113,14 +119,14 @@ export const updateEpisodicEvaluationSchema = z.object({
     .number()
     .int("Number of pages must be an integer")
     .positive("Number of pages must be positive")
-    .min(1, "At least 1 page is required")
+    .nullable()
     .optional(),
 
   no_of_scenes: z
     .number()
     .int("Number of scenes must be an integer")
     .positive("Number of scenes must be positive")
-    .min(1, "At least 1 scene is required")
+    .nullable()
     .optional(),
 
   // Events (optional for updates)
@@ -147,14 +153,14 @@ export const updateEpisodicEvaluationSchema = z.object({
   remarks: z.string().optional(),
 
   // Evaluation Scores (1-10 scale, all optional for updates)
-  conflict_of_content_score: optionalScoreField,
-  characterization_score: optionalScoreField,
-  story_progression_score: optionalScoreField,
-  main_event_score: optionalScoreField,
-  small_event_score: optionalScoreField,
-  dragness_score: optionalScoreField,
-  freezes_score: optionalScoreField,
-  whats_next_element_score: optionalScoreField,
+  conflict_of_content_score: notRequiredScore,
+  characterization_score: notRequiredScore,
+  story_progression_score: notRequiredScore,
+  main_event_score: notRequiredScore,
+  small_event_score: notRequiredScore,
+  dragness_score: notRequiredScore,
+  freezes_score: notRequiredScore,
+  whats_next_element_score: notRequiredScore,
   overall_assessment_score: optionalScoreField,
 
   // Per-criterion comments

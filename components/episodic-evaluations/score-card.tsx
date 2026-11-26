@@ -9,8 +9,11 @@ import { calculateGrade, getGradeColorClasses } from "@/lib/validations/episodic
 interface ScoreCardProps {
   label: string;
   description?: string;
-  score: number;
+  /** null = not rated yet (only when the score is optional or must be chosen) */
+  score: number | null;
   onChange: (score: number) => void;
+  /** Lets the score be cleared back to "not rated" (an optional score) */
+  onClear?: () => void;
   disabled?: boolean;
   showGrade?: boolean;
   gradeFn?: (score: number) => string;
@@ -22,20 +25,22 @@ export function ScoreCard({
   description,
   score,
   onChange,
+  onClear,
   disabled = false,
   showGrade = true,
   gradeFn,
   gradeColorFn,
 }: ScoreCardProps) {
-  const rating = (gradeFn || calculateGrade)(score);
-  const ratingColorClasses = (gradeColorFn || getGradeColorClasses)(rating);
+  const rating = score == null ? null : (gradeFn || calculateGrade)(score);
+  const ratingColorClasses = rating == null ? "" : (gradeColorFn || getGradeColorClasses)(rating);
 
   const handleChange = (value: string) => {
     const numValue = parseFloat(value);
     if (!isNaN(numValue) && numValue >= 1 && numValue <= 10) {
       onChange(numValue);
     } else if (value === "") {
-      onChange(1); // Default to 1 if empty
+      if (onClear) onClear();
+      else onChange(1); // Default to 1 if empty
     }
   };
 
@@ -62,7 +67,7 @@ export function ScoreCard({
               min="1"
               max="10"
               step="0.1"
-              value={score}
+              value={score ?? ""}
               onChange={(e) => handleChange(e.target.value)}
               disabled={disabled}
               placeholder="1-10"
@@ -103,7 +108,7 @@ export function ScoreCard({
               min="1"
               max="10"
               step="0.1"
-              value={score}
+              value={score ?? ""}
               onChange={(e) => handleChange(e.target.value)}
               disabled={disabled}
               placeholder="1-10"
@@ -137,9 +142,12 @@ export function ScoreCard({
 
         <div className="space-y-2">
           <div className="flex justify-between items-center text-xs text-muted-foreground">
-            <span>Score: {score}/10</span>
+            <span>{score == null ? "Not rated" : `Score: ${score}/10`}</span>
+            {onClear && score != null && !disabled && (
+              <button type="button" onClick={onClear} className="hover:text-foreground underline">Clear</button>
+            )}
           </div>
-          {showGrade && (
+          {showGrade && rating != null && (
             <div className={`text-sm ${ratingColorClasses} p-2 bg-gray-50 rounded-md border border-gray-200`}>
               {rating}
             </div>

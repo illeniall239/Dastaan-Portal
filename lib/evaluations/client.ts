@@ -13,10 +13,10 @@ export interface Evaluation {
   big_idea?: string;
   theme?: string;
   // New criteria
-  conflict_of_content_score: number;
-  characterization_score: number;
-  story_progression_score: number;
-  whats_next_element_score: number;
+  conflict_of_content_score: number | null;
+  characterization_score: number | null;
+  story_progression_score: number | null;
+  whats_next_element_score: number | null;
   overall_oneliner_grade_score: number;
   conflict_of_content_comment?: string;
   characterization_comment?: string;
@@ -61,10 +61,10 @@ export interface CreateEvaluationInput {
   big_idea?: string;
   theme?: string;
   // New criteria
-  conflict_of_content_score: number;
-  characterization_score: number;
-  story_progression_score: number;
-  whats_next_element_score: number;
+  conflict_of_content_score: number | null;
+  characterization_score: number | null;
+  story_progression_score: number | null;
+  whats_next_element_score: number | null;
   overall_oneliner_grade_score: number;
   conflict_of_content_comment?: string;
   characterization_comment?: string;
@@ -103,10 +103,10 @@ export interface UpdateEvaluationInput {
   big_idea?: string | null;
   theme?: string | null;
   // New criteria
-  conflict_of_content_score?: number;
-  characterization_score?: number;
-  story_progression_score?: number;
-  whats_next_element_score?: number;
+  conflict_of_content_score?: number | null;
+  characterization_score?: number | null;
+  story_progression_score?: number | null;
+  whats_next_element_score?: number | null;
   overall_oneliner_grade_score?: number;
   conflict_of_content_comment?: string | null;
   characterization_comment?: string | null;

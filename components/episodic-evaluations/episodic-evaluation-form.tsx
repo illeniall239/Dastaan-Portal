@@ -6,9 +6,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
+import { OptionalSection } from "@/components/evaluations/optional-section";
 import { ScoreCard } from "./score-card";
 import { AutoCalculatedScore } from "./auto-calculated-score";
-import { CallReportOverallAssessment } from "@/components/evaluations/call-report-overall-assessment";
 import { useFormTimeTracking } from "@/lib/hooks/useFormTimeTracking";
 import {
   episodicEvaluationSchema,
@@ -81,23 +81,11 @@ export function EpisodicEvaluationForm({
     initialTime: initialTimeFromDraft,
   });
 
-  const EP_SCORE_KEYS = ["conflictScore", "characterizationScore", "progressionScore", "mainEventScore", "smallEventScore", "dragnessScore", "freezesScore", "whatsNextScore", "overallAssessmentScore"] as const;
-  const EP_SCORE_LABELS: Record<string, string> = {
-    conflictScore: "Conflict of Content",
-    characterizationScore: "Characterization",
-    progressionScore: "Story Progression",
-    mainEventScore: "Main Event",
-    smallEventScore: "Small Event",
-    dragnessScore: "Dragness",
-    freezesScore: "Freezes",
-    whatsNextScore: "What's Next Element",
-    overallAssessmentScore: "Overall Assessment",
-  };
-  const touchedScores = useRef(new Set<string>(existingEvaluation ? EP_SCORE_KEYS : []));
 
   // Form state - Episode metrics
-  const [noOfPages, setNoOfPages] = useState(existingEvaluation?.no_of_pages || 45);
-  const [noOfScenes, setNoOfScenes] = useState(existingEvaluation?.no_of_scenes || 22);
+  // Optional (null = not given)
+  const [noOfPages, setNoOfPages] = useState<number | null>(existingEvaluation?.no_of_pages ?? null);
+  const [noOfScenes, setNoOfScenes] = useState<number | null>(existingEvaluation?.no_of_scenes ?? null);
   const [freezeEndingScene, setFreezeEndingScene] = useState(
     existingEvaluation?.freeze_ending_scene || ""
   );
@@ -117,32 +105,32 @@ export function EpisodicEvaluationForm({
   );
 
   // Score state - 9 criteria
-  const [conflictScore, setConflictScore] = useState(
-    existingEvaluation?.conflict_of_content_score || 5
+  const [conflictScore, setConflictScore] = useState<number | null>(
+    existingEvaluation?.conflict_of_content_score ?? null
   );
-  const [characterizationScore, setCharacterizationScore] = useState(
-    existingEvaluation?.characterization_score || 5
+  const [characterizationScore, setCharacterizationScore] = useState<number | null>(
+    existingEvaluation?.characterization_score ?? null
   );
-  const [progressionScore, setProgressionScore] = useState(
-    existingEvaluation?.story_progression_score || 5
+  const [progressionScore, setProgressionScore] = useState<number | null>(
+    existingEvaluation?.story_progression_score ?? null
   );
-  const [mainEventScore, setMainEventScore] = useState(
-    existingEvaluation?.main_event_score || 5
+  const [mainEventScore, setMainEventScore] = useState<number | null>(
+    existingEvaluation?.main_event_score ?? null
   );
-  const [smallEventScore, setSmallEventScore] = useState(
-    existingEvaluation?.small_event_score || 5
+  const [smallEventScore, setSmallEventScore] = useState<number | null>(
+    existingEvaluation?.small_event_score ?? null
   );
-  const [dragnessScore, setDragnessScore] = useState(
-    existingEvaluation?.dragness_score || 5
+  const [dragnessScore, setDragnessScore] = useState<number | null>(
+    existingEvaluation?.dragness_score ?? null
   );
-  const [freezesScore, setFreezesScore] = useState(
-    existingEvaluation?.freezes_score || 5
+  const [freezesScore, setFreezesScore] = useState<number | null>(
+    existingEvaluation?.freezes_score ?? null
   );
-  const [whatsNextScore, setWhatsNextScore] = useState(
-    existingEvaluation?.whats_next_element_score || 5
+  const [whatsNextScore, setWhatsNextScore] = useState<number | null>(
+    existingEvaluation?.whats_next_element_score ?? null
   );
-  const [overallAssessmentScore, setOverallAssessmentScore] = useState(
-    existingEvaluation?.overall_assessment_score || 5
+  const [overallAssessmentScore, setOverallAssessmentScore] = useState<number | null>(
+    existingEvaluation?.overall_assessment_score ?? null
   );
 
   // Feedback communication state
@@ -152,10 +140,6 @@ export function EpisodicEvaluationForm({
   );
   const [feedbackUploading, setFeedbackUploading] = useState(false);
 
-  // Feedback-only toggle
-  const [isFeedbackOnly, setIsFeedbackOnly] = useState(
-    (existingEvaluation as any)?.is_feedback_only || false
-  );
 
   // Original submission date (optional override)
   const [originalSubmissionDate, setOriginalSubmissionDate] = useState(
@@ -200,19 +184,24 @@ export function EpisodicEvaluationForm({
   );
 
   // Calculated values
-  const pagesScore = calculatePagesScore(noOfPages);
-  const scenesScore = calculateScenesScore(noOfScenes);
-  const overallAverage = calculateOverallAverage({
-    conflict: conflictScore,
-    characterization: characterizationScore,
-    progression: progressionScore,
-    mainEvent: mainEventScore,
-    smallEvent: smallEventScore,
-    dragness: dragnessScore,
-    freezes: freezesScore,
-    whatsNext: whatsNextScore,
-    overallAssessment: overallAssessmentScore,
-  });
+  const pagesScore = noOfPages == null ? null : calculatePagesScore(noOfPages);
+  const scenesScore = noOfScenes == null ? null : calculateScenesScore(noOfScenes);
+  // The score used: the average of all 9 criteria when every one is filled, otherwise the Overall Grade
+  const allScores = [conflictScore, characterizationScore, progressionScore, mainEventScore, smallEventScore,
+    dragnessScore, freezesScore, whatsNextScore, overallAssessmentScore];
+  const overallAverage: number | null = allScores.every((v) => v != null)
+    ? calculateOverallAverage({
+        conflict: conflictScore!,
+        characterization: characterizationScore!,
+        progression: progressionScore!,
+        mainEvent: mainEventScore!,
+        smallEvent: smallEventScore!,
+        dragness: dragnessScore!,
+        freezes: freezesScore!,
+        whatsNext: whatsNextScore!,
+        overallAssessment: overallAssessmentScore!,
+      })
+    : overallAssessmentScore;
 
   // Check for existing draft on component mount
   useEffect(() => {
@@ -271,7 +260,6 @@ export function EpisodicEvaluationForm({
         decisionNotes,
         feedbackText,
         feedbackAttachments,
-        isFeedbackOnly,
         originalSubmissionDate,
         accumulatedTimeMinutes: timeSpentMinutes,
       };
@@ -299,23 +287,22 @@ export function EpisodicEvaluationForm({
 
   const handleLoadDraft = () => {
     if (pendingDraftData) {
-      touchedScores.current = new Set(EP_SCORE_KEYS);
-      setNoOfPages(pendingDraftData.noOfPages ?? 45);
-      setNoOfScenes(pendingDraftData.noOfScenes ?? 22);
+      setNoOfPages(pendingDraftData.noOfPages ?? null);
+      setNoOfScenes(pendingDraftData.noOfScenes ?? null);
       setFreezeEndingScene(pendingDraftData.freezeEndingScene || "");
       setSummaryAnalysis(pendingDraftData.summaryAnalysis || "");
       setRemarks(pendingDraftData.remarks || "");
       setScenesRemarks(pendingDraftData.scenesRemarks || "");
       setCharacterizationRemarks(pendingDraftData.characterizationRemarks || "");
-      setConflictScore(pendingDraftData.conflictScore ?? 5);
-      setCharacterizationScore(pendingDraftData.characterizationScore ?? 5);
-      setProgressionScore(pendingDraftData.progressionScore ?? 5);
-      setMainEventScore(pendingDraftData.mainEventScore ?? 5);
-      setSmallEventScore(pendingDraftData.smallEventScore ?? 5);
-      setDragnessScore(pendingDraftData.dragnessScore ?? 5);
-      setFreezesScore(pendingDraftData.freezesScore ?? 5);
-      setWhatsNextScore(pendingDraftData.whatsNextScore ?? 5);
-      setOverallAssessmentScore(pendingDraftData.overallAssessmentScore ?? 5);
+      setConflictScore(pendingDraftData.conflictScore ?? null);
+      setCharacterizationScore(pendingDraftData.characterizationScore ?? null);
+      setProgressionScore(pendingDraftData.progressionScore ?? null);
+      setMainEventScore(pendingDraftData.mainEventScore ?? null);
+      setSmallEventScore(pendingDraftData.smallEventScore ?? null);
+      setDragnessScore(pendingDraftData.dragnessScore ?? null);
+      setFreezesScore(pendingDraftData.freezesScore ?? null);
+      setWhatsNextScore(pendingDraftData.whatsNextScore ?? null);
+      setOverallAssessmentScore(pendingDraftData.overallAssessmentScore ?? null);
       setConflictComment(pendingDraftData.conflictComment || "");
       setCharacterizationComment(pendingDraftData.characterizationComment || "");
       setProgressionComment(pendingDraftData.progressionComment || "");
@@ -329,7 +316,6 @@ export function EpisodicEvaluationForm({
       setDecisionNotes(pendingDraftData.decisionNotes || "");
       setFeedbackText(pendingDraftData.feedbackText || "");
       setFeedbackAttachments(pendingDraftData.feedbackAttachments || []);
-      setIsFeedbackOnly(pendingDraftData.isFeedbackOnly || false);
       setOriginalSubmissionDate(pendingDraftData.originalSubmissionDate || "");
 
       // Load accumulated time from draft
@@ -378,12 +364,10 @@ export function EpisodicEvaluationForm({
       return;
     }
 
-    if (!isFeedbackOnly) {
-      const untouchedScores = EP_SCORE_KEYS.filter(k => !touchedScores.current.has(k));
-      if (untouchedScores.length > 0) {
-        toast.error(`Please set scores for: ${untouchedScores.map(k => EP_SCORE_LABELS[k]).join(", ")}`);
-        return;
-      }
+    // Only the Overall Grade is required; the other scores are optional
+    if (overallAssessmentScore == null) {
+      toast.error("Please give the Overall Episode Grade");
+      return;
     }
 
     if (!decision) {
@@ -398,7 +382,6 @@ export function EpisodicEvaluationForm({
     const formData = {
       episode_id: episode.id,
       ...(revisionId ? { revision_id: revisionId } : {}),
-      is_feedback_only: isFeedbackOnly,
       no_of_pages: noOfPages,
       no_of_scenes: noOfScenes,
       freeze_ending_scene: freezeEndingScene || undefined,
@@ -415,7 +398,7 @@ export function EpisodicEvaluationForm({
       dragness_score: dragnessScore,
       freezes_score: freezesScore,
       whats_next_element_score: whatsNextScore,
-      overall_assessment_score: overallAssessmentScore,
+      overall_assessment_score: overallAssessmentScore!,
       // Per-criterion comments
       conflict_of_content_comment: conflictComment || undefined,
       characterization_comment: characterizationComment || undefined,
@@ -474,7 +457,8 @@ export function EpisodicEvaluationForm({
       label: "Conflict of Content",
       description: "How engaging and well-developed is the central conflict?",
       score: conflictScore,
-      setScore: (v: number) => { touchedScores.current.add("conflictScore"); setConflictScore(v); },
+      setScore: (v: number) => { setConflictScore(v); },
+      clear: () => setConflictScore(null),
       comment: conflictComment,
       setComment: setConflictComment,
     },
@@ -483,7 +467,8 @@ export function EpisodicEvaluationForm({
       label: "Characterization",
       description: "How compelling and relatable are the characters?",
       score: characterizationScore,
-      setScore: (v: number) => { touchedScores.current.add("characterizationScore"); setCharacterizationScore(v); },
+      setScore: (v: number) => { setCharacterizationScore(v); },
+      clear: () => setCharacterizationScore(null),
       comment: characterizationComment,
       setComment: setCharacterizationComment,
     },
@@ -492,7 +477,8 @@ export function EpisodicEvaluationForm({
       label: "Story Progression",
       description: "How effectively does the narrative move the story forward?",
       score: progressionScore,
-      setScore: (v: number) => { touchedScores.current.add("progressionScore"); setProgressionScore(v); },
+      setScore: (v: number) => { setProgressionScore(v); },
+      clear: () => setProgressionScore(null),
       comment: progressionComment,
       setComment: setProgressionComment,
     },
@@ -501,7 +487,8 @@ export function EpisodicEvaluationForm({
       label: "Main Event",
       description: "How impactful and well-executed is the main event of the episode?",
       score: mainEventScore,
-      setScore: (v: number) => { touchedScores.current.add("mainEventScore"); setMainEventScore(v); },
+      setScore: (v: number) => { setMainEventScore(v); },
+      clear: () => setMainEventScore(null),
       comment: mainEventComment,
       setComment: setMainEventComment,
     },
@@ -510,7 +497,8 @@ export function EpisodicEvaluationForm({
       label: "Small Event",
       description: "How effective are the supporting events in building the narrative?",
       score: smallEventScore,
-      setScore: (v: number) => { touchedScores.current.add("smallEventScore"); setSmallEventScore(v); },
+      setScore: (v: number) => { setSmallEventScore(v); },
+      clear: () => setSmallEventScore(null),
       comment: smallEventComment,
       setComment: setSmallEventComment,
     },
@@ -519,7 +507,8 @@ export function EpisodicEvaluationForm({
       label: "Dragness",
       description: "How draggy is the episode? (1 = no drag, 10 = very draggy) — lower score is better.",
       score: dragnessScore,
-      setScore: (v: number) => { touchedScores.current.add("dragnessScore"); setDragnessScore(v); },
+      setScore: (v: number) => { setDragnessScore(v); },
+      clear: () => setDragnessScore(null),
       comment: dragnessComment,
       setComment: setDragnessComment,
       reversed: true,
@@ -529,7 +518,8 @@ export function EpisodicEvaluationForm({
       label: "Freeze",
       description: "How effective are the cliffhangers/freeze moments in creating suspense?",
       score: freezesScore,
-      setScore: (v: number) => { touchedScores.current.add("freezesScore"); setFreezesScore(v); },
+      setScore: (v: number) => { setFreezesScore(v); },
+      clear: () => setFreezesScore(null),
       comment: freezesComment,
       setComment: setFreezesComment,
     },
@@ -538,18 +528,10 @@ export function EpisodicEvaluationForm({
       label: "What Next Element",
       description: "How strong is the anticipation for the next episode?",
       score: whatsNextScore,
-      setScore: (v: number) => { touchedScores.current.add("whatsNextScore"); setWhatsNextScore(v); },
+      setScore: (v: number) => { setWhatsNextScore(v); },
+      clear: () => setWhatsNextScore(null),
       comment: whatsNextComment,
       setComment: setWhatsNextComment,
-    },
-    {
-      key: "overallAssessmentScore",
-      label: "Overall Episode Grade",
-      description: "What is your overall impression of this episode?",
-      score: overallAssessmentScore,
-      setScore: (v: number) => { touchedScores.current.add("overallAssessmentScore"); setOverallAssessmentScore(v); },
-      comment: overallAssessmentComment,
-      setComment: setOverallAssessmentComment,
     },
   ];
 
@@ -598,303 +580,118 @@ export function EpisodicEvaluationForm({
         )}
       </Card>
 
-      {/* Feedback-only toggle */}
-      {!isReadOnly && (
-        <Card className="p-4 border-2 border-amber-200 bg-amber-50/50">
-          <label className="flex items-center gap-3 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={isFeedbackOnly}
-              onChange={(e) => setIsFeedbackOnly(e.target.checked)}
-              className="h-5 w-5 rounded border-amber-400 text-amber-600 focus:ring-amber-500"
-            />
+      {/* Editable sections — pointer-events-none when view-only (no graying); the email box sits outside so its links work */}
+      <div className={`space-y-8${viewOnly ? " pointer-events-none" : ""}`}>
+
+      {/* Overall Grade (required) */}
+      <div className="space-y-3">
+        <h3 className="text-xl font-bold">Overall Grade *</h3>
+        <ScoreCard
+          label="Overall Episode Grade"
+          description="What is your overall impression of this episode?"
+          score={overallAssessmentScore}
+          onChange={setOverallAssessmentScore}
+          disabled={isReadOnly}
+          gradeFn={calculateOneLinerGrade}
+          gradeColorFn={getOneLinerGradeColorClasses}
+        />
+        <Textarea
+          placeholder="Comments on the Overall Grade (optional)..."
+          rows={2}
+          value={overallAssessmentComment}
+          onChange={(e) => setOverallAssessmentComment(e.target.value)}
+          disabled={isReadOnly}
+          className="text-sm"
+        />
+      </div>
+
+      </div>{/* end viewOnly wrapper */}
+
+      {/* Feedback Communication — read-only whenever the form is (disabled or view-only) */}
+      {(!feedbackReadOnly || feedbackText || feedbackAttachments.length > 0) && (
+        <Card className="p-4 border border-gray-200">
+          <div className="space-y-4">
             <div>
-              <span className="font-semibold text-amber-800">Feedback Only</span>
-              <p className="text-xs text-amber-700 mt-0.5">
-                Email/document feedback only — no scoring. Scores will not count towards content aging or reports.
-              </p>
+              <h3 className="text-base font-semibold text-gray-800">{feedbackReadOnly ? "Email / feedback" : "Attach the email"} {!feedbackReadOnly && <span className="text-sm font-normal text-gray-500">(optional)</span>}</h3>
+              {!feedbackReadOnly && <p className="text-xs text-gray-500 mt-0.5">Paste or attach the email (or other written feedback) that goes with this grade.</p>}
             </div>
-          </label>
+            {feedbackReadOnly ? (
+              <>
+                {feedbackText && (
+                  <div className="space-y-2">
+                    <Label>Email / Communication Text</Label>
+                    <RichTextView value={feedbackText} className="bg-gray-50 border rounded-md px-3 py-2" />
+                  </div>
+                )}
+                {feedbackAttachments.length > 0 && (
+                  <div className="space-y-2">
+                    <Label>Supporting Attachments</Label>
+                    <div className="space-y-1.5">
+                      {feedbackAttachments.map((att, idx) => (
+                        <div key={idx} className="flex items-center gap-2 text-sm text-gray-700 border rounded-md px-3 py-2 bg-gray-50">
+                          <Paperclip className="h-4 w-4 text-gray-400 shrink-0" />
+                          <a href={`/api/storage/download?url=${encodeURIComponent(att.url)}&bucket=attachments&name=${encodeURIComponent(att.name || "")}`} target="_blank" rel="noopener noreferrer" className="truncate flex-1 hover:underline text-blue-600">{att.name}</a>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </>
+            ) : (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="feedbackText">Email / Communication Text</Label>
+                  <RichTextEditor
+                    id="feedbackText"
+                    placeholder="Paste email or communication content here..."
+                    value={feedbackText}
+                    onChange={setFeedbackText}
+                  />
+                </div>
+                <div className="space-y-3">
+                  <Label>Supporting Attachments</Label>
+                  {feedbackAttachments.length > 0 && (
+                    <div className="space-y-1.5">
+                      {feedbackAttachments.map((att, idx) => (
+                        <div key={idx} className="flex items-center gap-2 text-sm text-gray-700 border rounded-md px-3 py-2 bg-gray-50">
+                          <Paperclip className="h-4 w-4 text-gray-400 shrink-0" />
+                          <a href={`/api/storage/download?url=${encodeURIComponent(att.url)}&bucket=attachments&name=${encodeURIComponent(att.name || "")}`} target="_blank" rel="noopener noreferrer" className="truncate flex-1 hover:underline text-blue-600">{att.name}</a>
+                          <button
+                            type="button"
+                            onClick={() => setFeedbackAttachments(prev => prev.filter((_, i) => i !== idx))}
+                            className="text-gray-400 hover:text-red-500 shrink-0"
+                            aria-label="Remove attachment"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <label className="inline-flex items-center gap-2 cursor-pointer border border-gray-300 rounded-md px-3 py-2 text-sm hover:bg-gray-50 transition-colors">
+                    {feedbackUploading ? (
+                      <><Loader2 className="h-4 w-4 animate-spin" /> Uploading...</>
+                    ) : (
+                      <><Paperclip className="h-4 w-4" /> Add Files</>
+                    )}
+                    <input
+                      type="file"
+                      accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                      multiple
+                      className="sr-only"
+                      onChange={handleFeedbackFileUpload}
+                      disabled={feedbackUploading}
+                    />
+                  </label>
+                  <p className="text-xs text-gray-400">PDF, DOC, DOCX, JPG, PNG — max 10MB each</p>
+                </div>
+              </>
+            )}
+          </div>
         </Card>
       )}
 
-      {/* Editable sections wrapper — pointer-events-none when view-only (no graying) */}
       <div className={`space-y-8${viewOnly ? " pointer-events-none" : ""}`}>
-
-      {/* Section 1: Episode Metrics */}
-      <div className="space-y-4">
-        <h3 className="text-xl font-bold">Section 1: Episode Metrics</h3>
-
-        <div className="grid md:grid-cols-2 gap-6">
-          {/* Pages Input */}
-          <div className="space-y-2">
-            <Label htmlFor="no_of_pages">
-              Number of Pages <span className="text-red-500">*</span>
-            </Label>
-            <Input
-              id="no_of_pages"
-              type="number"
-              value={noOfPages || ""}
-              onChange={(e) => {
-                const value = e.target.value;
-                if (value === "") {
-                  setNoOfPages(0);
-                } else {
-                  const num = parseInt(value);
-                  if (!isNaN(num) && num > 0) {
-                    setNoOfPages(num);
-                  }
-                }
-              }}
-              onBlur={() => {
-                if (noOfPages === 0 || !noOfPages) {
-                  setNoOfPages(1);
-                }
-              }}
-              disabled={isReadOnly}
-              required
-              className="text-lg font-semibold"
-              placeholder="Enter number of pages"
-            />
-            <p className="text-xs text-muted-foreground">
-              Standard: 45 pages
-            </p>
-          </div>
-
-          {/* Scenes Input */}
-          <div className="space-y-2">
-            <Label htmlFor="no_of_scenes">
-              Number of Scenes <span className="text-red-500">*</span>
-            </Label>
-            <Input
-              id="no_of_scenes"
-              type="number"
-              value={noOfScenes || ""}
-              onChange={(e) => {
-                const value = e.target.value;
-                if (value === "") {
-                  setNoOfScenes(0);
-                } else {
-                  const num = parseInt(value);
-                  if (!isNaN(num) && num > 0) {
-                    setNoOfScenes(num);
-                  }
-                }
-              }}
-              onBlur={() => {
-                if (noOfScenes === 0 || !noOfScenes) {
-                  setNoOfScenes(1);
-                }
-              }}
-              disabled={isReadOnly}
-              required
-              className="text-lg font-semibold"
-              placeholder="Enter number of scenes"
-            />
-            <p className="text-xs text-muted-foreground">
-              Standard: 22 scenes
-            </p>
-          </div>
-        </div>
-
-        {/* Auto-calculated Scores */}
-        <div className="grid md:grid-cols-2 gap-6">
-          <AutoCalculatedScore type="pages" value={noOfPages} score={pagesScore} />
-          <AutoCalculatedScore type="scenes" value={noOfScenes} score={scenesScore} />
-        </div>
-
-        {/* FREEZE (Ending Scene) */}
-        <div className="space-y-2">
-          <Label htmlFor="freeze_ending_scene">
-            FREEZE (Ending Scene)
-          </Label>
-          <Textarea
-            id="freeze_ending_scene"
-            placeholder="Describe the ending scene / cliffhanger of this episode..."
-            rows={3}
-            value={freezeEndingScene}
-            onChange={(e) => setFreezeEndingScene(e.target.value)}
-            disabled={isReadOnly}
-          />
-          <p className="text-xs text-muted-foreground">
-            Describe the freeze/cliffhanger moment at the end of the episode
-          </p>
-        </div>
-      </div>
-
-      {/* Section 2: Episode Evaluation (Qualitative) */}
-      <div className="space-y-4">
-        <h3 className="text-xl font-bold">Section 2: Episode Evaluation</h3>
-        <p className="text-sm text-muted-foreground">
-          Evaluate the following aspects of the episode. Review the guidance and provide your remarks.
-        </p>
-
-        {/* Scenes evaluation */}
-        <Card className="p-5 space-y-3">
-          <div>
-            <Label className="text-base font-semibold">Scenes</Label>
-            <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-md">
-              <p className="text-sm text-blue-800 font-medium">What to Check:</p>
-              <p className="text-sm text-blue-700 mt-1">
-                Are there enough well-connected scenes and enough main lead scenes that maintain story flow?
-              </p>
-            </div>
-          </div>
-          <div className="space-y-1">
-            <Label htmlFor="scenes_remarks" className="text-sm">Remarks / Notes</Label>
-            <Textarea
-              id="scenes_remarks"
-              placeholder="Enter your remarks about scenes..."
-              rows={3}
-              value={scenesRemarks}
-              onChange={(e) => setScenesRemarks(e.target.value)}
-              disabled={isReadOnly}
-            />
-          </div>
-        </Card>
-
-        {/* Characterization evaluation */}
-        <Card className="p-5 space-y-3">
-          <div>
-            <Label className="text-base font-semibold">Characterization</Label>
-            <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-md">
-              <p className="text-sm text-blue-800 font-medium">What to Check:</p>
-              <p className="text-sm text-blue-700 mt-1">
-                Are main leads prominent and consistent, and side characters&apos; arcs balanced?
-              </p>
-            </div>
-          </div>
-          <div className="space-y-1">
-            <Label htmlFor="characterization_remarks" className="text-sm">Remarks / Notes</Label>
-            <Textarea
-              id="characterization_remarks"
-              placeholder="Enter your remarks about characterization..."
-              rows={3}
-              value={characterizationRemarks}
-              onChange={(e) => setCharacterizationRemarks(e.target.value)}
-              disabled={isReadOnly}
-            />
-          </div>
-        </Card>
-      </div>
-
-      {/* Rating Scale Reference */}
-      <Card className="p-4 border-2 border-blue-100 bg-blue-50/30">
-        <div className="text-base font-semibold mb-2">Rating Scale</div>
-        <div className="space-y-2 text-sm">
-          {oneLinerRatingScaleItems.map((item, index) => (
-            <div key={index} className="flex items-start gap-3">
-              <span className="font-semibold text-gray-600 min-w-[60px]">{item.range}:</span>
-              <span className={`${item.color} font-medium`}>{item.description}</span>
-            </div>
-          ))}
-        </div>
-      </Card>
-
-      {/* Section 3: Summary/Analysis */}
-      <div className="space-y-4">
-        <h3 className="text-xl font-bold">Section 3: Summary/Analysis</h3>
-        <p className="text-sm text-muted-foreground">
-          Provide a written summary and analysis of the episode before rating.
-        </p>
-        <div className="space-y-2">
-          <Label htmlFor="summaryAnalysis">Your Analysis</Label>
-          <Textarea
-            id="summaryAnalysis"
-            placeholder="Write your summary and analysis of this episode..."
-            rows={8}
-            value={summaryAnalysis}
-            onChange={(e) => setSummaryAnalysis(e.target.value)}
-            disabled={isReadOnly}
-            className="min-h-[200px]"
-          />
-        </div>
-      </div>
-
-      {/* Sections 4-6: Scoring — hidden for feedback-only evaluations */}
-      {!isFeedbackOnly && (<>
-      {/* Section 4: Evaluation Scores (9 criteria with comments) */}
-      <div className="space-y-4">
-        <h3 className="text-xl font-bold">Section 4: Evaluation Scores</h3>
-        <p className="text-sm text-muted-foreground">
-          Rate each criterion on a scale of 1-10. The grade for each criterion will be calculated automatically.
-        </p>
-
-        <div className="space-y-4">
-          {scoreCriteria.map((criterion) => (
-            <div key={criterion.label} className="space-y-2">
-              <ScoreCard
-                label={criterion.label}
-                description={criterion.description}
-                score={criterion.score}
-                onChange={criterion.setScore}
-                disabled={isReadOnly}
-                gradeFn={criterion.reversed ? (s) => calculateOneLinerGrade(11 - s) : calculateOneLinerGrade}
-                gradeColorFn={getOneLinerGradeColorClasses}
-              />
-              <div className="ml-4">
-                <Textarea
-                  placeholder={`Comments for ${criterion.label} (optional)...`}
-                  rows={2}
-                  value={criterion.comment}
-                  onChange={(e) => criterion.setComment(e.target.value)}
-                  disabled={isReadOnly}
-                  className="text-sm"
-                />
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Section 5: Remarks */}
-      <div className="space-y-4">
-        <h3 className="text-xl font-bold">Section 5: Comments/Remarks</h3>
-        <p className="text-sm text-muted-foreground">
-          Any additional comments or remarks about the episode?
-        </p>
-        <div className="space-y-2">
-          <Label htmlFor="remarks">Remarks (Optional)</Label>
-          <Textarea
-            id="remarks"
-            placeholder="Enter any additional remarks..."
-            rows={4}
-            value={remarks}
-            onChange={(e) => setRemarks(e.target.value)}
-            disabled={isReadOnly}
-          />
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="originalSubmissionDate">
-            Original Submission Date{" "}
-            <span className="text-slate-400 font-normal text-xs">(optional)</span>
-          </Label>
-          <Input
-            id="originalSubmissionDate"
-            type="date"
-            value={originalSubmissionDate}
-            onChange={(e) => setOriginalSubmissionDate(e.target.value)}
-            max={new Date().toISOString().split("T")[0]}
-            disabled={isReadOnly}
-          />
-          <p className="text-xs text-muted-foreground">
-            Set this if the evaluation was done on a different date than today. All time-based calculations will use this date.
-          </p>
-        </div>
-      </div>
-
-      {/* Section 6: Overall Assessment */}
-      <div className="space-y-4">
-        <h3 className="text-xl font-bold">Section 6: Overall Assessment</h3>
-        <CallReportOverallAssessment
-          average={overallAverage}
-          gradeFn={calculateOneLinerGrade}
-          gradeColorFn={getOneLinerGradeColorClasses}
-          ratingScaleItems={oneLinerRatingScaleItems}
-        />
-      </div>
-      </>)}
 
       {/* Final Decision */}
       <div className="space-y-4">
@@ -1035,7 +832,7 @@ export function EpisodicEvaluationForm({
             )}
 
             {/* Score vs decision warnings */}
-            {decision === "approve" && overallAverage < 5.0 && (
+            {decision === "approve" && overallAverage != null && overallAverage < 5.0 && (
               <div className="p-3 bg-amber-50 border border-amber-300 rounded-lg">
                 <p className="text-sm text-amber-800 font-medium">
                   Warning: You cannot approve an episode with an average score below 5.0 (current: {overallAverage.toFixed(1)})
@@ -1043,7 +840,7 @@ export function EpisodicEvaluationForm({
               </div>
             )}
 
-            {decision === "reject" && overallAverage >= 7.0 && (
+            {decision === "reject" && overallAverage != null && overallAverage >= 7.0 && (
               <div className="p-3 bg-blue-50 border border-blue-300 rounded-lg">
                 <p className="text-sm text-blue-800">
                   Note: You selected Reject but the score is {overallAverage.toFixed(1)}/10 (high). Please confirm your decision is correct.
@@ -1054,91 +851,265 @@ export function EpisodicEvaluationForm({
         </Card>
       </div>
 
-      </div>{/* end viewOnly wrapper */}
+      <OptionalSection title="Episode Metrics" defaultOpen={isReadOnly}>
+        {/* Section 1: Episode Metrics */}
+        <div className="space-y-4">
 
-      {/* Feedback Communication — read-only whenever the form is (disabled or view-only) */}
-      {(!feedbackReadOnly || feedbackText || feedbackAttachments.length > 0) && (
-        <Card className="p-4 border border-gray-200">
-          <div className="space-y-4">
-            <div>
-              <h3 className="text-base font-semibold text-gray-800">Feedback Communication {!feedbackReadOnly && <span className="text-sm font-normal text-gray-500">(optional)</span>}</h3>
-              {!feedbackReadOnly && <p className="text-xs text-gray-500 mt-0.5">Attach email or written feedback evidence submitted alongside this evaluation.</p>}
+          <div className="grid md:grid-cols-2 gap-6">
+            {/* Pages Input */}
+            <div className="space-y-2">
+              <Label htmlFor="no_of_pages">
+                Number of Pages <span className="text-xs font-normal text-muted-foreground">(optional)</span>
+              </Label>
+              <Input
+                id="no_of_pages"
+                type="number"
+                value={noOfPages ?? ""}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  if (value === "") {
+                    setNoOfPages(null);
+                  } else {
+                    const num = parseInt(value);
+                    if (!isNaN(num) && num > 0) {
+                      setNoOfPages(num);
+                    }
+                  }
+                }}
+                disabled={isReadOnly}
+                className="text-lg font-semibold"
+                placeholder="Enter number of pages"
+              />
+              <p className="text-xs text-muted-foreground">
+                Standard: 45 pages
+              </p>
             </div>
-            {feedbackReadOnly ? (
-              <>
-                {feedbackText && (
-                  <div className="space-y-2">
-                    <Label>Email / Communication Text</Label>
-                    <RichTextView value={feedbackText} className="bg-gray-50 border rounded-md px-3 py-2" />
-                  </div>
-                )}
-                {feedbackAttachments.length > 0 && (
-                  <div className="space-y-2">
-                    <Label>Supporting Attachments</Label>
-                    <div className="space-y-1.5">
-                      {feedbackAttachments.map((att, idx) => (
-                        <div key={idx} className="flex items-center gap-2 text-sm text-gray-700 border rounded-md px-3 py-2 bg-gray-50">
-                          <Paperclip className="h-4 w-4 text-gray-400 shrink-0" />
-                          <a href={`/api/storage/download?url=${encodeURIComponent(att.url)}&bucket=attachments&name=${encodeURIComponent(att.name || "")}`} target="_blank" rel="noopener noreferrer" className="truncate flex-1 hover:underline text-blue-600">{att.name}</a>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </>
-            ) : (
-              <>
-                <div className="space-y-2">
-                  <Label htmlFor="feedbackText">Email / Communication Text</Label>
-                  <RichTextEditor
-                    id="feedbackText"
-                    placeholder="Paste email or communication content here..."
-                    value={feedbackText}
-                    onChange={setFeedbackText}
+
+            {/* Scenes Input */}
+            <div className="space-y-2">
+              <Label htmlFor="no_of_scenes">
+                Number of Scenes <span className="text-xs font-normal text-muted-foreground">(optional)</span>
+              </Label>
+              <Input
+                id="no_of_scenes"
+                type="number"
+                value={noOfScenes ?? ""}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  if (value === "") {
+                    setNoOfScenes(null);
+                  } else {
+                    const num = parseInt(value);
+                    if (!isNaN(num) && num > 0) {
+                      setNoOfScenes(num);
+                    }
+                  }
+                }}
+                disabled={isReadOnly}
+                className="text-lg font-semibold"
+                placeholder="Enter number of scenes"
+              />
+              <p className="text-xs text-muted-foreground">
+                Standard: 22 scenes
+              </p>
+            </div>
+          </div>
+
+          {/* Auto-calculated Scores */}
+          <div className="grid md:grid-cols-2 gap-6">
+            {noOfPages != null && pagesScore != null && <AutoCalculatedScore type="pages" value={noOfPages} score={pagesScore} />}
+            {noOfScenes != null && scenesScore != null && <AutoCalculatedScore type="scenes" value={noOfScenes} score={scenesScore} />}
+          </div>
+
+          {/* FREEZE (Ending Scene) */}
+          <div className="space-y-2">
+            <Label htmlFor="freeze_ending_scene">
+              FREEZE (Ending Scene)
+            </Label>
+            <Textarea
+              id="freeze_ending_scene"
+              placeholder="Describe the ending scene / cliffhanger of this episode..."
+              rows={3}
+              value={freezeEndingScene}
+              onChange={(e) => setFreezeEndingScene(e.target.value)}
+              disabled={isReadOnly}
+            />
+            <p className="text-xs text-muted-foreground">
+              Describe the freeze/cliffhanger moment at the end of the episode
+            </p>
+          </div>
+        </div>
+      </OptionalSection>
+
+      <OptionalSection title="Episode Evaluation" defaultOpen={isReadOnly}>
+        {/* Section 2: Episode Evaluation (Qualitative) */}
+        <div className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            Evaluate the following aspects of the episode. Review the guidance and provide your remarks.
+          </p>
+
+          {/* Scenes evaluation */}
+          <Card className="p-5 space-y-3">
+            <div>
+              <Label className="text-base font-semibold">Scenes</Label>
+              <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-md">
+                <p className="text-sm text-blue-800 font-medium">What to Check:</p>
+                <p className="text-sm text-blue-700 mt-1">
+                  Are there enough well-connected scenes and enough main lead scenes that maintain story flow?
+                </p>
+              </div>
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="scenes_remarks" className="text-sm">Remarks / Notes</Label>
+              <Textarea
+                id="scenes_remarks"
+                placeholder="Enter your remarks about scenes..."
+                rows={3}
+                value={scenesRemarks}
+                onChange={(e) => setScenesRemarks(e.target.value)}
+                disabled={isReadOnly}
+              />
+            </div>
+          </Card>
+
+          {/* Characterization evaluation */}
+          <Card className="p-5 space-y-3">
+            <div>
+              <Label className="text-base font-semibold">Characterization</Label>
+              <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-md">
+                <p className="text-sm text-blue-800 font-medium">What to Check:</p>
+                <p className="text-sm text-blue-700 mt-1">
+                  Are main leads prominent and consistent, and side characters&apos; arcs balanced?
+                </p>
+              </div>
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="characterization_remarks" className="text-sm">Remarks / Notes</Label>
+              <Textarea
+                id="characterization_remarks"
+                placeholder="Enter your remarks about characterization..."
+                rows={3}
+                value={characterizationRemarks}
+                onChange={(e) => setCharacterizationRemarks(e.target.value)}
+                disabled={isReadOnly}
+              />
+            </div>
+          </Card>
+        </div>
+      </OptionalSection>
+
+      <OptionalSection title="Summary / Analysis" defaultOpen={isReadOnly}>
+        {/* Section 3: Summary/Analysis */}
+        <div className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            Provide a written summary and analysis of the episode before rating.
+          </p>
+          <div className="space-y-2">
+            <Label htmlFor="summaryAnalysis">Your Analysis</Label>
+            <Textarea
+              id="summaryAnalysis"
+              placeholder="Write your summary and analysis of this episode..."
+              rows={8}
+              value={summaryAnalysis}
+              onChange={(e) => setSummaryAnalysis(e.target.value)}
+              disabled={isReadOnly}
+              className="min-h-[200px]"
+            />
+          </div>
+        </div>
+      </OptionalSection>
+
+      <OptionalSection title="Evaluation Scores" defaultOpen={isReadOnly}>
+        {/* Section 4: Evaluation Scores (9 criteria with comments) */}
+        <div className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            Optional — rate any of these on a scale of 1-10. If you rate all of them, their average (with the
+            Overall Grade) is the score; otherwise the Overall Grade is.
+          </p>
+
+          <div className="space-y-4">
+            {scoreCriteria.map((criterion) => (
+              <div key={criterion.label} className="space-y-2">
+                <ScoreCard
+                  label={criterion.label}
+                  description={criterion.description}
+                  score={criterion.score}
+                  onChange={criterion.setScore}
+                  onClear={criterion.clear}
+                  disabled={isReadOnly}
+                  gradeFn={criterion.reversed ? (s) => calculateOneLinerGrade(11 - s) : calculateOneLinerGrade}
+                  gradeColorFn={getOneLinerGradeColorClasses}
+                />
+                <div className="ml-4">
+                  <Textarea
+                    placeholder={`Comments for ${criterion.label} (optional)...`}
+                    rows={2}
+                    value={criterion.comment}
+                    onChange={(e) => criterion.setComment(e.target.value)}
+                    disabled={isReadOnly}
+                    className="text-sm"
                   />
                 </div>
-                <div className="space-y-3">
-                  <Label>Supporting Attachments</Label>
-                  {feedbackAttachments.length > 0 && (
-                    <div className="space-y-1.5">
-                      {feedbackAttachments.map((att, idx) => (
-                        <div key={idx} className="flex items-center gap-2 text-sm text-gray-700 border rounded-md px-3 py-2 bg-gray-50">
-                          <Paperclip className="h-4 w-4 text-gray-400 shrink-0" />
-                          <a href={`/api/storage/download?url=${encodeURIComponent(att.url)}&bucket=attachments&name=${encodeURIComponent(att.name || "")}`} target="_blank" rel="noopener noreferrer" className="truncate flex-1 hover:underline text-blue-600">{att.name}</a>
-                          <button
-                            type="button"
-                            onClick={() => setFeedbackAttachments(prev => prev.filter((_, i) => i !== idx))}
-                            className="text-gray-400 hover:text-red-500 shrink-0"
-                            aria-label="Remove attachment"
-                          >
-                            ✕
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  <label className="inline-flex items-center gap-2 cursor-pointer border border-gray-300 rounded-md px-3 py-2 text-sm hover:bg-gray-50 transition-colors">
-                    {feedbackUploading ? (
-                      <><Loader2 className="h-4 w-4 animate-spin" /> Uploading...</>
-                    ) : (
-                      <><Paperclip className="h-4 w-4" /> Add Files</>
-                    )}
-                    <input
-                      type="file"
-                      accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
-                      multiple
-                      className="sr-only"
-                      onChange={handleFeedbackFileUpload}
-                      disabled={feedbackUploading}
-                    />
-                  </label>
-                  <p className="text-xs text-gray-400">PDF, DOC, DOCX, JPG, PNG — max 10MB each</p>
-                </div>
-              </>
-            )}
+              </div>
+            ))}
+          </div>
+        </div>
+      </OptionalSection>
+
+      <OptionalSection title="Comments / Remarks" defaultOpen={isReadOnly}>
+        {/* Section 5: Remarks */}
+        <div className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            Any additional comments or remarks about the episode?
+          </p>
+          <div className="space-y-2">
+            <Label htmlFor="remarks">Remarks (Optional)</Label>
+            <Textarea
+              id="remarks"
+              placeholder="Enter any additional remarks..."
+              rows={4}
+              value={remarks}
+              onChange={(e) => setRemarks(e.target.value)}
+              disabled={isReadOnly}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="originalSubmissionDate">
+              Original Submission Date{" "}
+              <span className="text-slate-400 font-normal text-xs">(optional)</span>
+            </Label>
+            <Input
+              id="originalSubmissionDate"
+              type="date"
+              value={originalSubmissionDate}
+              onChange={(e) => setOriginalSubmissionDate(e.target.value)}
+              max={new Date().toISOString().split("T")[0]}
+              disabled={isReadOnly}
+            />
+            <p className="text-xs text-muted-foreground">
+              Set this if the evaluation was done on a different date than today. All time-based calculations will use this date.
+            </p>
+          </div>
+        </div>
+      </OptionalSection>
+
+      <OptionalSection title="Rating Scale" defaultOpen={false} optional={false}>
+        {/* Rating Scale Reference */}
+        <Card className="p-4 border-2 border-blue-100 bg-blue-50/30">
+          <div className="text-base font-semibold mb-2">Rating Scale</div>
+          <div className="space-y-2 text-sm">
+            {oneLinerRatingScaleItems.map((item, index) => (
+              <div key={index} className="flex items-start gap-3">
+                <span className="font-semibold text-gray-600 min-w-[60px]">{item.range}:</span>
+                <span className={`${item.color} font-medium`}>{item.description}</span>
+              </div>
+            ))}
           </div>
         </Card>
-      )}
+      </OptionalSection>
+
+      </div>{/* end viewOnly wrapper */}
 
       {/* Discussion Thread */}
       {currentUserId && !wizardMode && (

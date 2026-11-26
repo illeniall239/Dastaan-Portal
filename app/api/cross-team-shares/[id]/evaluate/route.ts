@@ -86,16 +86,16 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       comments,
     } = body;
 
-    // Validate scores
-    const scores = [conflict_of_content_score, characterization_score, story_progression_score, whats_next_element_score, overall_oneliner_grade_score];
-    if (scores.some(s => s === undefined || s === null || s < 1 || s > 10)) {
-      return new Response(JSON.stringify({ error: 'All scores must be between 1 and 10' }), {
+    // Validate scores: the Overall One-liner Grade is required, the others are optional (1-10 when given).
+    // The score used (average_score) is set by the database from these.
+    const inRange = (s: unknown) => typeof s === 'number' && s >= 1 && s <= 10;
+    const optional = [conflict_of_content_score, characterization_score, story_progression_score, whats_next_element_score];
+    if (!inRange(overall_oneliner_grade_score) || optional.some(s => s != null && !inRange(s))) {
+      return new Response(JSON.stringify({ error: 'The Overall One-liner Grade (1-10) is required; other scores must be between 1 and 10' }), {
         status: 400,
         headers: { 'Content-Type': 'application/json' },
       });
     }
-
-    const average_score = scores.reduce((a, b) => a + b, 0) / scores.length;
 
     // Generate form_id
     const timestamp = Date.now().toString(36);
@@ -113,7 +113,6 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         story_progression_score,
         whats_next_element_score,
         overall_oneliner_grade_score,
-        average_score,
         decision: decision || null,
         comments: comments || null,
         submitted_at: new Date().toISOString(),
@@ -131,7 +130,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       entityId: data[0].id,
       action: "submitted",
       performedBy: user.id,
-      details: { ...requestContext, newValues: { cross_team_share_id: shareId, average_score, decision } },
+      details: { ...requestContext, newValues: { cross_team_share_id: shareId, overall_oneliner_grade_score, decision } },
     }).catch(err => logger.error("Audit log failed", { error: err }));
 
     return new Response(JSON.stringify(data[0]), {

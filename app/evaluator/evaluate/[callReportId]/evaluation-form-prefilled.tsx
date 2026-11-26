@@ -13,10 +13,10 @@ import { createEvaluationClient, updateEvaluationClient } from "@/lib/evaluation
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense } from "react";
 import { ArrowLeftIcon, PaperclipIcon, Loader2, FilePenLine, AlertTriangle, Share2 as Share2Icon } from "lucide-react";
+import { OptionalSection } from "@/components/evaluations/optional-section";
 import { ScoreCard } from "@/components/episodic-evaluations/score-card";
-import { CallReportOverallAssessment } from "@/components/evaluations/call-report-overall-assessment";
 import { DetailedOneLinerDisplay } from "@/components/evaluations/detailed-one-liner-display";
-import { calculateOneLinerGrade, getOneLinerGradeColorClasses, oneLinerRatingScaleItems } from "@/lib/validations/evaluations";
+import { calculateOneLinerGrade, getOneLinerGradeColorClasses } from "@/lib/validations/evaluations";
 import { useFormTimeTracking } from "@/lib/hooks/useFormTimeTracking";
 import { BackButton } from "@/components/ui/back-button";
 import { TagInput } from "@/components/ui/tag-input";
@@ -139,24 +139,15 @@ export function EvaluatorEvaluationForm({
     }
   }, [searchParams, existingEvaluation]);
 
-  const SCORE_KEYS = ["conflictOfContentScore", "characterizationScore", "storyProgressionScore", "whatsNextElementScore", "overallOnelinerGradeScore"] as const;
-  const SCORE_LABELS: Record<string, string> = {
-    conflictOfContentScore: "Conflict of Content",
-    characterizationScore: "Characterization",
-    storyProgressionScore: "Story Progression",
-    whatsNextElementScore: "What's Next Element",
-    overallOnelinerGradeScore: "Overall One-liner Grade",
-  };
-  const touchedScores = useRef(new Set<string>());
 
   // Form state
   const [formData, setFormData] = useState({
-    // New criteria scores
-    conflictOfContentScore: 5,
-    characterizationScore: 5,
-    storyProgressionScore: 5,
-    whatsNextElementScore: 5,
-    overallOnelinerGradeScore: 5,
+    // Criteria scores: all optional except the Overall One-liner Grade; null = not rated
+    conflictOfContentScore: null as number | null,
+    characterizationScore: null as number | null,
+    storyProgressionScore: null as number | null,
+    whatsNextElementScore: null as number | null,
+    overallOnelinerGradeScore: null as number | null,
     // Per-criterion comments
     conflictOfContentComment: "",
     characterizationComment: "",
@@ -202,8 +193,8 @@ export function EvaluatorEvaluationForm({
     return Math.floor((compareDate.getTime() - createdDate.getTime()) / (1000 * 60 * 60 * 24));
   }, [callReport?.created_at, formData.originalSubmissionDate]);
 
-  // Calculate average score from new 5 criteria
-  const [averageScore, setAverageScore] = useState(5);
+  // The score used: the average of all 5 criteria when every one is filled, otherwise the Overall Grade
+  const [averageScore, setAverageScore] = useState<number | null>(null);
 
   useEffect(() => {
     const scores = [
@@ -213,8 +204,9 @@ export function EvaluatorEvaluationForm({
       formData.whatsNextElementScore,
       formData.overallOnelinerGradeScore,
     ];
-    const avg = scores.reduce((sum, score) => sum + score, 0) / scores.length;
-    setAverageScore(Math.round(avg * 10) / 10);
+    const all = scores.every((v): v is number => v != null);
+    const score = all ? (scores as number[]).reduce((sum, v) => sum + v, 0) / scores.length : formData.overallOnelinerGradeScore;
+    setAverageScore(score == null ? null : Math.round(score * 10) / 10);
   }, [
     formData.conflictOfContentScore,
     formData.characterizationScore,
@@ -265,10 +257,9 @@ export function EvaluatorEvaluationForm({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Validate all scores have been intentionally set
-    const untouchedScores = SCORE_KEYS.filter(k => !touchedScores.current.has(k));
-    if (untouchedScores.length > 0) {
-      toast.error(`Please set scores for: ${untouchedScores.map(k => SCORE_LABELS[k]).join(", ")}`);
+    // Only the Overall Grade is required; the other scores are optional
+    if (formData.overallOnelinerGradeScore == null) {
+      toast.error("Please give the Overall One-liner Grade");
       return;
     }
 
@@ -279,13 +270,13 @@ export function EvaluatorEvaluationForm({
     }
 
     // Cannot approve with score < 5.0
-    if (formData.decision === "approve" && averageScore < 5.0) {
+    if (formData.decision === "approve" && averageScore != null && averageScore < 5.0) {
       toast.error(`Cannot approve with average score below 5.0 (current: ${averageScore.toFixed(1)})`);
       return;
     }
 
     // Warn if reject with high score
-    if (formData.decision === "reject" && averageScore >= 7.0) {
+    if (formData.decision === "reject" && averageScore != null && averageScore >= 7.0) {
       const confirmReject = window.confirm(
         `Score is ${averageScore.toFixed(1)}/10 but you selected Reject. Are you sure you want to continue?`
       );
@@ -507,13 +498,12 @@ export function EvaluatorEvaluationForm({
 
   const handleLoadDraft = () => {
     if (pendingDraftData) {
-      touchedScores.current = new Set(SCORE_KEYS);
       setFormData({
-        conflictOfContentScore: pendingDraftData.conflictOfContentScore ?? pendingDraftData.premiseConflictScore ?? 5,
-        characterizationScore: pendingDraftData.characterizationScore ?? pendingDraftData.charactersScore ?? 5,
-        storyProgressionScore: pendingDraftData.storyProgressionScore ?? pendingDraftData.storylinePlotScore ?? 5,
-        whatsNextElementScore: pendingDraftData.whatsNextElementScore ?? 5,
-        overallOnelinerGradeScore: pendingDraftData.overallOnelinerGradeScore ?? pendingDraftData.overallAssessmentScore ?? 5,
+        conflictOfContentScore: pendingDraftData.conflictOfContentScore ?? pendingDraftData.premiseConflictScore ?? null,
+        characterizationScore: pendingDraftData.characterizationScore ?? pendingDraftData.charactersScore ?? null,
+        storyProgressionScore: pendingDraftData.storyProgressionScore ?? pendingDraftData.storylinePlotScore ?? null,
+        whatsNextElementScore: pendingDraftData.whatsNextElementScore ?? null,
+        overallOnelinerGradeScore: pendingDraftData.overallOnelinerGradeScore ?? pendingDraftData.overallAssessmentScore ?? null,
         conflictOfContentComment: pendingDraftData.conflictOfContentComment || "",
         characterizationComment: pendingDraftData.characterizationComment || "",
         storyProgressionComment: pendingDraftData.storyProgressionComment || "",
@@ -550,14 +540,13 @@ export function EvaluatorEvaluationForm({
   useEffect(() => {
     if (propExistingEvaluation) {
       setExistingEvaluation(propExistingEvaluation);
-      touchedScores.current = new Set(SCORE_KEYS);
       setFormData((prev) => ({
         ...prev,
-        conflictOfContentScore: propExistingEvaluation.conflict_of_content_score ?? propExistingEvaluation.premise_conflict_score ?? 5,
-        characterizationScore: propExistingEvaluation.characterization_score ?? propExistingEvaluation.characters_score ?? 5,
-        storyProgressionScore: propExistingEvaluation.story_progression_score ?? propExistingEvaluation.storyline_plot_score ?? 5,
-        whatsNextElementScore: propExistingEvaluation.whats_next_element_score ?? 5,
-        overallOnelinerGradeScore: propExistingEvaluation.overall_oneliner_grade_score ?? propExistingEvaluation.overall_assessment_score ?? 5,
+        conflictOfContentScore: propExistingEvaluation.conflict_of_content_score ?? propExistingEvaluation.premise_conflict_score ?? null,
+        characterizationScore: propExistingEvaluation.characterization_score ?? propExistingEvaluation.characters_score ?? null,
+        storyProgressionScore: propExistingEvaluation.story_progression_score ?? propExistingEvaluation.storyline_plot_score ?? null,
+        whatsNextElementScore: propExistingEvaluation.whats_next_element_score ?? null,
+        overallOnelinerGradeScore: propExistingEvaluation.overall_oneliner_grade_score ?? propExistingEvaluation.overall_assessment_score ?? null,
         conflictOfContentComment: propExistingEvaluation.conflict_of_content_comment || "",
         characterizationComment: propExistingEvaluation.characterization_comment || "",
         storyProgressionComment: propExistingEvaluation.story_progression_comment || "",
@@ -589,14 +578,13 @@ export function EvaluatorEvaluationForm({
           const json = await res.json();
           if (json.evaluation) {
             setExistingEvaluation(json.evaluation);
-            touchedScores.current = new Set(SCORE_KEYS);
             setFormData((prev) => ({
               ...prev,
-              conflictOfContentScore: json.evaluation.conflict_of_content_score ?? json.evaluation.premise_conflict_score ?? 5,
-              characterizationScore: json.evaluation.characterization_score ?? json.evaluation.characters_score ?? 5,
-              storyProgressionScore: json.evaluation.story_progression_score ?? json.evaluation.storyline_plot_score ?? 5,
-              whatsNextElementScore: json.evaluation.whats_next_element_score ?? 5,
-              overallOnelinerGradeScore: json.evaluation.overall_oneliner_grade_score ?? json.evaluation.overall_assessment_score ?? 5,
+              conflictOfContentScore: json.evaluation.conflict_of_content_score ?? json.evaluation.premise_conflict_score ?? null,
+              characterizationScore: json.evaluation.characterization_score ?? json.evaluation.characters_score ?? null,
+              storyProgressionScore: json.evaluation.story_progression_score ?? json.evaluation.storyline_plot_score ?? null,
+              whatsNextElementScore: json.evaluation.whats_next_element_score ?? null,
+              overallOnelinerGradeScore: json.evaluation.overall_oneliner_grade_score ?? json.evaluation.overall_assessment_score ?? null,
               conflictOfContentComment: json.evaluation.conflict_of_content_comment || "",
               characterizationComment: json.evaluation.characterization_comment || "",
               storyProgressionComment: json.evaluation.story_progression_comment || "",
@@ -819,332 +807,88 @@ export function EvaluatorEvaluationForm({
         {/* Detailed One-Liner Analysis */}
         <DetailedOneLinerDisplay detailedOneLiner={detailedOneLiner} />
 
-        {/* Rating Scale Reference */}
-        <Card className="p-4 border-2 border-blue-100 bg-blue-50/30">
-          <CardHeader className="py-2">
-            <CardTitle className="text-base">Rating Scale</CardTitle>
-          </CardHeader>
-          <CardContent className="pt-2">
-            <div className="space-y-2 text-sm">
-              <div className="flex items-start gap-3">
-                <span className="font-semibold text-gray-600 min-w-[50px]">10:</span>
-                <span className="text-green-700 font-medium">Outstanding - perfect flow, strong events, emotional impact</span>
-              </div>
-              <div className="flex items-start gap-3">
-                <span className="font-semibold text-gray-600 min-w-[50px]">8 - 9:</span>
-                <span className="text-emerald-700 font-medium">Excellent - engaging and well-structured, minor issues only</span>
-              </div>
-              <div className="flex items-start gap-3">
-                <span className="font-semibold text-gray-600 min-w-[50px]">7:</span>
-                <span className="text-blue-700 font-medium">Good - holds attention but needs some improvement</span>
-              </div>
-              <div className="flex items-start gap-3">
-                <span className="font-semibold text-gray-600 min-w-[50px]">5 - 6:</span>
-                <span className="text-amber-700 font-medium">Average - lacks impact or has pacing/logic issues</span>
-              </div>
-              <div className="flex items-start gap-3">
-                <span className="font-semibold text-gray-600 min-w-[50px]">3 - 4:</span>
-                <span className="text-orange-700 font-medium">Weak - poor structure, flat events, inconsistent characters</span>
-              </div>
-              <div className="flex items-start gap-3">
-                <span className="font-semibold text-gray-600 min-w-[50px]">1 - 2:</span>
-                <span className="text-red-700 font-medium">Very Poor - confusing, dull, or disconnected from story</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Section 1: Evaluation Scores with Comments */}
-        <div className="space-y-4">
-          <h3 className="text-xl font-bold">Section 1: Evaluation Scores</h3>
-          <p className="text-sm text-muted-foreground">
-            Rate each criterion on a scale of 1-10 and provide comments.
-          </p>
-
-          <div className="space-y-4">
-            {/* 1. Conflict of Content */}
-            <div className="space-y-2">
-              <ScoreCard
-                label="Conflict of Content"
-                description="How compelling and engaging is the core conflict driving the content?"
-                score={formData.conflictOfContentScore}
-                onChange={(value) => { touchedScores.current.add("conflictOfContentScore"); setFormData((prev) => ({ ...prev, conflictOfContentScore: value })); }}
-                gradeFn={calculateOneLinerGrade}
-                gradeColorFn={getOneLinerGradeColorClasses}
-              />
-              <div className="ml-4">
-                <Textarea
-                  id="conflictOfContentComment"
-                  placeholder="Comments on Conflict of Content (optional)..."
-                  rows={2}
-                  value={formData.conflictOfContentComment}
-                  onChange={handleInputChange}
-                  className="text-sm"
-                />
-              </div>
-            </div>
-
-            {/* 2. Characterization */}
-            <div className="space-y-2">
-              <ScoreCard
-                label="Characterization"
-                description="How well-developed, relatable, and distinct are the characters?"
-                score={formData.characterizationScore}
-                onChange={(value) => { touchedScores.current.add("characterizationScore"); setFormData((prev) => ({ ...prev, characterizationScore: value })); }}
-                gradeFn={calculateOneLinerGrade}
-                gradeColorFn={getOneLinerGradeColorClasses}
-              />
-              <div className="ml-4">
-                <Textarea
-                  id="characterizationComment"
-                  placeholder="Comments on Characterization (optional)..."
-                  rows={2}
-                  value={formData.characterizationComment}
-                  onChange={handleInputChange}
-                  className="text-sm"
-                />
-              </div>
-            </div>
-
-            {/* 3. Story Progression */}
-            <div className="space-y-2">
-              <ScoreCard
-                label="Story Progression"
-                description="How well does the story flow and progress across the narrative?"
-                score={formData.storyProgressionScore}
-                onChange={(value) => { touchedScores.current.add("storyProgressionScore"); setFormData((prev) => ({ ...prev, storyProgressionScore: value })); }}
-                gradeFn={calculateOneLinerGrade}
-                gradeColorFn={getOneLinerGradeColorClasses}
-              />
-              <div className="ml-4">
-                <Textarea
-                  id="storyProgressionComment"
-                  placeholder="Comments on Story Progression (optional)..."
-                  rows={2}
-                  value={formData.storyProgressionComment}
-                  onChange={handleInputChange}
-                  className="text-sm"
-                />
-              </div>
-            </div>
-
-            {/* 4. What Next Element */}
-            <div className="space-y-2">
-              <ScoreCard
-                label="What Next Element"
-                description="How effectively does the story create curiosity about what happens next?"
-                score={formData.whatsNextElementScore}
-                onChange={(value) => { touchedScores.current.add("whatsNextElementScore"); setFormData((prev) => ({ ...prev, whatsNextElementScore: value })); }}
-                gradeFn={calculateOneLinerGrade}
-                gradeColorFn={getOneLinerGradeColorClasses}
-              />
-              <div className="ml-4">
-                <Textarea
-                  id="whatsNextElementComment"
-                  placeholder="Comments on What Next Element (optional)..."
-                  rows={2}
-                  value={formData.whatsNextElementComment}
-                  onChange={handleInputChange}
-                  className="text-sm"
-                />
-              </div>
-            </div>
-
-            {/* 5. Overall Oneliner Grade */}
-            <div className="space-y-2">
-              <ScoreCard
-                label="Overall Oneliner Grade"
-                description="What is your overall grade for this oneliner as a complete package?"
-                score={formData.overallOnelinerGradeScore}
-                onChange={(value) => { touchedScores.current.add("overallOnelinerGradeScore"); setFormData((prev) => ({ ...prev, overallOnelinerGradeScore: value })); }}
-                gradeFn={calculateOneLinerGrade}
-                gradeColorFn={getOneLinerGradeColorClasses}
-              />
-              <div className="ml-4">
-                <Textarea
-                  id="overallOnelinerGradeComment"
-                  placeholder="Comments on Overall Oneliner Grade (optional)..."
-                  rows={2}
-                  value={formData.overallOnelinerGradeComment}
-                  onChange={handleInputChange}
-                  className="text-sm"
-                />
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Section 2: Overall Assessment */}
-        <div className="space-y-4">
-          <h3 className="text-xl font-bold">Section 2: Overall Assessment</h3>
-          <CallReportOverallAssessment
-            average={averageScore}
+        {/* Overall Grade (required) */}
+        <div className="space-y-3">
+          <h3 className="text-xl font-bold">Overall Grade *</h3>
+          <ScoreCard
+            label="Overall Oneliner Grade"
+            description="What is your overall grade for this oneliner as a complete package?"
+            score={formData.overallOnelinerGradeScore}
+            onChange={(value) => { setFormData((prev) => ({ ...prev, overallOnelinerGradeScore: value })); }}
             gradeFn={calculateOneLinerGrade}
             gradeColorFn={getOneLinerGradeColorClasses}
-            ratingScaleItems={oneLinerRatingScaleItems}
           />
-
-          {/* First 2 Episodes Required Checkbox */}
-          <Card className="p-4">
-            <div className="flex items-center space-x-2">
-              <input
-                type="checkbox"
-                id="first2EpsRequired"
-                checked={formData.first2EpsRequired}
-                onChange={handleCheckboxChange}
-                className="h-4 w-4 text-[#224794] focus:ring-[#224794] border-gray-300 rounded"
-              />
-              <Label
-                htmlFor="first2EpsRequired"
-                className="text-sm font-medium text-gray-700 cursor-pointer"
-              >
-                First 2 episodes required
-              </Label>
-            </div>
-            <p className="mt-1 text-xs text-gray-500 ml-6">
-              Check this if the first 2 episodes are required by the writer to finalize
-            </p>
-          </Card>
+          <Textarea
+            id="overallOnelinerGradeComment"
+            placeholder="Comments on the Overall Grade (optional)..."
+            rows={2}
+            value={formData.overallOnelinerGradeComment}
+            onChange={handleInputChange}
+            className="text-sm"
+          />
         </div>
 
-        {/* Section 3: Descriptive Evaluation */}
-        <div className="space-y-4">
-          <h3 className="text-xl font-bold">Section 3: Descriptive Evaluation</h3>
-          <Card className="p-4 space-y-5">
-            {/* Themes of Drama */}
-            <div className="space-y-2">
-              <Label className="font-semibold">Themes of Drama</Label>
-              <p className="text-xs text-muted-foreground">Add themes that describe this drama</p>
-              <TagInput
-                tags={formData.themesOfDrama}
-                onChange={(tags) => setFormData((prev) => ({ ...prev, themesOfDrama: tags }))}
-                placeholder="e.g., Family, Revenge, Love triangle..."
-              />
-            </div>
-
-            {/* Corresponding Previously Aired Dramas */}
-            <div className="space-y-2">
-              <Label className="font-semibold">Corresponding Previously Aired Dramas</Label>
-              <p className="text-xs text-muted-foreground">Add names of similar previously aired dramas</p>
-              <TagInput
-                tags={formData.correspondingDramas}
-                onChange={(tags) => setFormData((prev) => ({ ...prev, correspondingDramas: tags }))}
-                placeholder="e.g., Humsafar, Zindagi Gulzar Hai..."
-              />
-            </div>
-
-            {/* Commercial Positioning and Gender POV are set on the project when it is logged */}
-            {/* No. of Tracks Mentioned */}
-            <div className="space-y-2">
-              <Label htmlFor="noOfTracks" className="font-semibold">No. of Tracks Mentioned</Label>
-              <Input
-                id="noOfTracks"
-                type="number"
-                min="0"
-                value={formData.noOfTracks}
-                onChange={handleInputChange}
-                placeholder="Enter number of tracks"
-                className="w-full sm:w-48"
-              />
-            </div>
-
-            {/* Closing Remarks */}
-            <div className="space-y-2">
-              <Label htmlFor="closingRemarks" className="font-semibold">Closing Remarks</Label>
-              <Textarea
-                id="closingRemarks"
-                placeholder="Final thoughts and remarks about this project..."
-                rows={4}
-                value={formData.closingRemarks}
-                onChange={handleInputChange}
-              />
-            </div>
-          </Card>
-        </div>
-
-        {/* Section 4: Additional Project Information */}
-        <div className="space-y-4">
-          <h3 className="text-xl font-bold">Section 4: Additional Project Information</h3>
-          <Card className="p-4 space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Feedback Communication */}
+        {!isReadOnly && (
+          <Card className="p-4 border border-gray-200">
+            <div className="space-y-4">
+              <div>
+                <h3 className="text-base font-semibold text-gray-800">Attach the email <span className="text-sm font-normal text-gray-500">(optional)</span></h3>
+                <p className="text-xs text-gray-500 mt-0.5">Paste or attach the email (or other written feedback) that goes with this grade.</p>
+              </div>
               <div className="space-y-2">
-                <Label htmlFor="targetWriter">Target Writer</Label>
-                <WriterSelect
-                  value={formData.targetWriterId}
-                  onChange={(writerId, writer) => {
-                    setFormData(prev => ({ ...prev, targetWriterId: writerId }));
-                    setSelectedWriter(writer);
-                  }}
-                  disabled={isLoading}
-                  placeholder="Select a writer"
+                <Label htmlFor="feedbackText">Email / Communication Text</Label>
+                <RichTextEditor
+                  id="feedbackText"
+                  placeholder="Paste email or communication content here..."
+                  value={feedbackText}
+                  onChange={setFeedbackText}
                 />
               </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="perEpPriceRange">Per EP Price Range (Rs)</Label>
-                <select
-                  id="perEpPriceRange"
-                  value={formData.perEpPriceRange}
-                  onChange={handleSelectChange}
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  <option value="">Select price range</option>
-                  <option value="25000-50000">Rs 25,000 - 50,000</option>
-                  <option value="50000-75000">Rs 50,000 - 75,000</option>
-                  <option value="75000-100000">Rs 75,000 - 100,000</option>
-                  <option value="100000-125000">Rs 100,000 - 125,000</option>
-                  <option value="125000-150000">Rs 125,000 - 150,000</option>
-                  <option value="150000-175000">Rs 150,000 - 175,000</option>
-                  <option value="175000-200000">Rs 175,000 - 200,000</option>
-                  <option value="200000-225000">Rs 200,000 - 225,000</option>
-                  <option value="225000-250000">Rs 225,000 - 250,000</option>
-                  <option value="250000-275000">Rs 250,000 - 275,000</option>
-                  <option value="275000-300000">Rs 275,000 - 300,000</option>
-                  <option value="300000+">Rs 300,000+</option>
-                </select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="slot">Slot</Label>
-                <select
-                  id="slot"
-                  value={formData.slot}
-                  onChange={handleSelectChange}
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  <option value="">Select slot</option>
-                  <option value="6:00 PM">6:00 PM</option>
-                  <option value="7:00 PM">7:00 PM</option>
-                  <option value="8:00 PM">8:00 PM</option>
-                  <option value="9:00 PM">9:00 PM</option>
-                  <option value="10:00 PM">10:00 PM</option>
-                </select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="originalSubmissionDate">
-                  Original Submission Date{" "}
-                  <span className="text-slate-400 font-normal text-xs">(optional)</span>
-                </Label>
-                <Input
-                  id="originalSubmissionDate"
-                  type="date"
-                  value={formData.originalSubmissionDate}
-                  onChange={handleInputChange}
-                  max={new Date().toISOString().split("T")[0]}
-                  disabled={isLoading}
-                />
-                <p className="text-xs text-muted-foreground">
-                  Set this if the evaluation was done on a different date than today. All time-based calculations will use this date.
-                </p>
+              <div className="space-y-3">
+                <Label>Supporting Attachments</Label>
+                {feedbackAttachments.length > 0 && (
+                  <div className="space-y-1.5">
+                    {feedbackAttachments.map((att, idx) => (
+                      <div key={idx} className="flex items-center gap-2 text-sm text-gray-700 border rounded-md px-3 py-2 bg-gray-50">
+                        <PaperclipIcon className="h-4 w-4 text-gray-400 shrink-0" />
+                        <a href={`/api/storage/download?url=${encodeURIComponent(att.url)}&bucket=attachments&name=${encodeURIComponent(att.name || "")}`} target="_blank" rel="noopener noreferrer" className="truncate flex-1 hover:underline text-blue-600">{att.name}</a>
+                        <button
+                          type="button"
+                          onClick={() => setFeedbackAttachments(prev => prev.filter((_, i) => i !== idx))}
+                          className="text-gray-400 hover:text-red-500 shrink-0"
+                          aria-label="Remove attachment"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <label className="inline-flex items-center gap-2 cursor-pointer border border-gray-300 rounded-md px-3 py-2 text-sm hover:bg-gray-50 transition-colors">
+                  {feedbackUploading ? (
+                    <><Loader2 className="h-4 w-4 animate-spin" /> Uploading...</>
+                  ) : (
+                    <><PaperclipIcon className="h-4 w-4" /> Add Files</>
+                  )}
+                  <input
+                    type="file"
+                    accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                    multiple
+                    className="sr-only"
+                    onChange={handleFeedbackFileUpload}
+                    disabled={feedbackUploading}
+                  />
+                </label>
+                <p className="text-xs text-gray-400">PDF, DOC, DOCX, JPG, PNG — max 10MB each</p>
               </div>
             </div>
           </Card>
-        </div>
+        )}
 
         {/* Section 5: Final Decision */}
         <div className="space-y-4">
-          <h3 className="text-xl font-bold">Section 5: Final Decision *</h3>
+          <h3 className="text-xl font-bold">Final Decision *</h3>
           <p className="text-sm text-muted-foreground">
             Based on your evaluation, select your recommendation for this project.
           </p>
@@ -1258,7 +1002,7 @@ export function EvaluatorEvaluationForm({
               )}
 
               {/* Score vs Decision warnings */}
-              {formData.decision === "approve" && averageScore < 5.0 && (
+              {formData.decision === "approve" && averageScore != null && averageScore < 5.0 && (
                 <div className="p-3 bg-amber-50 border border-amber-300 rounded-lg">
                   <p className="text-sm text-amber-800 font-medium">
                     Warning: You cannot approve a project with an average score below 5.0 (current: {averageScore.toFixed(1)})
@@ -1266,7 +1010,7 @@ export function EvaluatorEvaluationForm({
                 </div>
               )}
 
-              {formData.decision === "reject" && averageScore >= 7.0 && (
+              {formData.decision === "reject" && averageScore != null && averageScore >= 7.0 && (
                 <div className="p-3 bg-blue-50 border border-blue-300 rounded-lg">
                   <p className="text-sm text-blue-800">
                     Note: You selected Reject but the score is {averageScore.toFixed(1)}/10 (high). Please confirm your decision is correct.
@@ -1315,63 +1059,311 @@ export function EvaluatorEvaluationForm({
           </Card>
         )}
 
-        {/* Feedback Communication */}
-        {!isReadOnly && (
-          <Card className="p-4 border border-gray-200">
+        <OptionalSection title="Evaluation Scores" defaultOpen={isReadOnly}>
+          {/* Section 1: Evaluation Scores with Comments */}
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Optional — rate any of these on a scale of 1-10 and add comments. If you rate all of them, their
+              average (with the Overall Grade) is the score; otherwise the Overall Grade is.
+            </p>
+
             <div className="space-y-4">
-              <div>
-                <h3 className="text-base font-semibold text-gray-800">Feedback Communication <span className="text-sm font-normal text-gray-500">(optional)</span></h3>
-                <p className="text-xs text-gray-500 mt-0.5">Attach email or written feedback evidence submitted alongside this evaluation.</p>
-              </div>
+              {/* 1. Conflict of Content */}
               <div className="space-y-2">
-                <Label htmlFor="feedbackText">Email / Communication Text</Label>
-                <RichTextEditor
-                  id="feedbackText"
-                  placeholder="Paste email or communication content here..."
-                  value={feedbackText}
-                  onChange={setFeedbackText}
+                <ScoreCard
+                  label="Conflict of Content"
+                  description="How compelling and engaging is the core conflict driving the content?"
+                  score={formData.conflictOfContentScore}
+                  onChange={(value) => { setFormData((prev) => ({ ...prev, conflictOfContentScore: value })); }}
+                  onClear={() => setFormData((prev) => ({ ...prev, conflictOfContentScore: null }))}
+                  gradeFn={calculateOneLinerGrade}
+                  gradeColorFn={getOneLinerGradeColorClasses}
                 />
-              </div>
-              <div className="space-y-3">
-                <Label>Supporting Attachments</Label>
-                {feedbackAttachments.length > 0 && (
-                  <div className="space-y-1.5">
-                    {feedbackAttachments.map((att, idx) => (
-                      <div key={idx} className="flex items-center gap-2 text-sm text-gray-700 border rounded-md px-3 py-2 bg-gray-50">
-                        <PaperclipIcon className="h-4 w-4 text-gray-400 shrink-0" />
-                        <a href={`/api/storage/download?url=${encodeURIComponent(att.url)}&bucket=attachments&name=${encodeURIComponent(att.name || "")}`} target="_blank" rel="noopener noreferrer" className="truncate flex-1 hover:underline text-blue-600">{att.name}</a>
-                        <button
-                          type="button"
-                          onClick={() => setFeedbackAttachments(prev => prev.filter((_, i) => i !== idx))}
-                          className="text-gray-400 hover:text-red-500 shrink-0"
-                          aria-label="Remove attachment"
-                        >
-                          ✕
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-                <label className="inline-flex items-center gap-2 cursor-pointer border border-gray-300 rounded-md px-3 py-2 text-sm hover:bg-gray-50 transition-colors">
-                  {feedbackUploading ? (
-                    <><Loader2 className="h-4 w-4 animate-spin" /> Uploading...</>
-                  ) : (
-                    <><PaperclipIcon className="h-4 w-4" /> Add Files</>
-                  )}
-                  <input
-                    type="file"
-                    accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
-                    multiple
-                    className="sr-only"
-                    onChange={handleFeedbackFileUpload}
-                    disabled={feedbackUploading}
+                <div className="ml-4">
+                  <Textarea
+                    id="conflictOfContentComment"
+                    placeholder="Comments on Conflict of Content (optional)..."
+                    rows={2}
+                    value={formData.conflictOfContentComment}
+                    onChange={handleInputChange}
+                    className="text-sm"
                   />
-                </label>
-                <p className="text-xs text-gray-400">PDF, DOC, DOCX, JPG, PNG — max 10MB each</p>
+                </div>
+              </div>
+
+              {/* 2. Characterization */}
+              <div className="space-y-2">
+                <ScoreCard
+                  label="Characterization"
+                  description="How well-developed, relatable, and distinct are the characters?"
+                  score={formData.characterizationScore}
+                  onChange={(value) => { setFormData((prev) => ({ ...prev, characterizationScore: value })); }}
+                  onClear={() => setFormData((prev) => ({ ...prev, characterizationScore: null }))}
+                  gradeFn={calculateOneLinerGrade}
+                  gradeColorFn={getOneLinerGradeColorClasses}
+                />
+                <div className="ml-4">
+                  <Textarea
+                    id="characterizationComment"
+                    placeholder="Comments on Characterization (optional)..."
+                    rows={2}
+                    value={formData.characterizationComment}
+                    onChange={handleInputChange}
+                    className="text-sm"
+                  />
+                </div>
+              </div>
+
+              {/* 3. Story Progression */}
+              <div className="space-y-2">
+                <ScoreCard
+                  label="Story Progression"
+                  description="How well does the story flow and progress across the narrative?"
+                  score={formData.storyProgressionScore}
+                  onChange={(value) => { setFormData((prev) => ({ ...prev, storyProgressionScore: value })); }}
+                  onClear={() => setFormData((prev) => ({ ...prev, storyProgressionScore: null }))}
+                  gradeFn={calculateOneLinerGrade}
+                  gradeColorFn={getOneLinerGradeColorClasses}
+                />
+                <div className="ml-4">
+                  <Textarea
+                    id="storyProgressionComment"
+                    placeholder="Comments on Story Progression (optional)..."
+                    rows={2}
+                    value={formData.storyProgressionComment}
+                    onChange={handleInputChange}
+                    className="text-sm"
+                  />
+                </div>
+              </div>
+
+              {/* 4. What Next Element */}
+              <div className="space-y-2">
+                <ScoreCard
+                  label="What Next Element"
+                  description="How effectively does the story create curiosity about what happens next?"
+                  score={formData.whatsNextElementScore}
+                  onChange={(value) => { setFormData((prev) => ({ ...prev, whatsNextElementScore: value })); }}
+                  onClear={() => setFormData((prev) => ({ ...prev, whatsNextElementScore: null }))}
+                  gradeFn={calculateOneLinerGrade}
+                  gradeColorFn={getOneLinerGradeColorClasses}
+                />
+                <div className="ml-4">
+                  <Textarea
+                    id="whatsNextElementComment"
+                    placeholder="Comments on What Next Element (optional)..."
+                    rows={2}
+                    value={formData.whatsNextElementComment}
+                    onChange={handleInputChange}
+                    className="text-sm"
+                  />
+                </div>
               </div>
             </div>
+          </div>
+        </OptionalSection>
+
+        <OptionalSection title="First 2 Episodes" defaultOpen={isReadOnly}>
+          {/* Section 2: Overall Assessment */}
+          <div className="space-y-4">
+
+            {/* First 2 Episodes Required Checkbox */}
+            <Card className="p-4">
+              <div className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  id="first2EpsRequired"
+                  checked={formData.first2EpsRequired}
+                  onChange={handleCheckboxChange}
+                  className="h-4 w-4 text-[#224794] focus:ring-[#224794] border-gray-300 rounded"
+                />
+                <Label
+                  htmlFor="first2EpsRequired"
+                  className="text-sm font-medium text-gray-700 cursor-pointer"
+                >
+                  First 2 episodes required
+                </Label>
+              </div>
+              <p className="mt-1 text-xs text-gray-500 ml-6">
+                Check this if the first 2 episodes are required by the writer to finalize
+              </p>
+            </Card>
+          </div>
+        </OptionalSection>
+
+        <OptionalSection title="Descriptive Evaluation" defaultOpen={isReadOnly}>
+          {/* Section 3: Descriptive Evaluation */}
+          <div className="space-y-4">
+            <Card className="p-4 space-y-5">
+              {/* Themes of Drama */}
+              <div className="space-y-2">
+                <Label className="font-semibold">Themes of Drama</Label>
+                <p className="text-xs text-muted-foreground">Add themes that describe this drama</p>
+                <TagInput
+                  tags={formData.themesOfDrama}
+                  onChange={(tags) => setFormData((prev) => ({ ...prev, themesOfDrama: tags }))}
+                  placeholder="e.g., Family, Revenge, Love triangle..."
+                />
+              </div>
+
+              {/* Corresponding Previously Aired Dramas */}
+              <div className="space-y-2">
+                <Label className="font-semibold">Corresponding Previously Aired Dramas</Label>
+                <p className="text-xs text-muted-foreground">Add names of similar previously aired dramas</p>
+                <TagInput
+                  tags={formData.correspondingDramas}
+                  onChange={(tags) => setFormData((prev) => ({ ...prev, correspondingDramas: tags }))}
+                  placeholder="e.g., Humsafar, Zindagi Gulzar Hai..."
+                />
+              </div>
+
+              {/* Commercial Positioning and Gender POV are set on the project when it is logged */}
+              {/* No. of Tracks Mentioned */}
+              <div className="space-y-2">
+                <Label htmlFor="noOfTracks" className="font-semibold">No. of Tracks Mentioned</Label>
+                <Input
+                  id="noOfTracks"
+                  type="number"
+                  min="0"
+                  value={formData.noOfTracks}
+                  onChange={handleInputChange}
+                  placeholder="Enter number of tracks"
+                  className="w-full sm:w-48"
+                />
+              </div>
+
+              {/* Closing Remarks */}
+              <div className="space-y-2">
+                <Label htmlFor="closingRemarks" className="font-semibold">Closing Remarks</Label>
+                <Textarea
+                  id="closingRemarks"
+                  placeholder="Final thoughts and remarks about this project..."
+                  rows={4}
+                  value={formData.closingRemarks}
+                  onChange={handleInputChange}
+                />
+              </div>
+            </Card>
+          </div>
+        </OptionalSection>
+
+        <OptionalSection title="Additional Project Information" defaultOpen={isReadOnly}>
+          {/* Section 4: Additional Project Information */}
+          <div className="space-y-4">
+            <Card className="p-4 space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="targetWriter">Target Writer</Label>
+                  <WriterSelect
+                    value={formData.targetWriterId}
+                    onChange={(writerId, writer) => {
+                      setFormData(prev => ({ ...prev, targetWriterId: writerId }));
+                      setSelectedWriter(writer);
+                    }}
+                    disabled={isLoading}
+                    placeholder="Select a writer"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="perEpPriceRange">Per EP Price Range (Rs)</Label>
+                  <select
+                    id="perEpPriceRange"
+                    value={formData.perEpPriceRange}
+                    onChange={handleSelectChange}
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <option value="">Select price range</option>
+                    <option value="25000-50000">Rs 25,000 - 50,000</option>
+                    <option value="50000-75000">Rs 50,000 - 75,000</option>
+                    <option value="75000-100000">Rs 75,000 - 100,000</option>
+                    <option value="100000-125000">Rs 100,000 - 125,000</option>
+                    <option value="125000-150000">Rs 125,000 - 150,000</option>
+                    <option value="150000-175000">Rs 150,000 - 175,000</option>
+                    <option value="175000-200000">Rs 175,000 - 200,000</option>
+                    <option value="200000-225000">Rs 200,000 - 225,000</option>
+                    <option value="225000-250000">Rs 225,000 - 250,000</option>
+                    <option value="250000-275000">Rs 250,000 - 275,000</option>
+                    <option value="275000-300000">Rs 275,000 - 300,000</option>
+                    <option value="300000+">Rs 300,000+</option>
+                  </select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="slot">Slot</Label>
+                  <select
+                    id="slot"
+                    value={formData.slot}
+                    onChange={handleSelectChange}
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <option value="">Select slot</option>
+                    <option value="6:00 PM">6:00 PM</option>
+                    <option value="7:00 PM">7:00 PM</option>
+                    <option value="8:00 PM">8:00 PM</option>
+                    <option value="9:00 PM">9:00 PM</option>
+                    <option value="10:00 PM">10:00 PM</option>
+                  </select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="originalSubmissionDate">
+                    Original Submission Date{" "}
+                    <span className="text-slate-400 font-normal text-xs">(optional)</span>
+                  </Label>
+                  <Input
+                    id="originalSubmissionDate"
+                    type="date"
+                    value={formData.originalSubmissionDate}
+                    onChange={handleInputChange}
+                    max={new Date().toISOString().split("T")[0]}
+                    disabled={isLoading}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Set this if the evaluation was done on a different date than today. All time-based calculations will use this date.
+                  </p>
+                </div>
+              </div>
+            </Card>
+          </div>
+        </OptionalSection>
+
+        <OptionalSection title="Rating Scale" defaultOpen={false} optional={false}>
+          {/* Rating Scale Reference */}
+          <Card className="p-4 border-2 border-blue-100 bg-blue-50/30">
+            <CardHeader className="py-2">
+              <CardTitle className="text-base">Rating Scale</CardTitle>
+            </CardHeader>
+            <CardContent className="pt-2">
+              <div className="space-y-2 text-sm">
+                <div className="flex items-start gap-3">
+                  <span className="font-semibold text-gray-600 min-w-[50px]">10:</span>
+                  <span className="text-green-700 font-medium">Outstanding - perfect flow, strong events, emotional impact</span>
+                </div>
+                <div className="flex items-start gap-3">
+                  <span className="font-semibold text-gray-600 min-w-[50px]">8 - 9:</span>
+                  <span className="text-emerald-700 font-medium">Excellent - engaging and well-structured, minor issues only</span>
+                </div>
+                <div className="flex items-start gap-3">
+                  <span className="font-semibold text-gray-600 min-w-[50px]">7:</span>
+                  <span className="text-blue-700 font-medium">Good - holds attention but needs some improvement</span>
+                </div>
+                <div className="flex items-start gap-3">
+                  <span className="font-semibold text-gray-600 min-w-[50px]">5 - 6:</span>
+                  <span className="text-amber-700 font-medium">Average - lacks impact or has pacing/logic issues</span>
+                </div>
+                <div className="flex items-start gap-3">
+                  <span className="font-semibold text-gray-600 min-w-[50px]">3 - 4:</span>
+                  <span className="text-orange-700 font-medium">Weak - poor structure, flat events, inconsistent characters</span>
+                </div>
+                <div className="flex items-start gap-3">
+                  <span className="font-semibold text-gray-600 min-w-[50px]">1 - 2:</span>
+                  <span className="text-red-700 font-medium">Very Poor - confusing, dull, or disconnected from story</span>
+                </div>
+              </div>
+            </CardContent>
           </Card>
-        )}
+        </OptionalSection>
 
         {/* Discussion Thread */}
         {!onWizardSubmit && <CallReportDiscussion

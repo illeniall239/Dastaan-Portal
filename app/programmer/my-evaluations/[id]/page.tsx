@@ -378,7 +378,7 @@ export default async function ProgrammerEvaluationDetailPage({ params }: { param
                     <span className="text-sm font-medium">Conflict of Content</span>
                   </div>
                   <span className="text-lg font-bold text-[#224794]">
-                    {evaluation.conflict_of_content_score}/10
+                    {evaluation.conflict_of_content_score != null ? `${evaluation.conflict_of_content_score}/10` : "Not rated"}
                   </span>
                 </div>
 
@@ -388,7 +388,7 @@ export default async function ProgrammerEvaluationDetailPage({ params }: { param
                     <span className="text-sm font-medium">Characterization</span>
                   </div>
                   <span className="text-lg font-bold text-[#224794]">
-                    {evaluation.characterization_score}/10
+                    {evaluation.characterization_score != null ? `${evaluation.characterization_score}/10` : "Not rated"}
                   </span>
                 </div>
 
@@ -398,7 +398,7 @@ export default async function ProgrammerEvaluationDetailPage({ params }: { param
                     <span className="text-sm font-medium">Story Progression</span>
                   </div>
                   <span className="text-lg font-bold text-[#224794]">
-                    {evaluation.story_progression_score}/10
+                    {evaluation.story_progression_score != null ? `${evaluation.story_progression_score}/10` : "Not rated"}
                   </span>
                 </div>
 
@@ -408,7 +408,7 @@ export default async function ProgrammerEvaluationDetailPage({ params }: { param
                     <span className="text-sm font-medium">What&apos;s Next Element</span>
                   </div>
                   <span className="text-lg font-bold text-[#224794]">
-                    {evaluation.whats_next_element_score}/10
+                    {evaluation.whats_next_element_score != null ? `${evaluation.whats_next_element_score}/10` : "Not rated"}
                   </span>
                 </div>
               </div>
