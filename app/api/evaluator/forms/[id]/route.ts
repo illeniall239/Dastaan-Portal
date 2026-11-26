@@ -72,11 +72,8 @@ export async function PATCH(
 
   const validatedData = validation.data;
 
-  // Add updated_at timestamp
-  const updatePayload = {
-    ...validatedData,
-    updated_at: new Date().toISOString(),
-  };
+  // evaluator_forms has no updated_at column
+  const updatePayload = validatedData;
 
   const { data, error: updateError } = await supabase
     .from("evaluator_forms")

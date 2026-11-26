@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -24,6 +25,7 @@ import {
   FileText,
   FileVideo,
   Paperclip,
+  Pencil,
 } from "lucide-react";
 import { ContentRevisions } from "@/components/ui/content-revisions";
 import { CallReportDiscussion, DiscussionThread } from "@/components/call-reports/call-report-discussion";
@@ -56,6 +58,7 @@ interface PendingCallReport {
   attachments: AttachmentItem[];
   evaluatedByMe: boolean;
   myScore: number | null; // null with evaluatedByMe = feedback only
+  myRevisionId: string | null; // the version (null = original) of this manager's latest evaluation
 }
 
 interface ReviewedCallReport extends PendingCallReport {
@@ -82,6 +85,7 @@ interface EpisodeQueueItem {
   revisionCount: number;
   evaluatedByMe: boolean;
   myScore: number | null;
+  myRevisionId: string | null;
 }
 
 interface UnifiedProject {
@@ -273,6 +277,18 @@ function ScoreBox({ label, score, comment }: { label: string; score: number | nu
       <p className="font-semibold text-sm">{score !== null && score !== undefined ? `${score}/10` : "N/A"}</p>
       {comment && <p className="text-xs text-muted-foreground mt-1 italic">{comment}</p>}
     </div>
+  );
+}
+
+/** Opens the signed-in manager's own evaluation (the version they evaluated last) to view or edit */
+function EditMyEvaluationButton({ basePath, id, revisionId }: { basePath: string; id: string; revisionId: string | null }) {
+  return (
+    <Button asChild size="sm" variant="outline">
+      <Link href={`${basePath}/${id}${revisionId ? `?revision_id=${revisionId}` : ""}`} onClick={(e) => e.stopPropagation()}>
+        <Pencil className="mr-1.5 h-3.5 w-3.5" />
+        Edit my evaluation
+      </Link>
+    </Button>
   );
 }
 
@@ -650,6 +666,9 @@ function UnifiedProjectCard({
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
                     <ShareCrossTeamButton callReportId={p.callReportId} />
+                    {p.oneLiner.evaluatedByMe && (
+                      <EditMyEvaluationButton basePath="/management/evaluate/call-report" id={p.callReportId} revisionId={p.oneLiner.myRevisionId} />
+                    )}
                     <Button size="sm" onClick={() => onOlReview(p.oneLiner!)}>Review</Button>
                   </div>
                 </div>
@@ -751,7 +770,12 @@ function UnifiedProjectCard({
                             <p className="text-xs text-slate-500 mt-1 italic">Notes: {p.reviewedOneLiner.myNotes}</p>
                           )}
                         </div>
-                        <Button size="sm" variant="outline" onClick={() => onOlReview(p.reviewedOneLiner!)}>View</Button>
+                        <div className="flex items-center gap-2 shrink-0">
+                          {p.reviewedOneLiner.evaluatedByMe && (
+                            <EditMyEvaluationButton basePath="/management/evaluate/call-report" id={p.callReportId} revisionId={p.reviewedOneLiner.myRevisionId} />
+                          )}
+                          <Button size="sm" variant="outline" onClick={() => onOlReview(p.reviewedOneLiner!)}>View</Button>
+                        </div>
                       </div>
                     </div>
                   )}
@@ -829,6 +853,9 @@ function EpisodeSubCard({
         <div className="flex items-center gap-2 shrink-0">
           {ep.callReportId && (
             <ShareCrossTeamButton callReportId={ep.callReportId} episodeId={ep.id} callReportTitle={ep.callReportTitle} />
+          )}
+          {ep.evaluatedByMe && (
+            <EditMyEvaluationButton basePath="/management/evaluate/episode" id={ep.id} revisionId={ep.myRevisionId} />
           )}
           <Button size="sm" variant={reviewed ? "outline" : "default"} onClick={() => onReview(ep)}>
             {reviewed ? "View" : "Review"}

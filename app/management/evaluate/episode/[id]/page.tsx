@@ -38,6 +38,7 @@ export default function ManagementEvaluateEpisodePage({ params }: EpisodePagePro
   const revisionNumber = revisionId ? revisions?.find((r) => r.id === revisionId)?.revision_number : null;
   // Set after submitting this episode's evaluation: shows the "evaluate next" bar
   const [justEvaluated, setJustEvaluated] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
 
   useEffect(() => {
     params.then((resolvedParams) => {
@@ -79,6 +80,7 @@ export default function ManagementEvaluateEpisodePage({ params }: EpisodePagePro
     setLoading(true);
     // Moving between episodes can keep this page mounted: never show the previous one's evaluation
     setExistingEvaluation(null);
+    setIsEditing(false);
     try {
       // Fetch episode details
       const episodeResponse = await fetch(`/api/episodes/${episodeId}`);
@@ -120,24 +122,24 @@ export default function ManagementEvaluateEpisodePage({ params }: EpisodePagePro
 
   const handleSubmit = async (formData: EpisodicEvaluationFormData) => {
     try {
-      // Management users can only create new evaluations, not edit existing ones
-      if (existingEvaluation) {
-        toast.error("You have already evaluated this episode");
-        return;
-      }
-
-      // Create new evaluation
-      const response = await fetch("/api/episodic-evaluations", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          ...formData,
-          episode_id: episodeId,
-          revision_id: revisionId || null,
-        }),
-      });
+      const editing = !!existingEvaluation && isEditing;
+      const response = editing
+        ? await fetch(`/api/episodic-evaluations/${existingEvaluation!.id}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(formData),
+          })
+        : await fetch("/api/episodic-evaluations", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              ...formData,
+              episode_id: episodeId,
+              revision_id: revisionId || null,
+            }),
+          });
 
       const data = await response.json();
 
@@ -156,6 +158,12 @@ export default function ManagementEvaluateEpisodePage({ params }: EpisodePagePro
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ approval_status: approvalStatus }),
         });
+      }
+
+      if (editing) {
+        toast.success("Evaluation updated successfully!");
+        await fetchEpisodeAndEvaluation();
+        return;
       }
 
       toast.success("Management evaluation submitted successfully!");
@@ -196,10 +204,17 @@ export default function ManagementEvaluateEpisodePage({ params }: EpisodePagePro
   return (
     <div className="container mx-auto py-6 max-w-4xl">
       <div className="flex flex-col gap-4 sm:gap-6 mb-8">
-        <BackButton fallbackHref="/management" variant="outline" size="sm" className="w-fit" />
+        <div className="flex items-center justify-between">
+          <BackButton fallbackHref="/management" variant="outline" size="sm" className="w-fit" />
+          {existingEvaluation && !isEditing && (
+            <Button size="sm" variant="outline" onClick={() => setIsEditing(true)}>
+              Edit
+            </Button>
+          )}
+        </div>
         <div className="space-y-1">
           <h1 className="text-xl sm:text-2xl font-bold tracking-tight">
-            Evaluate {episodeVersionLabel(episode.episode_number, revisionNumber)}
+            {isEditing ? "Edit Evaluation" : "Evaluate"} {episodeVersionLabel(episode.episode_number, revisionNumber)}
           </h1>
           <p className="text-muted-foreground text-sm sm:text-base">
             {episode.title || "Untitled Episode"}
@@ -246,7 +261,7 @@ export default function ManagementEvaluateEpisodePage({ params }: EpisodePagePro
         revisionId={revisionId}
         onSubmit={handleSubmit}
         existingEvaluation={existingEvaluation || undefined}
-        disabled={!!existingEvaluation}
+        disabled={!!existingEvaluation && !isEditing}
         currentUserId={currentUserId ?? undefined}
         currentUserRole={userRole ?? undefined}
       />

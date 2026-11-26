@@ -297,7 +297,6 @@ export async function updateEvaluationClient(evaluationData: UpdateEvaluationInp
     feedback_attachment_url: evaluationData.feedback_attachment_url ?? null,
     feedback_attachment_name: evaluationData.feedback_attachment_name ?? null,
     feedback_attachments: evaluationData.feedback_attachments ?? [],
-    updated_at: new Date().toISOString(),
   };
 
   const { data, error } = await supabase

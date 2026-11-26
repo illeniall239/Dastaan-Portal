@@ -56,7 +56,7 @@ export async function GET(_request: NextRequest) {
         .range(from, to)),
       allRows<any>((from, to) => adminClient
         .from("episodic_evaluations_with_type")
-        .select("episode_id, evaluator_id, overall_average, created_at")
+        .select("episode_id, revision_id, evaluator_id, overall_average, created_at")
         .not("episode_id", "is", null)
         .range(from, to)),
       allRows<any>((from, to) => adminClient.from("episode_discussions").select("episode_id").range(from, to)),
@@ -68,12 +68,12 @@ export async function GET(_request: NextRequest) {
     }
 
     // This manager's own evaluation per episode (their latest, original or a revision)
-    const myScore = new Map<string, { score: number | null; at: string }>();
+    const myScore = new Map<string, { score: number | null; at: string; revisionId: string | null }>();
     for (const row of evalRows) {
       if (row.evaluator_id !== user.id) continue;
       const at = row.created_at || "";
       const prev = myScore.get(row.episode_id);
-      if (!prev || at > prev.at) myScore.set(row.episode_id, { score: row.overall_average != null ? Number(row.overall_average) : null, at });
+      if (!prev || at > prev.at) myScore.set(row.episode_id, { score: row.overall_average != null ? Number(row.overall_average) : null, at, revisionId: row.revision_id ?? null });
     }
 
     // Build per-episode stats
@@ -144,6 +144,7 @@ export async function GET(_request: NextRequest) {
         revisionCount: revisionCountMap[ep.id] || 0,
         evaluatedByMe: myScore.has(ep.id),
         myScore: myScore.get(ep.id)?.score ?? null,
+        myRevisionId: myScore.get(ep.id)?.revisionId ?? null,
       };
     });
 

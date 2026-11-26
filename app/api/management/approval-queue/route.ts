@@ -43,7 +43,7 @@ export async function GET(_request: NextRequest) {
         .is("archived_at", null),
       adminClient
         .from("call_report_evaluations_with_type")
-        .select("call_report_id, evaluator_id, average_score, submitted_at")
+        .select("call_report_id, revision_id, evaluator_id, average_score, submitted_at")
         .not("call_report_id", "is", null),
     ]);
 
@@ -70,13 +70,13 @@ export async function GET(_request: NextRequest) {
     }
 
     // This manager's own evaluation per one-liner (their latest, original or a revision)
-    const myScore = new Map<string, { score: number | null; at: string }>();
+    const myScore = new Map<string, { score: number | null; at: string; revisionId: string | null }>();
     for (const row of viewRows || []) {
       if (row.evaluator_id !== user.id) continue;
       const id = row.call_report_id as string;
       const at = row.submitted_at || "";
       const prev = myScore.get(id);
-      if (!prev || at > prev.at) myScore.set(id, { score: row.average_score != null ? Number(row.average_score) : null, at });
+      if (!prev || at > prev.at) myScore.set(id, { score: row.average_score != null ? Number(row.average_score) : null, at, revisionId: row.revision_id ?? null });
     }
 
     // Build per-call-report stats from the view rows
@@ -168,6 +168,7 @@ export async function GET(_request: NextRequest) {
           attachments: attachmentsByCallReport.get(cr.id) || [],
         evaluatedByMe: myScore.has(cr.id),
         myScore: myScore.get(cr.id)?.score ?? null,
+        myRevisionId: myScore.get(cr.id)?.revisionId ?? null,
         };
       });
     }
@@ -203,6 +204,7 @@ export async function GET(_request: NextRequest) {
         attachments: attachmentsByCallReport.get(cr.id) || [],
         evaluatedByMe: myScore.has(cr.id),
         myScore: myScore.get(cr.id)?.score ?? null,
+        myRevisionId: myScore.get(cr.id)?.revisionId ?? null,
       };
     });
 
