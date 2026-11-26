@@ -1,7 +1,7 @@
 
 
 import type { Metadata, Viewport } from "next";
-import { Inter, Plus_Jakarta_Sans } from "next/font/google";
+import localFont from "next/font/local";
 import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
 import { QueryProvider } from "@/lib/providers/query-provider";
@@ -15,14 +15,17 @@ import { Suspense } from "react";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 
-const inter = Inter({
-  subsets: ["latin"],
+// Self-hosted (latin, variable weight): next/font/google downloads fonts during the build, and
+// Google's newer font URLs (fonts.gstatic.com/l/font?kit=…&skey=…) fail Next 16.1's font loader
+const inter = localFont({
+  src: "./fonts/Inter-latin.woff2",
+  weight: "100 900",
   variable: '--font-inter',
 });
 
-const plusJakarta = Plus_Jakarta_Sans({
-  subsets: ["latin"],
-  weight: ["500", "600", "700", "800"],
+const plusJakarta = localFont({
+  src: "./fonts/PlusJakartaSans-latin.woff2",
+  weight: "200 800",
   variable: '--font-jakarta',
   display: 'swap',
 });
