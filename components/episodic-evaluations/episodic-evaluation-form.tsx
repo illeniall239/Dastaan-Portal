@@ -578,6 +578,16 @@ export function EpisodicEvaluationForm({
             </span>
           </div>
         )}
+
+        {/* The logger's comments / additional info, so reviewers see it without opening Edit */}
+        {episode.additional_info?.trim() && (
+          <div className="mt-4 pt-4 border-t border-blue-200">
+            <span className="text-sm font-medium text-muted-foreground">Notes from the logger</span>
+            <p className="mt-1 text-sm whitespace-pre-wrap break-words rounded-md bg-white border border-blue-200 px-3 py-2">
+              {episode.additional_info}
+            </p>
+          </div>
+        )}
       </Card>
 
       {/* Editable sections — pointer-events-none when view-only (no graying); the email box sits outside so its links work */}

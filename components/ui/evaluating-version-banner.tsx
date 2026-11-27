@@ -110,7 +110,7 @@ export function EvaluatingVersionBanner({ apiBasePath, storageBucket, entityId, 
         <p className="text-xs text-amber-800">
           Uploaded by {rev.uploaded_by_user?.name || "Unknown"} · {formatDate(rev.original_submission_date || rev.created_at)}
         </p>
-        {rev.comment && <p className="text-sm text-amber-900 line-clamp-3">&ldquo;{rev.comment}&rdquo;</p>}
+        {rev.comment && <p className="text-sm text-amber-900 whitespace-pre-wrap break-words">&ldquo;{rev.comment}&rdquo;</p>}
       </div>
     </div>
   );
