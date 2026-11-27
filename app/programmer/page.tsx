@@ -66,6 +66,8 @@ async function DashboardContent({ userId, userRole, teamId, teamType }: { userId
   const supabase = await createClient();
   const adminClient = createAdminClient();
 
+  // Content Development (programmers on a management-type team) see every project, like the Programming Team;
+  // only the evaluation cards stay their own team's (Programming's evaluations are listed separately)
   const isRestrictedProgrammer = userRole === "programmer" && teamType === "management";
 
   // Resolve team members + content-dev exclusion list in parallel (only if needed)
@@ -90,14 +92,10 @@ async function DashboardContent({ userId, userRole, teamId, teamType }: { userId
   const [statsData, recentCallReports, recentEvaluations, productionMetrics] = await Promise.all([
     Promise.all([
       // Total call reports count
-      (async () => {
-        let q = supabase
-          .from("call_reports")
-          .select("id", { count: "exact", head: true })
-          .eq("meeting_type", "call_report");
-        if (isRestrictedProgrammer && teamId) q = q.eq("team_id", teamId);
-        return q;
-      })(),
+      supabase
+        .from("call_reports")
+        .select("id", { count: "exact", head: true })
+        .eq("meeting_type", "call_report"),
       // Total one-liner evaluations count — programmer team only (adminClient bypasses RLS)
       (async () => {
         if (isRestrictedProgrammer) {
@@ -133,13 +131,9 @@ async function DashboardContent({ userId, userRole, teamId, teamType }: { userId
         return q;
       })(),
       // Total episodes across all projects
-      (async () => {
-        let q = adminClient
-          .from("consolidated_cms_view")
-          .select("total_episodes, actual_received_episodes");
-        if (isRestrictedProgrammer && teamId) q = q.eq("team_id", teamId);
-        return q;
-      })(),
+      adminClient
+        .from("consolidated_cms_view")
+        .select("total_episodes, actual_received_episodes"),
       // One-liner evaluation status breakdown (submitted vs pending)
       (async () => {
         if (isRestrictedProgrammer) {
@@ -177,21 +171,17 @@ async function DashboardContent({ userId, userRole, teamId, teamType }: { userId
     ]),
 
     // Recent call reports
-    (async () => {
-      let q = supabase
-        .from("call_reports")
-        .select(`
-          id, call_report_id, working_title, writer_name, meeting_date, logline,
-          call_report_writers:call_report_writers (
-            writer_id, writer_email, writer_phone, display_order, writer:writers(name)
-          )
-        `)
-        .eq("meeting_type", "call_report")
-        .order("meeting_date", { ascending: false })
-        .limit(5);
-      if (isRestrictedProgrammer && teamId) q = q.eq("team_id", teamId);
-      return q;
-    })(),
+    supabase
+      .from("call_reports")
+      .select(`
+        id, call_report_id, working_title, writer_name, meeting_date, logline,
+        call_report_writers:call_report_writers (
+          writer_id, writer_email, writer_phone, display_order, writer:writers(name)
+        )
+      `)
+      .eq("meeting_type", "call_report")
+      .order("meeting_date", { ascending: false })
+      .limit(5),
 
     // Recent evaluations (team-scoped for restricted, all programmers for regular)
     (async () => {
@@ -230,7 +220,7 @@ async function DashboardContent({ userId, userRole, teamId, teamType }: { userId
     })(),
 
     // Production metrics
-    isRestrictedProgrammer && teamId ? getProductionMetrics(teamId, userRole) : getProductionMetrics(),
+    getProductionMetrics(),
 
   ]);
 
