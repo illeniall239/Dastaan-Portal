@@ -9,6 +9,7 @@ const baseNavItems = [
   { title: "Project Status",      href: "/management/status-updater",     icon: "listChecks" },
   { title: "Evaluations",         href: "/management/evaluations",        icon: "clipboardCheck" },
   { title: "Content Aging",       href: "/management/content-aging",      icon: "clock" },
+  { title: "Delivery Rate",       href: "/management/delivery-rate",      icon: "activity" },
   { title: "Teams",               href: "/management/teams",              icon: "users" },
 ];
 

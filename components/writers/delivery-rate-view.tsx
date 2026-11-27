@@ -83,7 +83,8 @@ function fmtMonthCol(key: string): string {
   return `${MONTH_SHORT[parseInt(m) - 1]} ${y.slice(2)}`;
 }
 
-export function DeliveryRateView() {
+/** readOnly: management's view — same table and numbers, every typed field shown as text, no editing */
+export function DeliveryRateView({ readOnly = false }: { readOnly?: boolean }) {
   const [projects, setProjects] = useState<ProjectRow[]>([]);
   const [monthColumns, setMonthColumns] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
@@ -295,7 +296,7 @@ export function DeliveryRateView() {
       {grouped.map((group) => {
         const shownWaadas = teamWaadaCols[group.teamId] || 0;
         const waadaNums = Array.from({ length: shownWaadas }, (_, i) => i + 1);
-        const canAddMore = shownWaadas < 6;
+        const canAddMore = !readOnly && shownWaadas < 6;
         // Waada 1 = 10 cols, Waada 2+ = 12 cols (2 extra cumulative columns)
         const waadaColCount = (n: number) => n === 1 ? 10 : 12;
         const totalWaadaCols = waadaNums.reduce((s, n) => s + waadaColCount(n), 0);
@@ -307,7 +308,7 @@ export function DeliveryRateView() {
               <div className="flex items-center justify-between mb-3">
                 <h3 className="text-sm font-bold text-gray-900">{group.teamName}</h3>
                 <div className="flex items-center gap-2">
-                  {shownWaadas > 0 && (
+                  {!readOnly && shownWaadas > 0 && (
                     <button
                       onClick={() => handleRemoveWaadaCols(group.teamId, group.projects)}
                       className="text-[11px] text-red-600 hover:text-red-700 font-medium flex items-center gap-1 border border-red-200 rounded-md px-2.5 py-1 hover:bg-red-50 transition-colors"
@@ -406,36 +407,36 @@ export function DeliveryRateView() {
                           <td className={`${tdClass} font-semibold text-gray-900`} title="Episodes logged in the portal">{p.inHandEpisodes}</td>
                           {/* Contract Date / Deadline: as typed in the sheet ("In Signing", "End of Aug") */}
                           <td className={tdClass}>
-                            <input type="text"
+                            {readOnly ? (p.contractDateText ?? fmtDate(p.commitmentDate)) || "—" : <input type="text"
                               defaultValue={p.contractDateText ?? fmtDate(p.commitmentDate)}
                               onBlur={(e) => { if (e.target.value !== e.target.defaultValue) handleFieldSave({ commitmentId: p.commitmentId }, "contract_date_text", e.target.value); }}
-                              className={`${inputClass} w-[105px]`} />
+                              className={`${inputClass} w-[105px]`} />}
                           </td>
                           <td className={`${tdClass} border-r border-gray-200`}>
-                            <input type="text"
+                            {readOnly ? (p.deadlineText ?? fmtDate(p.deadline)) || "—" : <input type="text"
                               defaultValue={p.deadlineText ?? fmtDate(p.deadline)}
                               onBlur={(e) => { if (e.target.value !== e.target.defaultValue) handleFieldSave({ commitmentId: p.commitmentId }, "deadline_text", e.target.value); }}
-                              className={`${inputClass} w-[105px]`} />
+                              className={`${inputClass} w-[105px]`} />}
                           </td>
                           {/* Standard */}
                           <td className={tdClass}>
-                            <input type="number" min="0" step="0.5"
+                            {readOnly ? (p.standard.commitmentPerWeek ? String(p.standard.commitmentPerWeek) : "—") : <input type="number" min="0" step="0.5"
                               defaultValue={p.standard.commitmentPerWeek || ""}
                               onBlur={(e) => handleFieldSave({ commitmentId: p.commitmentId }, "standard_cpw", e.target.value)}
-                              className={`${inputClass} w-[50px]`} />
+                              className={`${inputClass} w-[50px]`} />}
                           </td>
                           <td className={tdClass}>{p.standard.commitmentPerMonth > 0 ? fmtNum(p.standard.commitmentPerMonth) : "—"}</td>
                           <td className={tdClass}>
-                            <input type="number" min="0" step="0.5"
+                            {readOnly ? (p.standard.totalCommitted ? fmtNum(p.standard.totalCommitted) : "—") : <input type="number" min="0" step="0.5"
                               defaultValue={p.standard.totalCommitted || ""}
                               onBlur={(e) => handleFieldSave({ commitmentId: p.commitmentId }, "standard_total_committed", e.target.value)}
-                              className={`${inputClass} w-[55px]`} />
+                              className={`${inputClass} w-[55px]`} />}
                           </td>
                           <td className={tdClass}>
-                            <input type="date"
+                            {readOnly ? fmtDate(p.standard.firstEpDate) || "—" : <input type="date"
                               defaultValue={p.standard.firstEpDate || ""}
                               onChange={(e) => handleFieldSave({ commitmentId: p.commitmentId }, "project_initiation_date", e.target.value)}
-                              className={`${inputClass} w-[105px]`} />
+                              className={`${inputClass} w-[105px]`} />}
                           </td>
                           <td className={tdClass}>{p.standard.weeks > 0 ? fmtNum(p.standard.weeks) : "—"}</td>
                           <td className={`${tdClass} text-gray-400`}>{new Date().toLocaleDateString("en-GB", { timeZone: PKT_TIME_ZONE, day: "2-digit", month: "short", year: "2-digit" })}</td>
@@ -456,35 +457,35 @@ export function DeliveryRateView() {
                               return (
                                 <Fragment key={n}>
                                   <td className={tdClass}>
-                                    <input type="date" defaultValue={wd.startDate || ""}
+                                    {readOnly ? fmtDate(wd.startDate) || "—" : <input type="date" defaultValue={wd.startDate || ""}
                                       onChange={(e) => handleFieldSave({ waadaId: wd.id }, "start_date", e.target.value)}
-                                      className={`${inputClass} w-[105px]`} />
+                                      className={`${inputClass} w-[105px]`} />}
                                   </td>
                                   <td className={tdClass}>
-                                    <input type="date" defaultValue={wd.endDate || ""}
+                                    {readOnly ? fmtDate(wd.endDate) || "—" : <input type="date" defaultValue={wd.endDate || ""}
                                       onChange={(e) => handleFieldSave({ waadaId: wd.id }, "end_date", e.target.value)}
-                                      className={`${inputClass} w-[105px]`} />
+                                      className={`${inputClass} w-[105px]`} />}
                                   </td>
                                   <td className={tdClass}>
-                                    <input type="number" min="0" step="0.5"
+                                    {readOnly ? fmtNum(wd.weeks) : <input type="number" min="0" step="0.5"
                                       defaultValue={wd.weeks || ""}
                                       onBlur={(e) => handleFieldSave({ commitmentId: p.commitmentId }, `w${n}_no_of_weeks`, e.target.value)}
-                                      className={`${inputClass} w-[50px]`} />
+                                      className={`${inputClass} w-[50px]`} />}
                                   </td>
                                   <td className={tdClass}>
-                                    <input type="number" min="0.5" step="0.5"
+                                    {readOnly ? String(wd.commitmentPerWeek) : <input type="number" min="0.5" step="0.5"
                                       defaultValue={wd.commitmentPerWeek || ""}
                                       onBlur={(e) => handleFieldSave({ waadaId: wd.id }, "commitment_per_week", e.target.value)}
-                                      className={`${inputClass} w-[50px]`} />
+                                      className={`${inputClass} w-[50px]`} />}
                                   </td>
                                   <td className={tdClass}>{fmtNum(wd.commitmentPerMonth)}</td>
                                   <td className={tdClass}>{fmtNum(wd.committedEps)}</td>
                                   {n >= 2 && <td className={`${tdClass} font-semibold`}>{wd.cumulativeCommittedEps !== null ? fmtNum(wd.cumulativeCommittedEps) : "—"}</td>}
-                                  <td className={tdClass}>
-                                    <input type="number" min="0" step="1"
+                                  <td className={`${tdClass} ${readOnly ? "font-semibold" : ""}`}>
+                                    {readOnly ? wd.receivedEps : <input type="number" min="0" step="1"
                                       defaultValue={wd.receivedEps}
                                       onBlur={(e) => handleFieldSave({ commitmentId: p.commitmentId }, `w${n}_eps_received`, e.target.value)}
-                                      className={`${inputClass} w-[50px] font-semibold`} />
+                                      className={`${inputClass} w-[50px] font-semibold`} />}
                                   </td>
                                   {n >= 2 && <td className={`${tdClass} font-semibold`}>{wd.cumulativeReceivedEps !== null ? wd.cumulativeReceivedEps : "—"}</td>}
                                   <td className={tdClass}>{fmtNum(wd.months)}</td>
@@ -496,7 +497,16 @@ export function DeliveryRateView() {
                               );
                             }
 
-                            // No data yet — show inline inputs to fill
+                            // No data yet: read-only shows an empty group, editable shows inline inputs to fill
+                            if (readOnly) {
+                              return (
+                                <Fragment key={n}>
+                                  {Array.from({ length: waadaColCount(n) }, (_, i) => (
+                                    <td key={i} className={`${tdClass} text-gray-300 ${i === waadaColCount(n) - 1 ? "border-r border-gray-200" : ""}`}>—</td>
+                                  ))}
+                                </Fragment>
+                              );
+                            }
                             return (
                               <Fragment key={n}>
                                 <td className={tdClass}>
