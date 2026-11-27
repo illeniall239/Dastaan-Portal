@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { FileText, Mail, Phone, MapPin, Target, Lightbulb, Eye, Paperclip, Film, Loader2, ClipboardCheck, ChevronDown, ChevronRight, CalendarDays } from "lucide-react";
 import { ContentRevisions } from "@/components/ui/content-revisions";
 import { FeedbackCommunicationView } from "@/components/evaluations/feedback-communication-view";
@@ -258,26 +259,30 @@ export function CallReportDetailDialog({ report: reportProp, isOpen, onClose }: 
   // Callers pass different shapes (e.g. Team Overview's slim project card), so load the full
   // project with its writers and lay it over what was passed
   const [fullReport, setFullReport] = useState<any>(null);
+  // Until it has loaded (or failed), fields it fills show a placeholder, not "Not specified"
+  const [fullLoaded, setFullLoaded] = useState(false);
+  const [storyTitle, setStoryTitle] = useState<string | null>(null);
   useEffect(() => {
     setFullReport(null);
+    setFullLoaded(false);
+    setStoryTitle(null);
     if (!isOpen || !reportProp?.id) return;
     let cancelled = false;
     fetch(`/api/call-reports/${reportProp.id}?_t=${Date.now()}`)
       .then((r) => (r.ok ? r.json() : null))
-      .then(async (d) => {
-        const cr = d?.callReport;
-        if (!cr) return;
-        // The story's own title (it can differ from the working title)
-        if (cr.story_id) {
-          const { data: story } = await createClient().from("stories").select("title").eq("id", cr.story_id).maybeSingle();
-          if (story) cr.stories = story;
-        }
-        if (!cancelled) setFullReport(cr);
-      })
-      .catch(() => {});
+      .then((d) => { if (!cancelled && d?.callReport) setFullReport(d.callReport); })
+      .catch(() => {})
+      .finally(() => { if (!cancelled) setFullLoaded(true); });
+    // The story's own title (it can differ from the working title), in parallel with the project
+    if (reportProp.story_id) {
+      createClient().from("stories").select("title").eq("id", reportProp.story_id).maybeSingle()
+        .then(({ data }) => { if (!cancelled && data?.title) setStoryTitle(data.title); });
+    }
     return () => { cancelled = true; };
-  }, [isOpen, reportProp?.id]);
-  const report = reportProp ? { ...reportProp, ...(fullReport ?? {}) } : null;
+  }, [isOpen, reportProp?.id, reportProp?.story_id]);
+  const report = reportProp
+    ? { ...reportProp, ...(fullReport ?? {}), ...(storyTitle ? { stories: { title: storyTitle } } : {}) }
+    : null;
   const writerNames = (report?.writers || []).map((w: any) => w.writer_name).filter(Boolean).join(", ") || report?.writer_name;
   const [episodes, setEpisodes] = useState<any[]>([]);
   const [loadingEpisodes, setLoadingEpisodes] = useState(false);
@@ -407,11 +412,15 @@ export function CallReportDetailDialog({ report: reportProp, isOpen, onClose }: 
             <CardContent className="grid grid-cols-2 gap-4">
               <div>
                 <span className="text-sm text-muted-foreground">Writer:</span>
-                <p className="font-medium">{writerNames || "Not specified"}</p>
+                {writerNames || fullLoaded
+                  ? <p className="font-medium">{writerNames || "Not specified"}</p>
+                  : <Skeleton className="h-5 w-32 mt-1" />}
               </div>
               <div>
                 <span className="text-sm text-muted-foreground">Logged By:</span>
-                <p className="font-medium">{report.creator?.name || "Unknown"}</p>
+                {report.creator?.name || fullLoaded
+                  ? <p className="font-medium">{report.creator?.name || "Unknown"}</p>
+                  : <Skeleton className="h-5 w-28 mt-1" />}
               </div>
               {genres.length > 0 && (
                 <div>
@@ -435,6 +444,16 @@ export function CallReportDetailDialog({ report: reportProp, isOpen, onClose }: 
               </div>
             </CardContent>
           </Card>
+
+          {!fullLoaded && (
+            <Card>
+              <CardContent className="space-y-3 pt-6" aria-label="Loading project details">
+                <Skeleton className="h-4 w-1/3" />
+                <Skeleton className="h-4 w-2/3" />
+                <Skeleton className="h-4 w-1/2" />
+              </CardContent>
+            </Card>
+          )}
 
           {/* Content Classification */}
           {(report.category || report.content_type || report.theme || report.target_slot) && (
