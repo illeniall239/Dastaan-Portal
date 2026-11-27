@@ -34,6 +34,8 @@ interface ProjectRow {
   inHandEpisodes: number;
   commitmentDate: string | null;
   deadline: string | null;
+  contractDateText: string | null;
+  deadlineText: string | null;
   standard: {
     commitmentPerWeek: number;
     commitmentPerMonth: number;
@@ -52,6 +54,8 @@ interface ProjectRow {
     waada2: number | null;
     waada3: number | null;
     waada4: number | null;
+    waada5: number | null;
+    waada6: number | null;
   };
   monthlyEpisodes?: Record<string, number>;
 }
@@ -170,7 +174,7 @@ export function DeliveryRateView() {
   const handleAddWaadaCols = (teamId: string) => {
     setTeamWaadaCols((prev) => {
       const current = prev[teamId] || 0;
-      if (current >= 4) return prev;
+      if (current >= 6) return prev;
       return { ...prev, [teamId]: current + 1 };
     });
   };
@@ -220,24 +224,6 @@ export function DeliveryRateView() {
     });
     setLoading(true);
     fetchData();
-  };
-
-  const handleDateChange = async (commitmentId: string, field: "commitment_date" | "revised_commitment_date", value: string) => {
-    await fetch("/api/writer-commitments/delivery-rate", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ commitmentId, field, value: value || null }),
-    });
-    setProjects((prev) =>
-      prev.map((p) => {
-        if (p.commitmentId !== commitmentId) return p;
-        return {
-          ...p,
-          commitmentDate: field === "commitment_date" ? (value || null) : p.commitmentDate,
-          deadline: field === "revised_commitment_date" ? (value || null) : p.deadline,
-        };
-      })
-    );
   };
 
   // Generic field save: routes to PATCH with commitmentId or waadaId
@@ -309,7 +295,7 @@ export function DeliveryRateView() {
       {grouped.map((group) => {
         const shownWaadas = teamWaadaCols[group.teamId] || 0;
         const waadaNums = Array.from({ length: shownWaadas }, (_, i) => i + 1);
-        const canAddMore = shownWaadas < 4;
+        const canAddMore = shownWaadas < 6;
         // Waada 1 = 10 cols, Waada 2+ = 12 cols (2 extra cumulative columns)
         const waadaColCount = (n: number) => n === 1 ? 10 : 12;
         const totalWaadaCols = waadaNums.reduce((s, n) => s + waadaColCount(n), 0);
@@ -416,20 +402,19 @@ export function DeliveryRateView() {
                           <td className={`${tdClass} text-left text-gray-600 max-w-[120px] truncate`}>{p.writer}</td>
                           <td className={`${tdClass} text-gray-600`}>{p.slot || "—"}</td>
                           <td className={`${tdClass} text-gray-700`}>{p.totalEpisodes ?? "—"}</td>
+                          {/* Episodes logged in the portal (not editable) */}
+                          <td className={`${tdClass} font-semibold text-gray-900`} title="Episodes logged in the portal">{p.inHandEpisodes}</td>
+                          {/* Contract Date / Deadline: as typed in the sheet ("In Signing", "End of Aug") */}
                           <td className={tdClass}>
-                            <input type="number" min="0" step="1"
-                              defaultValue={p.inHandEpisodes}
-                              onBlur={(e) => handleFieldSave({ commitmentId: p.commitmentId }, "in_hand_eps", e.target.value)}
-                              className={`${inputClass} w-[50px] font-semibold text-gray-900`} />
-                          </td>
-                          <td className={tdClass}>
-                            <input type="date" value={p.commitmentDate || ""}
-                              onChange={(e) => handleDateChange(p.commitmentId, "commitment_date", e.target.value)}
+                            <input type="text"
+                              defaultValue={p.contractDateText ?? fmtDate(p.commitmentDate)}
+                              onBlur={(e) => { if (e.target.value !== e.target.defaultValue) handleFieldSave({ commitmentId: p.commitmentId }, "contract_date_text", e.target.value); }}
                               className={`${inputClass} w-[105px]`} />
                           </td>
                           <td className={`${tdClass} border-r border-gray-200`}>
-                            <input type="date" value={p.deadline || ""}
-                              onChange={(e) => handleDateChange(p.commitmentId, "revised_commitment_date", e.target.value)}
+                            <input type="text"
+                              defaultValue={p.deadlineText ?? fmtDate(p.deadline)}
+                              onBlur={(e) => { if (e.target.value !== e.target.defaultValue) handleFieldSave({ commitmentId: p.commitmentId }, "deadline_text", e.target.value); }}
                               className={`${inputClass} w-[105px]`} />
                           </td>
                           {/* Standard */}

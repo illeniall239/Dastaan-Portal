@@ -52,6 +52,8 @@ interface ProjectRow {
     waada2: number | null;
     waada3: number | null;
     waada4: number | null;
+    waada5: number | null;
+    waada6: number | null;
   };
 }
 

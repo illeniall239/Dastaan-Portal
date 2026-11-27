@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { fetchAll } from "@/lib/supabase/fetch-all";
 import {
   expectedPerDay,
   expectedPerMonth,
@@ -30,9 +31,12 @@ export async function GET() {
       admin.from("writer_waadas")
         .select("id, writer_commitment_id, waada_number, start_date, end_date, commitment_per_week")
         .order("waada_number"),
-      admin.from("episodes")
+      // Every current episode (more than PostgREST's 1000-row page)
+      fetchAll<{ id: string; call_report_id: string | null; created_at: string }>((from, to) => admin.from("episodes")
         .select("id, call_report_id, created_at")
-        .eq("is_current", true),
+        .eq("is_current", true)
+        .order("id")
+        .range(from, to)).then((data) => ({ data })),
       admin.from("call_reports")
         .select("id, working_title, writer_name, total_episodes, team_id, target_slot, team:teams!call_reports_team_id_fkey(name, team_head:users!teams_team_head_id_fkey(name))")
         .is("archived_at", null)
@@ -100,6 +104,8 @@ export async function GET() {
       inHandEpisodes: number;
       commitmentDate: string | null;
       deadline: string | null;
+      contractDateText: string | null; // the sheet's Contract Date as typed (may be "In Signing")
+      deadlineText: string | null;     // the sheet's Deadline as typed (e.g. "End of Aug")
       standard: {
         commitmentPerWeek: number;
         commitmentPerMonth: number;
@@ -118,6 +124,8 @@ export async function GET() {
         waada2: number | null;
         waada3: number | null;
         waada4: number | null;
+        waada5: number | null;
+        waada6: number | null;
       };
     };
 
@@ -136,8 +144,8 @@ export async function GET() {
       const stdCpw = manual?.standard_cpw != null ? Number(manual.standard_cpw) : scheduleRate * 7;
       const stdCpwPerMonth = stdCpw * (30 / 7); // formula: cpw × 30/7
 
-      // In-hand episodes: manual → auto-count from episodes table
-      const actualEps = manual?.in_hand_eps != null ? Number(manual.in_hand_eps) : (ep?.count || 0);
+      // In-hand episodes: the episodes logged in the portal
+      const actualEps = ep?.count || 0;
       const firstDate = ep?.firstDate || null;
 
       // Standard weeks & months: formula from project_initiation_date to now
@@ -175,7 +183,7 @@ export async function GET() {
         const wPerMonth = wpw * 4;
 
         // Weeks: manual override → formula (end - start) / 7
-        const wKey = `w${w.waada_number}` as "w1" | "w2" | "w3" | "w4";
+        const wKey = `w${w.waada_number}`;
         const manualWeeks = manual?.[`${wKey}_no_of_weeks`];
         const wWeeks = manualWeeks != null ? Number(manualWeeks) : Math.max(wMs / (1000 * 60 * 60 * 24 * 7), 0.1);
         const wMonths = Math.max(wMs / (1000 * 60 * 60 * 24 * 30), 0.1);
@@ -239,11 +247,14 @@ export async function GET() {
         inHandEpisodes: actualEps,
         commitmentDate: wc.commitment_date || null,
         deadline: wc.revised_commitment_date || wc.commitment_date || null,
+        contractDateText: manual?.contract_date_text ?? null,
+        deadlineText: manual?.deadline_text ?? null,
         standard: {
           commitmentPerWeek: Math.round(stdCpw * 10) / 10,
           commitmentPerMonth: Math.round(stdCpwPerMonth * 10) / 10,
           scheduleLabel: stdCpw > 0 ? (manual?.standard_cpw != null ? `${stdCpw}/week` : scheduleLabel(schedule)) : "Custom",
-          firstEpDate: firstDate ? firstDate.toISOString().slice(0, 10) : null,
+          // The stored start date the weeks are calculated from (shown and edited as "1st Ep Date")
+          firstEpDate: wc.project_initiation_date || (firstDate ? firstDate.toISOString().slice(0, 10) : null),
           weeks: Math.round(weeks * 10) / 10,
           months: Math.round(months * 10) / 10,
           totalCommitted: Math.round(totalCommitted * 10) / 10,
@@ -257,6 +268,8 @@ export async function GET() {
           waada2: waadaDetails.find((w) => w.number === 2)?.deliveryRatePercent ?? null,
           waada3: waadaDetails.find((w) => w.number === 3)?.deliveryRatePercent ?? null,
           waada4: waadaDetails.find((w) => w.number === 4)?.deliveryRatePercent ?? null,
+          waada5: waadaDetails.find((w) => w.number === 5)?.deliveryRatePercent ?? null,
+          waada6: waadaDetails.find((w) => w.number === 6)?.deliveryRatePercent ?? null,
         },
       });
     }
@@ -358,8 +371,8 @@ export async function POST(request: NextRequest) {
       .limit(1);
 
     const nextNumber = (existing?.[0]?.waada_number || 0) + 1;
-    if (nextNumber > 4) {
-      return NextResponse.json({ error: "Maximum 4 waadas allowed" }, { status: 400 });
+    if (nextNumber > 6) {
+      return NextResponse.json({ error: "Maximum 6 waadas allowed" }, { status: 400 });
     }
 
     const { data, error } = await admin
@@ -385,10 +398,13 @@ export async function POST(request: NextRequest) {
 // PATCH: Update editable fields across tables
 const COMMITMENT_FIELDS = new Set(["commitment_date", "revised_commitment_date", "project_initiation_date"]);
 const MANUAL_FIELDS = new Set([
-  "in_hand_eps", "standard_cpw", "standard_total_committed",
+  "standard_cpw", "standard_total_committed",
   "w1_eps_received", "w1_no_of_weeks", "w2_eps_received", "w2_no_of_weeks",
   "w3_eps_received", "w3_no_of_weeks", "w4_eps_received", "w4_no_of_weeks",
+  "w5_eps_received", "w5_no_of_weeks", "w6_eps_received", "w6_no_of_weeks",
+  "contract_date_text", "deadline_text",
 ]);
+const TEXT_MANUAL_FIELDS = new Set(["contract_date_text", "deadline_text"]);
 const WAADA_FIELDS = new Set(["start_date", "end_date", "commitment_per_week"]);
 
 export async function PATCH(request: NextRequest) {
@@ -415,7 +431,8 @@ export async function PATCH(request: NextRequest) {
 
     // Route 2: delivery_rate_manual fields (upsert)
     if (commitmentId && MANUAL_FIELDS.has(field)) {
-      const parsed = value === "" || value === null || value === undefined ? null : Number(value);
+      const empty = value === "" || value === null || value === undefined;
+      const parsed = empty ? null : TEXT_MANUAL_FIELDS.has(field) ? String(value).trim() || null : Number(value);
       const { error } = await admin
         .from("delivery_rate_manual")
         .upsert(

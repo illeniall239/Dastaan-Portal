@@ -50,6 +50,8 @@ interface ProjectRow {
     waada2: number | null;
     waada3: number | null;
     waada4: number | null;
+    waada5: number | null;
+    waada6: number | null;
   };
 }
 
@@ -69,6 +71,8 @@ function projectScore(p: ProjectRow): number {
   if (p.summaryRates.waada2 !== null) rates.push(p.summaryRates.waada2);
   if (p.summaryRates.waada3 !== null) rates.push(p.summaryRates.waada3);
   if (p.summaryRates.waada4 !== null) rates.push(p.summaryRates.waada4);
+  if (p.summaryRates.waada5 !== null) rates.push(p.summaryRates.waada5);
+  if (p.summaryRates.waada6 !== null) rates.push(p.summaryRates.waada6);
   if (rates.length === 0) return -1;
   return Math.round(rates.reduce((s, v) => s + v, 0) / rates.length);
 }

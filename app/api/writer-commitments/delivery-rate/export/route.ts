@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { fetchAll } from "@/lib/supabase/fetch-all";
 import {
   expectedPerDay,
   scheduleLabel,
@@ -44,9 +45,12 @@ export async function GET() {
       admin.from("writer_waadas")
         .select("id, writer_commitment_id, waada_number, start_date, end_date, commitment_per_week")
         .order("waada_number"),
-      admin.from("episodes")
+      // Every current episode (more than PostgREST's 1000-row page)
+      fetchAll<{ id: string; call_report_id: string | null; created_at: string }>((from, to) => admin.from("episodes")
         .select("id, call_report_id, created_at")
-        .eq("is_current", true),
+        .eq("is_current", true)
+        .order("id")
+        .range(from, to)).then((data) => ({ data })),
       admin.from("call_reports")
         .select("id, working_title, writer_name, total_episodes, team_id, target_slot, team:teams!call_reports_team_id_fkey(name, team_head:users!teams_team_head_id_fkey(name))")
         .is("archived_at", null)
@@ -91,10 +95,10 @@ export async function GET() {
     // Build project rows grouped by team
     type ProjectData = {
       title: string; writer: string; slot: string; totalEps: number | null;
-      inHand: number; contractDate: string | null; deadline: string | null;
+      inHand: number; contractDate: string; deadline: string; // the sheet's text, else the stored date
       std: { cpw: number; cpmo: number; totalCmtd: number; firstEp: string | null; weeks: number; months: number; inHand: number; rateMo: number; ratePct: number };
       waadas: { num: number; start: string; end: string | null; weeks: number; cpw: number; cpmo: number; cmtd: number; cumCmtd: number | null; rcvd: number; cumRcvd: number | null; months: number; rateMo: number; ratePct: number }[];
-      summaryRates: { standard: number; w1: number | null; w2: number | null; w3: number | null; w4: number | null };
+      summaryRates: { standard: number; w1: number | null; w2: number | null; w3: number | null; w4: number | null; w5: number | null; w6: number | null };
       monthlyEps: Record<string, number>;
     };
 
@@ -111,7 +115,7 @@ export async function GET() {
       const scheduleRate = expectedPerDay(schedule);
       const stdCpw = manual?.standard_cpw != null ? Number(manual.standard_cpw) : scheduleRate * 7;
       const stdCpmo = stdCpw * (30 / 7);
-      const actualEps = manual?.in_hand_eps != null ? Number(manual.in_hand_eps) : (ep?.count || 0);
+      const actualEps = ep?.count || 0; // episodes logged in the portal
       const firstDate = ep?.firstDate || null;
 
       const startRef = new Date(wc.project_initiation_date);
@@ -145,7 +149,7 @@ export async function GET() {
         const wpw = Number(w.commitment_per_week);
         const wPerMonth = wpw * 4;
 
-        const wKey = `w${w.waada_number}` as "w1" | "w2" | "w3" | "w4";
+        const wKey = `w${w.waada_number}`;
         const manualWeeks = manual?.[`${wKey}_no_of_weeks`];
         const wWeeks = manualWeeks != null ? Number(manualWeeks) : Math.max(wMs / (1000 * 60 * 60 * 24 * 7), 0.1);
         const wMonths = Math.max(wMs / (1000 * 60 * 60 * 24 * 30), 0.1);
@@ -207,13 +211,13 @@ export async function GET() {
         slot: cr.target_slot || "",
         totalEps: cr.total_episodes || null,
         inHand: actualEps,
-        contractDate: wc.commitment_date || null,
-        deadline: wc.revised_commitment_date || wc.commitment_date || null,
+        contractDate: manual?.contract_date_text || fmtDate(wc.commitment_date || null),
+        deadline: manual?.deadline_text || fmtDate(wc.revised_commitment_date || wc.commitment_date || null),
         std: {
           cpw: Math.round(stdCpw * 10) / 10,
           cpmo: Math.round(stdCpmo * 10) / 10,
           totalCmtd: Math.round(totalCommitted * 10) / 10,
-          firstEp: firstDate ? firstDate.toISOString().slice(0, 10) : null,
+          firstEp: wc.project_initiation_date || (firstDate ? firstDate.toISOString().slice(0, 10) : null),
           weeks: Math.round(weeks * 10) / 10,
           months: Math.round(months * 10) / 10,
           inHand: actualEps,
@@ -227,6 +231,8 @@ export async function GET() {
           w2: waadaDetails.find((w) => w.num === 2)?.ratePct ?? null,
           w3: waadaDetails.find((w) => w.num === 3)?.ratePct ?? null,
           w4: waadaDetails.find((w) => w.num === 4)?.ratePct ?? null,
+          w5: waadaDetails.find((w) => w.num === 5)?.ratePct ?? null,
+          w6: waadaDetails.find((w) => w.num === 6)?.ratePct ?? null,
         },
         monthlyEps: monthly,
       };
@@ -354,8 +360,8 @@ export async function GET() {
           p.slot,
           p.totalEps ?? "",
           p.inHand,
-          fmtDate(p.contractDate),
-          fmtDate(p.deadline),
+          p.contractDate,
+          p.deadline,
           // Standard
           p.std.cpw > 0 ? p.std.cpw : "",
           p.std.cpmo > 0 ? p.std.cpmo : "",
