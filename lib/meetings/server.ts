@@ -416,6 +416,7 @@ export async function getAllCallReports() {
   interface ApprovalStatus {
     isFullyApproved: boolean;
     isRejected: boolean;
+    isNeedsRevision: boolean;
     approvedCount: number;
     managementApproved: boolean;
     managementApprovals: ManagementApproval[];
@@ -496,6 +497,7 @@ export async function getAllCallReports() {
         approvalStatusMap[reportId] = {
           isFullyApproved: allMandatoryApproved && thirdApproved,
           isRejected: managementRejected,
+          isNeedsRevision: !managementRejected && approvals.some(a => a.decision === "needs_revision" && a.approver_type === "management"),
           approvedCount: approved.length,
           managementApproved: allMandatoryApproved,
           managementApprovals: mgmtApprovals,

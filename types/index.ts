@@ -617,7 +617,7 @@ export interface EpisodeWithDetails extends Episode {
 
 // Story Approval types
 export type ApproverType = 'management' | 'evaluator' | 'programmer';
-export type ApprovalDecision = 'approved' | 'rejected';
+export type ApprovalDecision = 'approved' | 'rejected' | 'needs_revision';
 
 export interface StoryApproval {
   id: string;
@@ -649,6 +649,7 @@ export interface StoryApprovalStatus {
   thirdApproved: boolean; // at least 1 non-management approval
   isFullyApproved: boolean; // all conditions met
   isRejected: boolean;
+  isNeedsRevision?: boolean; // a mandatory approver asked for revisions (in process, not rejected)
   canCurrentUserApprove: boolean;
   currentUserApproval?: StoryApproval | null;
   isCurrentUserMandatoryApprover: boolean; // true for Humera/Salman only

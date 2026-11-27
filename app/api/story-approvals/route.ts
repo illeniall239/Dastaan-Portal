@@ -140,6 +140,10 @@ export async function GET(request: NextRequest) {
     );
     const managementApproved = mandatoryApprovals.length >= MANDATORY_APPROVER_EMAILS.length;
     const managementRejected = mandatoryRejections.length > 0;
+    // A mandatory approver asked for revisions: the project is in process, not rejected
+    const managementNeedsRevision = !managementRejected && currentApprovals.some(
+      (a) => a.decision === "needs_revision" && a.approver_type === "management" && MANDATORY_APPROVER_EMAILS.includes(a.user?.email || "")
+    );
 
     // Veto path: mir's single approval = fully approved
     const vetoApproval = approvedList.find((a) => a.user?.email === VETO_APPROVER_EMAIL);
@@ -165,6 +169,8 @@ export async function GET(request: NextRequest) {
         totalRejections: rejectedList.length,
         managementApproved,
         managementRejected,
+        managementNeedsRevision,
+        isNeedsRevision: managementNeedsRevision,
         thirdApproved,
         isFullyApproved,
         isVetoApproved,
@@ -199,8 +205,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "call_report_id and decision are required" }, { status: 400 });
     }
 
-    if (!["approved", "rejected"].includes(decision)) {
-      return NextResponse.json({ error: "decision must be 'approved' or 'rejected'" }, { status: 400 });
+    if (!["approved", "rejected", "needs_revision"].includes(decision)) {
+      return NextResponse.json({ error: "decision must be 'approved', 'rejected' or 'needs_revision'" }, { status: 400 });
     }
 
     // Get current user info
@@ -331,7 +337,7 @@ export async function POST(request: NextRequest) {
           recipientIds,
           "info",
           `${approverName} evaluated a story — your review is needed`,
-          `"${storyTitle}" has been ${decision === "approved" ? "approved" : "rejected"} by evaluator ${approverName}. Please review and submit your management decision.`,
+          `"${storyTitle}" has been ${decision === "approved" ? "approved" : decision === "needs_revision" ? "sent back for revision" : "rejected"} by evaluator ${approverName}. Please review and submit your management decision.`,
           "call_report",
           call_report_id,
           user.id
@@ -353,8 +359,10 @@ export async function POST(request: NextRequest) {
         await createNotifications(
           [creatorId],
           decision === "approved" ? "success" : "warning",
-          `Management ${decisionLabel} your evaluation`,
-          `"${storyTitle}" was ${decisionLabel} by ${approverName}.${notesText}`,
+          decision === "needs_revision" ? "Management asked for revisions" : `Management ${decisionLabel} your evaluation`,
+          decision === "needs_revision"
+            ? `${approverName} asked for revisions on "${storyTitle}".${notesText}`
+            : `"${storyTitle}" was ${decisionLabel} by ${approverName}.${notesText}`,
           "call_report",
           call_report_id,
           user.id

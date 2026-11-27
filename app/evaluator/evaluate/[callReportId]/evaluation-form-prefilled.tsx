@@ -408,7 +408,9 @@ export function EvaluatorEvaluationForm({
       // Sync management decision to story approvals pipeline
       if (isManagementEvaluation) {
         try {
-          const approvalDecision = formData.decision === "approve" ? "approved" : "rejected";
+          // Needs improvement is a request for revisions, not a rejection
+          const approvalDecision = formData.decision === "approve" ? "approved"
+            : formData.decision === "reject" ? "rejected" : "needs_revision";
           const approvalRes = await fetch("/api/story-approvals", {
             method: "POST",
             headers: { "Content-Type": "application/json" },

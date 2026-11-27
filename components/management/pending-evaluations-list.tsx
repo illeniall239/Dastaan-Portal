@@ -27,6 +27,7 @@ import { CallReportDiscussion } from "@/components/call-reports/call-report-disc
 import { ShareCrossTeamButton } from "@/components/call-report/share-cross-team-button";
 import { RevisionEvaluateList } from "@/components/episodes/revision-evaluate-list";
 import { PKT_TIME_ZONE } from "@/lib/utils/format-date";
+import { voteStyle } from "@/lib/approvals/config";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -45,7 +46,7 @@ interface PendingCallReport {
 }
 
 interface ReviewedCallReport extends PendingCallReport {
-  myDecision: 'approved' | 'rejected' | null;
+  myDecision: 'approved' | 'rejected' | 'needs_revision' | null;
   myNotes: string | null;
   decidedAt: string | null;
 }
@@ -194,7 +195,7 @@ export function PendingEvaluationsList({ userRole, userId, embedded }: PendingEv
   const [fetchError, setFetchError] = useState<string | null>(null);
 
   const [search, setSearch] = useState("");
-  const [decisionFilter, setDecisionFilter] = useState<"all" | "approved" | "rejected">("all");
+  const [decisionFilter, setDecisionFilter] = useState<"all" | "approved" | "needs_revision" | "rejected">("all");
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [selectedTitle, setSelectedTitle] = useState<string>("");
@@ -298,7 +299,7 @@ export function PendingEvaluationsList({ userRole, userId, embedded }: PendingEv
           />
         </div>
         <div className="flex gap-1.5 shrink-0">
-          {(["all", "approved", "rejected"] as const).map((f) => (
+          {(["all", "approved", "needs_revision", "rejected"] as const).map((f) => (
             <Button
               key={f}
               size="sm"
@@ -311,10 +312,12 @@ export function PendingEvaluationsList({ userRole, userId, embedded }: PendingEv
                   ? "bg-green-600 hover:bg-green-700"
                   : f === "rejected"
                   ? "bg-red-600 hover:bg-red-700"
+                  : f === "needs_revision"
+                  ? "bg-amber-600 hover:bg-amber-700"
                   : ""
               }
             >
-              {f === "all" ? "All" : f === "approved" ? "Approved" : "Rejected"}
+              {f === "all" ? "All" : voteStyle(f).label}
             </Button>
           ))}
         </div>
@@ -418,11 +421,7 @@ export function PendingEvaluationsList({ userRole, userId, embedded }: PendingEv
           {filteredReviewed.map((cr) => (
             <Card
               key={cr.id}
-              className={`hover:shadow-sm transition-shadow border-l-4 ${
-                cr.myDecision === "approved"
-                  ? "border-l-green-500"
-                  : "border-l-red-500"
-              }`}
+              className={`hover:shadow-sm transition-shadow border-l-4 ${voteStyle(cr.myDecision).border}`}
             >
               <CardContent className="py-4 px-5 space-y-3">
                 <div className="flex items-center justify-between gap-4">
@@ -436,13 +435,9 @@ export function PendingEvaluationsList({ userRole, userId, embedded }: PendingEv
                       </Badge>
                       <Badge
                         variant="outline"
-                        className={`text-xs shrink-0 ${
-                          cr.myDecision === "approved"
-                            ? "bg-green-100 text-green-800 border-green-300"
-                            : "bg-red-100 text-red-800 border-red-300"
-                        }`}
+                        className={`text-xs shrink-0 ${voteStyle(cr.myDecision).badge}`}
                       >
-                        {cr.myDecision === "approved" ? "Approved" : "Rejected"}
+                        {voteStyle(cr.myDecision).label}
                       </Badge>
                     </div>
                     <div className="flex items-center gap-4 mt-1.5 text-sm text-slate-500">

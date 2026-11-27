@@ -11,6 +11,7 @@ import { TeamBadge } from "@/components/shared/team-badge";
 import { RevisionEvaluateList } from "@/components/episodes/revision-evaluate-list";
 import { ContentRevisions } from "@/components/ui/content-revisions";
 import { PKT_TIME_ZONE } from "@/lib/utils/format-date";
+import { voteStyle } from "@/lib/approvals/config";
 
 interface CallReportCardProps {
   report: any;
@@ -121,11 +122,17 @@ export function CallReportCard({ report, portalPrefix = "evaluator", isTeamHead 
                     Story Rejected
                   </Badge>
                 )}
+                {canSeeApprovalStatus && report.approval_status?.isNeedsRevision && (
+                  <Badge variant="secondary" className="text-xs bg-amber-100 text-amber-800 border-amber-300">
+                    Needs Revision
+                  </Badge>
+                )}
                 {canSeeApprovalStatus &&
                   report.evaluation_log?.final_decision &&
                   report.approval_status &&
                   !report.approval_status.isFullyApproved &&
                   !report.approval_status.isRejected &&
+                  !report.approval_status.isNeedsRevision &&
                   !report.approval_status.managementApproved && (
                   <Badge variant="secondary" className="text-xs bg-amber-100 text-amber-800 border-amber-300">
                     Waiting on Management&apos;s Approval
@@ -240,12 +247,12 @@ export function CallReportCard({ report, portalPrefix = "evaluator", isTeamHead 
                         {ma.decision === "approved" ? (
                           <CheckCircle2 className="h-3.5 w-3.5 text-green-600" />
                         ) : (
-                          <XCircle className="h-3.5 w-3.5 text-red-600" />
+                          <XCircle className={`h-3.5 w-3.5 ${voteStyle(ma.decision).text}`} />
                         )}
                         <span className="font-medium text-slate-700">{ma.name}</span>
                       </div>
-                      <span className={ma.decision === "approved" ? "text-green-600 font-medium" : "text-red-600 font-medium"}>
-                        {ma.decision === "approved" ? "Approved" : "Rejected"}
+                      <span className={`${voteStyle(ma.decision).text} font-medium`}>
+                        {voteStyle(ma.decision).label}
                       </span>
                     </div>
                   ))}

@@ -33,7 +33,7 @@ import {
 } from "lucide-react";
 import { EvaluationProgressBar } from "@/components/evaluations/evaluation-progress-bar";
 import { IndividualEvaluationProgress } from "@/components/evaluations/individual-evaluation-progress";
-import { MANDATORY_APPROVERS } from "@/lib/approvals/config";
+import { MANDATORY_APPROVERS, voteStyle } from "@/lib/approvals/config";
 import { CallReportDiscussion } from "@/components/call-reports/call-report-discussion";
 import { RevisionEvaluateList } from "@/components/episodes/revision-evaluate-list";
 import { PKT_TIME_ZONE } from "@/lib/utils/format-date";
@@ -74,6 +74,7 @@ interface EvaluationCardProps {
     approvals: any[];
     isFullyApproved: boolean;
     isRejected: boolean;
+    isNeedsRevision?: boolean;
     managementApproved?: boolean;
   } | null;
   currentUserId?: string;
@@ -204,6 +205,11 @@ export function EvaluationCard({
                   <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs bg-red-100 text-red-800 border border-red-300">
                     <XCircle className="h-3 w-3" />
                     Rejected
+                  </span>
+                ) : approvalStatus.isNeedsRevision ? (
+                  <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs bg-amber-100 text-amber-800 border border-amber-300">
+                    <Clock className="h-3 w-3" />
+                    Needs Revision
                   </span>
                 ) : approvalStatus.managementApproved ? (
                   <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs bg-blue-100 text-blue-800 border border-blue-300">
@@ -371,8 +377,8 @@ export function EvaluationCard({
                           <CheckCircle2 className="h-3 w-3" /> Approved
                         </span>
                       ) : (
-                        <span className="text-red-600 flex items-center gap-1">
-                          <XCircle className="h-3 w-3" /> Rejected
+                        <span className={`${voteStyle(vote.decision).text} flex items-center gap-1`}>
+                          <XCircle className="h-3 w-3" /> {voteStyle(vote.decision).label}
                         </span>
                       )}
                       {vote && (

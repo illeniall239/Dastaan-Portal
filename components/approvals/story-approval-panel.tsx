@@ -16,7 +16,7 @@ import {
   RefreshCw,
 } from "lucide-react";
 import type { StoryApprovalStatus, ApprovalHistoryRound } from "@/types";
-import { MANDATORY_APPROVERS, VETO_APPROVER } from "@/lib/approvals/config";
+import { MANDATORY_APPROVERS, VETO_APPROVER, voteStyle } from "@/lib/approvals/config";
 import { PKT_TIME_ZONE } from "@/lib/utils/format-date";
 
 interface StoryApprovalPanelProps {
@@ -102,6 +102,7 @@ export function StoryApprovalPanel({ callReportId, evaluationCompleted }: StoryA
     isFullyApproved,
     isVetoApproved,
     isRejected,
+    isNeedsRevision,
     canCurrentUserApprove,
     currentUserApproval,
     isCurrentUserMandatoryApprover,
@@ -134,12 +135,12 @@ export function StoryApprovalPanel({ callReportId, evaluationCompleted }: StoryA
             <CardTitle className="text-base">Story Approval Gate</CardTitle>
           </div>
           <div className="flex items-center gap-2">
-            {(isFullyApproved || isRejected || !isCurrentUserMandatoryApprover) && (
+            {(isFullyApproved || isRejected || isNeedsRevision || !isCurrentUserMandatoryApprover) && (
               <Badge
                 variant={isFullyApproved ? "default" : isRejected ? "destructive" : "secondary"}
-                className="text-xs"
+                className={`text-xs ${isNeedsRevision ? "bg-amber-100 text-amber-800 border-amber-300" : ""}`}
               >
-                {isVetoApproved ? "Veto Approved" : isFullyApproved ? "Fully Approved" : isRejected ? "Rejected" : `${approvedCount}/3 Approvals`}
+                {isVetoApproved ? "Veto Approved" : isFullyApproved ? "Fully Approved" : isRejected ? "Rejected" : isNeedsRevision ? "Needs Revision" : `${approvedCount}/3 Approvals`}
               </Badge>
             )}
             <Button
@@ -200,21 +201,15 @@ export function StoryApprovalPanel({ callReportId, evaluationCompleted }: StoryA
                 <div className="flex items-center gap-2">
                   {currentUserApproval?.decision === "approved" ? (
                     <CheckCircle2 className="h-4 w-4 text-green-600" />
-                  ) : currentUserApproval?.decision === "rejected" ? (
-                    <XCircle className="h-4 w-4 text-red-600" />
+                  ) : currentUserApproval?.decision ? (
+                    <XCircle className={`h-4 w-4 ${voteStyle(currentUserApproval.decision).text}`} />
                   ) : (
                     <Clock className="h-4 w-4 text-amber-500" />
                   )}
                   <span>{currentUserApproval?.user?.name || currentUserName || "You"}</span>
                 </div>
-                <span className={`text-xs ${
-                  currentUserApproval?.decision === "approved" ? "text-green-600" :
-                  currentUserApproval?.decision === "rejected" ? "text-red-600" :
-                  "text-amber-500"
-                }`}>
-                  {currentUserApproval?.decision === "approved" ? "Approved" :
-                   currentUserApproval?.decision === "rejected" ? "Rejected" :
-                   "Pending"}
+                <span className={`text-xs ${currentUserApproval?.decision ? voteStyle(currentUserApproval.decision).text : "text-amber-500"}`}>
+                  {currentUserApproval?.decision ? voteStyle(currentUserApproval.decision).label : "Pending"}
                   {currentUserApproval?.created_at && (
                     <span className="text-muted-foreground ml-1">
                       ({new Date(currentUserApproval.created_at).toLocaleDateString("en-US", { timeZone: PKT_TIME_ZONE, month: "short", day: "numeric" })})
@@ -229,21 +224,15 @@ export function StoryApprovalPanel({ callReportId, evaluationCompleted }: StoryA
                   <div className="flex items-center gap-2">
                     {ms.approval?.decision === "approved" ? (
                       <CheckCircle2 className="h-4 w-4 text-green-600" />
-                    ) : ms.approval?.decision === "rejected" ? (
-                      <XCircle className="h-4 w-4 text-red-600" />
+                    ) : ms.approval?.decision ? (
+                      <XCircle className={`h-4 w-4 ${voteStyle(ms.approval.decision).text}`} />
                     ) : (
                       <Clock className="h-4 w-4 text-amber-500" />
                     )}
                     <span>{ms.approval?.user?.name || ms.label}</span>
                   </div>
-                  <span className={`text-xs ${
-                    ms.approval?.decision === "approved" ? "text-green-600" :
-                    ms.approval?.decision === "rejected" ? "text-red-600" :
-                    "text-amber-500"
-                  }`}>
-                    {ms.approval?.decision === "approved" ? "Approved" :
-                     ms.approval?.decision === "rejected" ? "Rejected" :
-                     "Pending"}
+                  <span className={`text-xs ${ms.approval?.decision ? voteStyle(ms.approval.decision).text : "text-amber-500"}`}>
+                    {ms.approval?.decision ? voteStyle(ms.approval.decision).label : "Pending"}
                     {ms.approval?.created_at && (
                       <span className="text-muted-foreground ml-1">
                         ({new Date(ms.approval.created_at).toLocaleDateString("en-US", { timeZone: PKT_TIME_ZONE, month: "short", day: "numeric" })})
@@ -273,7 +262,7 @@ export function StoryApprovalPanel({ callReportId, evaluationCompleted }: StoryA
                     {a.decision === "approved" ? (
                       <CheckCircle2 className="h-4 w-4 text-green-600" />
                     ) : (
-                      <XCircle className="h-4 w-4 text-red-600" />
+                      <XCircle className={`h-4 w-4 ${voteStyle(a.decision).text}`} />
                     )}
                     <span>{a.user?.name || "Unknown"}</span>
                     <Badge variant="outline" className="text-[10px] px-1 py-0 h-4">
@@ -282,8 +271,8 @@ export function StoryApprovalPanel({ callReportId, evaluationCompleted }: StoryA
                        a.approver_type}
                     </Badge>
                   </div>
-                  <span className={`text-xs ${a.decision === "approved" ? "text-green-600" : "text-red-600"}`}>
-                    {a.decision === "approved" ? "Approved" : "Rejected"}
+                  <span className={`text-xs ${voteStyle(a.decision).text}`}>
+                    {voteStyle(a.decision).label}
                     <span className="text-muted-foreground ml-1">
                       ({new Date(a.created_at).toLocaleDateString("en-US", { timeZone: PKT_TIME_ZONE, month: "short", day: "numeric" })})
                     </span>
@@ -366,7 +355,7 @@ export function StoryApprovalPanel({ callReportId, evaluationCompleted }: StoryA
                         {a.decision === "approved" ? "✓" : "✗"}
                       </span>
                       <span>{a.user?.name || "Unknown"}:</span>
-                      <span>{a.decision}</span>
+                      <span>{voteStyle(a.decision).label}</span>
                       {a.notes && <span className="italic">— {a.notes}</span>}
                     </div>
                   ))}

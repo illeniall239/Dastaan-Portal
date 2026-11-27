@@ -82,6 +82,7 @@ export async function GET(request: Request) {
         approvals,
         isFullyApproved: mgmtApproved >= 2 && thirdApproved >= 1,
         isRejected: mgmtRejected > 0,
+        isNeedsRevision: mgmtRejected === 0 && approvals.some((a: any) => a.approver_type === "management" && a.decision === "needs_revision"),
         managementApproved: mgmtApproved >= 2,
       };
     }

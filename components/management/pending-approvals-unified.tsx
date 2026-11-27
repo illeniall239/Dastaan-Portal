@@ -30,6 +30,7 @@ import {
 import { ContentRevisions } from "@/components/ui/content-revisions";
 import { CallReportDiscussion, DiscussionThread } from "@/components/call-reports/call-report-discussion";
 import { ShareCrossTeamButton } from "@/components/call-report/share-cross-team-button";
+import { voteStyle } from "@/lib/approvals/config";
 import { RevisionEvaluateList } from "@/components/episodes/revision-evaluate-list";
 import { FeedbackCommunicationView } from "@/components/evaluations/feedback-communication-view";
 import { formatDistanceToNow } from "date-fns";
@@ -62,7 +63,7 @@ interface PendingCallReport {
 }
 
 interface ReviewedCallReport extends PendingCallReport {
-  myDecision: "approved" | "rejected" | null;
+  myDecision: "approved" | "rejected" | "needs_revision" | null;
   myNotes: string | null;
   decidedAt: string | null;
 }
@@ -748,19 +749,15 @@ function UnifiedProjectCard({
                   {/* Reviewed one-liner */}
                   {p.reviewedOneLiner && (
                     <div className={`rounded-lg border bg-white p-3 border-l-4 ${
-                      p.reviewedOneLiner.myDecision === "approved" ? "border-l-green-500" : "border-l-red-500"
+                      voteStyle(p.reviewedOneLiner.myDecision).border
                     }`}>
                       <div className="flex items-center justify-between gap-3">
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-2 flex-wrap">
                             <FileText className="h-3.5 w-3.5 text-slate-400" />
                             <span className="text-sm text-slate-700">One-Liner</span>
-                            <Badge variant="outline" className={`text-xs ${
-                              p.reviewedOneLiner.myDecision === "approved"
-                                ? "bg-green-100 text-green-800 border-green-300"
-                                : "bg-red-100 text-red-800 border-red-300"
-                            }`}>
-                              {p.reviewedOneLiner.myDecision === "approved" ? "Approved" : "Rejected"}
+                            <Badge variant="outline" className={`text-xs ${voteStyle(p.reviewedOneLiner.myDecision).badge}`}>
+                              {voteStyle(p.reviewedOneLiner.myDecision).label}
                             </Badge>
                           </div>
                           {p.reviewedOneLiner.decidedAt && (
