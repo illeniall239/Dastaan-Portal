@@ -15,7 +15,6 @@ import { EvaluatingVersionBanner, useRevisions, episodeVersionLabel } from "@/co
 import { EpisodeNav } from "@/components/episodes/episode-nav";
 import type { Episode, EpisodicEvaluation } from "@/types";
 import type { EpisodicEvaluationFormData } from "@/lib/validations/episodic-evaluations";
-import { MANDATORY_APPROVER_EMAILS } from "@/lib/approvals/config";
 
 interface EpisodePageProps {
   params: Promise<{ id: string }>;
@@ -33,7 +32,6 @@ export default function ManagementEvaluateEpisodePage({ params }: EpisodePagePro
   const [loading, setLoading] = useState(true);
   const [userRole, setUserRole] = useState<string | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
-  const [isMandatoryApprover, setIsMandatoryApprover] = useState(false);
   const { data: revisions } = useRevisions("/api/episodes", episodeId, !!revisionId);
   const revisionNumber = revisionId ? revisions?.find((r) => r.id === revisionId)?.revision_number : null;
   // Set after submitting this episode's evaluation: shows the "evaluate next" bar
@@ -68,7 +66,6 @@ export default function ManagementEvaluateEpisodePage({ params }: EpisodePagePro
 
       setCurrentUserId(user.id);
       setUserRole(userData.role);
-      setIsMandatoryApprover(MANDATORY_APPROVER_EMAILS.includes(userData.email || ""));
     }
 
     checkUser();
@@ -147,18 +144,8 @@ export default function ManagementEvaluateEpisodePage({ params }: EpisodePagePro
         throw new Error(data.error || "Failed to submit evaluation");
       }
 
-      // Sync decision to episode.approval_status — only for mandatory approvers (Humera & Salman)
-      if (formData.decision && episodeId && isMandatoryApprover) {
-        const approvalStatus =
-          formData.decision === "approve" ? "approved" :
-          formData.decision === "reject" ? "rejected" :
-          "needs_revision";
-        await fetch(`/api/episodes/${episodeId}/approval`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ approval_status: approvalStatus }),
-        });
-      }
+      // The episode's approval status is derived in the database from Humera's and Salman's own
+      // evaluations (approved only when both approve) — nothing to sync here
 
       if (editing) {
         toast.success("Evaluation updated successfully!");
