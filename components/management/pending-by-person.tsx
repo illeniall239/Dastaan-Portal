@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Loader2, User, FileText, Film, Clock, CheckCircle2 } from "lucide-react";
+import { Loader2, User, FileText, Film, Clock, CheckCircle2, ChevronRight } from "lucide-react";
 import { PKT_TIME_ZONE } from "@/lib/utils/format-date";
 
 interface PersonPending {
@@ -30,6 +30,7 @@ interface PendingEpisode {
   id: string;
   episodeNumber: number;
   title: string | null;
+  projectId: string;
   projectTitle: string;
   contentTeam: { name: string; score: number } | null; // the content team member's own score
   avg?: number | null; // Content Head average (head's evaluation + content team), when both exist
@@ -64,6 +65,7 @@ interface EvaluatedEpisode {
   id: string;
   episodeNumber: number;
   title: string | null;
+  projectId: string;
   projectTitle: string;
   contentTeam: { name: string; score: number } | null; // the content team member's own score
   avg?: number | null; // Content Head average (head's evaluation + content team), when both exist
@@ -144,6 +146,42 @@ function getBadgeProps(name: string, role: string) {
     label: override?.label || ROLE_LABELS[role] || role,
     color: override?.color || ROLE_COLORS[role] || "",
   };
+}
+
+/** Episodes grouped by project, keeping the list's order (pending: longest waiting first) */
+function byProject<T extends { projectId: string; projectTitle: string }>(eps: T[]) {
+  const groups = new Map<string, { title: string; eps: T[] }>();
+  for (const ep of eps) {
+    const g = groups.get(ep.projectId) ?? { title: ep.projectTitle, eps: [] };
+    g.eps.push(ep);
+    groups.set(ep.projectId, g);
+  }
+  return [...groups.entries()];
+}
+
+/** A project's episodes, collapsed to one line with the count until opened */
+function ProjectGroup({ title, count, countClass, extra, children }: {
+  title: string;
+  count: string;
+  countClass: string;
+  extra?: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  return (
+    <details className="group rounded-md border border-gray-200 bg-white">
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-3 py-2 select-none hover:bg-gray-50/50 [&::-webkit-details-marker]:hidden">
+        <span className="flex items-center gap-1.5 text-xs font-medium text-gray-800 min-w-0">
+          <ChevronRight className="h-3.5 w-3.5 shrink-0 text-gray-400 transition-transform group-open:rotate-90" />
+          <span className="truncate">{title}</span>
+        </span>
+        <span className="flex shrink-0 items-center gap-2 text-xs">
+          {extra}
+          <Badge variant="outline" className={`text-[10px] px-1.5 py-0 font-semibold ${countClass}`}>{count}</Badge>
+        </span>
+      </summary>
+      <div className="border-t border-gray-100">{children}</div>
+    </details>
+  );
 }
 
 // ── Drill-Down Dialog ───────────────────────────────────────────────────────
@@ -318,42 +356,50 @@ function PendingDetailDialog({ userId, personName, personRole, onClose }: {
                         <Clock className="h-3.5 w-3.5 text-amber-500" />
                         <span className="text-xs font-semibold text-amber-600">Pending ({pendingEp.length})</span>
                       </div>
-                      <table className="w-full text-xs">
-                        <thead>
-                          <tr className="border-b bg-amber-50/50">
-                            <th className="text-left py-2 px-3 font-medium text-gray-500">Project</th>
-                            <th className="text-left py-2 px-3 font-medium text-gray-500">Episode</th>
-                            <th className="text-left py-2 px-3 font-medium text-gray-500">Submitted</th>
-                            <th className="text-right py-2 px-3 font-medium text-gray-500">Waiting</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {pendingEp.map((ep) => (
-                            <tr key={ep.id} className="border-b border-gray-50 last:border-0 hover:bg-gray-50/50">
-                              <td className="py-2 px-3 font-medium text-gray-800">{ep.projectTitle}</td>
-                              <td className="py-2 px-3">
-                                <Badge variant="outline" className="text-[10px] px-1.5 py-0">
-                                  Ep {ep.episodeNumber}
-                                </Badge>
-                                {ep.revisions > 0 && (
-                                  <Badge variant="outline" className="text-[10px] px-1 py-0 ml-1 bg-violet-50 text-violet-600 border-violet-200">
-                                    {ep.revisions}R
-                                  </Badge>
-                                )}
-                                {ep.title && <span className="ml-1.5 text-gray-500">{ep.title}</span>}
-                                {ep.contentTeam && <span className="ml-1.5"><ContentTeamChip ct={ep.contentTeam} /></span>}
-                              </td>
-                              <td className="py-2 px-3 text-gray-500">{formatDate(ep.date)}</td>
-                              <td className="py-2 px-3 text-right">
-                                <span className={`inline-flex items-center gap-1 font-semibold ${daysColor(ep.daysPending)}`}>
-                                  <Clock className="h-3 w-3" />
-                                  {ep.daysPending}d
-                                </span>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
+                      <div className="space-y-1.5">
+                        {byProject(pendingEp).map(([projectId, g]) => (
+                          <ProjectGroup
+                            key={projectId}
+                            title={g.title}
+                            count={`${g.eps.length} pending`}
+                            countClass="bg-amber-50 text-amber-700 border-amber-200"
+                            extra={
+                              <span className={`inline-flex items-center gap-1 font-semibold ${daysColor(g.eps[0].daysPending)}`} title="Longest waiting">
+                                <Clock className="h-3 w-3" />
+                                {g.eps[0].daysPending}d
+                              </span>
+                            }
+                          >
+                            <table className="w-full text-xs">
+                              <tbody>
+                                {g.eps.map((ep) => (
+                                  <tr key={ep.id} className="border-b border-gray-50 last:border-0 hover:bg-gray-50/50">
+                                    <td className="py-2 px-3 whitespace-nowrap">
+                                      <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+                                        Ep {ep.episodeNumber}
+                                      </Badge>
+                                      {ep.revisions > 0 && (
+                                        <Badge variant="outline" className="text-[10px] px-1 py-0 ml-1 bg-violet-50 text-violet-600 border-violet-200">
+                                          {ep.revisions}R
+                                        </Badge>
+                                      )}
+                                      {ep.title && <span className="ml-1.5 text-gray-500">{ep.title}</span>}
+                                      {ep.contentTeam && <span className="ml-1.5"><ContentTeamChip ct={ep.contentTeam} /></span>}
+                                    </td>
+                                    <td className="py-2 px-3 text-gray-500">{formatDate(ep.date)}</td>
+                                    <td className="py-2 px-3 text-right">
+                                      <span className={`inline-flex items-center gap-1 font-semibold ${daysColor(ep.daysPending)}`}>
+                                        <Clock className="h-3 w-3" />
+                                        {ep.daysPending}d
+                                      </span>
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </ProjectGroup>
+                        ))}
+                      </div>
                     </div>
                   )}
 
@@ -364,51 +410,54 @@ function PendingDetailDialog({ userId, personName, personRole, onClose }: {
                         <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />
                         <span className="text-xs font-semibold text-green-600">Rated ({evaluatedEp.length})</span>
                       </div>
-                      <table className="w-full text-xs">
-                        <thead>
-                          <tr className="border-b bg-green-50/50">
-                            <th className="text-left py-2 px-3 font-medium text-gray-500">Project</th>
-                            <th className="text-left py-2 px-3 font-medium text-gray-500">Episode</th>
-                            <th className="text-left py-2 px-3 font-medium text-gray-500">Evaluations</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {evaluatedEp.map((ep) => (
-                            <tr key={ep.id} className="border-b border-gray-50 last:border-0 hover:bg-gray-50/50">
-                              <td className="py-2 px-3 font-medium text-gray-800">{ep.projectTitle}</td>
-                              <td className="py-2 px-3">
-                                <Badge variant="outline" className="text-[10px] px-1.5 py-0">
-                                  Ep {ep.episodeNumber}
-                                </Badge>
-                                {ep.revisions > 0 && (
-                                  <Badge variant="outline" className="text-[10px] px-1 py-0 ml-1 bg-violet-50 text-violet-600 border-violet-200">
-                                    {ep.revisions}R
-                                  </Badge>
-                                )}
-                                {ep.title && <span className="ml-1.5 text-gray-500">{ep.title}</span>}
-                              </td>
-                              <td className="py-2 px-3">
-                                <div className="flex flex-wrap gap-1">
-                                  {ep.evaluations.map((ev, i) => (
-                                    <span key={i} className="inline-flex items-center gap-1">
-                                      <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${scoreColor(ev.overallAverage ?? 0)}`}>
-                                        {ev.evaluatorName}: {ev.overallAverage != null ? ev.overallAverage.toFixed(1) : "—"}
+                      <div className="space-y-1.5">
+                        {byProject(evaluatedEp).map(([projectId, g]) => (
+                          <ProjectGroup
+                            key={projectId}
+                            title={g.title}
+                            count={`${g.eps.length} rated`}
+                            countClass="bg-green-50 text-green-700 border-green-200"
+                          >
+                            <table className="w-full text-xs">
+                              <tbody>
+                                {g.eps.map((ep) => (
+                                  <tr key={ep.id} className="border-b border-gray-50 last:border-0 hover:bg-gray-50/50">
+                                    <td className="py-2 px-3 whitespace-nowrap">
+                                      <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+                                        Ep {ep.episodeNumber}
                                       </Badge>
-                                      {ev.overallGrade && (
-                                        <Badge variant="outline" className={`text-[10px] px-1 py-0 font-bold ${gradeColor(ev.overallGrade)}`}>
-                                          {ev.overallGrade}
+                                      {ep.revisions > 0 && (
+                                        <Badge variant="outline" className="text-[10px] px-1 py-0 ml-1 bg-violet-50 text-violet-600 border-violet-200">
+                                          {ep.revisions}R
                                         </Badge>
                                       )}
-                                    </span>
-                                  ))}
-                                  <ContentTeamChip ct={ep.contentTeam} />
-                                  <AvgChip avg={ep.avg} />
-                                </div>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
+                                      {ep.title && <span className="ml-1.5 text-gray-500">{ep.title}</span>}
+                                    </td>
+                                    <td className="py-2 px-3">
+                                      <div className="flex flex-wrap gap-1">
+                                        {ep.evaluations.map((ev, i) => (
+                                          <span key={i} className="inline-flex items-center gap-1">
+                                            <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${scoreColor(ev.overallAverage ?? 0)}`}>
+                                              {ev.evaluatorName}: {ev.overallAverage != null ? ev.overallAverage.toFixed(1) : "—"}
+                                            </Badge>
+                                            {ev.overallGrade && (
+                                              <Badge variant="outline" className={`text-[10px] px-1 py-0 font-bold ${gradeColor(ev.overallGrade)}`}>
+                                                {ev.overallGrade}
+                                              </Badge>
+                                            )}
+                                          </span>
+                                        ))}
+                                        <ContentTeamChip ct={ep.contentTeam} />
+                                        <AvgChip avg={ep.avg} />
+                                      </div>
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </ProjectGroup>
+                        ))}
+                      </div>
                     </div>
                   )}
                 </div>
