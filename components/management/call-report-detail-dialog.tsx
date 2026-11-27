@@ -47,17 +47,6 @@ const getCategoryLabel = (category: string): string => {
   return labels[category] || category;
 };
 
-const getStatusColor = (status: string): string => {
-  const colors: Record<string, string> = {
-    draft: "bg-slate-100 text-slate-700 border-slate-200",
-    ready_for_evaluation: "bg-blue-100 text-blue-700 border-blue-200",
-    in_review: "bg-yellow-100 text-yellow-700 border-yellow-200",
-    approved: "bg-green-100 text-green-700 border-green-200",
-    rejected: "bg-red-100 text-red-700 border-red-200",
-  };
-  return colors[status] || "bg-slate-100 text-slate-700 border-slate-200";
-};
-
 // ── helpers for the eval section ──────────────────────────────────────────
 // Who an evaluation is from, by the team the API sorted it into (not the person's role: e.g. Salman is
 // management but evaluates with the Programming Team)
@@ -265,7 +254,31 @@ function EvalGroupPanel({ group, kind, showDecision }: { group: EvalGroup; kind:
   );
 }
 
-export function CallReportDetailDialog({ report, isOpen, onClose }: CallReportDetailDialogProps) {
+export function CallReportDetailDialog({ report: reportProp, isOpen, onClose }: CallReportDetailDialogProps) {
+  // Callers pass different shapes (e.g. Team Overview's slim project card), so load the full
+  // project with its writers and lay it over what was passed
+  const [fullReport, setFullReport] = useState<any>(null);
+  useEffect(() => {
+    setFullReport(null);
+    if (!isOpen || !reportProp?.id) return;
+    let cancelled = false;
+    fetch(`/api/call-reports/${reportProp.id}?_t=${Date.now()}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then(async (d) => {
+        const cr = d?.callReport;
+        if (!cr) return;
+        // The story's own title (it can differ from the working title)
+        if (cr.story_id) {
+          const { data: story } = await createClient().from("stories").select("title").eq("id", cr.story_id).maybeSingle();
+          if (story) cr.stories = story;
+        }
+        if (!cancelled) setFullReport(cr);
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [isOpen, reportProp?.id]);
+  const report = reportProp ? { ...reportProp, ...(fullReport ?? {}) } : null;
+  const writerNames = (report?.writers || []).map((w: any) => w.writer_name).filter(Boolean).join(", ") || report?.writer_name;
   const [episodes, setEpisodes] = useState<any[]>([]);
   const [loadingEpisodes, setLoadingEpisodes] = useState(false);
   const [attachments, setAttachments] = useState<any[]>([]);
@@ -394,7 +407,7 @@ export function CallReportDetailDialog({ report, isOpen, onClose }: CallReportDe
             <CardContent className="grid grid-cols-2 gap-4">
               <div>
                 <span className="text-sm text-muted-foreground">Writer:</span>
-                <p className="font-medium">{report.writer_name || "Not specified"}</p>
+                <p className="font-medium">{writerNames || "Not specified"}</p>
               </div>
               <div>
                 <span className="text-sm text-muted-foreground">Logged By:</span>
@@ -414,16 +427,6 @@ export function CallReportDetailDialog({ report, isOpen, onClose }: CallReportDe
                 <div>
                   <span className="text-sm text-muted-foreground">Theme:</span>
                   <p className="font-medium">{report.theme}</p>
-                </div>
-              )}
-              {report.status && (
-                <div>
-                  <span className="text-sm text-muted-foreground">Status:</span>
-                  <div className="mt-1">
-                    <Badge className={getStatusColor(report.status)}>
-                      {report.status.replace(/_/g, " ")}
-                    </Badge>
-                  </div>
                 </div>
               )}
               <div>
@@ -554,8 +557,7 @@ export function CallReportDetailDialog({ report, isOpen, onClose }: CallReportDe
 
           {/* Evaluation Status */}
           {/* Only when there's something to show (Team Overview projects carry none of these) */}
-          {(report.average_initial_assessment || report.overall_rating || report.evaluation_deadline
-            || (report.required_evaluators && report.completed_evaluations !== undefined)) && (
+          {(report.average_initial_assessment || report.overall_rating || crEvals.length > 0) && (
             <Card>
               <CardHeader>
                 <CardTitle className="text-lg flex items-center gap-2">
@@ -574,30 +576,15 @@ export function CallReportDetailDialog({ report, isOpen, onClose }: CallReportDe
                       )}
                     </div>
                   )}
-                  {report.evaluation_deadline && (
+                  {/* Submitted one-liner evaluations, every version (the old "x / 5 evaluators" counter isn't
+                      maintained and skipped management and programming evaluations) */}
+                  {crEvals.length > 0 && (
                     <div>
-                      <span className="text-sm text-muted-foreground">Evaluation Deadline:</span>
-                      <p className="font-medium">{formatDate(report.evaluation_deadline)}</p>
+                      <span className="text-sm text-muted-foreground">Evaluations:</span>
+                      <p className="font-medium">{crEvals.length} submitted</p>
                     </div>
                   )}
                 </div>
-                {(report.required_evaluators && report.completed_evaluations !== undefined) && (
-                  <div>
-                    <span className="text-sm text-muted-foreground">Evaluation Progress:</span>
-                    <div className="mt-2">
-                      <div className="flex justify-between text-sm mb-1">
-                        <span>{report.completed_evaluations} / {report.required_evaluators} completed</span>
-                        <span>{Math.round((report.completed_evaluations / report.required_evaluators) * 100)}%</span>
-                      </div>
-                      <div className="w-full bg-gray-200 rounded-full h-2">
-                        <div
-                          className="bg-blue-600 h-2 rounded-full transition-all"
-                          style={{ width: `${(report.completed_evaluations / report.required_evaluators) * 100}%` }}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                )}
               </CardContent>
             </Card>
           )}
