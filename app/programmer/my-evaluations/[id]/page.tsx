@@ -74,7 +74,8 @@ export default async function ProgrammerEvaluationDetailPage({ params }: { param
     }
   }
 
-  const createdDate = new Date(evaluation.created_at);
+  // The date the evaluation was given (an imported evaluation carries its email's date), not when it was entered
+  const createdDate = new Date(evaluation.original_submission_date ?? evaluation.submitted_at ?? evaluation.created_at);
   const formattedDate = createdDate.toLocaleDateString("en-US", {
     timeZone: PKT_TIME_ZONE,
     weekday: "long",
